@@ -24,4 +24,4 @@ Added slot for Witmotion WTRTK 982,M20D, etc.
 
 Reinstated WorkTeensy, CAN bus and Danfoss functions.
 
-Changed verion number to be clear it's not from AgOpenGPS Team.
+Changed version number to be clear it's not from AgOpenGPS Team.
