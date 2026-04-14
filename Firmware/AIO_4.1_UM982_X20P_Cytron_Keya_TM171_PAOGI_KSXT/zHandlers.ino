@@ -83,13 +83,13 @@ void fillRollPitchFromTM171()
 
     if (!steerConfig.IsUseY_Axis)
     {
-        dtostrf(PitchV.fValue, 6, 2, imuPitch);
-        dtostrf(RollV.fValue,  6, 2, imuRoll);
+        itoa((int16_t)(PitchV.fValue * 16.0), imuPitch, 10);
+        itoa((int16_t)(RollV.fValue  * 16.0), imuRoll,  10);
     }
     else
     {
-        dtostrf(RollV.fValue,  6, 2, imuPitch);
-        dtostrf(PitchV.fValue, 6, 2, imuRoll);
+        itoa((int16_t)(RollV.fValue  * 16.0), imuPitch, 10);
+        itoa((int16_t)(PitchV.fValue * 16.0), imuRoll,  10);
     }
     itoa(0, imuYawRate, 10);
 }
@@ -147,7 +147,7 @@ void GGA_Handler()
         // KSXT lost (antenna blocked) - use TM171 heading + roll
         // AgOpenGPS IMU fusion will use yaw rate to maintain heading
         ksxtHeadingValid = false;
-        dtostrf(YawV.fValue, 8, 4, imuHeading);
+        itoa((int16_t)(YawV.fValue * 16.0), imuHeading, 10);
         // roll/pitch already set by fillRollPitchFromTM171() above
         digitalWrite(GPSRED_LED,   HIGH);
         digitalWrite(GPSGREEN_LED, LOW);
@@ -201,8 +201,8 @@ void KSXT_Handler()
         // Store heading for GGA_Handler to use
         // Note: KSXT roll (field 6) is intentionally NOT used here -
         // TM171 roll will overwrite it in GGA_Handler for better stability
-        dtostrf(hdg, 8, 4, imuHeading);
-        dtostrf(pch, 6, 2, imuPitch);
+        itoa((int16_t)(hdg * 16.0), imuHeading, 10);
+        itoa((int16_t)(pch * 16.0), imuPitch,   10);
         // imuRoll left for TM171 to fill
 
         heading          = hdg;
