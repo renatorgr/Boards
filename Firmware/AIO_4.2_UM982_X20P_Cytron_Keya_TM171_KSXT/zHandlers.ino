@@ -17,7 +17,7 @@ unsigned long ksxtLastReceived = 0;
 #define KSXT_TIMEOUT_MS 500
 
 // Sentence buffer
-char nmea[100];
+char nmea[160];
 
 // GGA fields
 char fixTime[12];
@@ -251,7 +251,7 @@ void BuildNmea()
 void CalculateChecksum()
 {
     int16_t sum = 0;
-    for (int16_t inx = 1; inx < 200; inx++)
+    for (int16_t inx = 1; inx < 160; inx++)
     {
         char tmp = nmea[inx];
         if (tmp == '*') break;
