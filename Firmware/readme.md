@@ -1,9 +1,12 @@
-This firmware is for Cytron/Keya only.
+This firmware is for AgOpenWeb.
 
-It uses TM171 as IMU in serial 5.
+  - Cytron/Keya only.
 
-F9P/X20P/UM982 are in serial 7.
+  - TM171 as IMU in serial 5.
 
-Xbee radio is in serial 3.
+  - F9P/X20P/UM982 are in serial 7.
+
+  - Xbee radio is in serial 3.
+
 
 It's not my work, but from Claude AI.
