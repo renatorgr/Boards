@@ -56,7 +56,9 @@ In UPrecise (or by commands), on the port connected to the Teensy, at 10 Hz: `GP
 - Roll direction / zero: AgOpenWeb's "Roll invert" and "Roll zero" (they apply to the `$INHPR` roll).
 - `MinFixQuality` (default 4 = RTK fixed): below it the fix is marked invalid. On the bench set 1 or 2.
 - HDOP and correction age are shown again (they come from the GGA).
-- NTRIP (ReNEP): port 2101 (legacy 1004/1012) gave RTK fixed with the UM982; port 2102 (MSM5) stayed in float.
+- NTRIP (ReNEP): both port 2101 (legacy 1004/1012) and port 2102 (MSM5, GPS + GLONASS + Galileo + BeiDou) give RTK fixed with the UM982 on the tractor (2102 on 11 Oct: RTK fixed 21 s after the first DGPS fix).
+- Antenna cables: if the two UM982 antenna cables are swapped, the dual heading is 180° off and the GGA position is the other antenna (with side-by-side antennas, the full baseline away from where `AntennaOffset` expects it). Symptom: driving forward is shown as reverse. Swap the cables back (or change `CONFIG HEADING OFFSET` by 180° and `AntennaOffset` to the other side).
+- The serial monitor line `[status] GPS: the receiver sends (last 5 s): ...` shows which receiver is connected: a UM982 still set up for the old firmware sends `KSXT` and no `GNHPR` (add `GPHPR 0.1` on its Teensy port and `SAVECONFIG`).
 
 ## Settings (top of `zHandlers.ino`)
 
