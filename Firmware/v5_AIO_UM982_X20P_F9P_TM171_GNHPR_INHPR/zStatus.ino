@@ -6,6 +6,9 @@
 //   - RTCM corrections arriving from AgOpenWeb (NTRIP)
 //   - GPS: first position, fix quality changes, no GGA / VTG from the receiver
 //   - Dual antenna heading (UM982 HPR) available or lost; single-antenna receiver (no HPR)
+//     Without dual heading: WHY (UM982 HPR QF 0 / HPR not arriving with its GGA / empty
+//     heading) and the last HPR line exactly as the receiver sent it
+//   - Receiver sentences with a bad checksum; Teensy reading the receiver too slowly
 //   - TM171 data arriving or lost
 // A state must hold for STATUS_STABLE_MS before it is reported, so a fix or dual state
 // that flickers at 10 Hz does not flood the monitor.
@@ -69,6 +72,90 @@ static void printIp(const uint8_t* ip)
 {
     Serial.print(ip[0]); Serial.print('.'); Serial.print(ip[1]); Serial.print('.');
     Serial.print(ip[2]); Serial.print('.'); Serial.print(ip[3]);
+}
+
+// Back to "hhmmss.ss" from utcCs() (the time field x 100; -1 -> "none")
+static void csToText(int32_t cs, char* out, size_t n)
+{
+    if (cs < 0) { snprintf(out, n, "none"); return; }
+    snprintf(out, n, "%06ld.%02ld", (long)(cs / 100), (long)(cs % 100));
+}
+
+// Every 5 s: the sentence types the receiver sent in that window, with their rate, e.g.
+// "[status] GPS: the receiver sends (last 5 s): GNGGA 10.0 Hz, GNHPR 10.0 Hz, GNVTG 10.0 Hz".
+// Printed only when the set of types changes. Counted before the parser (zHandlers.ino).
+static void statusRxTypes()
+{
+    static char reportedSet[160] = "";
+    // sort by name (tiny table)
+    for (uint8_t a = 0; a < rxTypeCount; a++)
+        for (uint8_t b = a + 1; b < rxTypeCount; b++)
+            if (strcmp(rxTypes[b].name, rxTypes[a].name) < 0) { RxType t = rxTypes[a]; rxTypes[a] = rxTypes[b]; rxTypes[b] = t; }
+
+    char set[160] = "", line[300] = "";
+    for (uint8_t k = 0; k < rxTypeCount; k++)
+    {
+        char item[40];
+        snprintf(item, sizeof(item), "%s%s", k ? "," : "", rxTypes[k].name);
+        strncat(set, item, sizeof(set) - strlen(set) - 1);
+        snprintf(item, sizeof(item), "%s%s %.1f Hz", k ? ", " : "", rxTypes[k].name, rxTypes[k].count / (STATUS_SILENCE_MS / 1000.0));
+        strncat(line, item, sizeof(line) - strlen(line) - 1);
+    }
+    if (rxTypeOthers)
+    {
+        char item[40];
+        snprintf(item, sizeof(item), " + %u lines of other types", (unsigned)rxTypeOthers);
+        strncat(line, item, sizeof(line) - strlen(line) - 1);
+    }
+    rxTypeCount  = 0;
+    rxTypeOthers = 0;
+
+    if (set[0] == '\0' || !strcmp(set, reportedSet)) return;   // nothing / same set as reported
+    strncpy(reportedSet, set, sizeof(reportedSet) - 1);
+    Serial.print("[status] GPS: the receiver sends (last 5 s): ");
+    Serial.println(line);
+}
+
+// While there is no dual heading: say WHY (the most frequent reason over the last 5 s window),
+// with the last HPR exactly as the receiver sent it. Printed when the state starts, and again
+// when the reason changes.
+static int noDualWhyReported = -1;
+static void statusNoDualWhy(bool force)
+{
+    int why = epochNoDual;                         // fallback: the last epoch's reason
+    uint32_t best = 0;
+    for (int r = NODUAL_NOT_IN_TIME; r < NODUAL_COUNT; r++)
+        if (noDualCount[r] > best) { best = noDualCount[r]; why = r; }
+    if (why < NODUAL_NOT_IN_TIME) return;          // nothing to explain (dual OK / no HPR at all)
+    if (!force && why == noDualWhyReported) return;
+    noDualWhyReported = why;
+
+    char b[340];
+    if (why == NODUAL_QF)
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading ($GNTHS mode V) - the UM982 sends HPR with QF %d: "
+                               "it has no heading solution from its two antennas (antennas, cables, UM982 heading setup)", hprQf);
+    else if (why == NODUAL_NOT_IN_TIME)
+    {
+        const uint32_t now = millis();
+        char tH[16], tG[16];
+        csToText(hprUtcCs, tH, sizeof(tH));
+        csToText(ggaUtcCs, tG, sizeof(tG));
+        if (hprLateAtMs != 0 && now - hprLateAtMs < 2000)
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading ($GNTHS mode V) - the HPR arrives too late, %lu ms after its GGA "
+                                   "(the firmware waits %d ms; %lu late HPRs so far). Please send this line",
+                     (unsigned long)hprLateMs, EPOCH_WAIT_MS, (unsigned long)hprLateCount);
+        else if (now - hprMs > 500)
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading ($GNTHS mode V) - the receiver stopped sending HPR (last one %lu ms ago)",
+                     (unsigned long)(now - hprMs));
+        else
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading ($GNTHS mode V) - HPRs arrive but their time (%s) does not match "
+                                   "the GGA time (%s). Please send this line", tH, tG);
+    }
+    else
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading ($GNTHS mode V) - HPR QF %d but its heading field is empty or out of range", hprQf);
+    Serial.println(b);
+    Serial.print("[status]   last HPR from the receiver: ");
+    Serial.println(hprRawLast[0] ? hprRawLast : "(none)");
 }
 
 // Called from loop()
@@ -170,8 +257,73 @@ void statusUpdate()
                 Serial.print(epochHprQf);
                 Serial.println(epochHprQf == 4 ? " fixed), sent as $GNTHS" : " float), sent as $GNTHS");
             }
-            else if (d == 1) Serial.println("[status] Dual: no dual-antenna heading ($GNTHS mode V), AgOpenWeb uses the TM171 heading ($INHPR)");
-            else             Serial.println("[status] Single antenna: no HPR from the receiver (F9P / X20P, or HPR off), AgOpenWeb uses the TM171 heading ($INHPR) - set Dual GPS off");
+            else if (d == 1)
+            {
+                Serial.println("[status] Dual: no dual-antenna heading ($GNTHS mode V), AgOpenWeb uses the TM171 heading ($INHPR)");
+                statusNoDualWhy(true);
+            }
+            else
+            {
+                Serial.println("[status] Single antenna: no HPR from the receiver (F9P / X20P, or HPR off), AgOpenWeb uses the TM171 heading ($INHPR) - set Dual GPS off");
+                if (hprRawMs != 0 && now - hprRawMs < RECEIVER_SEEN_MS)
+                {
+                    // HPR lines ARE coming in, but none reached HPR_Handler: the parser rejects them
+                    Serial.print("[status]   but HPR lines are arriving and none is accepted (bad format?) - please send this line: ");
+                    Serial.println(hprRawLast);
+                }
+                else if (hprRawLast[0])
+                {
+                    char b[80];
+                    snprintf(b, sizeof(b), "[status]   the last HPR line arrived %lu s ago: ", (unsigned long)((now - hprRawMs) / 1000));
+                    Serial.print(b);
+                    Serial.println(hprRawLast);
+                }
+            }
+        }
+    }
+
+    // ---- Every 5 s: reason for no dual heading (if it changed), bad checksums, serial backlog
+    static uint32_t windowMs = 0;
+    static uint32_t crcAtWindow = 0;
+    static bool     crcBad = false, slowRead = false;
+    if (now - windowMs >= STATUS_SILENCE_MS)
+    {
+        windowMs = now;
+        if (dual.reported == 1) statusNoDualWhy(false);
+        for (int r = 0; r < NODUAL_COUNT; r++) noDualCount[r] = 0;
+
+        // What the receiver sends (every sentence type, before the parser). Printed when the set changes.
+        statusRxTypes();
+
+        const uint32_t crcNew = nmeaCrcErrors - crcAtWindow;
+        crcAtWindow = nmeaCrcErrors;
+        if (crcNew > 0)
+        {
+            char b[160];
+            snprintf(b, sizeof(b), "[status] GPS: %lu sentences from the receiver with a bad checksum in the last 5 s (bytes lost or corrupted on the serial line)", (unsigned long)crcNew);
+            Serial.println(b);
+            crcBad = true;
+        }
+        else if (crcBad)
+        {
+            Serial.println("[status] GPS: no more bad checksums from the receiver");
+            crcBad = false;
+        }
+
+        // More than one whole epoch (GGA + VTG + HPR, about 210 bytes) waiting in the serial buffer
+        const uint16_t peak = gnssRxPeak;
+        gnssRxPeak = 0;
+        if (peak >= 256 && !slowRead)
+        {
+            char b[160];
+            snprintf(b, sizeof(b), "[status] GPS: the Teensy is reading the receiver late (up to %u bytes waiting in the serial buffer)", (unsigned)peak);
+            Serial.println(b);
+            slowRead = true;
+        }
+        else if (peak < 256 && slowRead)
+        {
+            Serial.println("[status] GPS: receiver data read on time again");
+            slowRead = false;
         }
     }
 

@@ -279,6 +279,7 @@ void loop()
     }
 
     // Read NMEA from the receiver (GGA, VTG, HPR)
+    gnssNoteRxBacklog();                          // [status] warns if bytes pile up (Teensy reading too slowly)
     if (SerialGPS->available())
     {
         if (passThroughGPS)

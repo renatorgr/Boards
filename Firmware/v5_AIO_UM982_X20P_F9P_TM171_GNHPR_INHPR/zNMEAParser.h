@@ -371,6 +371,14 @@ template <size_t S> class NMEAParser {
     }
 
     /*
+       The error that made the parser call the error handler (read it inside the handler)
+    */
+    NMEA::ErrorCode error(void) const
+    {
+      return mError;
+    }
+
+    /*
        Set the default handler which is called when a sentence is well formed
        but has no handler associated to
     */

@@ -116,9 +116,37 @@ float         dualHeading  = 0;
 char          speedSource  = '-';    // 'v' receiver VTG, 'p' GGA positions, '-' none
 float         lastSpeedKmh = 0, lastOut = 0, lastRoll = 0;
 
+// Why an epoch went out without dual heading ($GNTHS V). zStatus.ino prints the reason.
+enum NoDualReason : uint8_t {
+    NODUAL_NONE = 0,       // dual heading OK
+    NODUAL_NO_HPR,         // the receiver sends no HPR at all (F9P / X20P, or HPR off)
+    NODUAL_NOT_IN_TIME,    // HPR is sent, but none with this GGA's time arrived within EPOCH_WAIT_MS
+    NODUAL_QF,             // this epoch's HPR has QF 0 (or another value that is not 4 / 5)
+    NODUAL_HEADING,        // QF 4 / 5 but the heading field is empty or out of range
+    NODUAL_COUNT
+};
+uint8_t       epochNoDual  = NODUAL_NONE;
+uint32_t      noDualCount[NODUAL_COUNT] = {};  // epochs per reason (zStatus.ino reads and clears it every 5 s)
+char          hprRawLast[100] = {};  // the last HPR line exactly as the receiver sent it
+uint32_t      hprRawMs     = 0;      // when it arrived (millis, 0 = never), valid or not
+uint32_t      hprLateCount = 0;      // HPRs that arrived after their epoch had already been sent
+uint32_t      hprLateMs    = 0;      // how long after its GGA the last late HPR arrived
+uint32_t      hprLateAtMs  = 0;      // when the last late HPR arrived (millis, 0 = never)
+uint32_t      nmeaCrcErrors = 0;     // receiver sentences dropped for a bad checksum (bytes lost / corrupted)
+uint16_t      gnssRxPeak   = 0;      // largest backlog seen in the receiver serial buffer (zStatus.ino clears it)
+
 void errorHandler()
 {
-    // NMEA parse error (bad checksum, too long): the sentence is ignored
+    // NMEA parse error: the sentence is ignored. Bad checksums are counted (sign of lost bytes).
+    if (parser.error() == NMEA::CRC_ERROR) nmeaCrcErrors++;
+}
+
+// Called from loop() before reading the receiver: how many bytes are waiting. A backlog of more
+// than one epoch means the Teensy reads the receiver too slowly (zStatus.ino reports it).
+void gnssNoteRxBacklog()
+{
+    const int n = SerialGPS->available();
+    if (n > gnssRxPeak) gnssRxPeak = (uint16_t)n;
 }
 
 // ---------------------------------------------------------------- helpers
@@ -146,8 +174,8 @@ static float wrap180(float a)
     return a;
 }
 
-// "hhmmss.ss" -> centiseconds since midnight; -1 if empty or negative (UM982 prints
-// "-00001.00" in HPR before it has a time)
+// "hhmmss.ss" -> the same number x 100 (only compared for equality); -1 if empty or negative
+// (UM982 prints "-00001.00" in HPR before it has a time)
 static int32_t utcCs(const char* t)
 {
     if (strlen(t) < 6 || t[0] == '-') return -1;
@@ -190,33 +218,75 @@ static void learnYawSign(float dual, float tmRaw)
     }
 }
 
-// ---------------------------------------------------------------- raw debug
-// Every byte from the receiver goes through here before the parser (prints only with RAW_NMEA_DEBUG).
+// ---------------------------------------------------------------- raw lines
+// Sentence types the receiver sends ("GNGGA", "GNHPR", "KSXT", "HEADINGA", ...), counted before
+// the parser, whatever the parser does with them. zStatus.ino lists them every 5 s when the set changes.
+#define RX_TYPES_MAX 10
+struct RxType { char name[12]; uint16_t count; };
+RxType        rxTypes[RX_TYPES_MAX];
+uint8_t       rxTypeCount  = 0;
+uint16_t      rxTypeOthers = 0;      // lines of further types that did not fit in the table
+
+static void noteRxType(const char* line)
+{
+    char name[12];
+    uint8_t i = 0;
+    for (const char* p = line + 1; *p && *p != ',' && *p != '*'; p++)
+    {
+        if (!isalnum((unsigned char)*p) || i >= sizeof(name) - 1) return;   // not a sentence name
+        name[i++] = *p;
+    }
+    name[i] = '\0';
+    if (i < 2) return;
+    for (uint8_t k = 0; k < rxTypeCount; k++)
+        if (!strcmp(rxTypes[k].name, name)) { if (rxTypes[k].count < 65535) rxTypes[k].count++; return; }
+    if (rxTypeCount < RX_TYPES_MAX)
+    {
+        strcpy(rxTypes[rxTypeCount].name, name);
+        rxTypes[rxTypeCount].count = 1;
+        rxTypeCount++;
+    }
+    else if (rxTypeOthers < 65535) rxTypeOthers++;
+}
+
+// Every byte from the receiver goes through here before the parser. Counts the sentence types,
+// keeps the last HPR line as received (shown by the [status] Dual messages); prints GGA / VTG /
+// HPR only with RAW_NMEA_DEBUG.
 void rawNmeaTee(char c)
 {
-#if RAW_NMEA_DEBUG
     static char    rawLine[200];
     static uint8_t rawLen = 0;
-    if (c == '$') rawLen = 0;
+    if (c == '$' || c == '#') rawLen = 0;              // '#' = Unicore ASCII log (#HEADINGA, ...)
     if (c == '\n' || c == '\r')
     {
+        if (rawLen > 2 && (rawLine[0] == '$' || rawLine[0] == '#'))
+        {
+            rawLine[rawLen] = '\0';
+            noteRxType(rawLine);
+        }
         if (rawLen > 6 && rawLine[0] == '$')
         {
             rawLine[rawLen] = '\0';
-            if (!strncmp(rawLine + 3, "GGA", 3) || !strncmp(rawLine + 3, "VTG", 3) || !strncmp(rawLine + 3, "HPR", 3))
+            const bool isHpr = !strncmp(rawLine + 3, "HPR", 3);
+            if (isHpr)
+            {
+                strncpy(hprRawLast, rawLine, sizeof(hprRawLast) - 1);
+                hprRawLast[sizeof(hprRawLast) - 1] = '\0';
+                hprRawMs = millis() | 1;
+            }
+#if RAW_NMEA_DEBUG
+            if (isHpr || !strncmp(rawLine + 3, "GGA", 3) || !strncmp(rawLine + 3, "VTG", 3))
             {
                 Serial.print("[raw] ");
                 Serial.println(rawLine);
             }
+#endif
         }
         rawLen = 0;
         return;
     }
     if (rawLen < sizeof(rawLine) - 1) rawLine[rawLen++] = c;
     else rawLen = 0;                                      // garbage / too long: drop it
-#else
-    (void)c;
-#endif
 }
 
 // Called at the end of setup(): drop the epochs that piled up in the serial buffer
@@ -236,6 +306,9 @@ void gnssFlushAfterSetup()
     hprMs         = 0;
     hprPresent    = false;
     ggaFirstMs    = 0;
+    gnssRxPeak    = 0;
+    hprRawMs      = 0;
+    hprRawLast[0] = '\0';
 }
 
 // ---------------------------------------------------------------- speed fallback
@@ -354,6 +427,14 @@ void HPR_Handler()
     hprPitch = atof(pitch);
     hprMs    = millis();
     hprRxCount++;
+
+    // Diagnostics: the HPR of an epoch that has already gone out (after EPOCH_WAIT_MS) came too late
+    if (hprUtcCs >= 0 && hprUtcCs == ggaUtcCs && !ggaPending)
+    {
+        hprLateCount++;
+        hprLateMs   = hprMs - ggaMs;
+        hprLateAtMs = hprMs | 1;
+    }
 }
 
 // ---------------------------------------------------------------- output
@@ -456,6 +537,14 @@ void gnssProcess()
     if (epochDual) snprintf(body, sizeof(body), "GNTHS,%s,A", hprHeading);
     else           strcpy(body, "GNTHS,,V");
     sendSentence(body);
+
+    // Why there is no dual heading (for the [status] lines)
+    if (epochDual)                                                   epochNoDual = NODUAL_NONE;
+    else if (!hprPresent)                                            epochNoDual = NODUAL_NO_HPR;
+    else if (!hprIn)                                                 epochNoDual = NODUAL_NOT_IN_TIME;
+    else if (!(hprQf == 4 || (HPR_ACCEPT_FLOAT && hprQf == 5)))     epochNoDual = NODUAL_QF;
+    else                                                             epochNoDual = NODUAL_HEADING;
+    noDualCount[epochNoDual]++;
 
     // ---- $INHPR: TM171
     const float tmRaw = YawV.fValue;

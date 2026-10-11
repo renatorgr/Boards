@@ -79,7 +79,16 @@ In UPrecise (or by commands), on the port connected to the Teensy, at 10 Hz: `GP
 - RTCM corrections arriving from AgOpenWeb / stopped 5 s ago
 - GPS: first position; fix changes with satellites and correction age; no GGA for 5 s; VTG arriving / no VTG (speed computed from the positions)
 - Dual: dual-antenna heading OK (QF 4 fixed / 5 float, sent as `$GNTHS`) / no dual heading
-- Single antenna: the receiver sends no HPR (F9P / X20P, or HPR off on the UM982)
+- No dual heading: **why**, followed by the last HPR line exactly as the receiver sent it (`[status]   last HPR from the receiver: $GNHPR,...`). Printed when the dual heading is lost, and again when the reason changes:
+  - `the UM982 sends HPR with QF 0` — the UM982 itself has no heading from its two antennas (antennas, cables, UM982 heading setup); the firmware can only pass that on
+  - `the HPR arrives too late, N ms after its GGA` — the HPR comes after the firmware has sent the epoch (it waits `EPOCH_WAIT_MS`)
+  - `HPRs arrive but their time (...) does not match the GGA time (...)`
+  - `the receiver stopped sending HPR (last one N ms ago)`
+  - `HPR QF n but its heading field is empty or out of range`
+- Single antenna: the receiver sends no HPR (F9P / X20P, or HPR off on the UM982). Followed by `but HPR lines are arriving and none is accepted` (a firmware / format problem: send that line) or by when the last HPR line arrived
+- GPS: the receiver sends (last 5 s): every sentence type that comes in on Serial7 with its rate, e.g. `GNGGA 10.0 Hz, GNHPR 10.0 Hz, GNVTG 10.0 Hz`. Counted before the parser, so it shows exactly what the receiver sends. Printed when the set of types changes
+- GPS: sentences from the receiver with a bad checksum in the last 5 s (bytes lost or corrupted on the serial line) / no more bad checksums
+- GPS: the Teensy is reading the receiver late (more than one epoch waiting in the serial buffer) / read on time again
 - TM171: data OK / no data
 
 LEDs: green = dual heading, red = TM171 heading, red blinking = TM171 lost.
