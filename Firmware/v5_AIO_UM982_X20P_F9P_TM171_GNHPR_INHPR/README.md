@@ -8,7 +8,7 @@ It sends the "standard set" of NMEA sentences, which AgOpenWeb joins into one fi
 ## Inputs
 
 - GNSS receiver on Serial7, 460800 baud, 10 Hz. The receiver type is detected automatically:
-  - **UM982 (dual antenna):** GGA + VTG + HPR (GP or GN talker). KSXT is no longer used (it can stay on; it is ignored).
+  - **UM982 (dual antenna):** GGA + VTG + HPR (GP or GN talker).
   - **u-blox F9P / X20P (single antenna):** GGA + VTG. With no HPR, the firmware does not wait for it: each epoch goes out as soon as the GGA and VTG are in.
   - GGA is required (it marks each epoch). A VTG or HPR counts as "sent by the receiver" if one arrived in the last 3 s (`RECEIVER_SEEN_MS`); for the first 3 s after start-up both are waited for.
 - TM171 (Serial5, 115200): roll, pitch and yaw.
