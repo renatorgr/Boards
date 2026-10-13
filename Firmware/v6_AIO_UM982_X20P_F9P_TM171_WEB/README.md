@@ -1,1 +1,174 @@
+# v6_AIO_UM982_X20P_F9P_TM171_WEB
 
+Teensy 4.1 (AiO board) firmware for AgOpenWeb and AgOpenGPS — UM982 (dual antenna) **or** u-blox F9P / X20P (single antenna) + TM171 IMU, Cytron or Keya steering.
+
+v6 = v5 plus:
+
+- **a web page on the module** — `http://192.168.5.126/` (the module's IP) from the AgOpenWeb tablet, a phone or a PC on the same network: status, the `[status]` messages, settings, a console for the UM982, restart and **firmware update over the network**, so the Hammond box does not have to be opened (see "Web page" below)
+- **classic output** (setting on the web page): one `$PAOGI` / `$PANDA` per epoch for AgOpenGPS / AgIO (AgOpenWeb reads it too), instead of the standard set
+
+With the default settings v6 sends exactly what v5 sent (the standard set below).
+
+**The standard set needs an AgOpenWeb build that includes PR #300** (the epoch assembler, `develop` from the evening of 9 Oct 2026 onwards). On an older build these sentences show up as "not accepted". The classic output works with any AgOpenWeb and with AgOpenGPS.
+
+## Compiling and first install
+
+- Arduino IDE with **Teensyduino 1.58 or older** (the code uses `HardwareSerial*` with `addMemoryForRead()`, which Teensyduino 1.59 moved to `HardwareSerialIMXRT`). Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
+- Checked here with the Teensy 1.58 core, NativeEthernet / FNET, FlexCAN_T4 and the ARM GCC: compiles and links (about 310 KB code).
+- **The first install of v6 is by USB, as before** (the running v5 has no update page). From then on: web page.
+- The extra files `FlashTxx.c` / `FlashTxx.h` are FlasherX (Joe Pasquariello, public domain), used for the update. Keep them in the sketch folder.
+
+## Web page
+
+Open `http://<module IP>/` — normally `http://192.168.5.126/` (the third number follows the subnet set from AgOpenWeb). No password: anyone on the module's network can open it.
+
+| Tab | |
+|---|---|
+| **Estado** | GNSS (fix, satellites, HDOP, correction age, speed), dual heading (QF, why there is none, the last `$GNHPR` as received), TM171 (roll, pitch, yaw, alignment, yaw direction), steering (WAS angle, requested angle, PWM, autosteer engaged, switch, motor), network (cable, AgOpenWeb, RTCM), what the receiver sends, the last sentences sent |
+| **Mensagens** | the `[status]` lines (the module keeps the last 60) |
+| **Definições** | the settings below, saved in the Teensy's EEPROM and applied at once (no restart) |
+| **UM982** | sends a command to the UM982 port connected to the Teensy and shows the replies for 5 s (quick buttons: `CONFIG`, `UNILOGLIST`, `GPHPR 0.1`, `SAVECONFIG`). Commands that can cut the link (`FRESET`, `UNLOG`, port baud) ask for confirmation |
+| **Firmware** | version and build date, firmware update, restart |
+
+The page refreshes once a second, one request at a time; the module answers between GNSS epochs and never waits for the browser for more than 3 s (0.5 s for a connection that sends nothing), so steering and GNSS keep running.
+
+### Settings (web page, EEPROM)
+
+| Setting | Default | |
+|---|---|---|
+| Output | standard set | standard set (AgOpenWeb with PR #300) or classic `$PAOGI` / `$PANDA` |
+| Classic, without dual heading | `$PANDA` | `$PANDA` with the TM171 heading, or `$PAOGI` with the TM171 heading (only once the TM171 has been aligned to the antennas since start-up; until then `$PANDA`) |
+| Accept float heading (HPR QF 5) | yes | no = only QF 4 (fixed) |
+| Max wait for VTG / HPR after the GGA | 60 ms | 20-100 ms |
+| TM171 swap roll / pitch | no | TM171 rotated 90° on the board |
+| TM171 yaw direction | automatic | automatic (learned from the dual heading in turns; +1 with a single antenna), +1 or −1 |
+
+The defaults are the `#define`s at the top of `zHandlers.ino`; a blank or damaged EEPROM block gives the defaults. The settings live at EEPROM address 200, away from the AgOpenGPS steer settings (0-63), and survive firmware updates.
+
+### Firmware update over the network
+
+1. Arduino IDE: **Sketch → Export Compiled Binary**. The `.hex` is in the sketch folder (Arduino IDE 2: in `build/teensy.avr.teensy41/`).
+2. Web page → Firmware → choose the `.hex` → Install. Only with **autosteer disengaged and the tractor stopped** (otherwise refused); the steering is switched off for the update.
+3. The module receives the whole file into a free part of its flash (4-6 MB) and checks it: Intel HEX checksums, end record, starts at the flash base, fits, built for a Teensy 4.1 (`fw_teensy41`), and is this firmware family (`AOG-AIO-UM982-TM171-WEB-OTA-1`, so the next update can also be done from the page). Every sector written is read back. **If anything fails, the running firmware stays** and the page says why.
+4. Only then is the new firmware copied over the old one (a few seconds) and the Teensy restarts; the page shows the new version when it is back.
+
+- "Outro firmware" (other firmware) installs an image without the marker (e.g. a firmware without this page); the next update is then by USB again.
+- **Do not cut the power during the final copy** (a few seconds after "A instalar e a reiniciar"): the Teensy would then have no firmware and must be reprogrammed by USB (the Teensy itself is not damaged; the 15 s button restore also works).
+- The EEPROM (steer settings from AgOpenGPS / AgOpenWeb, web settings) is kept: `FLASH_RESERVE` in `FlashTxx.h` covers the top 256 KB of flash, where the Teensy 4.1 keeps its EEPROM (the stock FlasherX value, 16 KB, would erase it).
+
+## Inputs
+
+- GNSS receiver on Serial7, 460800 baud, 10 Hz. The receiver type is detected automatically:
+  - **UM982 (dual antenna):** GGA + VTG + HPR (GP or GN talker). KSXT is no longer used (it can stay on; it is ignored).
+  - **u-blox F9P / X20P (single antenna):** GGA + VTG. With no HPR, the firmware does not wait for it: each epoch goes out as soon as the GGA and VTG are in.
+  - GGA is required (it marks each epoch). A VTG or HPR counts as "sent by the receiver" if one arrived in the last 3 s (`RECEIVER_SEEN_MS`); for the first 3 s after start-up both are waited for.
+- TM171 (Serial5, 115200): roll, pitch and yaw.
+
+## Output (UDP 9999), standard set: 4 lines per epoch, one per datagram
+
+| Line | Content | AgOpenWeb uses it for |
+|---|---|---|
+| `$GNGGA` | the receiver's GGA (a UM982 GGA with `00` satellites / HDOP `9999.0` gets the last good values, for up to 2 s) | position, fix, satellites, HDOP, correction age |
+| `$GNVTG` | speed and track from the receiver's VTG; if the VTG is empty, computed from the GGA positions | speed |
+| `$GNTHS` | dual-antenna heading (the UM982's HPR value, character for character); mode `A` = valid, `V` = no dual heading | heading with two antennas |
+| `$INHPR` | TM171 (talker `IN` = inertial sensor): heading aligned to the dual heading, **roll in the pitch field** (HPR convention), pitch in the roll field; QF 4 = TM171 OK, QF 0 = TM171 lost | roll, always; heading without two antennas |
+
+Result in AgOpenWeb (checked against AgOpenWeb's own code):
+
+| Situation | Heading | Roll |
+|---|---|---|
+| Two antennas (HPR QF 4 fixed, or 5 float) | `$GNTHS` (antennas) | TM171 |
+| Second antenna lost / no heading solution | TM171, with AgOpenWeb's single-antenna fusion (fix-to-fix + IMU, reverse detection) | TM171 |
+| Single-antenna receiver (F9P / X20P) | TM171, with the same single-antenna fusion | TM171 |
+| TM171 lost | antennas (or fix-to-fix without two antennas) | 0 |
+
+AgOpenWeb's status bar shows the family **`GGA+VTG+HPR+THS`** (the "HPR" is the TM171's `$INHPR`).
+
+
+## Output (UDP 9999), classic: one sentence per epoch
+
+| Situation | Sentence | Heading | Roll / pitch |
+|---|---|---|---|
+| Dual heading (HPR QF 4, or 5 if accepted) | `$PAOGI` | the UM982 HPR heading, character for character | TM171, degrees (`0.00` if the TM171 is lost) |
+| No dual heading (or F9P / X20P) | `$PANDA` | TM171 heading aligned to the last dual heading, × 10 (`65535` = TM171 lost) | TM171, × 10 |
+| No dual heading, setting "`$PAOGI` without dual" | `$PAOGI` | the aligned TM171 heading (only once aligned since start-up; until then `$PANDA`) | TM171, degrees |
+
+Fields: time, latitude, N/S, longitude, E/W, fix, satellites, HDOP, altitude, correction age (from the GGA), speed in knots (VTG, else from the positions), heading, roll, pitch, yaw rate (0). Checked with AgOpenWeb's own parser and heading code: every sentence accepted; `$PAOGI` used as dual heading; `$PANDA` as IMU heading with the single-antenna fusion while the second antenna is lost.
+
+In AgOpenGPS: Dual heading in the GPS settings while using two antennas; roll invert / zero apply to the TM171 roll.
+
+### Why the dual heading goes out as `$GNTHS` and not as `$GNHPR`
+
+AgOpenWeb starts a new epoch when a sentence type repeats. A `$GNHPR` (antennas) and an `$INHPR` (TM171) are both "HPR", so they could never be in the same fix: the `$INHPR` would open an epoch with no GGA and be dropped. `$GNTHS` carries the same heading as the UM982's HPR and can share the epoch with the `$INHPR`. The firmware still **reads** the UM982's `$GNHPR`.
+
+## Single antenna: u-blox F9P / X20P
+
+- In u-center: UART1 at 460800, GGA + VTG at 10 Hz (100 ms measurement period), high-precision NMEA on, compatibility mode and Limit82 off, RTCM3 input on UART1, all other messages off. NMEA version: any (4.11 recommended). Save to the receiver's memory (BBR/Flash).
+- In AgOpenWeb: **"Dual GPS" off**. `$GNTHS` always goes out with `V`; AgOpenWeb uses the TM171 heading with its single-antenna fusion (fix-to-fix + IMU, reverse detection), as with `$PANDA`. Set the antenna height and position in the vehicle profile.
+- TM171 yaw direction: without two antennas the firmware cannot learn it and uses +1 (like the official AiO firmware, which uses the TM171 yaw as is). If the heading turns the wrong way in curves, set the yaw direction to −1 on the web page. The TM171 heading has an arbitrary zero (about 100° off on this tractor's X20P box): AgOpenWeb aligns it to the fix-to-fix heading on the first metres above 1.5 km/h and keeps correcting it.
+- The message `[status] Single antenna: no HPR from the receiver ...` confirms the mode.
+
+## UM982 setup
+
+In UPrecise (or by commands), on the port connected to the Teensy, at 10 Hz: `GPGGA 0.1`, `GPVTG 0.1`, `GPHPR 0.1`, then save (`SAVECONFIG`). Keep `CONFIG HEADING OFFSET` as it was (the HPR heading already has that offset applied).
+
+## In AgOpenWeb (UM982, dual antenna)
+
+- **"Dual GPS" on** (when off, AgOpenWeb ignores the antenna heading and uses only the TM171 + fix-to-fix).
+- With `AutoDualFix` on, above `DualSwitchSpeed` AgOpenWeb uses the fix-to-fix heading corrected by the antennas instead of the antenna heading itself; turn it off to steer on the antenna heading.
+- Antenna orientation: `CONFIG HEADING OFFSET` in the UM982 **or** `DualHeadingOffset` in AgOpenWeb — only one of the two.
+- Roll direction / zero: AgOpenWeb's "Roll invert" and "Roll zero" (they apply to the `$INHPR` roll).
+- `MinFixQuality` (default 4 = RTK fixed): below it the fix is marked invalid. On the bench set 1 or 2.
+- HDOP and correction age are shown again (they come from the GGA).
+- NTRIP (ReNEP): both port 2101 (legacy 1004/1012) and port 2102 (MSM5, GPS + GLONASS + Galileo + BeiDou) give RTK fixed with the UM982 on the tractor (2102 on 11 Oct: RTK fixed 21 s after the first DGPS fix).
+- Antenna cables: if the two UM982 antenna cables are swapped, the dual heading is 180° off and the GGA position is the other antenna (with side-by-side antennas, the full baseline away from where `AntennaOffset` expects it). Symptom: driving forward is shown as reverse. Swap the cables back (or change `CONFIG HEADING OFFSET` by 180° and `AntennaOffset` to the other side).
+- The serial monitor line `[status] GPS: the receiver sends (last 5 s): ...` shows which receiver is connected: a UM982 still set up for the old firmware sends `KSXT` and no `GNHPR` (add `GPHPR 0.1` on its Teensy port and `SAVECONFIG`).
+
+## Compile-time settings (top of `zHandlers.ino`)
+
+The first four are only the **defaults** of the web page settings.
+
+- `HPR_ACCEPT_FLOAT` 1 = dual heading also with HPR QF 5 (float); 0 = only QF 4 (fixed).
+- `EPOCH_WAIT_MS` 60: the firmware sends the epoch as soon as the VTG and the HPR with the GGA's time are in; if one is missing, it sends 60 ms after the GGA. A sentence the receiver does not send at all (HPR on an F9P / X20P) is not waited for (`RECEIVER_SEEN_MS` 3000).
+- `TM171_SWAP_ROLL_PITCH`: TM171 rotated 90° on the board ("Use Y axis" also swaps roll/pitch).
+- `TM171_YAW_SIGN`: 0 = yaw direction learned against the dual heading (only from real turns of the whole rig); +1/-1 forces it.
+- `GGA_HOLD_MS`: how long good satellites/HDOP values are repeated when the UM982 sends `00` / `9999.0`.
+- Diagnostics (0 on the tractor):
+  - `FUSION_DEBUG` (0): one `[fusion] DUAL ...` or `[fusion] SINGLE ...` line per second: HPR QF and heading, `antRoll` (roll measured by the antennas, to compare with the TM171's), TM171 alignment, heading and roll sent, speed in km/h and its source (`vtg` or `positions`).
+  - `RAW_NMEA_DEBUG` (0): every GGA, VTG and HPR as the receiver sends it, prefixed `[raw]`.
+  - `SEND_TO_USB` (0): the 4 lines sent to AgOpenWeb are also printed on the serial monitor.
+
+## Status messages (`zStatus.ino`)
+
+`[status] ...` lines, **only when something changes** (a new state must last 1 s). They go to the USB serial monitor (`STATUS_TO_USB`) and to the web page (Mensagens), with `[boot]` lines at start-up and `[web]` lines for what is done from the page (settings saved, UM982 commands, updates, restarts):
+
+- Ethernet: cable connected (module IP and destination) / cable unplugged
+- AgOpenWeb talking (PC IP) / silent for 5 s
+- RTCM corrections arriving from AgOpenWeb / stopped 5 s ago
+- GPS: first position; fix changes with satellites and correction age; no GGA for 5 s; VTG arriving / no VTG (speed computed from the positions)
+- Dual: dual-antenna heading OK (QF 4 fixed / 5 float, sent as `$GNTHS`, or `$PAOGI` in classic mode) / no dual heading
+- No dual heading: **why**, followed by the last HPR line exactly as the receiver sent it (`[status]   last HPR from the receiver: $GNHPR,...`). Printed when the dual heading is lost, and again when the reason changes:
+  - `the UM982 sends HPR with QF 0` — the UM982 itself has no heading from its two antennas (antennas, cables, UM982 heading setup); the firmware can only pass that on
+  - `the HPR arrives too late, N ms after its GGA` — the HPR comes after the firmware has sent the epoch (it waits `EPOCH_WAIT_MS`)
+  - `HPRs arrive but their time (...) does not match the GGA time (...)`
+  - `the receiver stopped sending HPR (last one N ms ago)`
+  - `HPR QF n but its heading field is empty or out of range`
+- Single antenna: the receiver sends no HPR (F9P / X20P, or HPR off on the UM982). Followed by `but HPR lines are arriving and none is accepted` (a firmware / format problem: send that line) or by when the last HPR line arrived
+- GPS: the receiver sends (last 5 s): every sentence type that comes in on Serial7 with its rate, e.g. `GNGGA 10.0 Hz, GNHPR 10.0 Hz, GNVTG 10.0 Hz`. Counted before the parser, so it shows exactly what the receiver sends. Printed when the set of types changes
+- GPS: sentences from the receiver with a bad checksum in the last 5 s (bytes lost or corrupted on the serial line) / no more bad checksums
+- GPS: the Teensy is reading the receiver late (more than one epoch waiting in the serial buffer) / read on time again
+- TM171: data OK / no data
+
+LEDs: green = dual heading, red = TM171 heading, red blinking = TM171 lost.
+
+## Files
+
+| File | |
+|---|---|
+| `v6_AIO_UM982_X20P_F9P_TM171_WEB.ino` | setup and loop |
+| `zHandlers.ino` | receiver sentences, epoch assembly, standard set / classic output, UM982 reply capture |
+| `zStatus.ino`, `zStatusLog.h` | `[status]` messages and the log kept for the web page |
+| `zSettings.ino`, `zSettings.h` | web page settings (EEPROM) |
+| `zWeb.ino`, `zWebPage.h`, `zWebJson.h` | web server, the page, JSON answers |
+| `zOTA.ino`, `FlashTxx.c`, `FlashTxx.h` | firmware update (FlasherX flash routines) |
+| `TM171.ino`, `Autosteer.ino`, `AutosteerPID.ino`, `KeyaCANBUS.ino`, `zEthernet.ino`, `zUdpNtrip.ino`, `zADS1115.*`, `zNMEAParser.h` | as in v5 |
