@@ -151,9 +151,9 @@ void setup()
     delay(10);
     Serial.begin(baudAOG);
     delay(10);
-    Serial.println("Start v7 AIO UM982/X20P/F9P TM171 WEB XIAO setup");
+    Serial.println("Start v7 UM982/X20P/F9P TM171 WEB XIAO setup");
     settingsLoad();                     // web page settings from the EEPROM (defaults if none)
-    StatusLog.line("[boot] v7 AIO UM982/X20P/F9P TM171 XIAO, settings %s, output %s, XIAO bridge %s",
+    StatusLog.line("[boot] v7 UM982/X20P/F9P TM171 XIAO, settings %s, output %s, XIAO bridge %s",
                    cfgFromEeprom ? "from EEPROM" : "default", cfg.outputMode == OUT_CLASSIC ? "classic $PAOGI/$PANDA" : "standard set",
                    cfg.xiaoOff ? "off" : "on");
 
