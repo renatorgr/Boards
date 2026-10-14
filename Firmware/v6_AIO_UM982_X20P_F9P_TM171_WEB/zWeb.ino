@@ -17,7 +17,7 @@
 #include "zWebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
 #include "zWebJson.h"            // small JSON writer for the answers
 
-#define FW_NAME          "v6_AIO_UM982_X20P_F9P_TM171_WEB"
+#define FW_NAME          "v6_UM982_X20P_F9P_TM171_WEB"
 #define FW_VERSION       "6.0"
 
 #define WEB_PORT         80
