@@ -1,4 +1,4 @@
-// v7_UM982_X20P_F9P_TM171_WEB_XIAO.ino
+// v7.1_UM982_X20P_F9P_TM171_WEB_XIAO.ino
 // v7 = v6 + bridge to a Seeed XIAO ESP32C3 on the GPS2 socket of the AiO v4.5 Micro (Teensy Serial2,
 // pins 7/8, 230400 baud, zXiao.ino), with the same protocol as the ESP32 bridge of the official
 // firmware v26 (which runs it at 460800): AgOpenGPS packets from UDP 8888 go to the XIAO, the
