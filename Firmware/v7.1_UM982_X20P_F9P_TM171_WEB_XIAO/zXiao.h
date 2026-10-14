@@ -1,0 +1,29 @@
+// zXiao.h
+// Counters and state of the XIAO ESP32C3 bridge (zXiao.ino), read by the web page (zWeb.ino).
+// In a header, included at the top of the main .ino, because the Arduino IDE joins the .ino files
+// in alphabetical order (zWeb.ino comes before zXiao.ino).
+#ifndef ZXIAO_H
+#define ZXIAO_H
+
+#include <stdint.h>
+
+struct XiaoStats
+{
+    uint32_t hellos;          // "ESP32-hello" received
+    uint32_t toXiao;          // AgOpenGPS packets copied to the XIAO
+    uint32_t fromXiao;        // good frames from the XIAO sent to UDP 9999
+    uint32_t crcErr;          // frames from the XIAO with a wrong checksum (dropped)
+    uint32_t cut;             // frames from the XIAO that stopped half way (dropped)
+    uint32_t dropTx;          // packets for the XIAO dropped: Serial2 transmit buffer full
+    uint32_t dropBig;         // packets for the XIAO dropped: larger than the UDP read buffer
+    uint32_t beforeHello;     // good frames from the XIAO not sent: no hello in the last 10 s
+    uint32_t rxBytes, txBytes;
+    uint32_t textLines, textDropped;
+    int16_t  lastPgn;         // last good PGN from the XIAO (-1: none yet)
+};
+
+extern XiaoStats xiao;               // defined in zXiao.ino
+extern bool      xiaoDetected;       // "ESP32-hello" in the last XIAO_HELLO_TIMEOUT_MS
+extern uint32_t  xiaoLastHelloMs;
+
+#endif
