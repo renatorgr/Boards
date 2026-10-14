@@ -1,4 +1,4 @@
-// v6_AIO_UM982_X20P_F9P_TM171_WEB.ino
+// v6_UM982_X20P_F9P_TM171_WEB.ino
 // v6 = v5 + web page (status, messages, settings, UM982 console, firmware update over the
 // network - zWeb.ino, zSettings.ino, zOTA.ino) + classic $PAOGI/$PANDA output for AgOpenGPS.
 // Build for a fixed hardware configuration:
