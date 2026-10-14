@@ -22,7 +22,7 @@ extern "C" {
 
 #define OTA_BUFFER_ADDR   (FLASH_BASE_ADDR + 0x400000)   // 4 MB into the flash
 #define OTA_BUFFER_SIZE   (0x200000)                     // 2 MB (the firmware is ~0.4 MB)
-#define OTA_MARKER        "AOG-AIO-UM982-TM171-WEB-OTA-1"   // keep as is: v6 and v7 recognise each other by it
+#define OTA_MARKER        "AOG-UM982-TM171-WEB-OTA-1"   // keep as is: v6 and v7 recognise each other by it
 
 // Kept in the image (printed in /api/status) so a new firmware of this family can be recognised
 const char otaMarker[]  = OTA_MARKER;
