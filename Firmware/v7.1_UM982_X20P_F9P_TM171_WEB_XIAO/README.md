@@ -1,4 +1,4 @@
-# v7_UM982_X20P_F9P_TM171_WEB_XIAO
+# v7.1_UM982_X20P_F9P_TM171_WEB_XIAO
 
 Teensy 4.1 (AiO board) firmware for AgOpenWeb and AgOpenGPS — UM982 (dual antenna) **or** u-blox F9P / X20P (single antenna) + TM171 IMU, Cytron or Keya steering, and an optional **Seeed XIAO ESP32C3** on the GPS2 socket.
 
@@ -10,7 +10,7 @@ v7 = v6 plus:
 
 Nothing else changes: without a XIAO in the GPS2 socket v7 behaves exactly like v6. The v6 settings in the EEPROM stay valid.
 
-Versions of v7:
+Versions of v7.1:
 
 - **7.1** (14 Oct 2026): XIAO link at **230400** instead of 460800 (see "Link speed" below; the XIAO program must use the same value); "AIO" taken out of the name.
 - 7.0 (14 Oct 2026): first v7, XIAO link at 460800.
