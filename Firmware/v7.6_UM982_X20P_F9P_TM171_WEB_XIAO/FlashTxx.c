@@ -1,5 +1,5 @@
 /* FlashTxx.c - flash erase / write for the update over the network.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from the code of Niels A. Moseley and
    Frank Boesing (public domain, notes kept below).

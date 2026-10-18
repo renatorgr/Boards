@@ -1,5 +1,5 @@
 /* zReceiver.h - shared names for the GPS receiver identification and the u-blox settings (zReceiver.ino).
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr (v7.6).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.

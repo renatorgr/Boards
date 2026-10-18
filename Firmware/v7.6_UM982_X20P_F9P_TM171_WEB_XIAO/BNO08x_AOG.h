@@ -1,4 +1,4 @@
-/* Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board (renatorgr).
+/* Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards (renatorgr).
    BNO080 / BNO085 library by Nathan Seidle, SparkFun Electronics (SparkFun_BNO080_Arduino_Library,
    MIT License), in the version used by the AgOpenGPS AiO v4 Teensy firmware (BNO08x_AOG) and by
    chriskinal's AOG_Teensy_UM982. Its original header is kept below; the code is unchanged.

@@ -1,5 +1,5 @@
 /* zNMEAParser.h - NMEA sentence parser.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    NMEA parser library by Glinnes Hulden (CC0, original header kept below), as used in the AgOpenGPS
    AiO firmware.

@@ -1,5 +1,5 @@
 /* zADS1115.cpp - ADS1115 (WAS) on I2C.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
@@ -23,7 +23,8 @@
 */
 /**************************************************************************/
 ADS1115_lite::ADS1115_lite(uint8_t i2cAddress) {
-	// NOTE: uses Wire1 (Teensy pins 37/38), not Wire (pins 18/19).
+	// NOTE: uses Wire1 (Teensy pins 16 = SCL1 and 17 = SDA1: SCL_LV / SDA_LV on the AiO v4.5 Micro and
+	// Standard, through the level shifters), not Wire (pins 18/19, the BNO085).
 	// Confirmed working on this board's wiring - do not change without
 	// verifying which I2C bus the ADS1115 is actually connected to.
 	Wire1.end();

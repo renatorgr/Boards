@@ -1,5 +1,5 @@
 /* zADS1115.h - ADS1115 (WAS) on I2C.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
