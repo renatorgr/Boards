@@ -9,8 +9,8 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // v7.6_XIAO_ESP32.ino  (version number: xVersion.h)
-// Program for the Seeed XIAO ESP32C3 or XIAO ESP32S3 on the GPS2 socket of the AiO v4.5 Micro
-// (adapter board or 3D-printed holder), with the Teensy running v7.6_UM982_X20P_F9P_TM171_WEB_XIAO.
+// Program for the Seeed XIAO ESP32C3 or XIAO ESP32S3 on the GPS2 port of the AiO v4.5 boards (Micro:
+// GPS2 socket, adapter board or 3D-printed holder; Standard: wired to header P8), with the Teensy running v7.6_UM982_X20P_F9P_TM171_WEB_XIAO.
 // Both boards have the same pins and size; compile it for the one you have (it then calls itself
 // v7.6_XIAO_ESP32C3 or v7.6_XIAO_ESP32S3, and refuses an update made for the other one).
 //
@@ -36,7 +36,7 @@
 // Tools > USB CDC On Boot: Enabled, Partition Scheme: the default one (it has room for updates over
 // WiFi). On the S3: USB Mode: Hardware CDC and JTAG; PSRAM not needed. No other libraries needed.
 // The XIAO is powered by the board's 3.3 V: a USB-C cable to it must not carry 5 V (VBUS) while it
-// sits on the Micro (see README).
+// sits on the board (see README).
 
 #if !ARDUINO_USB_CDC_ON_BOOT
 #error "Arduino IDE: Tools > USB CDC On Boot > Enabled (D6/D7 are used for the Teensy)"

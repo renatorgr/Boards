@@ -1,14 +1,47 @@
 # v7.6_XIAO_ESP32
 
-Program for the Seeed **XIAO ESP32C3** or **XIAO ESP32S3** on the GPS2 socket of the AiO v4.5 Micro (adapter board or 3D-printed holder). It goes with the Teensy firmware **v7.6_UM982_X20P_F9P_TM171_WEB_XIAO**: the two must have the same version number.
+Program for a Seeed **XIAO ESP32C3** or **XIAO ESP32S3** on the GPS2 port of the **AiO v4.5 boards**.
 
-7.6: to go with the Teensy firmware 7.6. The "Version on GitHub" card says **up to date** when the newest version on GitHub is the one installed. The module card names the IMU the Teensy found (TM171 or BNO085) and the GPS receiver's model (e.g. ZED-F9P, UM982), as the Teensy asked it.
+- It goes with the Teensy firmware **v7.6_UM982_X20P_F9P_TM171_WEB_XIAO**: the two must have the same version number.
+- The XIAO makes its own WiFi network with a page for a phone: you can see what the module is doing in the cab or next to the tractor, without the tablet or a network cable.
+- It only looks: it does not change anything in the module or in AgOpenWeb / AgOpenGPS.
 
-7.5: to go with the Teensy firmware 7.5 (autosteer safety, watchdog). New on the page: the newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below). The status the Teensy sends it once a second is now shorter (it leaves out what only the Teensy's own page shows), so the link carries less.
+## Where it goes
 
-The two boards have the same size and the same pins (3V3, GND, D6 = TX, D7 = RX), so the wiring, the adapter board and the 3D-printed holder are the same. Compile the program for the board you have: it then calls itself `v7.6_XIAO_ESP32C3` or `v7.6_XIAO_ESP32S3`, and the page refuses an update made for the other board.
+- **AiO v4.5 Micro:** in the GPS2 socket ("Dual-Left"), through the adapter board or the 3D-printed holder.
+- **AiO v4.5 Standard:** the adapter and the holder do not fit. Wire it to header P8: pin 1 (RX2) ← XIAO D6, pin 2 (TX2) → XIAO D7, with 3.3 V and GND from another header.
+- The two XIAO boards have the same size and the same pins (3V3, GND, D6 = TX, D7 = RX), so the wiring, the adapter board and the holder are the same for both.
+- Compile the program for the XIAO you have. It then calls itself `v7.6_XIAO_ESP32C3` or `v7.6_XIAO_ESP32S3`, and the page refuses an update made for the other one.
+- On the board the XIAO is powered from the board's 3.3 V: **never plug a USB cable with 5 V into it while it is on the board** (see "USB-C port on the panel").
 
-The XIAO makes its own WiFi network with a page for a phone: you can see what the module is doing in the cab or next to the tractor, without the tablet or a network cable.
+The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is described in the README of the Teensy firmware.
+
+## Versions
+
+### 7.6 (18 Oct 2026)
+
+- The "Version on GitHub" card says **up to date** when the newest version on GitHub is the one installed.
+- The module card names the IMU the Teensy found (TM171 or BNO085).
+- It also shows the GPS receiver's model (for example ZED-F9P or UM982), as the Teensy asked it.
+
+### 7.5 (18 Oct 2026)
+
+- The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below).
+- The status the Teensy sends once a second is shorter (it leaves out what only the Teensy's own page shows), so the link carries less.
+
+### 7.4 (17 Oct 2026)
+
+- The page in **Portuguese or English** (the EN / PT button at the top).
+- The program that talks to the module is named: AgOpenWeb or AgOpenGPS.
+
+### 7.3 (16 Oct 2026)
+
+- Runs on the **XIAO ESP32C3 and the XIAO ESP32S3**.
+- The page refuses an update made for the other one.
+
+### 7.2 (15 Oct 2026)
+
+- The first version: its own WiFi network with the page (module status and messages, what the program sends to the module, WiFi settings, update over WiFi).
 
 ## What it does
 
@@ -18,25 +51,39 @@ The XIAO makes its own WiFi network with a page for a phone: you can see what th
 - **Another WiFi network too** (optional): the farm WiFi or a phone hotspot. Then the page is also at **http://xiao.local/** (the name can be changed) or at the IP shown on the page.
   - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may drop for a few seconds then.
   - `xiao.local` works on iPhone, Mac, Windows 10/11 and Linux; on many Android phones use the IP instead.
-- **The page**, in Portuguese or English (v7.4: the EN / PT button at the top; the phone remembers the choice; without one, the phone's language decides; the messages stay in English), 4 tabs:
+- **The page**, in Portuguese or English:
+  - the EN / PT button at the top switches it, and the phone remembers the choice;
+  - without a choice, the phone's language decides;
+  - the messages stay in English.
 
 | Tab | What it shows |
 |---|---|
-| Status | **Module (Teensy)**: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (7.6: TM171 or BNO085), the GPS receiver's model (7.6), steering, network, sent by the Teensy once a second. **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello, v7.4): speed, steer angle asked for, autosteer on/off, sections (16 boxes), hydraulic lift (up/down), tramline, PGN 254 per second. **XIAO**: program, WiFi, memory, time on |
-| Messages | the module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates) |
-| WiFi | the XIAO's network name and password, the other network (a scan lists the networks found, one per line, strongest first: tap one to choose it), the name on the network (`xiao` → `xiao.local`). Saved in the XIAO; it restarts to apply them |
-| Program | version, the newest version on GitHub with **Install from GitHub** (7.5), **program update over WiFi** (a `.bin` file, see below), restart. One password field for all |
+| **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network. |
+| | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, steer angle asked for, autosteer on / off, sections (16 boxes), hydraulic lift (up / down), tramline, PGN 254 per second. |
+| | **XIAO**: program, WiFi, memory, time on. |
+| **Messages** | The module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates). |
+| **WiFi** | The XIAO's network name and password. |
+| | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |
+| | The name on the network (`xiao` → `xiao.local`). |
+| | Saved in the XIAO; it restarts to apply them. |
+| **Program** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. |
 
-- Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm. Typed once, it is filled in both tabs until the page is closed; the page never shows or stores it. Looking needs nothing more than being on the network.
+- Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
+  - Typed once, it is filled in both tabs until the page is closed.
+  - The page never shows or stores it.
+  - Looking needs nothing more than being on the network.
 - It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (http://192.168.5.126/). Its events also go to the Teensy log as `[xiao] > ...`.
 - **Watchdog**: if the program ever stops for 15 s, the XIAO restarts by itself.
-- It does **not** change anything in the module or in AgOpenWeb: it only looks. The Teensy sends it the AgOpenWeb packets and the status; the XIAO sends back only its hello, its state and text lines.
+- The Teensy sends it the program's packets and the module status; the XIAO sends back only its hello, its state and text lines.
 
 ## Install the first time (USB-C, off the board)
 
-Without the Arduino IDE: the firmware folder has the program already compiled for both boards (`v7.6_XIAO_ESP32_bin`, see its README): `v7.6_XIAO_ESP32C3_USB.bin` / `v7.6_XIAO_ESP32S3_USB.bin` go in from the browser (https://espressif.github.io/esptool-js/, address 0x0), and `v7.6_XIAO_ESP32C3.bin` / `v7.6_XIAO_ESP32S3.bin` are for the update over WiFi.
+**Without the Arduino IDE:** the firmware folder has the program already compiled for both XIAOs (`v7.6_XIAO_ESP32_bin`, see its README).
 
-With the Arduino IDE:
+- `v7.6_XIAO_ESP32C3_USB.bin` / `v7.6_XIAO_ESP32S3_USB.bin`: the first install by USB, from the browser (https://espressif.github.io/esptool-js/, address 0x0).
+- `v7.6_XIAO_ESP32C3.bin` / `v7.6_XIAO_ESP32S3.bin`: for the update over WiFi.
+
+**With the Arduino IDE:**
 
 1. Arduino IDE 2: File > Preferences > Additional boards manager URLs:
    `https://espressif.github.io/arduino-esp32/package_esp32_index.json`
@@ -52,26 +99,31 @@ With the Arduino IDE:
 | Partition Scheme | Default 4MB with spiffs | Default with spiffs (3MB APP/1.5MB SPIFFS) |
 | PSRAM | (not shown) | not needed (Disabled is fine) |
 
-   If USB CDC On Boot is not enabled, or the board is another ESP32, compiling stops with a message saying so. The default partition schemes have room for updates over WiFi.
-5. XIAO **off the Micro**, USB-C to the PC, choose its port, Upload.
+   - If USB CDC On Boot is not enabled, or the board is another ESP32, compiling stops with a message saying so.
+   - The default partition schemes have room for updates over WiFi.
+5. XIAO **off the board**, USB-C to the PC, choose its port, Upload.
    - If the port does not show: hold BOOT, press and release RESET, release BOOT, then Upload.
 6. Serial Monitor (any speed): it prints the network name and the commands.
 
 No other libraries are needed: everything is in the esp32 package.
 
-## Update from GitHub (7.5)
+## Update from GitHub
 
-The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards** when it opens, every 6 hours while it stays open, and with **Check now** (Program tab). A newer one shows at the top of Status and in Program.
+- The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Program tab).
+- A newer one shows at the top of Status and in Program.
+- **Install from GitHub** (with the password of the XIAO's network):
+  - the browser downloads the `.bin` for this XIAO (`vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `...S3.bin`, chosen from the chip it reports);
+  - it checks that the file is for this chip and that its size matches GitHub;
+  - it sends it to the XIAO like a chosen file.
+- **The phone (or PC) needs internet.** On the XIAO's own network alone it usually has none: connect the XIAO to the farm network or to the phone's hotspot ("Other network" in WiFi), and open the page over that network (`http://xiao.local/` or the IP shown).
+- Without internet the page says "no answer from GitHub" and nothing else changes.
 
-**Install from GitHub** (with the password of the XIAO's network): the browser downloads the `.bin` for this XIAO (`vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `...S3.bin`, chosen from the chip it reports), checks that it is for this chip and that its size matches GitHub, and sends it to the XIAO like a chosen file.
-
-**The phone (or PC) needs internet.** On the XIAO's own network alone it usually has none: connect the XIAO to the farm network or to the phone's hotspot ("Other network" in WiFi) and open the page over that network (`http://xiao.local/` or the IP shown). Without internet the page says "no answer from GitHub" and nothing else changes.
-
-## Update over WiFi (later versions)
+## Update over WiFi (from a file)
 
 1. Arduino IDE: Sketch > **Export Compiled Binary**. It writes a `build` folder inside the sketch folder.
 2. Use **`v7.6_XIAO_ESP32.ino.bin`**. Not the files with `merged`, `bootloader` or `partitions` in the name (the page refuses them).
-   - A `.bin` compiled for the XIAO ESP32C3 does not run on the ESP32S3, and the other way round. The page reads the start of the file and says so before sending it. With both boards, rename the files after exporting (for example `…_C3.bin` and `…_S3.bin`).
+   - A `.bin` compiled for the XIAO ESP32C3 does not run on the ESP32S3, and the other way round. The page reads the start of the file and says so before sending it.
+   - With both XIAOs, rename the files after exporting (for example `…_C3.bin` and `…_S3.bin`).
 3. Phone or PC on the XIAO's network → page → **Program** → choose the file → password → **Install**.
 4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings stay.
 
@@ -92,21 +144,24 @@ Serial Monitor at any speed, line ending "Newline" (or any):
 To set up or recover the XIAO without opening the box: a panel-mount USB-C socket with a short cable (right-angle USB-C plug) into the XIAO.
 
 - Wires: **D+ → D+, D− → D−, GND → GND**. Same name to same name: they are not crossed.
-- **Do not connect VBUS (5 V)**: on the Micro the XIAO is powered by the board's 3.3 V.
-  - Without VBUS the XIAO's USB still works while the Micro is on.
-  - With the Micro off the XIAO has no power: the panel port then does nothing.
-- The panel socket needs the two **5.1 kΩ resistors from CC1 and CC2 to GND** (most panel sockets with a board have them) or a C-to-C cable from the PC will not work. A USB-A to USB-C cable works without them.
+- **Do not connect VBUS (5 V)**: on the board the XIAO is powered by the board's 3.3 V.
+  - Without VBUS the XIAO's USB still works while the board is on.
+  - With the board off the XIAO has no power: the panel port then does nothing.
+- The panel socket needs the two **5.1 kΩ resistors from CC1 and CC2 to GND** (most panel sockets with a board have them), or a C-to-C cable from the PC will not work. A USB-A to USB-C cable works without them.
 - Hold the cable so it does not pull on the XIAO's socket.
 - The XIAO's USB data wires reach only its USB-C socket: they are not on its pins or on the pads underneath.
 
 ## XIAO ESP32S3: what is different
 
-- Faster (two cores, 8 MB flash, 8 MB PSRAM); this program does not need it, but has more room to grow (a WiFi bridge for the tablet, for example).
+- Faster (two cores, 8 MB flash, 8 MB PSRAM). This program does not need it, but has more room to grow (a WiFi bridge for the tablet, for example).
 - D6 / D7 are GPIO43 / GPIO44 (on the C3, GPIO21 / GPIO20). Same pads, so nothing changes in the wiring.
 - Seeed gives about 100 mA with WiFi on, and an operating range of −20 to 65 °C. Mount the box where it does not sit in the sun.
 - The antenna socket (U.FL) is at the other end from the USB-C, next to D6. Route the D6 wire so it does not press on the antenna plug.
-- Underneath it has more gold pads and a large thermal pad. On the 3D holder they sit on plastic. On the adapter board they sit on solder mask, and there is no via or track under them. Solder only the pads at the edge, as with the C3.
-- If the board has a small black connector underneath (the "Sense" version, for the camera board), it does not sit flat on the adapter or in the holder: tell me and the holder gets a hole for it.
+- Underneath it has more gold pads and a large thermal pad.
+  - On the 3D holder they sit on plastic.
+  - On the adapter board they sit on solder mask, and there is no via or track under them.
+  - Solder only the pads at the edge, as with the C3.
+- If it has a small black connector underneath (the "Sense" version, for the camera board), it does not sit flat on the adapter or in the holder: the holder then needs a hole for it.
 
 ## The other files
 
@@ -118,17 +173,24 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
 | `xVersion.h` | the version number and the board (C3 or S3, from the board chosen in the Arduino IDE). When the number changes, the folder and the `.ino` get the new name too |
 | `COPYING` | the licence: GNU GPL v3 |
 
-The link to the Teensy (pins, frames, PGN 141/142/143, speed) is described in the README of the Teensy firmware. `LINK_BAUD` here must be the same as `XIAO_BAUD` there.
+`LINK_BAUD` here (`xLink.h`) must be the same as `XIAO_BAUD` in the Teensy firmware (`zXiao.ino`).
 
 ## What was tested
 
-- It compiles with esp32 3.0.7 with no warnings: for XIAO_ESP32C3 1,048,932 bytes (80 % of the space for a program with WiFi updates), for XIAO_ESP32S3 1,002,221 bytes (29 %).
-- On a PC: `xLink.h` talking to the Teensy's `zXiao.ino` through a simulated 230400 line, 60 s of AgOpenWeb at 100 Hz with 64 sections plus the status every second: nothing dropped, every status whole, the log lines in order, a Teensy restart detected. `xLink.h` was also fed random bytes with memory checks on.
+- It compiles with esp32 3.0.7 with no warnings:
+  - XIAO_ESP32C3: 1,049,140 bytes (80 % of the space for a program with WiFi updates);
+  - XIAO_ESP32S3: 1,002,413 bytes (29 %).
+- On a PC: `xLink.h` talking to the Teensy's `zXiao.ino` through a simulated 230400 line.
+  - 60 s of AgOpenWeb at 100 Hz with 64 sections, plus the status every second: nothing dropped, every status whole, the log lines in order, a Teensy restart detected.
+  - `xLink.h` was also fed random bytes with memory checks on.
 - The page was checked in a browser at phone and PC size with test data.
 - **Not yet tested on a real XIAO.** The first time, watch the Serial Monitor and the Messages tab.
 
 ## Credits and licence
 
-Written in 2026 by Claude (Anthropic) for renatorgr, to go with the Teensy firmware v7.6_UM982_X20P_F9P_TM171_WEB_XIAO. The link to the Teensy uses the same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official). Built with the Arduino ESP32 core (Espressif) and its libraries.
+Written in 2026 by Claude (Anthropic) for renatorgr, to go with the Teensy firmware v7.6_UM982_X20P_F9P_TM171_WEB_XIAO.
+
+- The link to the Teensy uses the same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official).
+- Built with the Arduino ESP32 core (Espressif) and its libraries.
 
 **Licence:** GNU General Public License v3 or later (file `COPYING`), WITHOUT ANY WARRANTY.
