@@ -27,25 +27,6 @@ With the default settings v6 sends exactly what v5 sent (the standard set below)
 
 **The standard set needs an AgOpenWeb build that includes PR #300** (the epoch assembler, `develop` from the evening of 9 Oct 2026 onwards). On an older build these sentences show up as "not accepted". The classic output works with any AgOpenWeb and with AgOpenGPS.
 
-## Credits and licence
-
-This firmware is built on other people's work:
-
-| Part | From |
-|---|---|
-| Structure of the main file, steering (`Autosteer.ino`, `AutosteerPID.ino`), Ethernet, NTRIP | the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project) |
-| UM982 dual heading from HPR, the first `zHandlers.ino` | chriskinal, AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3 |
-| TM171, Keya CAN, the version of the AgOpenGPS files used here | Balázs Gunics, fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1) |
-| Reading the TM171 (origin) | Paulius a.k.a. babtai |
-| NMEA parser (`zNMEAParser.h`) | Glinnes Hulden (CC0) |
-| ADS1115 (`zADS1115.*`) | ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), from the Adafruit library |
-| Flash routines for the update (`FlashTxx.*`) | FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from Niels A. Moseley and Frank Boesing (public domain) |
-| Protocol of the XIAO link | the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official) |
-
-The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page (Portuguese / English), settings, `[status]` messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output and the rewritten `zHandlers.ino`. Every file says at the top where it comes from and what was changed.
-
-**Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from. It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor. The files from other authors keep their own notes too (CC0, public domain, Adafruit).
-
 ## Compiling and first install
 
 - Arduino IDE with **Teensyduino 1.58 or older** (the code uses `HardwareSerial*` with `addMemoryForRead()`, which Teensyduino 1.59 moved to `HardwareSerialIMXRT`). Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
@@ -317,3 +298,22 @@ Differences from v26, all on the safe side:
 Its own WiFi network with a page for a phone: the module status and messages (sent by this firmware), what AgOpenGPS / AgOpenWeb sends to the module, WiFi settings, program update over WiFi. See its README.
 
 Bench test without the Micro: XIAO on USB-C (power and serial monitor), and only three wires to the Teensy: D6 → Teensy pin 7, D7 → Teensy pin 8, GND → GND (no 3V3 wire then).
+
+## Credits and licence
+
+This firmware is built on other people's work:
+
+| Part | From |
+|---|---|
+| Structure of the main file, steering (`Autosteer.ino`, `AutosteerPID.ino`), Ethernet, NTRIP | the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project) |
+| UM982 dual heading from HPR, the first `zHandlers.ino` | chriskinal, AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3 |
+| TM171, Keya CAN, the version of the AgOpenGPS files used here | Balázs Gunics, fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1) |
+| Reading the TM171 (origin) | Paulius a.k.a. babtai |
+| NMEA parser (`zNMEAParser.h`) | Glinnes Hulden (CC0) |
+| ADS1115 (`zADS1115.*`) | ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), from the Adafruit library |
+| Flash routines for the update (`FlashTxx.*`) | FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from Niels A. Moseley and Frank Boesing (public domain) |
+| Protocol of the XIAO link | the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official) |
+
+The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page (Portuguese / English), settings, `[status]` messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output and the rewritten `zHandlers.ino`. Every file says at the top where it comes from and what was changed.
+
+**Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from. It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor. The files from other authors keep their own notes too (CC0, public domain, Adafruit).
