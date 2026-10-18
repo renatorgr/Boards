@@ -1,5 +1,5 @@
 /* v7.6_UM982_X20P_F9P_TM171_WEB_XIAO.ino - setup and loop (main file).
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Based on the code of:
      - chriskinal: AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3
@@ -21,7 +21,7 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // v7.6_UM982_X20P_F9P_TM171_WEB_XIAO.ino  (version number: zVersion.h)
-// v7 = v6 + bridge to a Seeed XIAO ESP32C3 on the GPS2 socket of the AiO v4.5 Micro (Teensy Serial2,
+// v7 = v6 + bridge to a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port of the AiO v4.5 boards (Teensy Serial2,
 // pins 7/8, 230400 baud, zXiao.ino), with the same protocol as the ESP32 bridge of the official
 // firmware v26 (which runs it at 460800): AgOpenGPS packets from UDP 8888 go to the XIAO, the
 // XIAO's PGNs go to UDP 9999.
@@ -78,8 +78,9 @@
 //   Serial5              <- TM171 IMU TX, or BNO085 TX in RVC mode (115200)
 //   Wire (pins 18 / 19)  <-> BNO085 on I2C (7.6, only if nothing on Serial5)
 //   Serial3              <- XBee LR radio TX (RTCM at 115200)
-//   Serial2 RX (pin 7)   <- XIAO D6 (TX; C3 GPIO21, S3 GPIO43) - GPS2 socket pin 2
-//   Serial2 TX (pin 8)   -> XIAO D7 (RX; C3 GPIO20, S3 GPIO44) - GPS2 socket pin 3
+//   Serial2 RX (pin 7)   <- XIAO D6 (TX; C3 GPIO21, S3 GPIO43) - Micro: GPS2 socket pin 2; Standard: P8 pin 1
+//   Serial2 TX (pin 8)   -> XIAO D7 (RX; C3 GPIO20, S3 GPIO44) - Micro: GPS2 socket pin 3; Standard: P8 pin 2
+// The AiO v4.5 Micro and Standard wire all these Teensy pins the same way (README, "AiO v4.5 Micro and Standard").
 //
 
 /************************* User Settings *************************/

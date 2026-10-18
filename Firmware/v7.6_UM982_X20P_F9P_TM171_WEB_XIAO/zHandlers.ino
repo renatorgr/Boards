@@ -1,5 +1,5 @@
 /* zHandlers.ino - receiver sentences, epochs, TM171 heading, output to AgOpenWeb / AgOpenGPS.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Started from the zHandlers.ino of chriskinal's AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982,
    Copyright 2024 chriskinal, GPL v3),

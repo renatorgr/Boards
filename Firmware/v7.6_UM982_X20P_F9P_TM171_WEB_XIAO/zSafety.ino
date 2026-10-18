@@ -1,6 +1,6 @@
 /* zSafety.ino - autosteer safety: WAS check, why autosteer went off, messages on the program's
    screen (PGN 221), hardware watchdog, why the Teensy started.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr (v7.5; 7.6: wasBenchZero).
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb

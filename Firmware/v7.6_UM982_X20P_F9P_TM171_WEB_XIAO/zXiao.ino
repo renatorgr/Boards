@@ -1,5 +1,5 @@
 /* zXiao.ino - link to the XIAO ESP32 on the GPS2 socket (Serial2).
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same link protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
@@ -8,8 +8,9 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // zXiao.ino
-// Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 socket ("Dual-Left") of the AiO v4.5 Micro, through the adapter
-// board or the 3D-printed holder: Teensy Serial2 (pin 7 = RX2, pin 8 = TX2), 230400 baud.
+// Seeed XIAO ESP32C3 / ESP32S3 on Teensy Serial2 (pin 7 = RX2, pin 8 = TX2), 230400 baud: on the AiO v4.5
+// Micro in the GPS2 socket ("Dual-Left") through the adapter board or the 3D-printed holder; on the AiO v4.5
+// Standard wired to its GPS2 header (P8: pin 1 RX2, pin 2 TX2) with 3.3 V and GND.
 //
 // Same protocol as the "ESP32 bridge" of the official Teensy firmware v26 (Firmware_Teensy_AiO-New-Dawn,
 // docs/ESP32_BRIDGE_INTERFACE.md); v26 runs it at 460800, here it is 230400 (XIAO_BAUD, below). A XIAO
@@ -45,7 +46,7 @@
 //   These go out only when Serial2's transmit buffer has room to spare (XIAO_TX_RESERVE), so the
 //   AgOpenGPS packets for the XIAO always come first.
 //
-// The XIAO is powered from the board's 3.3 V: never plug its USB-C while it is on the Micro.
+// The XIAO is powered from the board's 3.3 V: never plug its USB-C (with 5 V) while it is on the board.
 // The Teensy cannot program the XIAO (its BOOT / RESET pins are not wired): program it over USB-C
 // off the board, or over WiFi if its own program has an update page.
 

@@ -1,5 +1,5 @@
 /* AutosteerPID.ino - steering PID and output (Cytron, IBT2, Danfoss, Keya).
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in
    Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).

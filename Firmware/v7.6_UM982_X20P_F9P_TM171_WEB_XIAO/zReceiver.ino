@@ -1,5 +1,5 @@
 /* zReceiver.ino - which GPS receiver is on Serial7, and the u-blox settings from the web page.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr (v7.6).
    The u-blox messages and configuration keys are the ones of the u-blox ZED-F9P / ZED-X20P

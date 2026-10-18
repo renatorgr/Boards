@@ -1,5 +1,5 @@
 /* zImu.ino - which IMU is there (TM171 or BNO085), and the BNO085.
-   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 Micro board
+   Part of UM982_X20P_F9P_TM171_WEB_XIAO, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr (v7.6). The BNO085 is read as in the AgOpenGPS
    AiO v4 Teensy firmware (AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project):
@@ -13,7 +13,7 @@
 // At start-up (imuSetup), in this order:
 //   1. Serial5 at 115200 for IMU_DETECT_MS: a TM171 (packets AA 55 ..., CRC16) or a BNO085 in RVC
 //      mode (frames AA AA ..., 19 bytes, 100 a second). The TM171 sits where the BNO085 module goes
-//      on the AiO v4.5 Micro, on the same Serial5.
+//      on the AiO v4.5 boards, on the same Serial5 (jumper SJ1 joins the BNO085's SDA / TX to RX5).
 //   2. If neither: a BNO085 on I2C (Wire, pins 18 / 19), address 0x4A then 0x4B.
 // Whatever it finds fills the same values (roll, pitch, yaw), so the heading alignment, the yaw
 // direction learning and the output (zHandlers.ino) work the same with any of them.
