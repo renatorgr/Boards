@@ -28,11 +28,6 @@ The XIAO makes its own WiFi network with a page for a phone: you can see what th
 - **Watchdog**: if the program ever stops for 15 s, the XIAO restarts by itself.
 - It does **not** change anything in the module or in AgOpenWeb: it only looks. The Teensy sends it the AgOpenWeb packets and the status; the XIAO sends back only its hello, its state and text lines.
 
-## Credits and licence
-
-Written in 2026 by Claude (Anthropic) for renatorgr (github.com/renatorgr/Boards), to go with the Teensy firmware v7.4_UM982_X20P_F9P_TM171_WEB_XIAO. The link to the Teensy uses the same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official). Built with the Arduino ESP32 core (Espressif) and its libraries.
-
-**Licence:** GNU General Public License v3 or later (file `COPYING`), WITHOUT ANY WARRANTY.
 
 ## Install the first time (USB-C, off the board)
 
@@ -120,3 +115,10 @@ The link to the Teensy (pins, frames, PGN 141/142/143, speed) is described in th
 - On a PC: `xLink.h` talking to the Teensy's `zXiao.ino` through a simulated 230400 line, 60 s of AgOpenWeb at 100 Hz with 64 sections plus the status every second: nothing dropped, every status whole, the log lines in order, a Teensy restart detected. `xLink.h` was also fed random bytes with memory checks on.
 - The page was checked in a browser at phone and PC size with test data.
 - **Not yet tested on a real XIAO.** The first time, watch the Serial Monitor and the Mensagens tab.
+
+
+## Credits and licence
+
+Written in 2026 by Claude (Anthropic) for renatorgr (github.com/renatorgr/Boards), to go with the Teensy firmware v7.4_UM982_X20P_F9P_TM171_WEB_XIAO. The link to the Teensy uses the same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official). Built with the Arduino ESP32 core (Espressif) and its libraries.
+
+**Licence:** GNU General Public License v3 or later (file `COPYING`), WITHOUT ANY WARRANTY.
