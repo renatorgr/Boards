@@ -2,7 +2,9 @@ This firmware is for AgOpenGPS and AgOpenWeb.
 
   - Cytron/Keya only.
 
-  - TM171 as IMU in serial 5.
+  - IMU
+    - TM171 -  serial 5, or
+    - BNO085 - serial5, RVC mode, or I2C)
 
   - F9P/X20P/UM982 in serial 7.
 
