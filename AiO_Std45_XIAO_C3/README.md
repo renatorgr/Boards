@@ -27,7 +27,7 @@ The positions of the 17 pins were copied from the official AiO v4.5 Standard PCB
 - The Micro is different: its GPS2 socket has its own 1 A 3.3 V regulator, so the Micro adapter uses 3.3 V.
 - This adapter takes the 5 V of the socket (P7 pin 4) through a Schottky diode (D1) into the XIAO's 5V pin, and the XIAO makes its own 3.3 V. Seeed asks for this diode when the 5V pin is fed from outside.
 - With D1, the XIAO's USB-C can be plugged in with the adapter on the board: D1 keeps the USB 5 V out of the AiO's 5 V.
-- R1 and R2 are 1 kΩ (the Micro adapter uses 100 Ω). If the XIAO is on USB with the AiO switched off, its TX pin feeds the unpowered Teensy through R1; 1 kΩ keeps that current to about 3 mA. At 460800 baud, 1 kΩ makes no difference.
+- R1 and R2 are 1 kΩ (the Micro adapter too, from its v1.2). If the XIAO is on USB with the AiO switched off, its TX pin feeds the unpowered Teensy through R1; 1 kΩ keeps that current to about 3 mA. At 460800 baud, 1 kΩ makes no difference.
 
 ## Shape
 
