@@ -21,7 +21,7 @@ The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is descri
 
 ### 4.5 (19 Oct 2026)
 
-Everything in this README is version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). It is the same program as for v4.5_UM982_X20P_F9P_TM171_WEB_XIAO; only the names and the GitHub folders it looks for (`vX.Y_AiO_WEB`) differ.
+Everything in this README is version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 - Its own WiFi network with the page: the module status and messages, what the program sends to the module, WiFi settings, update over WiFi.
 - Runs on the **XIAO ESP32C3 and the XIAO ESP32S3**; the page refuses an update made for the other one.
