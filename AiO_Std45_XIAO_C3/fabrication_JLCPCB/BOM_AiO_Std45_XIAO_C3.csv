@@ -1,0 +1,8 @@
+Comment,Designator,Footprint,LCSC Part #
+1k 1% 0805,"R1,R2",R_0805_2012Metric,C17513
+22uF 0805 X5R,C1,C_0805_2012Metric,C45783
+B5819W Schottky 40V 1A,D1,D_SOD-123,C8598
+Pin header 1x03 male 2.54mm PZ254V-11-03P (bottom side),J1,Plug_1x03_P2.54mm_Bottom,C2937625
+Pin header 1x08 male 2.54mm PZ254V-11-08P (bottom side),J2,Plug_1x08_P2.54mm_Bottom,C492407
+Pin header 1x06 male 2.54mm PZ254V-11-06P (bottom side),J3,Plug_1x06_P2.54mm_Bottom,C492405
+Female header 1x07 2.54mm 8.5mm PM254-1-07-Z-8.5 (top side - XIAO socket),"J4,J5",Socket_1x07_P2.54mm_XIAO,C2897370
