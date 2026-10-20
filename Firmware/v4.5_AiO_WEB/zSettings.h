@@ -49,10 +49,10 @@ struct WebSettings
     uint8_t  hprAcceptFloat;      // 1 = dual heading also with HPR QF 5 (float)
     uint8_t  epochWaitMs;         // max wait after a GGA for its VTG / HPR (20..100 ms)
     uint8_t  tm171SwapRollPitch;  // 1 = TM171 rotated 90 deg on the board
-    int8_t   tm171YawSign;        // 0 = learn against the dual heading, +1 / -1 = forced
+    int8_t   tm171YawSign;        // 0 = learn from the dual heading, +1 / -1 = forced
     uint8_t  xiaoOff;             // the GPS2 port (Serial2): GPS2_XIAO (0, default) = XIAO bridge on (zXiao.ino);
                                   //     GPS2_OFF (1) = XIAO ignored; AiO_WEB: GPS2_F9P (2) = second F9P of a
-                                  //     dual F9P (zDualF9P.ino). Settings of the UM982_X20P_F9P_TM171_WEB_XIAO firmware (0 / 1) stay valid
+                                  //     dual F9P (zDualF9P.ino). Values 0 / 1 saved by earlier builds stay valid
     uint8_t  autoSet;             // 1 = the automatic output mode was offered once (an older block: 0, see
                                   //       settingsLoad); was reserved[0] = 0
     uint8_t  wasCheckOff;         // 1 = WAS voltage check off (bench without a WAS). 0 = on (default; was
@@ -60,7 +60,7 @@ struct WebSettings
     uint8_t  wdtOff;              // 1 = hardware watchdog off (from the next start). 0 = on (default), zSafety.ino
     uint8_t  umSingle;            // 1 = UM982 with one antenna (no dual-antenna heading on the page; the receiver
                                   //       check loads ConfigUM982S.txt). 0 = two antennas (default; was reserved = 0)
-    uint8_t  simMode;             // 1 = simulator mode, for the program's simulator only: the GPS is not sent to the
+    uint8_t  simMode;             // 1 = simulator mode, for the program's simulator only: GPS data is not sent to the
                                   //       program (AgOpenWeb stops its simulator while it gets GPS sentences, with or
                                   //       without a fix), zHandlers.ino. 0 = off (default; was reserved = 0)
     uint8_t  reserved[1];         // room for later settings (keep the block size)

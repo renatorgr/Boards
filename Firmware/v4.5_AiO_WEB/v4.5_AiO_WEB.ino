@@ -6,12 +6,11 @@
        dual F9P RELPOSNED, Keya CAN, WAS map), on which the others are based
      - chriskinal: AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3
      - Balázs Gunics: fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards), firmware V4.1 (TM171)
-   Changed and extended 2026 by Claude (Anthropic) for renatorgr: the UM982_X20P_F9P_TM171_WEB_XIAO
-   firmware (UM982 / X20P / F9P detection, IMU heading, standard and classic output, automatic mode,
-   web page, update over the network, XIAO link, autosteer safety and watchdog, receiver
-   identification and settings, BNO085, the AiO firmware's Keya) and, in this AiO_WEB line, the dual
-   F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack polled from
-   loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
+   Changed and extended 2026 by Claude (Anthropic) for renatorgr: UM982 / X20P / F9P detection, IMU
+   heading, standard and classic output, automatic mode, web page, update over the network, XIAO link,
+   autosteer safety and watchdog, receiver identification and settings, BNO085, the AiO firmware's
+   Keya, the dual F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack
+   polled from loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
    by lansalot, zRxConfig.h) and the simulator mode setting.
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
@@ -25,8 +24,8 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // v4.5_AiO_WEB.ino  (version number: zVersion.h)
-// AiO_WEB 4.5: the v4.5_UM982_X20P_F9P_TM171_WEB_XIAO firmware plus the parts of the AgOpenGPS AiO v4
-// firmware that it lacked: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the autosteer
+// AiO_WEB 4.5: one firmware for what the AiO v4.5 boards accept, with the parts of the AgOpenGPS AiO v4
+// firmware: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the autosteer
 // cut-off beyond the WAS map or above 25 km/h, and the WAS map (Autosteer.ino).
 // The GPS2 port is used by the second F9P or the XIAO, as chosen on the web page (Settings).
 //

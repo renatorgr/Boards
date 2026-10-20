@@ -2,7 +2,7 @@
 
 Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire the Teensy the same way), for AgOpenWeb and AgOpenGPS.
 
-It is v4.5_UM982_X20P_F9P_TM171_WEB_XIAO plus the parts of the AgOpenGPS AiO v4 firmware (27.04.2025) that it leaves out, so one firmware covers what the board accepts:
+One firmware covers everything the board accepts:
 
 - **GPS:** UM982 (dual antenna), u-blox F9P / X20P (single antenna), or dual F9P (a second F9P on the GPS2 port).
 - **IMU:** TM171 or BNO085.
@@ -16,12 +16,11 @@ Not tried on a tractor yet: the dual F9P, the Keya motor, steering with a BNO085
 
 ## Version 4.5 (19 Oct 2026)
 
-What this firmware has that v4.5_UM982_X20P_F9P_TM171_WEB_XIAO does not:
+From the AgOpenGPS AiO v4 firmware (27.04.2025):
 
-- **Dual F9P**: the second F9P's UBX-NAV-RELPOSNED gives the dual-antenna heading, sent exactly like the UM982's; only with an RTK fixed solution between the antennas, as in the AiO firmware.
-- **GPS2 port setting** (web page): XIAO ESP32, second F9P or off.
-- **From the AiO firmware**: autosteer cut beyond ±50° of wheel angle or above 25 km/h; no steering below 0.2 km/h; a WAS map for a non-linear WAS; Danfoss valve and IBT2 driver; without an IMU, the roll of the two antennas in `$PAOGI`.
-- The update over the network works both ways between the two firmwares (same family).
+- **Dual F9P**: the second F9P's UBX-NAV-RELPOSNED gives the dual-antenna heading, sent exactly like the UM982's; only with an RTK fixed solution between the antennas. The GPS2 port (a web page setting) takes the second F9P, the XIAO, or nothing.
+- Autosteer cut beyond ±50° of wheel angle or above 25 km/h; no steering below 0.2 km/h; a WAS map for a non-linear WAS; Danfoss valve and IBT2 driver; without an IMU, the roll of the two antennas in `$PAOGI`.
+- The Keya motor code.
 
 ### Changes on 19 and 20 Oct 2026 (same version number)
 
@@ -72,7 +71,7 @@ Messages:
 
 **Already compiled:** `v4.5_AiO_WEB.hex` (Teensyduino 1.58). The IDE ignores it and the XIAO folders.
 
-- From a firmware with this web page (this one, v4.5_UM982_X20P_F9P_TM171_WEB_XIAO, earlier v6 / v7): web page → Firmware → choose the `.hex`.
+- From a firmware that already has this web page: web page → Firmware → choose the `.hex`.
 - From any other firmware: over USB, Teensy Loader → File → Open HEX File → press the button on the Teensy.
 
 ## Web page
@@ -121,7 +120,7 @@ Web page → Firmware → choose the `.hex` → Install.
 
 The page looks in the `Firmware` folder of **github.com/renatorgr/Boards** when it opens, every 6 hours, and with **Check now**.
 
-- Each version is a folder `vX.Y_AiO_WEB` with `vX.Y_AiO_WEB.hex` (and the XIAO folders). Each firmware looks only for its own folders.
+- Each version is a folder `vX.Y_AiO_WEB` with `vX.Y_AiO_WEB.hex` (and the XIAO folders). Other folders there are ignored.
 - A newer version shows on Status and on the Firmware tab. **Install from GitHub** downloads it in the browser and installs it like a chosen file.
 - The device the page is open on needs internet; the Teensy never goes to the internet.
 - To publish: upload the whole version folder from the zip into `Firmware/`.
@@ -410,6 +409,6 @@ This firmware is built on other people's work:
 | Pin comparison of the AiO v4.5 Micro and Standard | the AgOpenGPS board design files (EasyEDA, 2024-02-05) |
 | The AgOpenGPS receiver settings (`zRxConfig.h`) and how they are sent: the F9P files `Single.txt`, `DualPosition.txt`, `DualRelPos.txt` (firmware HPG 1.13), the UM982 commands `ConfigUM982D.txt`, `ConfigUM982S.txt` | AOGConfigOMatic by lansalot (github.com/lansalot/AOGConfigOMatic, GPL v3); the F9P configuration by Jaap van den Handel |
 
-The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page, settings, messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output, the rewritten `zHandlers.ino`, the autosteer safety, watchdog and crash hook (`zSafety.ino`), the network stack run from the loop (`zNet.h`), the RTCM counter (`zRtcm.h`), the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`), the IMU detection (`zImu.ino`), and in this line the GPS2 port setting, the second F9P (`zDualF9P.ino`) and the Keya and steering changes around the AiO firmware's code. Every file says at the top where it comes from and what was changed.
+The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page, settings, messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output, the rewritten `zHandlers.ino`, the autosteer safety, watchdog and crash hook (`zSafety.ino`), the network stack run from the loop (`zNet.h`), the RTCM counter (`zRtcm.h`), the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`), the IMU detection (`zImu.ino`), the GPS2 port setting, the second F9P (`zDualF9P.ino`) and the Keya and steering changes around the AiO firmware's code. Every file says at the top where it comes from and what was changed.
 
 **Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from. It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor. The files from other authors keep their own notes too (CC0, public domain, Adafruit, MIT for the BNO080 library).
