@@ -10,11 +10,12 @@ One firmware covers everything the board accepts:
 - **Optional:** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port, with its own WiFi page. The GPS2 port takes the XIAO or the second F9P, one at a time.
 - **Web page on the module:** status, messages, settings, GPS receiver, firmware update over the network.
 
-The **standard sentence set** needs an AgOpenWeb build with PR #300 (`develop` from the evening of 9 Oct 2026 on); an older build shows those sentences as "not accepted". The **classic output** works with any AgOpenWeb and with AgOpenGPS.
+The **standard sentence set** works with AgOpenWeb.
+The **classic output** works with any AgOpenWeb and with AgOpenGPS.
 
 Not tried on a tractor yet: the dual F9P, the Keya motor, steering with a BNO085. Check them on the bench first.
 
-## Version 4.5 (19 Oct 2026)
+## Version 4.5 (20 Oct 2026)
 
 From the AgOpenGPS AiO v4 firmware (27.04.2025):
 
@@ -22,9 +23,7 @@ From the AgOpenGPS AiO v4 firmware (27.04.2025):
 - Autosteer cut beyond ±50° of wheel angle or above 25 km/h; no steering below 0.2 km/h; a WAS map for a non-linear WAS; Danfoss valve and IBT2 driver; without an IMU, the roll of the two antennas in `$PAOGI`.
 - The Keya motor code.
 
-### Changes on 19 and 20 Oct 2026 (same version number)
-
-Steering, from ideas of the AgOpenGPS AiO 26 firmware (20 Oct 2026, evening; not tried on a tractor yet):
+From the AgOpenGPS AiO 26 firmware (not tried on a tractor yet):
 
 - **Keya not responding**: no heartbeat for 0.5 s (CAN cable, plug, motor power) turns autosteer off and blocks it until the heartbeat is back (with a steer switch: and the switch seen off). Shown on the program's screen and the web page.
 - **Settings > Steering** on the web page: minimum speed (was fixed at 0.2 km/h), maximum speed (was fixed at 25 km/h), **soft start** (off by default) and the **current kickout delay** (default 0.5 s: a short current peak no longer switches autosteer off).
