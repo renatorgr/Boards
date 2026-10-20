@@ -3,8 +3,8 @@
    (renatorgr).
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
-   Unchanged (only this header, Claude (Anthropic) 2026).
-   Licence: as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
+   Unchanged except for this header (Claude (Anthropic) 2026).
+   Licence: same as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 /*
   ADS1115 lite library - Adapted from adafruit ADS1015/ADS1115 library

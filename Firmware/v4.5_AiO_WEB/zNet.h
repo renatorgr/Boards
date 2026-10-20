@@ -11,7 +11,7 @@
 // that timer, so the timer could change the sockets, NativeEthernet's socket table and the stack's
 // memory while loop() was in the middle of a call into them (web page, UDP). It crashed once that way
 // (0x0001D542 with Teensyduino 1.57.3: a received TCP segment with a broken data pointer, when a
-// browser opened a connection to the web page). FNET is made to be polled from the main loop: after
+// browser opened a connection to the web page). FNET is designed to be polled from the main loop: after
 // Ethernet.begin() the timer is stopped and netPoll() runs fnet_poll() from loop() and from every
 // wait for the network (zEthernet.ino).
 // EthernetClass::_fnet_poll (the timer) is private. It is reached through an explicit template

@@ -19,10 +19,10 @@
 //     family, with this web page - so the next update can also be done from the web page)
 //   - each flash sector written to the buffer is read back and compared
 //   - steering is switched off before receiving (and an update is refused while autosteer is
-//     engaged or the tractor moves - zWeb.ino)
+//     engaged or the tractor is moving - zWeb.ino)
 //   - the EEPROM (AgOpenGPS steer settings, web settings) is kept: FLASH_RESERVE in FlashTxx.h
 //   - the only risky moment is the final copy (a few seconds): a power cut THEN leaves the Teensy
-//     without firmware, and it must be reprogrammed by USB (the Teensy itself is not damaged).
+//     without firmware, and it must be reprogrammed over USB (the Teensy itself is not damaged).
 
 extern "C" {
 #include "FlashTxx.h"

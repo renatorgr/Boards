@@ -3,7 +3,7 @@
    (renatorgr).
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
-   Changed 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
+   Changes 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
    the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -15,7 +15,7 @@ void EthernetStart()
   // start the Ethernet connection (its [boot] line at the end; the link and the module IP: the
   // "[status] Ethernet: link up ..." line, zStatus.ino, also when the cable is plugged in later)
 
-  // Socket buffers of 8 KB (the library's are 2 KB): an answer of the web page goes into the network
+  // Socket buffers of 8 KB (the library's are 2 KB): an answer to the web page goes into the network
   // stack at once and is sent while loop() runs on. With 2 KB, loop() waited for the browser's ACKs, up to
   // 130 ms per answer, and the GPS serial buffer filled up ("reading the receiver late"). 8 sockets x
   // 2 x 8 KB + a 96 KB stack heap, in RAM2.
@@ -28,7 +28,7 @@ void EthernetStart()
   // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) 
   {
-    StatusLog.println("[boot] Ethernet: no Ethernet hardware - GPS by USB only");
+    StatusLog.println("[boot] Ethernet: no Ethernet hardware - GPS over USB only");
 
     return;
   }

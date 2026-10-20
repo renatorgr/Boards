@@ -21,7 +21,7 @@
 #include <string.h>
 
 #define RTCM_TYPES      12        // message types remembered
-#define RTCM_TYPE_MS    10000     // a type is listed while it was seen in the last 10 s
+#define RTCM_TYPE_MS    10000     // a type is listed if it was seen in the last 10 s
 #define RTCM_GAP_MS     2000      // after a gap this long the next bytes may start in mid-message
 
 struct RtcmCounter

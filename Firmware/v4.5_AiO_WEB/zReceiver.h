@@ -30,7 +30,7 @@ enum RxIdState : uint8_t
     RXID_WAIT = 0,  // waiting for the receiver to talk
     RXID_ASK,       // asking (VERSIONA / UBX-MON-VER)
     RXID_DONE,      // answered
-    RXID_NONE       // no answer to either question
+    RXID_NONE       // no answer to either query
 };
 
 extern uint8_t  rxKind;
@@ -40,7 +40,7 @@ extern char     rxFw[40];             // its firmware version
 extern char     rxProt[16];           // u-blox protocol version ("" for others)
 extern uint32_t rxIdQuietUntil;       // millis: the console ignores the answer to the automatic VERSIONA until then
 
-// RTCM counters of the corrections forwarded to the receiver (zStatus.ino): a question to the
+// RTCM counters of the corrections forwarded to the receiver (zStatus.ino): a query to the
 // receiver is sent between two RTCM messages, never inside one
 extern RtcmCounter ntripRtcm, radioRtcm;
 

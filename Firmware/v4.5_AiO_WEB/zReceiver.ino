@@ -2,7 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   The u-blox messages and configuration keys are the ones of the u-blox ZED-F9P / ZED-X20P
+   The u-blox messages and configuration keys are those of the u-blox ZED-F9P / ZED-X20P
    interface descriptions (UBX-MON-VER, UBX-CFG-VALGET, UBX-CFG-VALSET, UBX-ACK); the Unicore
    commands (VERSIONA, CONFIG, MASK, UNMASK, UNILOGLIST, MODE, UNLOG, SAVECONFIG and the log
    commands) are those of the Unicore N4 high precision commands and logs reference.
@@ -12,36 +12,36 @@
 // zReceiver.ino
 //   - Which receiver: the Teensy asks it. "VERSIONA" for a Unicore receiver (UM982: it answers
 //     #VERSIONA with its model and firmware), UBX-MON-VER for a u-blox one (ZED-F9P / ZED-X20P: it
-//     answers MOD=..., FWVER=..., PROTVER=...). First the question that fits what it sends (HPR =
-//     Unicore), then the other one, up to RXID_QUESTIONS questions. Asked once the receiver has
-//     talked for a second; asked again when it talks again after RXID_SILENT_MS of silence (another
-//     receiver, or one switched on later) and from the web page.
+//     answers MOD=..., FWVER=..., PROTVER=...). First the query that fits what it sends (HPR =
+//     Unicore), then the other one, up to RXID_QUESTIONS queries. Asked once the receiver has
+//     been talking for a second; asked again when it starts talking after RXID_SILENT_MS of silence
+//     (another receiver, or one switched on later) and from the web page.
 //   - UBX frames (B5 62 ...) are taken out of the bytes from the receiver before the NMEA parser,
 //     so the u-blox answers (and any UBX output it is set to send) never reach the NMEA parser.
 //   - u-blox settings (web page, GPS tab): read with UBX-CFG-VALGET one key at a time from the RAM
 //     layer (what the receiver uses now), and written with one UBX-CFG-VALSET with only the keys
-//     changed on the page, to RAM + BBR + flash (kept after a power off; the receiver takes all of
+//     changed on the page, to RAM + BBR + flash (kept after power-off; the receiver takes all of
 //     them or none). If the receiver refuses the flash, again to RAM + BBR. Not on this form: the UART1
 //     baud rate and the UBX / NMEA protocols of UART1 (the Teensy would lose the receiver; the receiver
 //     check of zRxCheck.ino reads them and sets the baud rate).
 //   - UM982 settings (web page, GPS tab): read with CONFIG, MASK, UNILOGLIST and MODE, and written
 //     one command at a time (each waits for its "$command,...,response: OK"), only what was changed
-//     on the page, then SAVECONFIG (kept after a power off), then read again. Commands without a
+//     on the page, then SAVECONFIG (kept after power-off), then read again. Commands without a
 //     port name act on the port they arrive on: the one wired to the Teensy. Never written from the
 //     page: the port baud rates (CONFIG COMx) and FRESET (the Teensy would lose the receiver).
-//   - Every question goes to the receiver between two RTCM messages of the corrections (zRtcm.h),
+//   - Every query goes to the receiver between two RTCM messages of the corrections (zRtcm.h),
 //     never in the middle of one. The receiver check (zRxCheck.ino) sends through the same queue,
 //     takes the UBX answers meant for it (rxCkUbx), loads the UM982 AgOpenGPS commands through the
-//     form's write (umWriteRaw), and has Serial7 to itself while it searches or changes the baud rate.
+//     form's write (umWriteRaw), and has Serial7 to itself while it searches for or changes the baud rate.
 //     The page's reads and writes wait while it runs.
 // The receiver type does not change what is sent to the program: $PAOGI / $PANDA still follow
 // the HPR (zHandlers.ino).
 
 #include "zReceiver.h"
 
-#define RXID_TALK_MS      1000     // the receiver talks this long before the first question
+#define RXID_TALK_MS      1000     // the receiver talks this long before the first query
 #define RXID_ANSWER_MS    1500     // time for an answer
-#define RXID_QUESTIONS    6        // questions per round, VERSIONA and UBX-MON-VER in turn
+#define RXID_QUESTIONS    6        // queries per round, VERSIONA and UBX-MON-VER in turn
 #define RXID_SILENT_MS    10000    // silent this long, then talking again: asked again
 #define RX_TALKS_MS       2000     // a byte in the last 2 s: the receiver talks
 #define UBX_MAX           1200     // largest UBX frame kept (a longer one is skipped)
@@ -56,8 +56,8 @@ char     rxProt[16]  = "";
 uint32_t rxIdQuietUntil = 0;
 static char     rxHw[12]      = "";
 static uint32_t rxIdMs        = 0;       // when it was identified (millis, 0 = not yet)
-static uint8_t  rxIdAsked     = 0;       // questions asked in this round
-static bool     rxIdLastUm    = false;   // the last question was VERSIONA (else UBX-MON-VER)
+static uint8_t  rxIdAsked     = 0;       // queries sent in this round
+static bool     rxIdLastUm    = false;   // the last query was VERSIONA (else UBX-MON-VER)
 static uint32_t rxIdAskMs     = 0;
 static uint32_t rxByteMs      = 0;       // last byte from the receiver
 static uint32_t rxTalkSinceMs = 0;       // talking without a gap since
@@ -86,7 +86,7 @@ static bool rxTxQueue(const uint8_t* d, uint16_t n)
 
 static void rxTxFlush(uint32_t now)
 {
-    if (!rxTxLen || rxCkOwns(RXCK_GPS)) return;           // (the receiver check searches its baud rate)
+    if (!rxTxLen || rxCkOwns(RXCK_GPS)) return;           // (the receiver check is searching for its baud rate)
     if (!(rtcmBetween(ntripRtcm, now) && rtcmBetween(radioRtcm, now)) && now - rxTxSince < 300) return;
     SerialGPS->write(rxTxBuf, rxTxLen);
     rxTxLen    = 0;
@@ -149,7 +149,7 @@ static void rxIdentified(uint8_t kind)
     rxKind    = kind;
     rxIdState = RXID_DONE;
     rxIdMs    = millis() | 1;
-    rxSilentSeen = false;                                  // (also when the answer came without a question)
+    rxSilentSeen = false;                                  // (also when the answer came without a query)
     StatusLog.line("[status] GPS receiver: %s %s, firmware %s%s%s%s", rxKindName(), rxModel[0] ? rxModel : "(model not given)",
                    rxFw[0] ? rxFw : "?", rxProt[0] ? " (protocol " : "", rxProt, rxProt[0] ? ")" : "");
 }
@@ -221,7 +221,7 @@ static void umForget();
 
 void receiverIdentifyAgain()
 {
-    ubxForget();                                           // the settings read belonged to the receiver before
+    ubxForget();                                           // the settings read belonged to the previous receiver
     umForget();
     rxIdState = RXID_WAIT;
     rxKind    = RX_UNKNOWN;
@@ -387,7 +387,7 @@ static void ubxValget(const uint8_t* p, uint16_t len)
     }
 }
 
-// A short name for the UBX messages the receiver sends by itself ("O recetor envia" on the page)
+// A short name for the UBX messages the receiver sends on its own ("The receiver sends" on the page)
 static void ubxNoteType(uint8_t cls, uint8_t id)
 {
     static const struct { uint8_t c, i; const char* n; } N[] = {
@@ -404,7 +404,7 @@ static void ubxNoteType(uint8_t cls, uint8_t id)
 static void ubxFrame(uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len)
 {
     if (rxCkUbx(RXCK_GPS, cls, id, p, len)) return;       // an answer to the receiver check (zRxCheck.ino)
-    if (cls == 0x0A && id == 0x04)                 // MON-VER (length 0 = our own question, repeated by a
+    if (cls == 0x0A && id == 0x04)                 // MON-VER (length 0 = our own query, echoed by a
     {                                              // receiver that is not u-blox)
         if (len >= 40) ubxMonVer(p, len);
         return;
@@ -454,7 +454,7 @@ static void ubxOpEnd()
 
 static void ubxOpLoop(uint32_t now)
 {
-    if (ubxOp == UBXOP_NONE || rxTxLen) return;           // nothing to do, or the question is not out yet
+    if (ubxOp == UBXOP_NONE || rxTxLen) return;           // nothing to do, or the query is not out yet
     if (ubxOp == UBXOP_READ)
     {
         if (ubxWait == 0)
@@ -510,7 +510,7 @@ static void ubxOpLoop(uint32_t now)
         if (ubxWait == 0) { ubxSetSend(); return; }
         if (ubxGot == 0 && now - rxTxSentMs < UBX_SET_MS) return;
         ubxRes = UBXRES_UBXON;
-        StatusLog.line("[status] GPS receiver: UBX output on UART1 %s", ubxGot == 1 ? "switched on" : ubxGot == 2 ? "refused" : "asked (no answer)");
+        StatusLog.line("[status] GPS receiver: UBX output on UART1 %s", ubxGot == 1 ? "switched on" : ubxGot == 2 ? "refused" : "requested (no answer)");
         ubxOpEnd();
         receiverIdentifyAgain();
     }
@@ -596,7 +596,7 @@ enum UmItem : uint8_t { UM_RATE, UM_MODE, UM_ELEV, UM_RTKTO, UM_SBAS, UM_HDMODE,
 static const char* const UM_NAMES[UM_N] = {"rate", "mode", "elev", "rtkTo", "sbas", "hdMode", "hdLen", "hdTol", "hdOff", "ptOff",
                                            "gga", "vtg", "hpr", "rmc", "gsa", "gsv", "gst", "zda", "ths", "ksxt",
                                            "gps", "bds", "glo", "gal", "qzss"};
-// the log command of each message item (UM_GGA ... UM_KSXT): NMEA ones are asked with "GP"
+// the log command of each message item (UM_GGA ... UM_KSXT): NMEA ones are requested with "GP"
 static const char* const UM_MSG_CMD[UM_KSXT - UM_GGA + 1] = {"GPGGA", "GPVTG", "GPHPR", "GPRMC", "GPGSA", "GPGSV", "GPGST", "GPZDA", "GPTHS", "KSXT"};
 static const char* const UM_SYS[UM_QZSS - UM_GPS + 1]     = {"GPS", "BDS", "GLO", "GAL", "QZSS"};
 static const char* const UM_HDMODES[5] = {"FIXLENGTH", "VARIABLELENGTH", "STATIC", "LOWDYNAMIC", "TRACTOR"};
@@ -937,7 +937,7 @@ static void umOpLoop(uint32_t now)
         if (umCmdI < umCmdN) { umSend(umCmd[umCmdI]); return; }
         if (!umOkN)
         {
-            StatusLog.line("[status] GPS receiver: UM982 settings NOT written (%s)", umNoAnsN == umCmdN ? "no answer" : "every command refused");
+            StatusLog.line("[status] GPS receiver: UM982 settings NOT written (%s)", umNoAnsN == umCmdN ? "no answer" : "all commands refused");
             umWriteRes = UMRES_WRITE_NONE;
             umEnd(UMRES_WRITE_NONE);
             return;
@@ -951,7 +951,7 @@ static void umOpLoop(uint32_t now)
         if (!umGot && now - rxTxSentMs < UM_SAVE_MS) return;
         const uint8_t res = umGot != 1 ? UMRES_WRITE_NOSAVE : umFailN ? UMRES_WRITE_PART : UMRES_WRITE;
         if (umGot == 1) StatusLog.line("[status] GPS receiver: UM982 settings written (%u of %u commands) and saved (SAVECONFIG)", umOkN, umCmdN);
-        else            StatusLog.line("[status] GPS receiver: UM982 settings written (%u of %u commands) but SAVECONFIG %s: lost at the next power off",
+        else            StatusLog.line("[status] GPS receiver: UM982 settings written (%u of %u commands) but SAVECONFIG %s: lost at the next power-off",
                                        umOkN, umCmdN, umGot ? "refused" : "not answered");
         umRes = res;
         umWriteRes = res;
@@ -1035,7 +1035,7 @@ const char* umWriteGo()
     if (rxKind != RX_UM982)                   return "not a UM982 receiver";
     if (umOp != UMOP_NONE || rxIdState == RXID_ASK || ubxOp != UBXOP_NONE || rxCkBusy(RXCK_GPS)) return "busy";
     auto cur = [](uint8_t i, double dflt) { return umNewOn[i] ? umNew[i] : umHave[i] ? umVal[i] : dflt; };
-    // never every constellation masked (GPS, GLONASS, Galileo, BeiDou)
+    // never all constellations masked (GPS, GLONASS, Galileo, BeiDou)
     if (!cur(UM_GPS, 1) && !cur(UM_GLO, 1) && !cur(UM_GAL, 1) && !cur(UM_BDS, 1)) return "at least one of GPS, GLONASS, Galileo and BeiDou must stay on";
     char a[16], b[16];
     umCmdN = 0;

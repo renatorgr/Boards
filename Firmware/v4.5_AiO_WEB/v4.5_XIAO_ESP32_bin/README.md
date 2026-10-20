@@ -17,13 +17,13 @@ If you choose the file for the other XIAO, the page refuses it before sending it
 
 On the computer, with Chrome or Edge:
 
-1. XIAO **off the AiO board**, connected to the computer by USB-C.
+1. XIAO **off the AiO board**, connected to the computer over USB-C.
 2. Open https://espressif.github.io/esptool-js/
 3. Baudrate 921600 → **Connect** → choose the XIAO's port.
    - If the port does not show up: unplug the cable, hold the XIAO's **BOOT** button, plug the cable in with BOOT held, then let go.
 4. In **Flash Address** type `0x0` (the page may show another value) and choose the `…_USB.bin` file for your XIAO (C3 or S3).
 5. **Program**. When it is done, press the XIAO's **RESET** button (or unplug the cable and plug it in again).
-6. The XIAO makes the network `XIAO-xxxx`, password `agopengps`.
+6. The XIAO creates the network `XIAO-xxxx`, password `agopengps`.
 
 It can also be installed from the Arduino IDE, by compiling the program (see the program's README).
 

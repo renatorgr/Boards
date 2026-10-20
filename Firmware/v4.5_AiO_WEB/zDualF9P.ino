@@ -2,7 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    The RELPOSNED decoding (heading + 90 deg, baseline, roll from the down component, the flags that
-   must be set) is the one of the AgOpenGPS AiO v4 Teensy firmware (zRelPos.ino of
+   must be set) is that of the AgOpenGPS AiO v4 Teensy firmware (zRelPos.ino of
    AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project, GPL v3); the UBX-NAV-RELPOSNED
    message is described in the u-blox ZED-F9P interface description.
    Written 2026 by Claude (Anthropic) for renatorgr (v4.5_AiO_WEB). The receiver check (zRxCheck.ino)
@@ -21,10 +21,10 @@
 // Each RELPOSNED becomes this epoch's dual-antenna heading exactly as a UM982 HPR would
 // (hprTake() in zHandlers.ino), so everything after it is the same for both receivers:
 //   heading = relPosHeading + DUALF9P_HEADING_OFFSET (90 deg: antennas left and right)
-//   roll    = asin(relPosD / relPosLength), sign as the AiO firmware (used when there is no IMU)
+//   roll    = asin(relPosD / relPosLength), sign as in the AiO firmware (used when there is no IMU)
 //   QF      = 4 with an RTK fixed carrier solution, 5 float, 0 otherwise; gnssFixOK, diffSoln and
 //             relPosValid must be set (else QF 0). A float heading is never used with the F9P
-//             (as the AiO firmware), whatever the "float heading" setting says.
+//             (as in the AiO firmware), whatever the "float heading" setting says.
 //   time    = iTOW (GPS time of week) - DUALF9P_LEAP_S, as hhmmss.ss, matched to the GGA time like
 //             the HPR's.
 
@@ -70,7 +70,7 @@ void gps2Begin()
     dSt = 0;                       // (what is on the port: the [boot] and [web] settings lines)
 }
 
-// After the receiver check searched or changed the second F9P's baud rate (zRxCheck.ino): Serial2 at
+// After the receiver check has searched for or changed the second F9P's baud rate (zRxCheck.ino): Serial2 at
 // 460800 again, the frame reader from the start
 void dualF9pRestart()
 {
@@ -129,7 +129,7 @@ static inline void dCk(uint8_t b) { dCkA += b; dCkB += dCkA; }
 void dualF9pProcess()
 {
     gps2Begin();
-    if (!dualF9pOn() || rxCkOwns(RXCK_GPS2)) return;     // (the receiver check searches its baud rate)
+    if (!dualF9pOn() || rxCkOwns(RXCK_GPS2)) return;     // (the receiver check is searching for its baud rate)
     const uint32_t now = millis();
     if (dSt && now - dLastMs > 100) dSt = 0;               // a frame cut off: forget it
     int budget = 512;

@@ -18,7 +18,7 @@ Not tried on a tractor yet: the dual F9P, the Keya motor, steering with a BNO085
 
 What this firmware has that v4.5_UM982_X20P_F9P_TM171_WEB_XIAO does not:
 
-- **Dual F9P**: the second F9P's UBX-NAV-RELPOSNED gives the dual-antenna heading, sent exactly like the UM982's; only with an RTK fixed solution between the antennas, as the AiO firmware.
+- **Dual F9P**: the second F9P's UBX-NAV-RELPOSNED gives the dual-antenna heading, sent exactly like the UM982's; only with an RTK fixed solution between the antennas, as in the AiO firmware.
 - **GPS2 port setting** (web page): XIAO ESP32, second F9P or off.
 - **From the AiO firmware**: autosteer cut beyond ±50° of wheel angle or above 25 km/h; no steering below 0.2 km/h; a WAS map for a non-linear WAS; Danfoss valve and IBT2 driver; without an IMU, the roll of the two antennas in `$PAOGI`.
 - The update over the network works both ways between the two firmwares (same family).
@@ -29,15 +29,16 @@ Safety and stability:
 
 - **Crash fixed**: the network stack is now run from the loop (a Teensy built with Teensyduino 1.57.3 crashed at `0x0001D542` when a browser opened the page). See "Network stack".
 - On a crash the autosteer outputs go off at once, and the crash line says more (see "Why the Teensy started").
-- The web page no longer holds the loop up to 130 ms: 8 KB network buffers, and a 2048-byte buffer for the receiver (was 512).
+- The web page no longer holds up the loop for up to 130 ms: 8 KB network buffers, and a 2048-byte buffer for the receiver (was 512).
 - BNO085 on I2C: up to 3 tries at start-up (after a software restart it was sometimes missed).
+- **Teensyduino 1.58 and newer**: the Teensy no longer crashes before it starts. The ADS1115 code started Wire1 before the Wire library had set it up (from 1.58 the Wire objects are set up at start-up, after the sketch's own); `autosteerSetup()` starts it now.
 
 GPS receiver:
 
 - **Receiver check** (GPS tab): finds the receiver's baud rate at start-up and sets it to 460800; checks what the Teensy needs; compares with and loads the AgOpenGPS settings of AOGConfigOMatic (F9P, dual F9P, UM982).
-- An F9P without firmware HPG 1.13 is shown in red, with where to download it.
+- An F9P without firmware HPG 1.13 is shown in red, with links to download it.
 - UM982: KSXT at 10 Hz; `CONFIG HEADING TRACTOR` is not counted (one heading mode at a time), so the whole `ConfigUM982D.txt` shows 26 of 26.
-- IMU heading and the GPS course: the first alignment needs 2.5 s of straight driving above 3 km/h over 5 m (a receiver standing still without RTK no longer aligns the IMU to its noise). After it, the firmware corrects the IMU heading with the course only in the `$PAOGI` of a dual-antenna receiver; AgOpenWeb, and AgOpenGPS with `$PANDA`, do it themselves.
+- IMU heading and the GPS course: the first alignment needs 2.5 s of straight driving above 3 km/h over 5 m (a receiver standing still without RTK no longer aligns the IMU to its noise). After that, the firmware corrects the IMU heading with the course only in the `$PAOGI` of a dual-antenna receiver; AgOpenWeb, and AgOpenGPS with `$PANDA`, do it themselves.
 
 Firmware update:
 
@@ -48,7 +49,7 @@ Web pages (the module's and the XIAO's):
 - English only, with a light mode.
 - They reload by themselves when the Teensy (or the XIAO) restarts.
 - **Simulator** mode (Settings, Operating mode card).
-- **Report for an analysis** (Firmware tab).
+- **Diagnostic report** (Firmware tab).
 - Pressure / current value, Keya slip and kickout limit in %, as the program shows them.
 - Fewer repeated rows, a simpler GPS tab, no dual heading card with one antenna, **Restart Teensy**.
 
@@ -62,7 +63,7 @@ Messages:
 - Arduino IDE 1.8 or 2.x with Teensyduino:
   - **1.58 recommended**: the `.hex` in this folder is built with it.
   - 1.57 also builds (older compiler).
-  - 1.59 to 1.61 use the same compiler as 1.58 and build, but have not been tried on a tractor.
+  - 1.59 to 1.61 use the same compiler as 1.58 (1.59 and 1.60 checked: they build), but have not been tried on a tractor.
   - 1.62 brings a new compiler (gcc 15) and has not been checked.
 - Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
 - Nothing else to install: the BNO085 library and the flash routines (`FlashTxx.c` / `.h`) are in the sketch folder, and FlexCAN_T4 comes with Teensyduino.
@@ -72,7 +73,7 @@ Messages:
 **Already compiled:** `v4.5_AiO_WEB.hex` (Teensyduino 1.58). The IDE ignores it and the XIAO folders.
 
 - From a firmware with this web page (this one, v4.5_UM982_X20P_F9P_TM171_WEB_XIAO, earlier v6 / v7): web page → Firmware → choose the `.hex`.
-- From any other firmware: by USB, Teensy Loader → File → Open HEX File → press the button on the Teensy.
+- From any other firmware: over USB, Teensy Loader → File → Open HEX File → press the button on the Teensy.
 
 ## Web page
 
@@ -86,7 +87,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below. |
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
-| **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Report for an analysis**: one `.json` file with everything the module can tell (status, messages, settings, GPS, UM982 console, build, free RAM, longest loop time, web errors); send it when something goes wrong. |
+| **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, GPS, UM982 console, build, free RAM, longest loop time, web errors); send it when something goes wrong. |
 
 The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
 
@@ -97,9 +98,9 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Setting | Default | |
 |---|---|---|
 | Operating mode | automatic | **Automatic**: the standard set while AgOpenWeb sends its hello, classic otherwise. **AgOpenWeb**: always the standard set. **AgOpenGPS**: always classic (`$PAOGI` / `$PANDA`). |
-| Simulator (Operating mode card) | off | **For the program's simulator only**: the GPS is not sent to the program (AgOpenWeb greys its simulator out while it gets GPS sentences). Steering still works. Switch it off before going to the field. Asks first. |
+| Simulator (Operating mode card) | off | **For the program's simulator only**: GPS data is not sent to the program (AgOpenWeb greys its simulator out while it gets GPS sentences). Steering still works. Switch it off before going to the field. Asks first. |
 | Accept a float heading (HPR QF 5) | yes | No = only QF 4 (fixed). UM982 only; the dual F9P always needs RTK fixed. |
-| Longest wait for the VTG and heading after the GGA | 60 ms | 20-100 ms. |
+| Maximum wait for the VTG and heading after the GGA | 60 ms | 20-100 ms. |
 | Swap roll and pitch (IMU) | no | IMU turned 90° on the board. |
 | Yaw direction (IMU) | automatic | Learned in turns, or set to +1 / −1. Once you know it, set it: the IMU heading is then usable from start-up. |
 | GPS2 port | XIAO ESP32 | XIAO ESP32, second F9P, or off; 460800 baud. |
@@ -113,8 +114,8 @@ Web page → Firmware → choose the `.hex` → Install.
 
 - Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h). On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
 - The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AOG-UM982-TM171-WEB-OTA-1`), reading back every sector. **If anything fails, the running firmware stays** and the page says why.
-- Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming by USB (it is not damaged).
-- "Other firmware" installs an image without the family marker; the next update is then by USB.
+- Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).
+- "Other firmware" installs an image without the family marker; the next update is then over USB.
 
 ### New versions from GitHub
 
@@ -129,15 +130,15 @@ The page looks in the `Firmware` folder of **github.com/renatorgr/Boards** when 
 
 ### Identification
 
-After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM982) or `UBX-MON-VER` (u-blox). It asks again after 10 s of silence and with **Ask again**. The questions go between RTCM messages, never in the middle of one. The result shows on Status, on the GPS tab and in Messages (`GPS receiver: u-blox ZED-F9P, firmware HPG 1.32 (protocol 27.31)`).
+After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM982) or `UBX-MON-VER` (u-blox). It asks again after 10 s of silence and with **Ask again**. The queries go between RTCM messages, never in the middle of one. The result shows on Status, on the GPS tab and in Messages (`GPS receiver: u-blox ZED-F9P, firmware HPG 1.32 (protocol 27.31)`).
 
-What goes to the program does not depend on this: a receiver that sends HPR is taken as dual antenna.
+What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
 ### Receiver check (GPS tab)
 
 - **Data at 460800 baud**: valid, wrong baud rate (bytes but nothing valid; also a warning on Status), or nothing arriving. The GGA, VTG and HPR rates as they arrive (the Teensy wants 10 Hz).
 - **At start-up**, with no valid data at 460800 within 5 s (15 s for a silent receiver), the Teensy looks for the receiver's baud rate. **Set to 460800 and save** then changes it in the receiver (u-blox: `CFG-UART1-BAUDRATE` in all layers; UM982: `CONFIG COM1/2/3 460800` and `SAVECONFIG`).
-- **What the Teensy needs**: u-blox keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`); UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800. The wrong values first, in orange; the right ones in a closed list.
+- **What the Teensy needs**: u-blox keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`); UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800. The wrong values first, in orange; the right ones in a collapsed list.
 - **Compare with AOGConfigOMatic** (F9P: every key of the file; UM982: which commands it already has) and **Load the AgOpenGPS settings** (F9P: each line as one `UBX-CFG-VALSET` to RAM, BBR and flash; UM982: one command at a time, then `SAVECONFIG`).
 - **Firmware**: the AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**).
 - The X20P has no AgOpenGPS file; what the Teensy needs is still checked.
@@ -163,9 +164,9 @@ Read with `CONFIG`, `MASK`, `UNILOGLIST` and `MODE`; **Write to the receiver** s
 
 | Setting | Command |
 |---|---|
-| Rate of GGA, VTG and HPR | `GPGGA 0.1`, `GPVTG 0.1`, `GPHPR 0.1` (1-20 Hz together) |
+| GGA, VTG and HPR rate | `GPGGA 0.1`, `GPVTG 0.1`, `GPHPR 0.1` (1-20 Hz together) |
 | Working mode | `MODE ROVER UAV` / `AUTOMOTIVE` / `SURVEY` / `SURVEY MOW` |
-| Longest age of the corrections | `CONFIG RTK TIMEOUT 60` |
+| Maximum age of RTK corrections | `CONFIG RTK TIMEOUT 60` |
 | SBAS | `CONFIG SBAS DISABLE` / `ENABLE AUTO` / `ENABLE EGNOS` |
 | Heading mode | `CONFIG HEADING FIXLENGTH` / `VARIABLELENGTH` / `STATIC` / `LOWDYNAMIC` / `TRACTOR` |
 | Distance between the antennas | `CONFIG HEADING LENGTH 120 3` (cm and tolerance; empty = automatic) |
@@ -181,7 +182,7 @@ At start-up the firmware looks for:
 
 1. **Serial5** at 115200 for 1.5 s: a **TM171** or a **BNO085 in RVC mode** (jumper SJ1).
 2. Then a **BNO085 on I2C** (pins 18 / 19), at 0x4A or 0x4B; up to 3 tries.
-3. Nothing: `[boot] IMU NOT detected`. Serial5 is still listened to, so an IMU that starts later is taken then.
+3. Nothing: `[boot] IMU NOT detected`. Serial5 is still listened to, so an IMU that starts later is picked up then.
 
 - All give the same roll, pitch and yaw, with the AiO firmware's conventions. "Use Y axis" in the program, or "Swap roll and pitch" on the page, swaps roll and pitch; "Roll invert" / "Roll zero" in the program.
 - RVC or I2C is chosen on the BNO085 module (its PS0 / PS1 pins).
@@ -195,7 +196,7 @@ At start-up the firmware looks for:
 - The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
 - Web page: Settings → **GPS2 port: second F9P**.
 
-The heading is `relPosHeading` **+ 90°** (antennas left and right, as the AiO firmware), used only with RTK fixed between the antennas. The roll of the antennas goes into `$PAOGI` when there is no IMU. From there everything is as with the UM982.
+The heading is `relPosHeading` **+ 90°** (antennas left and right, as in the AiO firmware), used only with RTK fixed between the antennas. The roll of the antennas goes into `$PAOGI` when there is no IMU. From there everything is as with the UM982.
 
 In AgOpenWeb: **"Dual GPS" on**. In AgOpenGPS: heading source **"Dual"**.
 
@@ -216,7 +217,7 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 - A motor fault (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
 - **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. Set the tractor's wheelbase in `WHEELBASE_M` (main .ino, 3.20 m).
 
-**For every driver, as the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned; a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
+**For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned; a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
 At the top of `Autosteer.ino`:
 
@@ -257,7 +258,7 @@ Autosteer stops at the next steering loop (25 ms). The reason goes to Messages, 
 
 ### Why the Teensy started
 
-Said in a `[boot]` line, on the Firmware tab, and after a watchdog or crash restart on the program's screen: power on, restart by software, **WATCHDOG** (the line gives where the loop was) or **CRASH**:
+Shown in a `[boot]` line, on the Firmware tab, and after a watchdog or crash restart on the program's screen: power on, restart by software, **WATCHDOG** (the line gives where the loop was) or **CRASH**:
 
 `[boot] Start: CRASH at 0x0001D542, called from 0x0001EC86 (fault 0x00000082, address 0x2007A01C), restarted by the watchdog (v4.5_AiO_WEB, Teensyduino 1.58). Please send this line`
 
@@ -305,7 +306,7 @@ AgOpenWeb and AgIO both send a hello (PGN 200) once a second; they differ in the
 
 - UART1 at 460800, GGA + VTG at 10 Hz, high-precision NMEA, RTCM3 in, saved in the receiver. Or from the web page alone: receiver check → **Set to 460800 and save** → **Load the AgOpenGPS settings** (`Single.txt`).
 - AgOpenWeb: **"Dual GPS" off**. AgOpenGPS: heading source **"Fix"**.
-- The IMU yaw direction is learned in the first curves (about 30°); set it on the page afterwards. The IMU heading is aligned to the GPS course once (2.5 s / 5 m straight above 3 km/h).
+- The IMU yaw direction is learned in the first turns (about 30°); set it on the page afterwards. The IMU heading is aligned to the GPS course once (2.5 s / 5 m straight above 3 km/h).
 
 **UM982 (dual antenna)**
 
@@ -373,10 +374,10 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 - The box is aluminium: use an external antenna on the XIAO's U.FL connector.
 - Bench without the board: XIAO on USB-C, and D6 → Teensy pin 7, D7 → pin 8, GND → GND.
 
-**Link** (the official firmware v26 protocol, 460800 baud; `XIAO_BAUD` in `zXiao.h` and `LINK_BAUD` in the XIAO program must match):
+**Link** (the official firmware v26 protocol, 460800 baud; `XIAO_BAUD` in `zXiao.h` and `LINK_BAUD` in the XIAO program must match, so a XIAO program older than 4.5, at 230400, needs updating too):
 
 - XIAO → Teensy: `ESP32-hello` at least every 5 s (present for 10 s after each), AgOpenGPS frames sent on to UDP 9999, and text lines shown as `[xiao] > ...`.
-- Teensy → XIAO: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
+- Teensy → XIAO, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
 - XIAO → Teensy: PGN 143 (the XIAO's state, for its card).
 - PGN 141-143 never go on the network.
 - Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).

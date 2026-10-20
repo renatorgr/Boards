@@ -1,5 +1,5 @@
 /* zRxCheck.ino - receiver check (web page, GPS tab): is the data from the receiver valid at 460800
-   baud, at what baud rate the receiver really is, does it have the settings the Teensy needs, and the
+   baud, what baud rate the receiver is really set to, does it have the settings the Teensy needs, and the
    AgOpenGPS settings of AOGConfigOMatic, loaded with one button.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
@@ -14,21 +14,21 @@
 // zRxCheck.ino
 // Two ports: the GPS receiver (Serial7) and, with the GPS2 port set to it, the second F9P of a dual F9P
 // (Serial2, the "Dual - Left - RelPos" one).
-//   - Data at 460800, judged every 5 s: bytes, and whole sentences / UBX frames with a right checksum.
+//   - Data at 460800, judged every 5 s: bytes, and whole sentences / UBX frames with a valid checksum.
 //     Bytes with nothing valid in them for 10 s: the receiver is at another baud rate (or its settings
 //     or the wiring are wrong): a [status] line, a warning on Status, and the card says so. A port
 //     with nothing on it and one with a silent receiver look the same.
 //   - At start-up (once: the receivers are not unplugged with the board on): no valid data at 460800
 //     in the first 5 s (or nothing at all in 15 s), so the Teensy looks for the receiver's baud rate. It
-//     listens at 460800, 115200, 38400, 9600, 230400, 921600, 57600 and 19200 (1.3 s each), asking
+//     listens at 460800, 115200, 38400, 9600, 230400, 921600, 57600 and 19200 (1.3 s each), sending
 //     UBX-MON-VER (and VERSIONA on Serial7) at each, until valid sentences or frames come. Then the
 //     page shows "set to 460800 and save" (button): u-blox UBX-CFG-VALSET CFG-UART1-BAUDRATE to all
 //     its layers (RAM, BBR and flash); Unicore CONFIG COM1 / COM2 / COM3 460800 and, back at 460800,
-//     SAVECONFIG. Only with autosteer off: the GPS data stops meanwhile.
+//     SAVECONFIG. Only with autosteer off: the GPS data stops in the meantime.
 //   - What the Teensy needs (u-blox, read with UBX-CFG-VALGET from the RAM layer): UBX and RTCM3 in and
 //     UBX and NMEA out on UART1, GGA and VTG on UART1, the rate, the UART1 speed; for the first F9P of a
 //     dual F9P also the RTCM3 out on UART2 to the second one; for the second F9P RELPOSNED on UART1 and
-//     RTCM3 in on UART2. The wanted values are those of the AgOpenGPS settings. Checked by itself once
+//     RTCM3 in on UART2. The expected values are those of the AgOpenGPS settings. Checked automatically once
 //     the receiver is identified (at start-up); "compare with AOGConfigOMatic" (button) checks it again
 //     and compares all the AgOpenGPS settings (about 1200 keys, F9P only). UM982: the GPS tab's UM982 read (CONFIG, MASK, UNILOGLIST, MODE),
 //     then the card shows GGA / VTG / HPR on the Teensy's port and compares the AgOpenGPS commands. On
@@ -46,7 +46,7 @@
 #include "zRxConfig.h"
 
 // The operations, the web page's answer and the comparisons run from flash (FLASHMEM), not from the
-// Teensy's fast RAM (ITCM): they are rare and not in a hurry, and the RAM stays free for the rest.
+// Teensy's fast RAM (ITCM): they are rare and not time-critical, and the RAM stays free for the rest.
 
 #define CK_WINDOW_MS       5000      // the data at 460800 is judged over this window
 #define CK_JUNK_BYTES      64        // bytes in a window with nothing valid in them: junk
@@ -72,13 +72,13 @@ static const uint32_t CK_BAUDS[] = {460800, 115200, 38400, 9600, 230400, 921600,
 
 // ---------------------------------------------------------------- what the Teensy needs (u-blox)
 // Roles: R_S Single (alone on Serial7), R_D Dual - Right - Position (Serial7, second F9P on the GPS2
-// port), R_R Dual - Left - RelPos (the second F9P). The wanted value is the AgOpenGPS settings' one.
+// port), R_R Dual - Left - RelPos (the second F9P). The expected value is the one in the AgOpenGPS settings.
 #define R_S 1
 #define R_D 2
 #define R_R 4
 struct CkEss { const char* id; uint32_t key; uint8_t roles; };
 static const CkEss CK_ESS[] = {
-    {"ubxIn",    0x10730001UL, R_S | R_D | R_R},   // CFG-UART1INPROT-UBX: the Teensy's questions
+    {"ubxIn",    0x10730001UL, R_S | R_D | R_R},   // CFG-UART1INPROT-UBX: the Teensy's queries
     {"rtcmIn",   0x10730004UL, R_S | R_D},         // CFG-UART1INPROT-RTCM3X: the corrections from NTRIP / radio
     {"ubxOut",   0x10740001UL, R_S | R_D | R_R},   // CFG-UART1OUTPROT-UBX: its answers (and the RELPOSNED)
     {"nmeaOut",  0x10740002UL, R_S | R_D},         // CFG-UART1OUTPROT-NMEA
@@ -131,8 +131,8 @@ struct CkPort
     uint8_t  loadRole;
     uint32_t loadMs;
     uint32_t autoFor;                     // port 0: the identification the automatic check was made for
-    bool     autoDone;                    // port 1: checked by itself since its data came
-    uint8_t  boot;                        // CkBoot: valid data at 460800 after start-up, or its baud rate searched
+    bool     autoDone;                    // port 1: checked automatically since its data arrived
+    uint8_t  boot;                        // CkBoot: valid data at 460800 after start-up, or its baud rate searched for
 };
 static CkPort ck[2];
 
@@ -146,7 +146,7 @@ static uint32_t ckT0 = 0, ckSentMs = 0;
 static uint16_t ckTypeCnt[3] = {0, 0, 0};   // GGA, VTG, HPR in the current window (port 0)
 static uint32_t ckWinMs = 0;
 static uint32_t ckBootAt = 0, ckBootB0[2] = {0, 0}, ckBootG0[2] = {0, 0};
-static uint8_t  ckBootScan = 0;             // ports (bit 0 Serial7, bit 1 Serial2) the start-up check wants searched
+static uint8_t  ckBootScan = 0;             // ports (bit 0 Serial7, bit 1 Serial2) the start-up check wants searched for
 
 // UM982: the AgOpenGPS CONFIG commands found in the receiver's CONFIG list (bit per command)
 static uint32_t ckUmSeen[2] = {0, 0};      // [0] ConfigUM982D.txt, [1] ConfigUM982S.txt
@@ -250,7 +250,7 @@ static bool ckPortActive(uint8_t port) { return port == RXCK_GPS || dualF9pOn();
 static const char* ckModel(uint8_t port) { return port == RXCK_GPS ? rxModel : ck[RXCK_GPS2].model; }
 static const char* ckFw(uint8_t port)    { return port == RXCK_GPS ? rxFw : ck[RXCK_GPS2].fw; }
 
-// at most n - 1 characters of s (a buffer of smax bytes), always ended
+// at most n - 1 characters of s (a buffer of smax bytes), always null-terminated
 static void ckCopy(char* out, size_t n, const char* s, size_t smax)
 {
     const size_t k = strnlen(s, n - 1 < smax ? n - 1 : smax);
@@ -318,7 +318,7 @@ static bool ckSendUbx(uint8_t port, uint8_t cls, uint8_t id, const uint8_t* p, u
     return true;
 }
 
-// the answer did not come in ms after the message went out (still in the queue: not yet)
+// the answer did not come within ms after the message went out (still in the queue: not yet)
 static bool ckTimedOut(uint32_t now, uint32_t ms)
 {
     if (ckPort == RXCK_GPS) return !rxTxLen && now - rxTxSentMs >= ms;
@@ -481,7 +481,7 @@ static void ckStartScan(uint8_t port)
     k.found = 0; k.foundKind = CKK_UNKNOWN; k.scanRes = CKR_NONE; k.baudRes = CKR_NONE;
 }
 
-// Start-up: valid data at 460800 from the receivers? If not, their baud rate is searched (once: the
+// Start-up: valid data at 460800 from the receivers? If not, their baud rate is searched for (once: the
 // receivers are not unplugged with the board on). A port not in use then is not checked.
 static void ckBoot(uint32_t now)
 {
@@ -532,7 +532,7 @@ FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
     if (!strcmp(what, "scan"))
     {
         ckStartScan(port);
-        StatusLog.line("[web] %s: looking for the receiver's baud rate (no GPS data meanwhile)", ckWho(port));
+        StatusLog.line("[web] %s: looking for the receiver's baud rate (no GPS data in the meantime)", ckWho(port));
         return nullptr;
     }
     if (!strcmp(what, "baud"))
@@ -705,7 +705,7 @@ FLASHMEM static void ckOpScan(uint32_t now)
     cvRead(ckPort);
     const uint32_t t = now - ckT0;
     if ((ckProbes == 0 && t >= 100) || (ckProbes == 1 && t >= 700)) { cvProbe(ckPort); ckProbes++; }
-    // valid data: this is the speed; what it is, once the answer to the first question had time to come
+    // valid data: this is the speed; what it is, once the answer to the first query has had time to arrive
     if (cvGood >= CK_GOOD_FOUND && (cvUbx || cvUni || t >= 600 || t >= CK_LISTEN_MS))
     {
         k.found = CK_BAUDS[ckBaudI];
@@ -899,7 +899,7 @@ FLASHMEM static void ckOpCheck(uint32_t now)
         case 4:                                            // what the Teensy needs: read
             k.essRole = ckRole;
             k.essMs = ckStamp(now);
-            if (ckPort == RXCK_GPS2) k.autoDone = true;      // (no automatic check again for this one)
+            if (ckPort == RXCK_GPS2) k.autoDone = true;      // (no further automatic check for this one)
             if (!ckFull) { k.chkRes = CKR_CHECKED; ckCheckSay(ckPort); ckEnd(); return; }
             k.cmpSame = k.cmpDiff = k.cmpUnk = 0;
             k.cmpRole = ckRole;
@@ -976,7 +976,7 @@ FLASHMEM static void ckOpLoad(uint32_t now)
             k.loadRes = !bad ? CKR_LOADED : (k.loadOk + k.loadRam) ? CKR_LOAD_PART : CKR_LOAD_FAIL;
             k.loadMs = ckStamp(now);
             StatusLog.line("[status] %s: AgOpenGPS settings (%s) %s: %u of %u messages to RAM, BBR and flash, %u to RAM and BBR only, %u refused, %u not answered",
-                           ckWho(ckPort), s.file, k.loadRes == CKR_LOADED ? "loaded" : k.loadRes == CKR_LOAD_PART ? "loaded in part" : "NOT loaded",
+                           ckWho(ckPort), s.file, k.loadRes == CKR_LOADED ? "loaded" : k.loadRes == CKR_LOAD_PART ? "partly loaded" : "NOT loaded",
                            k.loadOk, s.count, k.loadRam, k.loadNak, k.loadNone);
             ckEnd();
             if (k.loadOk + k.loadRam)
@@ -1025,7 +1025,7 @@ static void ckForget(uint8_t port)
     k.loadOk = k.loadRam = k.loadNak = k.loadNone = k.loadTotal = 0;
 }
 
-// stop what runs (AgIO's GPS tool took the receiver, or the GPS2 port changed)
+// stop what is running (AgIO's GPS tool took the receiver, or the GPS2 port changed)
 FLASHMEM static void ckStop(const char* why)
 {
     CkPort& k = ck[ckPort];
@@ -1118,10 +1118,10 @@ void rxCheckLoop()
         if (strcmp(id, ident)) { if (ident[0] && !rxCkBusy(RXCK_GPS)) ckForget(RXCK_GPS); ckCopy(ident, sizeof(ident), id, sizeof(id)); }
     }
     if (ckOp != CKOP_NONE && ckPort == RXCK_GPS && passThroughGPS) ckStop("the program's GPS tool took the receiver");
-    if (ckOp != CKOP_NONE && ckPort == RXCK_GPS2 && !dualF9pOn()) ckStop("the GPS2 port is not the second F9P's now");
+    if (ckOp != CKOP_NONE && ckPort == RXCK_GPS2 && !dualF9pOn()) ckStop("the GPS2 port is no longer set to the second F9P");
     if (ckOp == CKOP_NONE)
     {
-        // the start-up check found no valid data: the baud rate searched (the GPS tab's work waits)
+        // the start-up check found no valid data: the baud rate is searched for (the GPS tab's work waits)
         if (ckBootScan)
         {
             const uint8_t p = (ckBootScan & 1) ? RXCK_GPS : RXCK_GPS2;
@@ -1141,7 +1141,7 @@ void rxCheckLoop()
         {
             if (ckGpsIdle()) { ckRefreshForm = false; if (rxKind == RX_UBLOX) ubxStartRead(); }
         }
-        // by itself: the receiver once it is identified, the second F9P once its data is valid
+        // automatically: the receiver once it is identified, the second F9P once its data is valid
         else if ((rxKind == RX_UBLOX || rxKind == RX_UM982) && rxIdState == RXID_DONE && ck[RXCK_GPS].autoFor != rxIdMs &&
                  ck[RXCK_GPS].health == CKH_OK && ckGpsIdle() && !passThroughGPS)
         {

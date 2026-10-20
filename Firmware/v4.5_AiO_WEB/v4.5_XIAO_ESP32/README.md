@@ -4,8 +4,8 @@ Program for a Seeed **XIAO ESP32C3** or **XIAO ESP32S3** on the GPS2 port of the
 
 - It goes with the Teensy firmware **v4.5_AiO_WEB**: the two must have the same version number.
 - On the Teensy's web page, Settings → **GPS2 port** must be **XIAO ESP32** (the default). The same port takes the second F9P of a dual F9P, so it is one or the other.
-- The XIAO makes its own WiFi network with a page for a phone: you can see what the module is doing in the cab or next to the tractor, without the tablet or a network cable.
-- It only looks: it does not change anything in the module or in AgOpenWeb / AgOpenGPS.
+- The XIAO creates its own WiFi network with a page for a phone: you can see what the module is doing in the cab or next to the tractor, without the tablet or a network cable.
+- It only monitors: it does not change anything in the module or in AgOpenWeb / AgOpenGPS.
 
 ## Where it goes
 
@@ -21,15 +21,16 @@ The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is descri
 
 ### 4.5 (19 Oct 2026)
 
-Everything in this README is version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). It is the program of v4.5_UM982_X20P_F9P_TM171_WEB_XIAO; only the names and the GitHub folders it looks for (`vX.Y_AiO_WEB`) differ.
+Everything in this README is version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). It is the same program as for v4.5_UM982_X20P_F9P_TM171_WEB_XIAO; only the names and the GitHub folders it looks for (`vX.Y_AiO_WEB`) differ.
 
 - Its own WiFi network with the page: the module status and messages, what the program sends to the module, WiFi settings, update over WiFi.
 - Runs on the **XIAO ESP32C3 and the XIAO ESP32S3**; the page refuses an update made for the other one.
-- The page in **Portuguese or English** (the EN / PT button at the top).
+- The page in **English**, **dark or light** (the button at the top; without a choice, the phone's setting decides).
 - The module card names the program that talks to the module (AgOpenWeb or AgOpenGPS), the GPS receiver's model and the IMU the Teensy found (TM171 or BNO085).
 - The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below); "latest version installed" when it is the one installed.
 - The page shows its cards in **three columns** on a wide screen (one column on a phone), and the tab with the version and the update is called **Firmware**.
-- **Link to the Teensy at 460800**, as the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
+- Changed later on 20 Oct 2026: the page only in English, a light mode, and no repeated rows (the XIAO's version only in the header and the Firmware tab, the requested steer angle only in Program → module).
+- **Link to the Teensy at 460800**, like the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
 
 ## What it does
 
@@ -37,18 +38,18 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
   - A phone that joins it opens the page by itself (like a hotel WiFi page). If not, open **http://192.168.4.1/**.
   - Up to 4 phones at the same time.
 - **Another WiFi network too** (optional): the farm WiFi or a phone hotspot. Then the page is also at **http://xiao.local/** (the name can be changed) or at the IP shown on the page.
-  - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may drop for a few seconds then.
+  - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may lose the connection for a few seconds.
   - `xiao.local` works on iPhone, Mac, Windows 10/11 and Linux; on many Android phones use the IP instead.
-- **The page**, in Portuguese or English:
-  - the EN / PT button at the top switches it, and the phone remembers the choice;
-  - without a choice, the phone's language decides;
-  - the messages stay in English.
+- **The page**, in English, dark or light:
+  - the button at the top (☀ / ☾) switches it, and the phone remembers the choice;
+  - without a choice, the phone's setting (dark or light mode) decides;
+  - when the XIAO restarts (its uptime goes back, or another build runs), the page loads itself again, on the same tab.
 
 | Tab | What it shows |
 |---|---|
 | **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network. |
-| | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, steer angle asked for, autosteer on / off, sections (16 boxes), hydraulic lift (up / down), tramline, PGN 254 per second. |
-| | **XIAO**: program, WiFi, memory, time on. |
+| | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, requested steer angle, autosteer on / off, sections (16 boxes), hydraulic lift (up / down), tramline, PGN 254 per second. |
+| | **XIAO**: uptime, start-up reason, WiFi, the link to the Teensy, memory (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
 | **Messages** | The module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates). |
 | **WiFi** | The XIAO's network name and password. |
 | | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |
@@ -59,7 +60,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - Typed once, it is filled in both tabs until the page is closed.
   - The page never shows or stores it.
-  - Looking needs nothing more than being on the network.
+  - Just viewing the page needs nothing more than being on the network.
 - It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (http://192.168.5.126/). Its events also go to the Teensy log as `[xiao] > ...`.
 - **Watchdog**: if the program ever stops for 15 s, the XIAO restarts by itself.
 - The Teensy sends it the program's packets and the module status; the XIAO sends back only its hello, its state and text lines.
@@ -68,7 +69,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 
 **Without the Arduino IDE:** the firmware folder has the program already compiled for both XIAOs (`v4.5_XIAO_ESP32_bin`, see its README).
 
-- `v4.5_XIAO_ESP32C3_USB.bin` / `v4.5_XIAO_ESP32S3_USB.bin`: the first install by USB, from the browser (https://espressif.github.io/esptool-js/, address 0x0).
+- `v4.5_XIAO_ESP32C3_USB.bin` / `v4.5_XIAO_ESP32S3_USB.bin`: the first install over USB, from the browser (https://espressif.github.io/esptool-js/, address 0x0).
 - `v4.5_XIAO_ESP32C3.bin` / `v4.5_XIAO_ESP32S3.bin`: for the update over WiFi.
 
 **With the Arduino IDE:**
@@ -90,7 +91,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
    - If USB CDC On Boot is not enabled, or the board is another ESP32, compiling stops with a message saying so.
    - The default partition schemes have room for updates over WiFi.
 5. XIAO **off the board**, USB-C to the PC, choose its port, Upload.
-   - If the port does not show: hold BOOT, press and release RESET, release BOOT, then Upload.
+   - If the port does not show up: hold BOOT, press and release RESET, release BOOT, then Upload.
 6. Serial Monitor (any speed): it prints the network name and the commands.
 
 No other libraries are needed: everything is in the esp32 package.
@@ -113,9 +114,9 @@ No other libraries are needed: everything is in the esp32 package.
    - A `.bin` compiled for the XIAO ESP32C3 does not run on the ESP32S3, and the other way round. The page reads the start of the file and says so before sending it.
    - With both XIAOs, rename the files after exporting (for example `…_C3.bin` and `…_S3.bin`).
 3. Phone or PC on the XIAO's network → page → **Firmware** → choose the file → password → **Install**.
-4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings stay.
+4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings are kept.
 
-If the update fails half way (WiFi lost), the old program keeps running: just try again.
+If the update fails halfway (WiFi lost), the old program keeps running: just try again.
 
 ## USB serial commands
 
@@ -123,9 +124,9 @@ Serial Monitor at any speed, line ending "Newline" (or any):
 
 | Command | What it does |
 |---|---|
-| `estado` | version, WiFi, phones connected, Teensy link counters |
+| `status` | version, WiFi, phones connected, Teensy link counters |
 | `wifi-reset` | WiFi settings back to the defaults (`XIAO-xxxx` / `agopengps`, other network off) and restart: for a **forgotten password** |
-| `reiniciar` | restart |
+| `restart` | restart |
 
 ## USB-C port on the panel
 
@@ -141,9 +142,9 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
 
 ## XIAO ESP32S3: what is different
 
-- Faster (two cores, 8 MB flash, 8 MB PSRAM). This program does not need it, but has more room to grow (a WiFi bridge for the tablet, for example).
+- Faster (two cores, 8 MB flash, 8 MB PSRAM). This program does not need it, but there is more room to grow (a WiFi bridge for the tablet, for example).
 - D6 / D7 are GPIO43 / GPIO44 (on the C3, GPIO21 / GPIO20). Same pads, so nothing changes in the wiring.
-- Seeed gives about 100 mA with WiFi on, and an operating range of −20 to 65 °C. Mount the box where it does not sit in the sun.
+- Seeed quotes about 100 mA with WiFi on, and an operating range of −20 to 65 °C. Mount the box where it does not sit in the sun.
 - The antenna socket (U.FL) is at the other end from the USB-C, next to D6. Route the D6 wire so it does not press on the antenna plug.
 - Underneath it has more gold pads and a large thermal pad.
   - On the 3D holder they sit on plastic.
@@ -161,7 +162,7 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
 | `xVersion.h` | the version number and the board (C3 or S3, from the board chosen in the Arduino IDE). When the number changes, the folder and the `.ino` get the new name too |
 | `COPYING` | the licence: GNU GPL v3 |
 
-`LINK_BAUD` here (`xLink.h`) must be the same as `XIAO_BAUD` in the Teensy firmware (`zXiao.ino`).
+`LINK_BAUD` here (`xLink.h`) must be the same as `XIAO_BAUD` in the Teensy firmware (`zXiao.h`).
 
 ## What was tested
 

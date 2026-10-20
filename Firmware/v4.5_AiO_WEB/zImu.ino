@@ -17,10 +17,11 @@
 //   2. If neither: a BNO085 on I2C (Wire, pins 18 / 19), address 0x4A then 0x4B.
 // Whatever it finds fills the same values (roll, pitch, yaw), so the heading alignment, the yaw
 // direction learning and the output (zHandlers.ino) work the same with any of them.
-// With none found, Serial5 is kept listening: a TM171 / BNO085 that starts later is taken then.
-// BNO085 conventions (as the AiO firmware): RVC: roll = its pitch, pitch = its roll; I2C (game
+// With none found, the firmware keeps listening on Serial5: a TM171 / BNO085 that starts later
+// is picked up then.
+// BNO085 conventions (as in the AiO firmware): RVC: roll = its pitch, pitch = its roll; I2C (game
 // rotation vector): roll about X, pitch about Y; the yaw turns clockwise, like a heading. "Use Y
-// axis" in the program and "Trocar roll e pitch" on the web page swap roll and pitch as with the
+// axis" in the program and "Swap roll and pitch" on the web page swap roll and pitch as with the
 // TM171. The yaw direction is learned (or set on the web page) as with the TM171.
 
 #include "zImu.h"
@@ -28,7 +29,7 @@
 
 #define IMU_DETECT_MS      1500    // listening on Serial5 at start-up
 #define RVC_FRAMES_NEEDED  3       // BNO085 RVC frames with a good checksum before it counts as found
-#define BNO_READ_MS        10      // I2C: asked this often (it reports every BNO_REPORT_MS)
+#define BNO_READ_MS        10      // I2C: polled this often (it reports every BNO_REPORT_MS)
 #define BNO_REPORT_MS      20
 #define BNO_RESTART_MS     3000    // I2C BNO085 silent this long, autosteer off: started again
 #define BNO_RESTART_EVERY  10000   // ...at most this often
@@ -96,7 +97,7 @@ static bool rvcByte(uint8_t b, bool use)
 static bool bnoStart(uint8_t addr)
 {
     // begin() resets the BNO085 and asks for its product ID once. A BNO085 that kept running while the
-    // Teensy restarted (a software restart or an update, no power cut) can answer that first question
+    // Teensy restarted (a software restart or an update, no power cut) can answer that first query
     // late or with another packet: up to 3 tries, 200 ms apart.
     bool ok = false;
     for (uint8_t t = 0; t < 3 && !ok; t++)
@@ -127,7 +128,7 @@ static bool bnoProbe()
     return false;
 }
 
-// Game rotation vector (quaternion) -> roll, pitch, yaw in degrees, as the AiO firmware
+// Game rotation vector (quaternion) -> roll, pitch, yaw in degrees, as in the AiO firmware
 static void bnoRead()
 {
     if (!bno08x.dataAvailable()) return;
@@ -200,7 +201,7 @@ void imuSetup()
         case IMU_TM171:   StatusLog.println("[boot] IMU: TM171 on Serial5"); break;
         case IMU_BNO_RVC: StatusLog.println("[boot] IMU: BNO085 on Serial5 (RVC mode)"); break;
         case IMU_BNO_I2C: StatusLog.line("[boot] IMU: BNO085 on I2C 0x%02X (pins 18 / 19)", imuBnoAddr); bnoReadMs = millis(); break;
-        default:          StatusLog.println("[boot] IMU NOT detected: no TM171 or BNO085 on Serial5, no BNO085 on I2C 0x4A / 0x4B - no roll, no IMU heading (Serial5 still listened to)");
+        default:          StatusLog.println("[boot] IMU NOT detected: no TM171 or BNO085 on Serial5, no BNO085 on I2C 0x4A / 0x4B - no roll, no IMU heading (still listening on Serial5)");
     }
 }
 

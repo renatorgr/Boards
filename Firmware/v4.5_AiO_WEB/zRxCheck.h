@@ -1,4 +1,4 @@
-/* zRxCheck.h - shared names of the receiver check (zRxCheck.ino).
+/* zRxCheck.h - shared names for the receiver check (zRxCheck.ino).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
@@ -23,13 +23,13 @@
 #define RX_TX_MAX   704              // largest message to a receiver (an AgOpenGPS UBX-CFG-VALSET: 664 bytes)
 
 extern uint32_t rxCkBytes[2];        // bytes from each port (counted by their readers)
-extern uint32_t rxCkGood[2];         // whole sentences / UBX frames with a right checksum from each port
+extern uint32_t rxCkGood[2];         // whole sentences / UBX frames with a valid checksum from each port
 
 bool rxCkOwns(uint8_t port);         // a baud rate search or change has the port: nobody else reads or writes it
-bool rxCkBusy(uint8_t port);         // a check, search or load runs on the port (the GPS tab's reads and writes wait)
+bool rxCkBusy(uint8_t port);         // a check, search or load is running on the port (the GPS tab's reads and writes wait)
 bool rxCkUbx(uint8_t port, uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len);   // a UBX frame from the port: true = taken
 void rxCkNoteType(const char* name); // a sentence type from the GPS receiver (for the GGA / VTG / HPR rates)
-bool nmeaLineOk(const char* l);      // a whole line with a right checksum ("$...*hh" or Unicore "#...*xxxxxxxx")
+bool nmeaLineOk(const char* l);      // a whole line with a valid checksum ("$...*hh" or Unicore "#...*xxxxxxxx")
 void rxCkUmBegin();                  // zReceiver.ino starts reading the UM982
 void rxCkUmConfig(const char* line); // one "$CONFIG,..." line of that read
 const char* rxCkHealthName(uint8_t port);   // "ok", "junk", "none", "wait"

@@ -290,7 +290,7 @@ a{color:var(--acc)}
  <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
  <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
  <p class="note">The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.</p></div>
-<div class="card"><h2>Update the firmware</h2>
+<div class="card"><h2>Update firmware</h2>
  <div class="row"><label class="act">Choose .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">no file</span></div>
  <label class="opt"><input type="checkbox" id="force"><span>Other firmware<small>Installs it even without this update page inside (the next update will then have to be by USB).</small></span></label>
  <div class="row"><button class="act" id="install" disabled>Install</button></div>

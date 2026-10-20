@@ -9,9 +9,9 @@
    WAS voltage check, autosteer off at once when switched off, why it went off, sensor value
    for the web page (see zSafety.ino); wheel angle sent as 0 on the bench (WAS check off, WAS
    out of range), IMU hello only when an IMU was found (zImu.ino); the ADS1115 / autosteer state as one
-   [boot] line (the USB serial and the web page).
+   [boot] line (on the USB serial and the web page).
    AiO_WEB 4.5 (Claude (Anthropic) for renatorgr), from the AiO firmware 27.04.2025: its Keya (motor slip as the kickout, the motor
-   position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut beyond
+   position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut-off beyond
    the WAS map (+-50 deg; only with the WAS voltage in range, zSafety.ino) or above 25 km/h, the WAS
    map, no steering below 0.2 km/h, PWM at 122 Hz and LOW_HIGH_DEGREES 1.5.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -28,7 +28,7 @@
 /************************* User Settings *************************/
 
 //How many degrees before decreasing Max PWM
-// (AiO_WEB 4.5: 1.5 as the AgOpenGPS AiO v4 firmware 27.04.2025; was 3.0: full PWM until 1.5 deg from the line)
+// (AiO_WEB 4.5: 1.5 as in the AgOpenGPS AiO v4 firmware 27.04.2025; was 3.0: full PWM until 1.5 deg from the line)
 #define LOW_HIGH_DEGREES 1.5
 
 /*  PWM Frequency ->
@@ -36,7 +36,7 @@
 	 122hz = 1
 	 3921hz = 2
 */
-// (AiO_WEB 4.5: 122 Hz as the AiO firmware; was 490 Hz. Low enough to act as dither on a proportional
+// (AiO_WEB 4.5: 122 Hz as in the AiO firmware; was 490 Hz. Low enough to act as dither on a proportional
 // hydraulic valve: the spool does not stick, small corrections get through)
 #define PWM_Frequency 1
 
@@ -385,7 +385,7 @@ void autosteerLoop()
 		if (steerConfig.CurrentSensor)
 		{
 			if (isKeya) {
-				// AiO_WEB: as the AiO firmware, the Keya's slip (it turns slower than told: the driver
+				// AiO_WEB: as in the AiO firmware, the Keya's slip (it turns slower than told: the driver
 				// holds the wheel) is the kickout sensor (KeyaCANBUS.ino)
 				sensorReading = keyaSlip;
 				if (sensorReading >= steerConfig.PulseCountMax) {
@@ -427,7 +427,7 @@ void autosteerLoop()
 		*/
 
 		// AiO_WEB: Keya with the WAS on "differential" in AgOpenGPS = no WAS: the motor position is the
-		// wheel angle (below), as the AiO firmware; the ADS1115 is not read and the WAS check is off
+		// wheel angle (below), as in the AiO firmware; the ADS1115 is not read and the WAS check is off
 		const bool keyaWas = isKeya && !steerConfig.SingleInputWAS;
 
 		//get steering position
@@ -502,7 +502,7 @@ void autosteerLoop()
 		//Ackerman fix
 		if (steerAngleActual < 0) steerAngleActual = (steerAngleActual * steerSettings.AckermanFix);
 
-		// bench (WAS check off) with no WAS: the reading is about 0 V, which is the wheels at
+		// bench (WAS check off) with no WAS: the reading is about 0 V, which shows as the wheels at
 		// full lock to one side on the program's screen. Send 0 degrees instead (zSafety.ino).
 		if (!keyaWas && wasBenchZero())
 		{
@@ -510,7 +510,7 @@ void autosteerLoop()
 			helloSteerPosition = 0;
 		}
 
-		// AiO_WEB, as the AiO firmware: a wheel angle beyond the WAS map (+-50 deg: a wrong calibration, a
+		// AiO_WEB, as in the AiO firmware: a wheel angle beyond the WAS map (+-50 deg: a wrong calibration, a
 		// slipped sensor) or the program's speed above 25 km/h cuts autosteer. With the WAS voltage out
 		// of range the WAS check above decides (zSafety.ino), not this.
 		const bool angleOut = (steerAngleActual < inputWAS[0] || steerAngleActual > inputWAS[WAS_MAP_N - 1]) && (keyaWas || wasVoltsOk());
@@ -848,7 +848,7 @@ void ReceiveUdp()
 
 					SendUdp(helloFromAutoSteer, sizeof(helloFromAutoSteer), Eth_ipDestination, portDestination);
 				}
-				// the IMU hello only when there is an IMU (TM171 or BNO085, zImu.ino), as the AiO firmware
+				// the IMU hello only when there is an IMU (TM171 or BNO085, zImu.ino), as in the AiO firmware
 				if (imuType != IMU_NONE) SendUdp(helloFromIMU, sizeof(helloFromIMU), Eth_ipDestination, portDestination);
 			}
 

@@ -3,12 +3,13 @@
    (renatorgr).
    From the AgOpenGPS AiO v4 Teensy firmware (zCANBUS.ino of
    AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project, GPL v3): the commands and
-   their answers, the heartbeat (motor position, speed, current, faults), the motor slip used as the
+   their responses, the heartbeat (motor position, speed, current, faults), the motor slip used as the
    kickout sensor, SteerKeya() and keyaCommand().
    Changes by Claude (Anthropic) 2026 for renatorgr (v4.5_AiO_WEB): the names the rest of this
    firmware uses (isKeya, disableKeyaSteer), the motor current and the faults kept for the web page,
    the faults reported once in the [status] messages and as the reason autosteer went off
-   (zSafety.ino) instead of printed on every heartbeat; no prints on the USB serial while steering.
+   (zSafety.ino) instead of being printed on every heartbeat; no prints on the USB serial while steering;
+   the fault name "less phase" written "phase loss".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -20,7 +21,7 @@
 //     turns slower than it was told (the driver holds the wheel), keyaSlip grows;
 //   - the motor position as the wheel angle when AgOpenGPS has the WAS on "differential" (no WAS on
 //     the board): position / counts per degree, corrected slowly by the wheel angle measured from
-//     the GPS heading (zHandlers.ino), as the AiO firmware;
+//     the GPS heading (zHandlers.ino), as in the AiO firmware;
 //   - a fault (over / under voltage, over current, stall, hall, ...) turns autosteer off.
 
 #ifndef lowByte
@@ -72,7 +73,7 @@ void CAN_Setup()
 static void keyaFaultText(uint16_t f, char* out, size_t n)
 {
 	static const char* const B7[8] = {nullptr, "over voltage", "hardware protection", "E2PROM", "under voltage", "N/A", "over current", "mode failure"};
-	static const char* const B6[8] = {"less phase", "motor stall", "reserved", "hall failure", "current sensing", "no RS232 steer command", "no CAN steer command", "motor stalled"};
+	static const char* const B6[8] = {"phase loss", "motor stall", "reserved", "hall failure", "current sensing", "no RS232 steer command", "no CAN steer command", "motor stalled"};
 	out[0] = '\0';
 	for (uint8_t b = 1; b < 8; b++)
 		if (f & (1u << b)) { size_t k = strlen(out); snprintf(out + k, n - k, "%s%s", k ? ", " : "", B7[b]); }
@@ -131,7 +132,7 @@ void KeyaBus_Receive()
                     keyaFaultText(faults, t, sizeof(t));
                     StatusLog.line("[status] Keya motor fault: %s - autosteer off", t);
                 }
-                else StatusLog.line("[status] Keya motor: no fault any more");
+                else StatusLog.line("[status] Keya motor: faults cleared");
             }
             keyaFaults = faults | (KeyaBusReceiveData.buf[7] & 1);
             if (faults)

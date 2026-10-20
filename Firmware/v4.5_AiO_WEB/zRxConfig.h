@@ -5,7 +5,7 @@
    lansalot (github.com/lansalot/AOGConfigOMatic, commit cd8800f, GNU GPL v3): Single.txt,
    DualPosition.txt and DualRelPos.txt (u-center configuration files of a ZED-F9P with firmware HPG 1.13;
    the F9P configuration by Jaap van den Handel), ConfigUM982D.txt and ConfigUM982S.txt. Not changed,
-   only put in this form.
+   only converted to this form.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

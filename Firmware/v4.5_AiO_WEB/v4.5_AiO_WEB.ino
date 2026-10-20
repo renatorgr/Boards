@@ -25,10 +25,10 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // v4.5_AiO_WEB.ino  (version number: zVersion.h)
-// AiO_WEB 4.5: the v4.5_UM982_X20P_F9P_TM171_WEB_XIAO firmware with what the AgOpenGPS AiO v4
-// firmware does and that one does not: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the
-// cut beyond the WAS map or above 25 km/h and the WAS map (Autosteer.ino).
-// The GPS2 port is the second F9P's or the XIAO's, chosen on the web page (Settings).
+// AiO_WEB 4.5: the v4.5_UM982_X20P_F9P_TM171_WEB_XIAO firmware plus the parts of the AgOpenGPS AiO v4
+// firmware that it lacked: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the autosteer
+// cut-off beyond the WAS map or above 25 km/h, and the WAS map (Autosteer.ino).
+// The GPS2 port is used by the second F9P or the XIAO, as chosen on the web page (Settings).
 //
 //   GPS / heading: UM982 dual antenna (GGA + VTG + HPR on Serial7), or
 //                  dual F9P: first F9P on Serial7 (GGA + VTG), second F9P on Serial2 (RELPOSNED), or
@@ -142,13 +142,13 @@ FlexCAN_T4<CAN3, RX_SIZE_256, TX_SIZE_256> Keya_Bus;
 
 extern "C" uint32_t set_arm_clock(uint32_t frequency);
 
-// Keya motor on the CAN bus (KeyaCANBUS.ino): found by its heartbeat, at start-up or later (as the
+// Keya motor on the CAN bus (KeyaCANBUS.ino): found by its heartbeat, at start-up or later (as in the
 // AiO firmware). true = steering by the Keya; false = Cytron (hydraulic valve), IBT2 or Danfoss,
 // as set in the program
 bool isKeya = false;
 bool keyaIntendToSteer = false;         // Autosteer.ino: steering now (the Keya gets enable / disable)
 // What the Keya said last (KeyaCANBUS.ino; Autosteer.ino, web page)
-int16_t  keyaSteeringPosition   = 0;    // motor position (heartbeat bytes 0-1, sign as the AiO firmware)
+int16_t  keyaSteeringPosition   = 0;    // motor position (heartbeat bytes 0-1, sign as in the AiO firmware)
 int16_t  keyaCurrentActualSpeed = 0;    // motor speed
 int16_t  keyaCurrentSetSpeed    = 0;    // the speed it was told (x 0.1)
 int16_t  keyaCurrent            = 0;    // motor current (heartbeat bytes 4-5)
@@ -160,7 +160,7 @@ uint32_t keyaHeartbeats         = 0;
 elapsedMillis TM171lastData;
 
 // AiO_WEB: wheel angle from the GPS heading (zHandlers.ino), for the Keya without a WAS (Autosteer.ino),
-// as the AgOpenGPS AiO v4 firmware
+// as in the AgOpenGPS AiO v4 firmware
 #define WHEELBASE_M     3.20            // metres (the AiO firmware's wheelBase)
 float   wheelAngleGPS   = 0;            // degrees
 bool    wheelAngleGPSOk = false;        // moving above 1 km/h with a heading that turns believably
@@ -207,7 +207,7 @@ void setup()
     delay(10);
     Serial.begin(baudAOG);
     delay(10);
-    // The start-up messages, one per fact, all through the [status] log (USB and the web page's Messages):
+    // The start-up messages, one line each, all through the [status] log (USB and the web page's Messages):
     // firmware and build, why it started, settings, autosteer (ADS1115), Ethernet UDP ports, IMU, Keya,
     // watchdog, setup time. The module's IP and the page's address: "[status] Ethernet: link up" (zStatus.ino).
 #ifdef TEENSYDUINO
@@ -218,13 +218,13 @@ void setup()
     bootReport();                       // power on / restart / watchdog / crash (zSafety.ino)
     settingsLoad();                     // web page settings from the EEPROM (defaults if none)
     StatusLog.line("[boot] Settings %s: output %s%s, GPS2 port %s",
-                   cfgFromEeprom ? "from the EEPROM" : "default (nothing saved yet)",
+                   cfgFromEeprom ? "from the EEPROM" : "at defaults (nothing saved yet)",
                    cfg.outputMode == OUT_AUTO ? "automatic (by the program's hello; classic until then)" :
                    cfg.outputMode == OUT_CLASSIC ? "classic $PAOGI/$PANDA" : "standard set",
                    settingsAutoSetNow ? " (set to automatic by this version, once; can be changed on the web page)" : "",
                    gps2Name());
     if (cfg.wasCheckOff) StatusLog.line("[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer");
-    if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program");
+    if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program");
 
     SerialGPS->begin(baudGPS);          // the GNSS receiver
     SerialGPS->addMemoryForRead(GPSrxbuffer,  sizeof(GPSrxbuffer));
@@ -267,7 +267,7 @@ void setup()
         }
     }
     if (!isKeya)
-        StatusLog.line("[boot] No Keya heartbeat: steering by the valve / motor driver set in the program (Cytron, IBT2, Danfoss); a Keya found later is used");
+        StatusLog.line("[boot] No Keya heartbeat: steering by the valve / motor driver set in the program (Cytron, IBT2, Danfoss); a Keya found later will be used");
 
     gnssFlushAfterSetup();   // drop the stale GPS data that piled up while setup() was blocking
 
@@ -277,7 +277,7 @@ void setup()
 }
 
 // ----- Main Loop -----
-// loopStep says which part runs, for the watchdog report (zSafety.ino, stepName)
+// loopStep says which part is running, for the watchdog report (zSafety.ino, stepName)
 void loop()
 {
     wdtFeed();                                    // hardware watchdog (zSafety.ino)
@@ -360,7 +360,7 @@ void loop()
         }
 
         // Forward to GPS (RTCM corrections pass through to the receiver; not while the receiver check
-        // searches its baud rate, zRxCheck.ino)
+        // searches for its baud rate, zRxCheck.ino)
         if (!passThroughGPS && !rxCkOwns(RXCK_GPS))
         {
             SerialGPS->write(incoming_char);
@@ -370,7 +370,7 @@ void loop()
     // Read NMEA from the receiver (GGA, VTG, HPR)
     loopStep = 3;
     gnssNoteRxBacklog();                          // [status] warns if bytes pile up (Teensy reading too slowly)
-    if (!rxCkOwns(RXCK_GPS) && SerialGPS->available())    // (the receiver check reads it while it searches its baud rate)
+    if (!rxCkOwns(RXCK_GPS) && SerialGPS->available())    // (the receiver check reads it while it searches for its baud rate)
     {
         if (passThroughGPS)
         {
@@ -391,7 +391,7 @@ void loop()
     loopStep = 4;
     udpNtrip();
 
-    // Forward RTK radio (XBee LR) corrections to the receiver. what has arrived, at once (was
+    // Forward RTK radio (XBee LR) corrections to the receiver: everything that has arrived, at once (was
     // one byte per loop), counted for the web page and the [status] messages (zStatus.ino)
     loopStep = 5;
     {

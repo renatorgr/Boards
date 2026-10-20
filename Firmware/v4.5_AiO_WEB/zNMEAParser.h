@@ -3,7 +3,7 @@
    (renatorgr).
    NMEA parser library by Glinnes Hulden (CC0, original header kept below), as used in the AgOpenGPS
    AiO firmware.
-   Change 2026 by Claude (Anthropic): error() to read the error inside the error handler; one strncpy
+   Changes 2026 by Claude (Anthropic): error() to read the error inside the error handler; one strncpy
    replaced by memcpy (same copy, no compiler warning).
    Licence: the original is CC0 (public domain); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */

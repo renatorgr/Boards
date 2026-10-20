@@ -4,8 +4,8 @@
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
    Changes 2026 by Claude (Anthropic): a note about Wire1; Wire1 no longer started in the constructor
-   (with Teensyduino 1.58 and newer it ran before Wire1 existed: crash before setup), autosteerSetup() does it.
-   Licence: as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
+   (with Teensyduino 1.58 and newer it ran before Wire1 existed: crash before setup); autosteerSetup() does it.
+   Licence: same as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 /**************************************************************************/
 /*!

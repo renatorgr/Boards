@@ -8,7 +8,7 @@
    found (TM171 or BNO085, zImu.ino); the receiver's #VERSIONA answer and UBX message names go to
    zReceiver.ino. AiO_WEB 4.5: the dual heading also from a second F9P (hprTake(), zDualF9P.ino);
    with no IMU, the $PAOGI roll from the two antennas; the wheel angle from the heading's turn rate
-   (for the Keya without a WAS), as the AgOpenGPS AiO v4 firmware; the IMU aligned to the GPS course
+   (for the Keya without a WAS), as in the AgOpenGPS AiO v4 firmware; the IMU aligned to the GPS course
    only once the rig has driven straight for 2.5 s / 5 m, and kept on the course afterwards only for the
    $PAOGI of a dual-antenna receiver (AgOpenWeb and AgOpenGPS with $PANDA align it themselves); the valid sentences and the
    GGA / VTG / HPR rates counted for the receiver check (zRxCheck.ino); the simulator mode setting
@@ -40,7 +40,7 @@
 // Receivers (Serial7, 10 Hz), detected automatically:
 //   UM982 dual antenna:          GGA, VTG, HPR  -> dual heading + TM171
 //   dual F9P (AiO_WEB):          GGA, VTG + the second F9P's RELPOSNED (Serial2) -> dual heading + TM171,
-//                                exactly as an HPR (hprTake(); heading + 90 deg, RTK fixed only)
+//                                exactly like an HPR (hprTake(); heading + 90 deg, RTK fixed only)
 //   u-blox F9P / X20P (single):  GGA, VTG       -> TM171 heading (no HPR: the epoch is not held for it)
 // The TM171 (Serial5, 25 Hz) gives roll, pitch, yaw.
 //
@@ -51,7 +51,7 @@
 //           mode V = no dual heading (second antenna lost, no heading solution,
 //           or a single-antenna receiver)
 //   $INHPR  the TM171 ("IN" = inertial talker): heading aligned to the dual heading,
-//           vehicle roll in the PITCH field (AgOpenGPS convention, as the UM982 HPR),
+//           vehicle roll in the PITCH field (AgOpenGPS convention, as in the UM982 HPR),
 //           pitch in the roll field, QF 4 = TM171 OK, QF 0 = TM171 lost (no IMU)
 //
 // AgOpenWeb (a build with the "standard set" epoch assembler, PR #300) joins the four
@@ -71,7 +71,7 @@
 #define RECEIVER_SEEN_MS      3000   // VTG / HPR are waited for only if the receiver sent one this recently
                                      // (a single-antenna F9P / X20P never sends HPR: its epochs go out at once)
 #define HPR_ACCEPT_FLOAT      1      // 1 = dual heading also when HPR QF = 5 (float), 0 = only QF 4 (fixed)
-#define TM171_FRESH_MS        300    // TM171 older than this is considered lost (it sends at 25 Hz)
+#define TM171_FRESH_MS        300    // TM171 data older than this is considered lost (it sends at 25 Hz)
 
 // TM171 mounting. Roll sign / zero: use AgOpenWeb's "Roll invert" and "Roll zero".
 #define TM171_SWAP_ROLL_PITCH 0      // 1 = TM171 rotated 90 deg on the board (AOG "Use Y axis" also swaps at runtime)
@@ -97,13 +97,13 @@
 #define COURSE_MAX_STEP_DEG   0.2f   // max correction per epoch
 #define COURSE_FWD_DEG        45.0f  // |course - heading| below this = driving forward
 #define COURSE_REV_DEG        135.0f // |course - heading| above this = reversing (the course is 180 deg off the heading)
-#define COURSE_RESEED_EPOCHS  30     // driving straight 3 s with a course that fits neither: re-align to the course (forward assumed)
-#define COURSE_SEED_KMH       3.0f   // TM171 never aligned since start-up: aligned to the course above this speed (forward assumed)...
+#define COURSE_RESEED_EPOCHS  30     // driving straight for 3 s with a course that fits neither: re-align to the course (forward assumed)
+#define COURSE_SEED_KMH       3.0f   // TM171 not aligned since start-up: aligned to the course above this speed (forward assumed)...
 #define COURSE_SEED_MS        2500   // ...without a break for this long...
 #define COURSE_SEED_DIST_M    5.0f   // ...over at least this distance...
 #define COURSE_SEED_SPREAD_DEG 10.0f // ...the course staying within this of where the run started. A receiver standing still
                                      // without RTK jumps 1-2 m now and then (one "course" above 3 km/h), but does not travel
-                                     // 5 m the same way for 2.5 s; a tractor does, with or without RTK
+                                     // 5 m in one direction for 2.5 s; a tractor does, with or without RTK
 #define SIGN_LEARN_DUAL_DEG   60.0f  // turning needed to lock the TM171 yaw direction against the dual heading
 #define SIGN_LEARN_COURSE_DEG 30.0f  // ...against the GPS course (no dual heading: learn it sooner)
 #define POS_HISTORY           30     // GGA positions kept (3 s at 10 Hz) for the speed fallback and the course
@@ -176,7 +176,7 @@ bool          yawSignLocked  = (TM171_YAW_SIGN != 0);
 bool          signHaveLast   = false;
 float         signLastDual   = 0, signLastTm = 0;
 float         signCorr       = 0, signMag = 0;
-char          signSrc        = '-';  // reference of the sign learning: 'D' dual heading, 'C' GPS course
+char          signSrc        = '-';  // reference for the sign learning: 'D' dual heading, 'C' GPS course
 char          offsetFrom     = '-';  // what aligned the TM171 heading: 'D' dual heading, 'C' GPS course
 bool          tmPrevOk       = false;
 float         tmPrevRaw      = 0;
@@ -390,7 +390,7 @@ static void rxReplyNote(const char* l)
     const bool answer = !strncmp(l, "$command", 8);
     // the answer to the Teensy's own VERSIONA (zReceiver.ino) is not shown in the console
     if (answer && (int32_t)(rxIdQuietUntil - millis()) > 0 && (int32_t)(rxReplyUntilMs - millis()) <= 0 && strstr(l, "VERSIONA")) return;
-    // the answers to the page's UM982 settings (zReceiver.ino) neither, unless a command was typed in the console
+    // nor are the answers to the page's UM982 settings (zReceiver.ino), unless a command was typed in the console
     if (answer && umQuiet() && (int32_t)(rxReplyUntilMs - millis()) <= 0) return;
     if (!answer && ((int32_t)(rxReplyUntilMs - millis()) <= 0 || isNormalOutput(l))) return;
     for (const char* p = l; *p; p++) if ((uint8_t)*p < 0x20 || (uint8_t)*p > 0x7E) return;   // binary data
@@ -519,7 +519,7 @@ static bool gpsCourse(float& course, float& kmh, float& tmTurn)
     return false;
 }
 
-// Knots and track (deg; -1 when standing) from the distance travelled over the window.
+// Knots and track (deg; -1 when standing still) from the distance travelled over the window.
 // False when there are not enough positions.
 static bool motionFromPositions(float& knots, float& trackDeg)
 {
@@ -649,13 +649,13 @@ void hprRawSet(const char* text)
 }
 
 // A dual heading with this QF is used: 4 (fixed), or 5 (float) when accepted on the page - never
-// from the second F9P (as the AiO firmware: RTK fixed only)
+// from the second F9P (as in the AiO firmware: RTK fixed only)
 static bool hprQfOk(int qf)
 {
     return qf == 4 || (qf == 5 && cfg.hprAcceptFloat && dualSrc != 'F');
 }
 
-// AiO_WEB: wheel angle from the turn rate of the heading and the speed (as the AiO firmware, for the
+// AiO_WEB: wheel angle from the turn rate of the heading and the speed (as in the AiO firmware, for the
 // Keya without a WAS, Autosteer.ino): rate = change of the dual heading (or the aligned IMU heading)
 // between epochs; reverse when the GPS track is more than 120 deg from it
 static void wheelAngleFromHeading(uint32_t now, const char* track)
@@ -751,7 +751,7 @@ static void sendStandard(const char* track, const char* kmh, float r, float p)
     else           strcpy(body, "GNTHS,,V");
     sendSentence(body, 2);
 
-    // ---- $INHPR: TM171 heading, PITCH field = vehicle roll (as the UM982 HPR), roll field = pitch, QF 4
+    // ---- $INHPR: TM171 heading, PITCH field = vehicle roll (as in the UM982 HPR), roll field = pitch, QF 4
     // Heading: the TM171 heading as aligned here, but without the steps of a re-alignment by the GPS course
     // (stdShift): AgOpenWeb fuses the IMU heading with its own offset, so a step would look like a turn.
     float hStd = wrap360(lastOut + stdShift);
@@ -829,7 +829,7 @@ static void sendClassic(const char* kmh, float r, float p)
 
 // No dual heading, TM171 OK: correct the TM171 heading with the GPS course while driving straight.
 // Also learns the TM171 yaw direction from the course, and aligns the TM171 to the course when it
-// was never aligned since start-up (forward assumed).
+// has not been aligned since start-up (forward assumed).
 static void courseCorrect(float tmRaw)
 {
     float course, kmh, turn;
@@ -1070,7 +1070,7 @@ void gnssProcess()
         else if (gpsCourse(course, kmh, turn) && kmh >= COURSE_MIN_KMH)
         {
             // GPS course while moving: TM171 lost, or its direction / alignment not known yet.
-            // Reverse told by continuity with a trusted heading; with none, forward is assumed.
+            // Reverse detected by continuity with a trusted heading; with none, forward is assumed.
             lastCourse = course;
             if (classicHdgTrusted && fabsf(wrap180(course - classicHdg)) > 90.0f) course = wrap360(course + 180.0f);
             classicSrc = 3;
