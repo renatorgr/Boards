@@ -10,7 +10,9 @@
    firmware (UM982 / X20P / F9P detection, IMU heading, standard and classic output, automatic mode,
    web page, update over the network, XIAO link, autosteer safety and watchdog, receiver
    identification and settings, BNO085, the AiO firmware's Keya) and, in this AiO_WEB line, the dual
-   F9P on the GPS2 port and the rest of the AiO firmware's steering.
+   F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack polled from
+   loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
+   by lansalot, zRxConfig.h) and the simulator mode setting.
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -89,6 +91,7 @@ uint32_t gpsReadyTime = 0;
 #ifdef ARDUINO_TEENSY41
 #include <NativeEthernet.h>
 #include <NativeEthernetUdp.h>
+#include "zNet.h"                       // the network stack runs from loop(), not from an interrupt
 
 struct ConfigIP {
     uint8_t ipOne   = 192;
@@ -114,7 +117,7 @@ IPAddress Eth_ipDestination;
 
 // Serial buffers
 constexpr int serial_buffer_size = 512;
-uint8_t GPSrxbuffer[serial_buffer_size];
+uint8_t GPSrxbuffer[2048];                 // the receiver: 2048 so a long loop (about 1 s of a UM982 at 10 Hz) loses nothing
 uint8_t GPStxbuffer[serial_buffer_size];
 uint8_t RTKrxbuffer[serial_buffer_size];
 
@@ -185,6 +188,7 @@ uint8_t aogSerialCmdCounter   = 0;
 void setup()
 {
     bootCapture();                      // why the Teensy started, before anything clears it (zSafety.ino)
+    faultHookInstall();                 // a crash switches the steering outputs off at once (zSafety.ino)
     delay(500);
 
     pinMode(GGAReceivedLED,        OUTPUT);
@@ -203,20 +207,27 @@ void setup()
     delay(10);
     Serial.begin(baudAOG);
     delay(10);
-    Serial.println("Start " FW_NAME " setup");
+    // The start-up messages, one per fact, all through the [status] log (USB and the web page's Messages):
+    // firmware and build, why it started, settings, autosteer (ADS1115), Ethernet UDP ports, IMU, Keya,
+    // watchdog, setup time. The module's IP and the page's address: "[status] Ethernet: link up" (zStatus.ino).
+#ifdef TEENSYDUINO
+    StatusLog.line("[boot] " FW_NAME ", built " __DATE__ " " __TIME__ " with Teensyduino %d.%02d", TEENSYDUINO / 100, TEENSYDUINO % 100);
+#else
+    StatusLog.line("[boot] " FW_NAME ", built " __DATE__ " " __TIME__);
+#endif
+    bootReport();                       // power on / restart / watchdog / crash (zSafety.ino)
     settingsLoad();                     // web page settings from the EEPROM (defaults if none)
-    StatusLog.line("[boot] " FW_NAME ", settings %s, output %s%s, GPS2 port %s",
-                   cfgFromEeprom ? "from EEPROM" : "default",
+    StatusLog.line("[boot] Settings %s: output %s%s, GPS2 port %s",
+                   cfgFromEeprom ? "from the EEPROM" : "default (nothing saved yet)",
                    cfg.outputMode == OUT_AUTO ? "automatic (by the program's hello; classic until then)" :
                    cfg.outputMode == OUT_CLASSIC ? "classic $PAOGI/$PANDA" : "standard set",
                    settingsAutoSetNow ? " (set to automatic by this version, once; can be changed on the web page)" : "",
                    gps2Name());
-    bootReport();                       // power on / restart / watchdog / crash (zSafety.ino)
     if (cfg.wasCheckOff) StatusLog.line("[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer");
+    if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program");
 
-    Serial.println("GNSS receiver on Serial7");
-    SerialGPS->begin(baudGPS);
-    SerialGPS->addMemoryForRead(GPSrxbuffer,  serial_buffer_size);
+    SerialGPS->begin(baudGPS);          // the GNSS receiver
+    SerialGPS->addMemoryForRead(GPSrxbuffer,  sizeof(GPSrxbuffer));
     SerialGPS->addMemoryForWrite(GPStxbuffer, serial_buffer_size);
 
     delay(10);
@@ -225,27 +236,20 @@ void setup()
 
     xiaoSetup();                        // GPS2 port, Serial2: XIAO ESP32 (zXiao.ino) or second F9P (zDualF9P.ino)
 
-    Serial.println("SerialAOG, SerialRTK, SerialGPS, Serial2 (GPS2 port) initialized");
-
-    Serial.println("\r\nStarting AutoSteer...");
-    autosteerSetup();
-
-    Serial.println("\r\nStarting Ethernet...");
+    autosteerSetup();                   // ADS1115 (WAS), steer settings from the EEPROM (Autosteer.ino)
     EthernetStart();
     webSetup();                         // web page on port 80 (zWeb.ino)
+    netPollFromLoop();                  // from now on the network stack runs from loop() (zNet.h)
 
-    Serial.println("\r\nLooking for the IMU (TM171 / BNO085)...");
     // zImu.ino: TM171 or BNO085 (RVC) on Serial5, else BNO085 on I2C. Roll always comes from
     // it; heading whenever there is no valid dual heading (always with an F9P / X20P).
     imuSetup();
 
-    Serial.println("Starting CANBUS...");
     CAN_Setup();
 
     // Auto-detect Keya motor by listening for its CAN heartbeat (ID 0x07000001).
     // Listen for 2 seconds - Keya heartbeats every 20ms so plenty of time.
     // If no heartbeat seen, assume hydraulic via Cytron.
-    Serial.println("Detecting steering type (Keya CAN / Hydraulic)...");
     {
         uint32_t detectStart = millis();
         while (millis() - detectStart < 2000)
@@ -256,6 +260,7 @@ void setup()
             imuProcess();
             dualF9pProcess();   // same for the GPS2 port: the second F9P,
             xiaoProcess();      // or the XIAO (its boot lines and first hello)
+            netPoll();          // the network stack (zNet.h)
 
             KeyaBus_Receive();  // a heartbeat sets isKeya (KeyaCANBUS.ino)
             if (isKeya) break;
@@ -268,7 +273,7 @@ void setup()
 
     wdtStart();              // hardware watchdog, 2 s (zSafety.ino; can be switched off on the web page)
 
-    Serial.println("\r\nEnd setup, waiting for GPS...\r\n");
+    StatusLog.line("[boot] Setup done in %lu.%lu s", (unsigned long)(millis() / 1000), (unsigned long)(millis() / 100 % 10));
 }
 
 // ----- Main Loop -----
@@ -276,6 +281,11 @@ void setup()
 void loop()
 {
     wdtFeed();                                    // hardware watchdog (zSafety.ino)
+    loopTick();                                   // how long the loops take, for the report (zSafety.ino)
+
+    // the network stack: TCP timers, the web page's connections, link (zNet.h, zEthernet.ino)
+    loopStep = 14;
+    netPoll();
 
     loopStep = 1;
     KeyaBus_Receive();
@@ -306,7 +316,7 @@ void loop()
 
                 Serial.print("Checking for NMEA at "); Serial.println(baudGPS);
                 SerialGPS->begin(baudGPS);
-                delay(300);
+                netDelay(300);
                 wdtFeed();
                 while (SerialGPS->available()) SerialGPS->read(); // flush
 
@@ -316,6 +326,7 @@ void loop()
                 while (millis() - t < 800)
                 {
                     wdtFeed();
+                    netPoll();
                     if (SerialGPS->available())
                     {
                         char c = SerialGPS->read();
@@ -348,8 +359,9 @@ void loop()
             aogSerialCmdCounter = 0;
         }
 
-        // Forward to GPS (RTCM corrections pass through to the receiver)
-        if (!passThroughGPS)
+        // Forward to GPS (RTCM corrections pass through to the receiver; not while the receiver check
+        // searches its baud rate, zRxCheck.ino)
+        if (!passThroughGPS && !rxCkOwns(RXCK_GPS))
         {
             SerialGPS->write(incoming_char);
         }
@@ -358,7 +370,7 @@ void loop()
     // Read NMEA from the receiver (GGA, VTG, HPR)
     loopStep = 3;
     gnssNoteRxBacklog();                          // [status] warns if bytes pile up (Teensy reading too slowly)
-    if (SerialGPS->available())
+    if (!rxCkOwns(RXCK_GPS) && SerialGPS->available())    // (the receiver check reads it while it searches its baud rate)
     {
         if (passThroughGPS)
         {
@@ -367,6 +379,7 @@ void loop()
         else
         {
             uint8_t gc = SerialGPS->read();
+            rxCkBytes[RXCK_GPS]++;                // the data at 460800 (zRxCheck.ino)
             if (!ubxFeed(gc))                     // u-blox UBX frames are taken out (zReceiver.ino)
             {
                 rawNmeaTee((char)gc);             // [raw] lines on USB when RAW_NMEA_DEBUG = 1
@@ -388,7 +401,7 @@ void loop()
             uint8_t rb[128];
             if (n > (int)sizeof(rb)) n = sizeof(rb);
             for (int k = 0; k < n; k++) rb[k] = (uint8_t)SerialRTK.read();
-            SerialGPS->write(rb, n);
+            if (!rxCkOwns(RXCK_GPS)) SerialGPS->write(rb, n);
             statusNoteRadio(rb, (uint16_t)n);
         }
     }
@@ -429,6 +442,7 @@ void loop()
     // the receiver's model, the u-blox settings from the web page (zReceiver.ino)
     loopStep = 13;
     receiverLoop();
+    rxCheckLoop();                                // the receiver check: data, baud rate, settings (zRxCheck.ino)
 
     loopStep = 12;
     if (Ethernet.linkStatus() == LinkOFF)

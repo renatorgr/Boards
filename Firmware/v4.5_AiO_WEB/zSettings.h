@@ -58,7 +58,12 @@ struct WebSettings
     uint8_t  wasCheckOff;         // 1 = WAS voltage check off (bench without a WAS). 0 = on (default; was
                                   //       reserved = 0, so settings saved by older versions get the check on), zSafety.ino
     uint8_t  wdtOff;              // 1 = hardware watchdog off (from the next start). 0 = on (default), zSafety.ino
-    uint8_t  reserved[3];         // room for later settings (keep the block size)
+    uint8_t  umSingle;            // 1 = UM982 with one antenna (no dual-antenna heading on the page; the receiver
+                                  //       check loads ConfigUM982S.txt). 0 = two antennas (default; was reserved = 0)
+    uint8_t  simMode;             // 1 = simulator mode, for the program's simulator only: the GPS is not sent to the
+                                  //       program (AgOpenWeb stops its simulator while it gets GPS sentences, with or
+                                  //       without a fix), zHandlers.ino. 0 = off (default; was reserved = 0)
+    uint8_t  reserved[1];         // room for later settings (keep the block size)
     uint8_t  checksum;
 };
 

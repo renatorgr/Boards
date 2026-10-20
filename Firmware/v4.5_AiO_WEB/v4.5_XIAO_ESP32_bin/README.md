@@ -6,8 +6,8 @@ The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
 | File | What for |
 |---|---|
-| `v4.5_XIAO_ESP32C3.bin` | XIAO ESP32C3: update over WiFi (XIAO page → Program) |
-| `v4.5_XIAO_ESP32S3.bin` | XIAO ESP32S3: update over WiFi (XIAO page → Program) |
+| `v4.5_XIAO_ESP32C3.bin` | XIAO ESP32C3: update over WiFi (XIAO page → Firmware) |
+| `v4.5_XIAO_ESP32S3.bin` | XIAO ESP32S3: update over WiFi (XIAO page → Firmware) |
 | `v4.5_XIAO_ESP32C3_USB.bin` | XIAO ESP32C3: first install over USB-C, at address 0x0 |
 | `v4.5_XIAO_ESP32S3_USB.bin` | XIAO ESP32S3: first install over USB-C, at address 0x0 |
 
@@ -29,9 +29,9 @@ It can also be installed from the Arduino IDE, by compiling the program (see the
 
 ## Later: update over WiFi
 
-- Phone on the XIAO's network → page → **Program** → choose the `.bin` **without** "_USB" for your XIAO → password → **Install**.
+- Phone on the XIAO's network → page → **Firmware** → choose the `.bin` **without** "_USB" for your XIAO → password → **Install**.
 - The WiFi settings are kept.
-- Or, when the phone has internet: **Program → Install from GitHub** downloads the right file from github.com/renatorgr/Boards by itself (see the program's README).
+- Or, when the phone has internet: **Firmware → Install from GitHub** downloads the right file from github.com/renatorgr/Boards by itself (see the program's README).
 
 ## Credits and licence
 

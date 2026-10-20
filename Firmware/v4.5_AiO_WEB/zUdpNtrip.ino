@@ -4,7 +4,8 @@
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic): datagrams read in pieces of the buffer size, [status] count;
-   the RTCM messages counted (zRtcm.h, zStatus.ino).
+   the RTCM messages counted (zRtcm.h, zStatus.ino); not written while the receiver check searches or
+   changes the receiver's baud rate (zRxCheck.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -29,7 +30,7 @@ void udpNtrip()
     {
       const int n = Eth_udpNtrip.read(Eth_NTRIP_packetBuffer, sizeof(Eth_NTRIP_packetBuffer));
       if (n <= 0) break;
-      SerialGPS->write(Eth_NTRIP_packetBuffer, n);
+      if (!rxCkOwns(RXCK_GPS)) SerialGPS->write(Eth_NTRIP_packetBuffer, n);   // (not while the receiver check searches its baud rate)
       statusNoteRtcm((const uint8_t*)Eth_NTRIP_packetBuffer, (uint16_t)n);   // [status] messages, web page (zStatus.ino)
       total += n;
     }

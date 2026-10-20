@@ -40,12 +40,16 @@ enum SteerOff : uint8_t
 // the main .ino comes first)
 extern volatile uint8_t loopStep;     // which part of loop() runs (for the watchdog report)
 void  wdtFeed();
+void  loopTick();                     // top of loop(): how long the loops take (the report, web page Firmware tab)
+extern uint32_t loopCount, loopMaxUs, loopMax5Us;
 void  wdtStart();
 // C linkage declared here, before the prototypes the Arduino IDE adds. The IDE writes its own
 // prototype of wdtWarnC without extern "C" (it only sees extern "C" { } blocks), and a C++ declaration
 // before the extern "C" definition stopped an earlier build in the IDE ("conflicting declaration of
 // 'void wdtWarnC(const uint32_t*)' with 'C' linkage"). A C declaration first, then the IDE's, is allowed.
 extern "C" void wdtWarnC(const uint32_t* frame);
+extern "C" void faultHookC(const uint32_t* frame);    // the same for the crash hook
+void  faultHookInstall();
 void  wdtLongTimeout();
 void  bootCapture();
 void  bootReport();

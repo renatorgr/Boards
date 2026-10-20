@@ -38,13 +38,8 @@ static const char* dualSentence() { return outClassicNow() ? "$PAOGI" : "$GNTHS"
 static const char* imuSentence()  { return outClassicNow() ? (receiverIsDual() ? "$PAOGI" : "$PANDA") : "$INHPR"; }
 // AiO_WEB: the dual heading comes from the UM982 (HPR) or from the second F9P (RELPOSNED, zDualF9P.ino)
 static const char* dualMsg() { return dualSrc == 'F' ? "RELPOSNED" : "HPR"; }
-static const char* noDualTag()
-{
-    static char t[40];
-    if (!outClassicNow()) return "($GNTHS mode V)";
-    snprintf(t, sizeof(t), "(%s heading in $PAOGI)", imuName());   // TM171 or BNO085
-    return t;
-}
+// After a line that says what goes to the program: in the simulator mode nothing goes (zHandlers.ino)
+static const char* simHeldTag() { return cfg.simMode ? " (now held back: simulator mode)" : ""; }
 
 static uint32_t aogLastMs  = 0;     // last UDP packet from AgOpenWeb (port 8888)
 static uint8_t  aogIp[4]   = {0, 0, 0, 0};
@@ -205,7 +200,7 @@ static const char* fixName(int q)
     switch (q)
     {
         case 0:  return "no fix";
-        case 1:  return "GPS single";
+        case 1:  return "single, no corrections";
         case 2:  return "DGPS";
         case 4:  return "RTK fixed";
         case 5:  return "RTK float";
@@ -228,7 +223,8 @@ static void csToText(int32_t cs, char* out, size_t n)
 
 // Every 5 s: the sentence types the receiver sent in that window, with their rate, e.g.
 // "[status] GPS: the receiver sends (last 5 s): GNGGA 10.0 Hz, GNHPR 10.0 Hz, GNVTG 10.0 Hz".
-// Printed only when the set of types changes. Counted before the parser (zHandlers.ino).
+// Printed only when the set of types changes (GGA, VTG, HPR...: the talker GN / GP is left out of the
+// comparison). Counted before the parser (zHandlers.ino).
 char rxTypesLast[300] = "";        // the last 5 s summary (web page)
 
 static void statusRxTypes()
@@ -243,8 +239,19 @@ static void statusRxTypes()
     for (uint8_t k = 0; k < rxTypeCount; k++)
     {
         char item[48];
-        snprintf(item, sizeof(item), "%s%.15s", k ? "," : "", rxTypes[k].name);
-        strncat(set, item, sizeof(set) - strlen(set) - 1);
+        // the set without the talker (GNGGA and GPGGA are both GGA): a UM982 with a GPS-only fix switches
+        // between GN and GP every few seconds, and the line would come every 5 s
+        const char* nm = rxTypes[k].name;
+        const char* ty = (strlen(nm) == 5 && (nm[0] == 'G' || nm[0] == 'B')) ? nm + 2 : nm;
+        char key[20];
+        snprintf(key, sizeof(key), ",%.15s,", ty);
+        char have[164];
+        snprintf(have, sizeof(have), ",%s,", set);
+        if (!strstr(have, key))
+        {
+            snprintf(item, sizeof(item), "%s%.15s", set[0] ? "," : "", ty);
+            strncat(set, item, sizeof(set) - strlen(set) - 1);
+        }
         const unsigned tenths = (unsigned)rxTypes[k].count * 10u / (STATUS_SILENCE_MS / 1000u);   // Hz x 10 (whole numbers, no compiler warning)
         snprintf(item, sizeof(item), "%s%.15s %u.%u Hz", k ? ", " : "", rxTypes[k].name, tenths / 10u, tenths % 10u);
         strncat(line, item, sizeof(line) - strlen(line) - 1);
@@ -265,11 +272,11 @@ static void statusRxTypes()
     StatusLog.println(line);
 }
 
-// While there is no dual heading: say WHY (the most frequent reason over the last 5 s window),
-// with the last HPR exactly as the receiver sent it. Printed when the state starts, and again
-// when the reason changes.
+// While there is no dual heading: say WHY (the most frequent reason over the last 5 s window), then
+// (when the state starts) what the program gets meanwhile, then the last HPR exactly as the receiver
+// sent it. Printed when the state starts, and again when the reason changes.
 static int noDualWhyReported = -1;
-static void statusNoDualWhy(bool force)
+static void statusNoDualWhy(bool force, const char* meanwhile)   // meanwhile: nullptr = only the reason
 {
     int why = epochNoDual;                         // fallback: the last epoch's reason
     uint32_t best = 0;
@@ -281,12 +288,12 @@ static void statusNoDualWhy(bool force)
 
     char b[340];
     if (why == NODUAL_QF && dualSrc == 'F')
-        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - the second F9P has no RTK fixed solution between "
-                               "the antennas (carrSoln %u%s): antennas, cables, the RTCM from the first F9P", noDualTag(), dualF9pCarr,
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the second F9P has no RTK fixed solution between "
+                               "the antennas (carrSoln %u%s): antennas, cables, the RTCM from the first F9P", dualF9pCarr,
                  dualF9pCarr == 1 ? ", float" : "");
     else if (why == NODUAL_QF)
-        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - the UM982 sends HPR with QF %d: "
-                               "it has no heading solution from its two antennas (antennas, cables, UM982 heading setup)", noDualTag(), hprQf);
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the UM982 sends HPR with QF %d: "
+                               "it has no heading solution from its two antennas (antennas, cables, UM982 heading setup)", hprQf);
     else if (why == NODUAL_NOT_IN_TIME)
     {
         const uint32_t now = millis();
@@ -294,20 +301,21 @@ static void statusNoDualWhy(bool force)
         csToText(hprUtcCs, tH, sizeof(tH));
         csToText(ggaUtcCs, tG, sizeof(tG));
         if (hprLateAtMs != 0 && now - hprLateAtMs < 2000)
-            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - the %s arrives too late, %lu ms after its GGA "
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the %s arrives too late, %lu ms after its GGA "
                                    "(the firmware waits %d ms; %lu late so far). Please send this line",
-                     noDualTag(), dualMsg(), (unsigned long)hprLateMs, cfg.epochWaitMs, (unsigned long)hprLateCount);
+                     dualMsg(), (unsigned long)hprLateMs, cfg.epochWaitMs, (unsigned long)hprLateCount);
         else if (now - hprMs > 500)
-            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - %s stopped sending %s (last one %lu ms ago)",
-                     noDualTag(), dualSrc == 'F' ? "the second F9P" : "the receiver", dualMsg(), (unsigned long)(now - hprMs));
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - %s stopped sending %s (last one %lu ms ago)",
+                     dualSrc == 'F' ? "the second F9P" : "the receiver", dualMsg(), (unsigned long)(now - hprMs));
         else
-            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - %s arrives but its time (%s) does not match "
-                                   "the GGA time (%s). Please send this line", noDualTag(), dualMsg(), tH, tG);
+            snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - %s arrives but its time (%s) does not match "
+                                   "the GGA time (%s). Please send this line", dualMsg(), tH, tG);
     }
     else
-        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading %s - %s QF %d but its heading is empty or out of range", noDualTag(), dualMsg(), hprQf);
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - %s QF %d but its heading is empty or out of range", dualMsg(), hprQf);
     StatusLog.println(b);
-    StatusLog.print(dualSrc == 'F' ? "[status]   last RELPOSNED from the second F9P: " : "[status]   last HPR from the receiver: ");
+    if (meanwhile && meanwhile[0]) StatusLog.println(meanwhile);
+    StatusLog.print(dualSrc == 'F' ? "[status] last RELPOSNED from the second F9P: " : "[status] last HPR from the receiver: ");
     StatusLog.println(hprRawLast[0] ? hprRawLast : "(none)");
 }
 
@@ -329,7 +337,9 @@ void statusUpdate()
             {
                 StatusLog.print("[status] Ethernet: link up, module IP ");
                 StatusLog.print(Ethernet.localIP());
-                StatusLog.print(", sending to ");
+                StatusLog.print(" (web page http://");
+                StatusLog.print(Ethernet.localIP());
+                StatusLog.print("/), sending to ");
                 StatusLog.print(Eth_ipDestination);
                 StatusLog.print(":");
                 StatusLog.println(portDestination);
@@ -434,19 +444,21 @@ void statusUpdate()
             }
             else if (d == 1)
             {
+                // what the program gets while there is no dual heading (after the reason: statusNoDualWhy)
+                char m[200];
                 if (outClassicNow())
                 {
                     if (tmHeadingUsable())
-                        StatusLog.line("[status] Dual: no dual-antenna heading, AgOpenGPS gets the %s heading in $PAOGI (%s)", imuName(),
-                                       offsetFrom == 'C' ? "aligned to the GPS course" : "aligned to the dual heading, corrected by the GPS course");
+                        snprintf(m, sizeof(m), "[status] Dual: meanwhile AgOpenGPS gets the %s heading in $PAOGI (%s)", imuName(),
+                                 offsetFrom == 'C' ? "aligned to the GPS course" : "aligned to the dual heading, corrected by the GPS course");
                     else
-                        StatusLog.line("[status] Dual: no dual-antenna heading, AgOpenGPS gets the GPS course in $PAOGI while moving (%s %s)", imuName(),
-                                       !epochTmOk ? "lost" : !yawSignLocked ? "turning direction not known yet - set it on the Settings page or drive a few curves"
-                                                                            : "not aligned yet - drive straight above 3 km/h");
+                        snprintf(m, sizeof(m), "[status] Dual: meanwhile AgOpenGPS gets the GPS course in $PAOGI while moving (%s %s)", imuName(),
+                                 !epochTmOk ? "lost" : !yawSignLocked ? "turning direction not known yet - set it on the Settings page or drive a few curves"
+                                                                      : "not aligned yet - drive straight above 3 km/h");
                 }
                 else
-                    StatusLog.line("[status] Dual: no dual-antenna heading %s, AgOpenWeb uses the %s heading (%s)", noDualTag(), imuName(), imuSentence());
-                statusNoDualWhy(true);
+                    snprintf(m, sizeof(m), "[status] Dual: meanwhile AgOpenWeb uses the %s heading (%s; $GNTHS mode V)", imuName(), imuSentence());
+                statusNoDualWhy(true, m);
             }
             else
             {
@@ -454,23 +466,23 @@ void statusUpdate()
                     StatusLog.line("[status] Dual: the second F9P stopped sending RELPOSNED, %s gets the %s heading (%s) - check the second F9P (UBX-NAV-RELPOSNED on UART1, 460800)",
                                    outClassicNow() ? "AgOpenGPS" : "AgOpenWeb", imuName(), outClassicNow() ? "$PAOGI" : imuSentence());
                 else if (!outClassicNow())
-                    StatusLog.line("[status] Single antenna: no HPR from the receiver (%s, or HPR off), AgOpenWeb uses the %s heading (%s) - set Dual GPS off",
-                                   rxShortName("F9P / X20P"), imuName(), imuSentence());
+                    StatusLog.line("[status] Single antenna: no HPR from the receiver (%s, or HPR off), AgOpenWeb uses the %s heading (%s) - set Dual GPS off%s",
+                                   rxShortName("F9P / X20P"), imuName(), imuSentence(), simHeldTag());
                 else if (receiverIsDual())
                     StatusLog.line("[status] Dual: the UM982 stopped sending HPR, AgOpenGPS gets the %s heading ($PAOGI) - check the UM982 output (GPHPR 0.1)", imuName());
                 else
-                    StatusLog.line("[status] Single antenna: no HPR from the receiver (%s), sending $PANDA with the %s heading - set the AgOpenGPS heading source to Fix",
-                                   rxShortName("F9P / X20P"), imuName());
+                    StatusLog.line("[status] Single antenna: no HPR from the receiver (%s), sending $PANDA with the %s heading - set the AgOpenGPS heading source to Fix%s",
+                                   rxShortName("F9P / X20P"), imuName(), simHeldTag());
                 if (dualSrc != 'F' && hprRawMs != 0 && now - hprRawMs < RECEIVER_SEEN_MS)
                 {
                     // HPR lines ARE coming in, but none reached HPR_Handler: the parser rejects them
-                    StatusLog.print("[status]   but HPR lines are arriving and none is accepted (bad format?) - please send this line: ");
+                    StatusLog.print("[status] but HPR lines are arriving and none is accepted (bad format?) - please send this line: ");
                     StatusLog.println(hprRawLast);
                 }
                 else if (hprRawLast[0])
                 {
                     char b[80];
-                    snprintf(b, sizeof(b), "[status]   the last %s arrived %lu s ago: ", dualSrc == 'F' ? "RELPOSNED" : "HPR line", (unsigned long)((now - hprRawMs) / 1000));
+                    snprintf(b, sizeof(b), "[status] the last %s arrived %lu s ago: ", dualSrc == 'F' ? "RELPOSNED" : "HPR line", (unsigned long)((now - hprRawMs) / 1000));
                     StatusLog.print(b);
                     StatusLog.println(hprRawLast);
                 }
@@ -510,10 +522,11 @@ void statusUpdate()
     static uint32_t windowMs = 0;
     static uint32_t crcAtWindow = 0;
     static bool     crcBad = false, slowRead = false;
+    static uint8_t  readOkWins = 0;                // windows read on time since the last late one
     if (now - windowMs >= STATUS_SILENCE_MS)
     {
         windowMs = now;
-        if (dual.reported == 1) statusNoDualWhy(false);
+        if (dual.reported == 1) statusNoDualWhy(false, nullptr);
         for (int r = 0; r < NODUAL_COUNT; r++) noDualCount[r] = 0;
 
         // What the receiver sends (every sentence type, before the parser). Printed when the set changes.
@@ -542,6 +555,7 @@ void statusUpdate()
         // More than one whole epoch (GGA + VTG + HPR, about 210 bytes) waiting in the serial buffer
         const uint16_t peak = gnssRxPeak;
         gnssRxPeak = 0;
+        readOkWins = peak >= 256 ? 0 : (readOkWins < 255 ? readOkWins + 1 : 255);
         if (peak >= 256 && !slowRead)
         {
             char b[160];
@@ -549,7 +563,7 @@ void statusUpdate()
             StatusLog.println(b);
             slowRead = true;
         }
-        else if (peak < 256 && slowRead)
+        else if (slowRead && readOkWins >= 6)          // 30 s on time (not one window: it came and went every 10 s)
         {
             StatusLog.println("[status] GPS: receiver data read on time again");
             slowRead = false;

@@ -3,7 +3,8 @@
    (renatorgr).
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
-   Change 2026 by Claude (Anthropic): a note about Wire1.
+   Changes 2026 by Claude (Anthropic): a note about Wire1; Wire1 no longer started in the constructor
+   (with Teensyduino 1.58 and newer it ran before Wire1 existed: crash before setup), autosteerSetup() does it.
    Licence: as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 /**************************************************************************/
@@ -27,8 +28,10 @@ ADS1115_lite::ADS1115_lite(uint8_t i2cAddress) {
 	// Standard, through the level shifters), not Wire (pins 18/19, the BNO085).
 	// Confirmed working on this board's wiring - do not change without
 	// verifying which I2C bus the ADS1115 is actually connected to.
-	Wire1.end();
-	Wire1.begin();
+	// Wire1 is NOT touched here: this constructor runs for the global "adc" before setup(), and from
+	// Teensyduino 1.58 the Wire objects are built at that time too, after the sketch's globals, so
+	// Wire1.begin() here used an empty Wire1 and the Teensy crashed before setup(). autosteerSetup()
+	// starts Wire1 (Wire1.end(); Wire1.begin();) before the first use of the ADS1115.
 	_i2cAddress = i2cAddress;
 	_gain = ADS1115_REG_CONFIG_PGA_2_048V; /* +/- 6.144V range (limited to VDD +0.3V max!) */
 	_mux = ADS1115_REG_CONFIG_MUX_DIFF_0_1; /* to default */

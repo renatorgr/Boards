@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include "zWebJson.h"
 #include "zRtcm.h"
+#include "zRxCheck.h"
 
 // The receiver on Serial7, as it answered (zReceiver.ino)
 enum RxKind : uint8_t
@@ -49,6 +50,7 @@ void        receiverLoop();                     // from loop()
 void        receiverIdentifyAgain();
 const char* rxKindName();                       // "u-blox", "Unicore", ""
 const char* rxShortName(const char* fallback);  // the model, or fallback if not known
+bool        rxSingleAntenna();                  // F9P / X20P alone, UM980 / UM981, UM982 set to one antenna: no dual heading
 void        receiverJson(Json& j);              // GET /api/gps
 // POST /api/gps (zWeb.ino reads the form): each returns nullptr = OK, else the error
 uint8_t     ubxItemCount();
@@ -68,5 +70,7 @@ const char* umStartRead();
 void        umWriteBegin();
 const char* umWriteAdd(uint8_t i, double v);
 const char* umWriteGo();
+// the AgOpenGPS commands of the receiver check (zRxCheck.ino): sent one at a time, SAVECONFIG, read again
+const char* umWriteRaw(const char* const* cmds, uint8_t n, const char* what);
 
 #endif

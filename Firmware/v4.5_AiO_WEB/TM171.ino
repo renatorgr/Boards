@@ -4,7 +4,7 @@
    Based on the TM171.ino of Balázs Gunics' fork of the AgOpenGPS boards
    (github.com/gunicsba/agopengps_boards, firmware V4.1),
    which is based on the work of Paulius a.k.a. babtai (original line kept below).
-   Changes 2026 by Claude (Anthropic): Serial5, bad CRC packets counted instead of printed; the port type
+   Changes 2026 by Claude (Anthropic): Serial5, bad CRC packets and frames too long counted instead of printed; the port type
    TeensySerial (so it compiles with Teensyduino 1.58 and 1.59 or newer); one byte at a
    time (TM171byte), so zImu.ino can listen for a TM171 and a BNO085 on Serial5 at the same time; two compiler
    warnings removed (same code).
@@ -97,7 +97,10 @@ bool TM171byte(uint8_t temp)
         if ((size_t)packetLength + 5 > sizeof(ImuData))   // (size_t), no compiler warning
         {
           parseState = WAIT_HEADER_1;
-          Serial.println("Too big data from TM171!");
+          TM171crcErrors++;                                   // counted with the bad CRCs (web page)
+#ifdef TM171DEBUG
+          Serial.println("[tm171] frame too long, dropped");
+#endif
         }
         break;
       
@@ -141,7 +144,7 @@ bool TM171byte(uint8_t temp)
           YawV.fBytes[3] = ImuData[22];
       
 #ifdef TM171DEBUG
-          Serial.print("yaw=");
+          Serial.print("[tm171] yaw=");
           Serial.print(YawV.fValue);
           Serial.print(",pitch=");
           Serial.print(PitchV.fValue);
@@ -157,14 +160,14 @@ bool TM171byte(uint8_t temp)
           TemperatureV.fBytes[3] = ImuData[14];
           qos = ImuData[17] & 0x07;
 #ifdef TM171DEBUG
-          Serial.print("Temp status:"); Serial.print(TemperatureV.fValue);
-          Serial.print(",QoS:"); Serial.println(qos);
+          Serial.print("[tm171] temperature "); Serial.print(TemperatureV.fValue);
+          Serial.print(", QoS "); Serial.println(qos);
 #endif
         break;
         
         default:
 #ifdef TM171DEBUG
-          Serial.print("Unhandled packet type: ");
+          Serial.print("[tm171] unhandled packet type 0x");
           Serial.println(functionCode, HEX);
 #endif
         break;
@@ -176,7 +179,7 @@ bool TM171byte(uint8_t temp)
         // next one, 25 per second, replaces it. Counted instead of printed.
         TM171crcErrors++;
 #ifdef TM171DEBUG
-        Serial.println("TM171: bad CRC, packet dropped");
+        Serial.println("[tm171] bad CRC, packet dropped");
 #endif
       }
       // Reset for next packet

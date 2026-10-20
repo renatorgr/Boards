@@ -95,7 +95,16 @@ static bool rvcByte(uint8_t b, bool use)
 // ---------------------------------------------------------------- BNO085 on I2C
 static bool bnoStart(uint8_t addr)
 {
-    if (!bno08x.begin(addr, Wire)) return false;
+    // begin() resets the BNO085 and asks for its product ID once. A BNO085 that kept running while the
+    // Teensy restarted (a software restart or an update, no power cut) can answer that first question
+    // late or with another packet: up to 3 tries, 200 ms apart.
+    bool ok = false;
+    for (uint8_t t = 0; t < 3 && !ok; t++)
+    {
+        if (t) { wdtFeed(); delay(200); wdtFeed(); }
+        ok = bno08x.begin(addr, Wire);
+    }
+    if (!ok) return false;
     Wire.setClock(400000);
     wdtFeed();
     delay(300);
@@ -144,7 +153,8 @@ static void bnoRead()
 }
 
 // A BNO085 that stops reporting (it reset itself, a loose wire) is started again, but only with
-// autosteer off: starting it stops the loop for about half a second.
+// autosteer off: starting it stops the loop for half a second (up to about a second and a half when it
+// needs the three tries of bnoStart).
 static void bnoWatch()
 {
     const uint32_t now = millis();

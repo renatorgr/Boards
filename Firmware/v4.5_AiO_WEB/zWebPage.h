@@ -1,4 +1,4 @@
-/* zWebPage.h - the module's web page (Portuguese / English).
+/* zWebPage.h - the module's web page (English).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
@@ -7,28 +7,34 @@
 */
 // zWebPage.h
 // The module's web page (served by zWeb.ino): one self-contained HTML file, no internet needed.
-// Kept in flash (PROGMEM). Text in Portuguese, and in English with the EN button (the [status]
-// messages stay in English). The English is the EN table in the script.
+// Kept in flash (PROGMEM). In English (the Portuguese version and its language button are gone, 20 Oct 2026).
+// Dark, or light when the device asks for it; the header button switches and this browser remembers it.
 // Tabs: Status (GNSS, dual heading from the UM982 or a second F9P, IMU, steering with the Keya, the
 // steering settings from the program, connections, RTCM corrections from the program and the radio,
-// sentences sent, the XIAO; warnings at the top), Messages, Settings (with the GPS2 port), GPS (the
+// sentences sent, the XIAO; warnings at the top), Messages, Settings (with the GPS2 port and the
+// simulator mode), GPS (the
 // receiver's model, zReceiver.ino; the u-blox F9P / X20P settings; the UM982 settings, read with
 // CONFIG, MASK, UNILOGLIST and MODE and written one command at a time, then SAVECONFIG, with the
-// console below) and Firmware (start reason, watchdog, a newer version on GitHub - renatorgr/Boards,
+// console below; only the options that matter to AgOpenWeb / AgOpenGPS, and the KSXT; the other
+// NMEA sentences / messages are only named when the receiver sends them; the receiver check, zRxCheck.ino:
+// data at 460800, baud rate search, what the Teensy needs, the AgOpenGPS settings loaded) and Firmware (start reason, watchdog, a newer version on GitHub - renatorgr/Boards,
 // folder Firmware - installed through the same update as a file, zOTA.ino; the module itself never
-// goes to the internet).
+// goes to the internet), and a report for an analysis (every answer of the module in one .json file).
 #ifndef ZWEBPAGE_H
 #define ZWEBPAGE_H
 
 const char WEB_PAGE[] PROGMEM = R"WEBPAGE(<!doctype html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark">
-<title>Definições do Teensy 4.1</title>
+<meta name="color-scheme" content="dark light">
+<title>Teensy 4.1 Settings</title>
 <style>
+/* dark (as before); light when the device asks for it, or chosen with the header button (data-theme) */
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--ok:#66bb6a;--warn:#ffb74d;--bad:#ef5350;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root[data-theme=light]{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}
+@media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);accent-color:var(--acc);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
@@ -41,6 +47,10 @@ nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.grid.fill{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.grid.gps>form{display:contents}
+.grid.gps>form>.row,.grid.gps>form>p,.grid.gps>form>details{grid-column:1/-1;margin:0}
+#fs .card{margin:0 0 12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
 .card h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:0 0 8px;font-weight:650}
 dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0}
@@ -55,9 +65,11 @@ dd.nw{white-space:nowrap;overflow-wrap:normal}
 .pill.bad{background:color-mix(in srgb,var(--bad) 16%,transparent)}
 .mono{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .note{color:var(--mute);font-size:13.5px;margin:6px 0 0}
+#ck0 .note.bad,#ck1 .note.bad{color:var(--bad)}
 .box{background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:8px}
 #log,#umOut{height:62vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-#umOut{height:40vh}
+#umOut{height:30vh}
+#umOut:empty{height:6.5em}
 .ll{display:flex;gap:10px;padding:2px 0;border-bottom:1px dashed var(--line)}
 .ll .t{color:var(--mute);flex:none;font-variant-numeric:tabular-nums;width:86px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
@@ -66,10 +78,10 @@ button.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);
 button.danger{border:1px solid var(--bad);background:transparent;color:var(--bad);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
 input[type=text]{font:inherit;font-family:var(--mono);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);flex:1;min-width:180px}
-#fs .card{margin:0 0 12px}
 .opt{display:flex;gap:10px;align-items:flex-start;padding:5px 0}
 .opt input{margin-top:4px}
 .opt small{display:block;color:var(--mute)}
+.opt small.warn{color:var(--warn)}
 select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:6.2em;margin-top:0!important}
 .pair{display:flex;gap:6px;align-items:center;white-space:nowrap}
@@ -80,13 +92,13 @@ progress{width:100%;height:14px}
 .alert{background:color-mix(in srgb,var(--bad) 18%,transparent);border:1px solid var(--bad);border-radius:12px;padding:9px 12px;margin:0 0 12px;white-space:pre-line;font-weight:600}
 .info{background:color-mix(in srgb,var(--acc) 16%,transparent);border:1px solid var(--acc);border-radius:12px;padding:9px 12px;margin:0 0 12px;font-weight:600}
 a{color:var(--acc)}
-.lang{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
 </style>
 </head>
 <body>
-<header><span class="dot" id="dot" title="ligação ao módulo"></span><h1>Definições do Teensy 4.1</h1><span class="sub" id="hdr">a ligar…</span><button class="lang" id="lang" type="button" title="Português / English">EN</button></header>
-<nav id="nav"><button data-t="status" class="on">Estado</button><button data-t="log">Mensagens</button><button data-t="settings">Definições</button><button data-t="gps">GPS</button><button data-t="firmware">Firmware</button></nav>
+<header><span class="dot" id="dot" title="link to the module"></span><h1>Teensy 4.1 Settings</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
+<nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="settings">Settings</button><button data-t="gps">GPS</button><button data-t="firmware">Firmware</button></nav>
 <main>
 
 <section id="t-status">
@@ -96,203 +108,199 @@ a{color:var(--acc)}
  <div class="card"><h2>GNSS</h2>
   <div class="big" id="fixName">–</div>
   <dl style="margin-top:6px">
-   <dt>Satélites</dt><dd id="sats">–</dd><dt>HDOP</dt><dd id="hdop">–</dd>
-   <dt>Idade das correções</dt><dd id="age">–</dd><dt>Velocidade</dt><dd id="kmh">–</dd>
-   <dt>Latitude</dt><dd id="lat" class="nw">–</dd><dt>Longitude</dt><dd id="lon" class="nw">–</dd><dt>Altitude</dt><dd id="alt" class="nw">–</dd><dt>Erros de checksum</dt><dd id="crc">–</dd><dt>Recetor</dt><dd id="rxModel">–</dd>
+   <dt>Satellites</dt><dd id="sats">–</dd><dt>HDOP</dt><dd id="hdop">–</dd>
+   <dt>Correction age</dt><dd id="age">–</dd><dt>Speed</dt><dd id="kmh">–</dd>
+   <dt>Latitude</dt><dd id="lat" class="nw">–</dd><dt>Longitude</dt><dd id="lon" class="nw">–</dd><dt>Altitude</dt><dd id="alt" class="nw">–</dd><dt>Checksum errors</dt><dd id="crc">–</dd><dt>Receiver</dt><dd id="rxModel">–</dd>
   </dl></div>
- <div class="card"><h2>Heading das duas antenas</h2>
+ <div class="card" id="dualCard"><h2>Dual-antenna heading</h2>
   <div class="big" id="dualHdg">–</div>
-  <dl style="margin-top:6px"><dt>Estado</dt><dd id="dualState">–</dd><dt>Fonte</dt><dd id="dualSrc">–</dd><dt>Qualidade (QF)</dt><dd id="qf">–</dd><dt>Roll das antenas</dt><dd id="antRoll">–</dd><dt>Distância entre antenas</dt><dd id="dualBase">–</dd></dl>
+  <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd></dl>
   <div class="box mono" id="hprRaw">–</div></div>
  <div class="card"><h2>IMU</h2>
   <div class="big" id="tmHdg">–</div>
-  <dl style="margin-top:6px"><dt>Estado</dt><dd id="tmState">–</dd><dt>Tipo</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
-   <dt>Yaw em bruto</dt><dd id="yaw">–</dd><dt>Alinhamento</dt><dd id="align">–</dd><dt>Sentido do yaw</dt><dd id="sign">–</dd></dl></div>
- <div class="card"><h2>Direção</h2>
+  <dl style="margin-top:6px"><dt>Status</dt><dd id="tmState">–</dd><dt>Type</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
+   <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd></dl></div>
+ <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
-  <dl style="margin-top:6px"><dt>Ângulo pedido</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
-   <dt>Interruptor</dt><dd id="sw">–</dd><dt>Motor</dt><dd id="motor">–</dd><dt>Velocidade (programa)</dt><dd id="aogKmh">–</dd>
-   <dt>Sensor do WAS</dt><dd id="wasV">–</dd><dt id="sensT">Sensor de pressão</dt><dd id="sens">–</dd>
-   <dt>Último corte</dt><dd id="off">–</dd><dt>Aviso no programa</dt><dd id="hwMsg">–</dd>
-   <dt>Motor Keya (CAN)</dt><dd id="keya">–</dd><dt>Ângulo pelo GPS</dt><dd id="gpsWas">–</dd></dl></div>
- <div class="card"><h2>Definições de direção (do programa)</h2>
-  <dl><dt>Recebidas</dt><dd id="scGot">–</dd><dt>Ganho (Kp)</dt><dd id="scKp">–</dd><dt>PWM máximo</dt><dd id="scHi">–</dd><dt>PWM mínimo</dt><dd id="scMin">–</dd>
-   <dt>PWM baixo</dt><dd id="scLow">–</dd><dt>Contagens por grau</dt><dd id="scCounts">–</dd><dt>Offset do WAS</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
-   <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relé ativo em</dt><dd id="scRelay">–</dd><dt>Interruptor</dt><dd id="scSw">–</dd>
-   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Limite do corte</dt><dd id="scKick">–</dd><dt>Eixo do IMU (roll)</dt><dd id="scAxis">–</dd></dl></div>
- <div class="card"><h2>Ligações</h2>
-  <dl><dt>Cabo Ethernet</dt><dd id="link" class="nw">–</dd><dt>Programa</dt><dd id="aog" class="nw">–</dd><dt>IP do programa</dt><dd id="aogIp" class="nw">–</dd>
-   <dt>IP do módulo</dt><dd id="ip">–</dd><dt>Ligado há</dt><dd id="up">–</dd></dl>
-  <p class="note">O recetor envia (últimos 5 s):</p><div class="box mono" id="rx">–</div></div>
- <div class="card"><h2>Correções RTCM</h2>
-  <dl><dt>NTRIP (programa)</dt><dd id="rtcm" class="nw">–</dd><dt>Recebido</dt><dd id="rtcmKB" class="nw">–</dd><dt>Mensagens RTCM</dt><dd id="rtcmMsg">–</dd><dt>Tipos</dt><dd id="rtcmTypes">–</dd>
-   <dt>Rádio (XBee)</dt><dd id="radio" class="nw">–</dd><dt>Recebido</dt><dd id="radioKB" class="nw">–</dd><dt>Mensagens RTCM</dt><dd id="radioMsg">–</dd><dt>Tipos</dt><dd id="radioTypes">–</dd></dl>
-  <p class="note">Mensagens com erro: bytes perdidos ou trocados pelo caminho (sinal de rádio fraco, velocidade da porta errada).</p></div>
- <div class="card"><h2>Frases enviadas</h2>
-  <dl><dt>Modo</dt><dd id="mode" class="nw">–</dd><dt>Escolha</dt><dd id="modeSel">–</dd><dt>Heading enviado</dt><dd id="cSrc">–</dd><dt>No AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Épocas enviadas</dt><dd id="epochs">–</dd></dl>
+  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
+   <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
+   <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
+   <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
+   <dt>Keya motor (CAN)</dt><dd id="keya">–</dd><dt>Angle from the GPS</dt><dd id="gpsWas">–</dd></dl></div>
+ <div class="card"><h2>Steering settings (from the program)</h2>
+  <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
+   <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
+   <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
+   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd></dl></div>
+ <div class="card"><h2>Connections</h2>
+  <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd>
+   <dt>Up for</dt><dd id="up">–</dd></dl>
+  <p class="note">The receiver sends (last 5 s):</p><div class="box mono" id="rx">–</div></div>
+ <div class="card"><h2>RTCM corrections</h2>
+  <dl><dt>NTRIP (program)</dt><dd id="rtcm" class="nw">–</dd><dt>Received</dt><dd id="rtcmKB" class="nw">–</dd><dt>RTCM messages</dt><dd id="rtcmMsg">–</dd><dt>Types</dt><dd id="rtcmTypes">–</dd>
+   <dt>Radio (XBee)</dt><dd id="radio" class="nw">–</dd><dt>Received</dt><dd id="radioKB" class="nw">–</dd><dt>RTCM messages</dt><dd id="radioMsg">–</dd><dt>Types</dt><dd id="radioTypes">–</dd></dl>
+  <p class="note">Messages with errors: bytes lost or changed on the way (weak radio signal, wrong port speed).</p></div>
+ <div class="card"><h2>Sentences sent</h2>
+  <dl><dt>Mode</dt><dd id="mode" class="nw">–</dd><dt>Choice</dt><dd id="modeSel">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt>In AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
   <div class="box mono" id="sent">–</div></div>
  <div class="card"><h2>XIAO ESP32 (Serial2)</h2>
   <div class="big" id="xState">–</div>
-  <dl style="margin-top:6px"><dt>Último hello</dt><dd id="xHello" class="nw">–</dd>
-   <dt>Pacotes para o XIAO</dt><dd id="xTo">–</dd><dt>PGN do XIAO</dt><dd id="xFrom">–</dd><dt>Último PGN do XIAO</dt><dd id="xLast">–</dd>
-   <dt>Erros de checksum</dt><dd id="xCrc">–</dd><dt>Perdidos</dt><dd id="xDrop">–</dd><dt>Recebido / enviado</dt><dd id="xKB" class="nw">–</dd>
-   <dt>Versão do XIAO</dt><dd id="xProg">–</dd><dt>WiFi do XIAO</dt><dd id="xAp">–</dd><dt>Rede WiFi</dt><dd id="xSta">–</dd><dt>IP na rede WiFi</dt><dd id="xIp">–</dd></dl>
+  <dl style="margin-top:6px"><dt>Last hello</dt><dd id="xHello" class="nw">–</dd>
+   <dt>Packets to the XIAO</dt><dd id="xTo">–</dd><dt>PGNs from the XIAO</dt><dd id="xFrom">–</dd><dt>Last PGN from the XIAO</dt><dd id="xLast">–</dd>
+   <dt>Checksum errors</dt><dd id="xCrc">–</dd><dt>Lost</dt><dd id="xDrop">–</dd><dt>Received / sent</dt><dd id="xKB" class="nw">–</dd>
+   <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd></dl>
   </div>
 </div>
 </section>
 
 <section id="t-log" class="hidden">
-<div class="row"><button class="sec" id="logPause">Pausar</button><button class="sec" id="logClear">Limpar ecrã</button><span class="note">Mensagens [status] do firmware, só quando algo muda. O módulo guarda as últimas 60.</span></div>
+<div class="row"><button class="sec" id="logPause">Pause</button><button class="sec" id="logClear">Clear screen</button><span class="note">[status] messages from the firmware, only when something changes. The module keeps the last 60.</span></div>
 <div id="log" class="mono"></div>
 </section>
 
 <section id="t-settings" class="hidden">
 <form id="fs">
-<div class="card"><h2>Modo de funcionamento</h2>
- <label class="opt"><input type="radio" name="outputMode" value="2"><span>Automático<small>Vê qual programa está ligado, pelo «hello» que ele envia a cada segundo, e envia as frases desse programa. Até lá, as do AgOpenGPS, que o AgOpenWeb também lê.</small></span></label>
- <label class="opt"><input type="radio" name="outputMode" value="0"><span>AgOpenWeb<small>$GNGGA, $GNVTG, $GNTHS (heading das antenas) e $INHPR (IMU) em cada época.</small></span></label>
- <label class="opt"><input type="radio" name="outputMode" value="1"><span>AgOpenGPS<small>$PAOGI (UM982 ou F9P duplo) ou $PANDA (X20P / F9P) em cada época.</small></span></label>
+<div class="card"><h2>Operating mode</h2>
+ <label class="opt"><input type="radio" name="outputMode" value="2"><span>Automatic<small>Finds out which program is connected, from the «hello» it sends every second, and sends that program's sentences. Until then, the AgOpenGPS ones, which AgOpenWeb reads too.</small></span></label>
+ <label class="opt"><input type="radio" name="outputMode" value="0"><span>AgOpenWeb<small>$GNGGA, $GNVTG, $GNTHS (antenna heading) and $INHPR (IMU) every epoch.</small></span></label>
+ <label class="opt"><input type="radio" name="outputMode" value="1"><span>AgOpenGPS<small>$PAOGI (UM982 or dual F9P) or $PANDA (X20P / F9P) every epoch.</small></span></label>
+ <label class="opt"><input type="checkbox" name="simMode" value="1"><span>Simulator<small class="warn">Only for tests with the program's simulator: the GPS is not sent to the program (AgOpenWeb switches its simulator off while it gets GPS, with or without a fix). Switch it off before going to the field.</small></span></label>
 </div>
-<div class="card"><h2>Heading das duas antenas (UM982 / F9P duplo)</h2>
- <label class="opt"><input type="checkbox" name="hprAcceptFloat" value="1"><span>Aceitar heading em float (QF 5)<small>Desligado: só com QF 4 (fixo). Só para o UM982: o F9P duplo usa só o fixo, como o firmware AiO.</small></span></label>
- <div class="opt"><span style="flex:1">Espera máxima pelo VTG e heading depois do GGA<small>Predefinição 60 ms. Mais tempo atrasa a época; menos pode perder o heading (HPR ou RELPOSNED).</small></span><select name="epochWaitMs"><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>100</option></select></div>
+<div class="card"><h2>Dual-antenna heading (UM982 / dual F9P)</h2>
+ <label class="opt"><input type="checkbox" name="hprAcceptFloat" value="1"><span>Accept a float heading (QF 5)<small>Off: only with QF 4 (fixed). UM982 only: the dual F9P uses only the fixed one, as the AiO firmware.</small></span></label>
+ <div class="opt"><span style="flex:1">Longest wait for the VTG and heading after the GGA<small>Default 60 ms. Longer delays the epoch; shorter may miss the heading (HPR or RELPOSNED).</small></span><select name="epochWaitMs"><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option>80</option><option>100</option></select></div>
 </div>
 <div class="card"><h2>IMU (TM171 / BNO085)</h2>
- <label class="opt"><input type="checkbox" name="tm171SwapRollPitch" value="1"><span>Trocar roll e pitch<small>IMU rodado 90° na placa. O "Use Y axis" do AgOpenGPS também troca.</small></span></label>
- <div class="opt"><span style="flex:1">Sentido do yaw<small>Automático: aprende nas curvas, com o heading das antenas ou, sem ele, com o rumo do GPS.</small></span><select name="tm171YawSign"><option value="0">automático</option><option value="1">+1</option><option value="-1">−1</option></select></div>
+ <label class="opt"><input type="checkbox" name="tm171SwapRollPitch" value="1"><span>Swap roll and pitch<small>IMU turned 90° on the board. The "Use Y axis" of AgOpenGPS swaps them too.</small></span></label>
+ <div class="opt"><span style="flex:1">Yaw direction<small>Automatic: learned in turns, from the antenna heading or, without it, from the GPS course.</small></span><select name="tm171YawSign"><option value="0">automatic</option><option value="1">+1</option><option value="-1">−1</option></select></div>
 </div>
-<div class="card"><h2>Porta GPS2 (Serial2)</h2>
- <div class="opt"><span style="flex:1">Ligado à porta GPS2<small>Uma coisa de cada vez, a 460800. XIAO ESP32: quando o XIAO diz «ESP32-hello», os pacotes do AgOpenWeb (UDP 8888) seguem para ele e os PGN dele seguem para o AgOpenWeb (UDP 9999), como no firmware v26. Segundo F9P: F9P duplo, como no firmware AiO; o segundo F9P envia o UBX-NAV-RELPOSNED pela UART1 e dá o heading das duas antenas. Desligada: o Teensy ignora a porta.</small></span><select name="xiaoOff"><option value="0">XIAO ESP32</option><option value="2">segundo F9P</option><option value="1">desligada</option></select></div>
+<div class="card"><h2>GPS2 port (Serial2)</h2>
+ <div class="opt"><span style="flex:1">On the GPS2 port<small>One thing at a time, at 460800. XIAO ESP32: when the XIAO says «ESP32-hello», the AgOpenWeb packets (UDP 8888) go on to it and its PGNs go to AgOpenWeb (UDP 9999), as in firmware v26. Second F9P: dual F9P, as in the AiO firmware; the second F9P sends UBX-NAV-RELPOSNED on its UART1 and gives the dual-antenna heading. Off: the Teensy ignores the port.</small></span><select name="xiaoOff"><option value="0">XIAO ESP32</option><option value="2">second F9P</option><option value="1">off</option></select></div>
 </div>
-<div class="card"><h2>Segurança do autosteer</h2>
- <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Verificar o sensor do WAS<small>Se a tensão do WAS sair de 0,2–4,8 V (fio partido, curto-circuito, ficha solta), o autosteer desliga-se e fica bloqueado até a leitura voltar ao normal (o volante funciona sempre). Desligue só na bancada, sem WAS ligado: o Estado e o programa avisam enquanto estiver desligada, e com o WAS fora da faixa o ângulo das rodas vai para o programa como 0°.</small></span></label>
- <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Cão de guarda (watchdog)<small>Reinicia o Teensy se o firmware parar 2 s; meio segundo antes desliga as saídas do autosteer (válvula ou motor). Desligar só tem efeito depois de reiniciar o Teensy.</small></span></label>
-</div>
-<div class="row"><button class="act" type="submit">Guardar</button><button class="sec" type="button" id="defaults">Repor predefinições</button><span id="setMsg" class="note"></span></div>
-<p class="note">Ficam guardadas no Teensy (EEPROM) e aplicam-se logo, sem reiniciar. As definições de direção continuam a vir do AgOpenWeb / AgOpenGPS.</p>
+<div class="card"><h2>Autosteer safety</h2>
+ <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°.</small></span></label>
+ <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.</small></span></label>
+</div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
+<p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
 </section>
 
 <section id="t-gps" class="hidden">
-<div class="grid">
-<div class="card"><h2>Recetor GPS</h2>
+<div class="grid fill gps">
+<div class="card"><h2>GPS receiver</h2>
  <div class="big" id="gModel">–</div>
- <dl style="margin-top:6px"><dt>Fabricante</dt><dd id="gKind">–</dd><dt>Firmware</dt><dd id="gFw">–</dd><dt>Protocolo</dt><dd id="gProt">–</dd><dt>Identificado</dt><dd id="gId">–</dd></dl>
- <div class="row"><button class="sec" type="button" id="gIdent">Perguntar de novo</button><button class="sec hidden" type="button" id="gUbxOn">Ligar a saída UBX (u-blox)</button></div>
- <p class="note">O Teensy pergunta ao recetor o que é: VERSIONA ao UM982, UBX-MON-VER ao F9P / X20P. As frases enviadas ao programa não dependem disto.</p></div>
-</div>
+ <dl style="margin-top:6px"><dt>Make</dt><dd id="gKind">–</dd><dt>Firmware</dt><dd id="gFw">–</dd><dt id="gProtT">Protocol</dt><dd id="gProt">–</dd><dt id="gNmeaT" class="hidden">NMEA version</dt><dd id="gNmea" class="hidden">–</dd><dt>Identified</dt><dd id="gId">–</dd></dl>
+ <p id="ck0FwNote" class="note bad hidden">Wrong firmware: AgOpenGPS uses HPG 1.13 (the AOGConfigOMatic settings are for it). Download it and install it on the F9P with AOGConfigOMatic («Flash firmware») or u-center: <a href="https://github.com/lansalot/AOGConfigOMatic/raw/main/AOGConfigOMatic/UBX113.bin" target="_blank" rel="noopener">UBX113.bin (HPG 1.13)</a> · <a href="https://github.com/lansalot/AOGConfigOMatic/releases" target="_blank" rel="noopener">AOGConfigOMatic</a></p>
+ <div class="row"><button class="sec" type="button" id="gIdent">Ask again</button><button class="sec hidden" type="button" id="gUbxOn">Switch the UBX output on (u-blox)</button></div>
+ <p class="note">The Teensy asks the receiver what it is: VERSIONA to the UM982, UBX-MON-VER to the F9P / X20P. The sentences sent to the program do not depend on it.</p></div>
+<div class="card" id="ck0"><h2>Receiver check</h2>
+ <dl><dt>Data at 460800 baud</dt><dd id="ck0Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck0Hz">–</dd><dt>What the Teensy needs</dt><dd id="ck0Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck0Ago">–</dd></dl>
+ <p id="ck0Warn" class="note bad hidden"></p>
+ <div id="ck0Vals" class="hidden"><p class="note">Values read</p><div id="ck0Bad" class="mono warn" style="margin-top:4px"></div>
+  <details id="ck0Det"><summary class="note" id="ck0OkSum">–</summary><div id="ck0List" class="mono" style="margin-top:6px"></div></details></div>
+ <details id="ck0Cmd" class="hidden"><summary class="note">AgOpenGPS commands (✓ already in the receiver)</summary><div id="ck0CmdList" class="mono" style="margin-top:6px"></div></details>
+ <div class="row"><select id="ck0Um" class="hidden"><option value="d">UM982 with two antennas</option><option value="s">UM982 with one antenna</option></select></div>
+ <p id="ck0UmNote" class="note hidden">One antenna: Status leaves the dual-antenna heading out. Kept in the Teensy's settings.</p>
+ <div class="row"><button class="act hidden" type="button" id="ck0Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load">Load the AgOpenGPS settings</button></div>
+ <p id="ck0Msg" class="note"></p>
+ <p class="note">Baud rate checked at start-up (460800). AgOpenGPS settings: AOGConfigOMatic (lansalot), for F9P firmware HPG 1.13. Change only with autosteer off.</p></div>
+<div class="card hidden" id="ck1"><h2>Second F9P check</h2>
+ <dl><dt>Data at 460800 baud</dt><dd id="ck1Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck1Hz">–</dd><dt>Receiver</dt><dd id="ck1Model">–</dd><dt>Firmware</dt><dd id="ck1Fw">–</dd><dt>What the Teensy needs</dt><dd id="ck1Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck1Ago">–</dd></dl>
+ <p id="ck1FwNote" class="note bad hidden">Wrong firmware: AgOpenGPS uses HPG 1.13 (the AOGConfigOMatic settings are for it). Download it and install it on the F9P with AOGConfigOMatic («Flash firmware») or u-center: <a href="https://github.com/lansalot/AOGConfigOMatic/raw/main/AOGConfigOMatic/UBX113.bin" target="_blank" rel="noopener">UBX113.bin (HPG 1.13)</a> · <a href="https://github.com/lansalot/AOGConfigOMatic/releases" target="_blank" rel="noopener">AOGConfigOMatic</a></p>
+ <p id="ck1Warn" class="note bad hidden"></p>
+ <div id="ck1Vals" class="hidden"><p class="note">Values read</p><div id="ck1Bad" class="mono warn" style="margin-top:4px"></div>
+  <details id="ck1Det"><summary class="note" id="ck1OkSum">–</summary><div id="ck1List" class="mono" style="margin-top:6px"></div></details></div>
+ <div class="row"><button class="act hidden" type="button" id="ck1Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load">Load the AgOpenGPS settings</button></div>
+ <p id="ck1Msg" class="note"></p>
+ <p class="note">The second F9P (GPS2 port) sends the RELPOSNED to the Teensy at 460800 baud. Its AgOpenGPS settings are those of DualRelPos.txt.</p></div>
 <form id="fu" class="hidden">
-<div class="grid" style="margin-top:12px">
-<div class="card"><h2>Posição</h2>
- <div class="opt"><span style="flex:1">Frequência<small>O AgOpenGPS e o AgOpenWeb usam 10 Hz.</small></span><select name="rate"><option value="1000">1 Hz</option><option value="500">2 Hz</option><option value="200">5 Hz</option><option value="125">8 Hz</option><option value="100">10 Hz</option><option value="50">20 Hz</option></select></div>
- <div class="opt"><span style="flex:1">Modelo dinâmico<small>O movimento que o recetor espera.</small></span><select name="dyn"><option value="0">portátil</option><option value="2">estacionário</option><option value="3">pedestre</option><option value="4">automóvel</option><option value="5">mar</option><option value="6">aéreo &lt;1 g</option><option value="7">aéreo &lt;2 g</option><option value="8">aéreo &lt;4 g</option><option value="9">pulso</option><option value="10">bicicleta</option><option value="11">corta-relva</option><option value="12">trotinete</option></select></div>
- <div class="opt"><span style="flex:1">Elevação mínima dos satélites</span><select name="minElev"><option value="0">0°</option><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option></select></div>
- <label class="opt"><input type="checkbox" name="hp" value="1"><span>NMEA de alta precisão<small>Mais casas decimais na latitude, longitude e altitude.</small></span></label>
+<div class="card"><h2>Position</h2>
+ <div class="opt"><span style="flex:1">Rate<small>AgOpenGPS and AgOpenWeb use 10 Hz.</small></span><select name="rate"><option value="1000">1 Hz</option><option value="500">2 Hz</option><option value="200">5 Hz</option><option value="125">8 Hz</option><option value="100">10 Hz</option><option value="50">20 Hz</option></select></div>
+ <div class="opt"><span style="flex:1">Dynamic model<small>The movement the receiver expects.</small></span><select name="dyn"><option value="0">portable</option><option value="2">stationary</option><option value="3">pedestrian</option><option value="4">automotive</option><option value="5">sea</option><option value="6">airborne &lt;1 g</option><option value="7">airborne &lt;2 g</option><option value="8">airborne &lt;4 g</option><option value="9">wrist</option><option value="10">bike</option><option value="11">lawn mower</option><option value="12">e-scooter</option></select></div>
+ <label class="opt"><input type="checkbox" name="hp" value="1"><span>High-precision NMEA<small>More decimals in the latitude, longitude and altitude.</small></span></label>
 </div>
-<div class="card"><h2>Frases NMEA para o Teensy (UART1)</h2>
- <label class="opt"><input type="checkbox" name="gga" value="1"><span>GGA<small>Posição. O Teensy precisa dela.</small></span></label>
- <label class="opt"><input type="checkbox" name="vtg" value="1"><span>VTG<small>Velocidade e rumo. O Teensy precisa dela.</small></span></label>
- <label class="opt"><input type="checkbox" name="rmc" value="1"><span>RMC</span></label>
- <label class="opt"><input type="checkbox" name="gsa" value="1"><span>GSA</span></label>
- <label class="opt"><input type="checkbox" name="gsv" value="1"><span>GSV</span></label>
- <label class="opt"><input type="checkbox" name="gll" value="1"><span>GLL</span></label>
- <label class="opt"><input type="checkbox" name="gst" value="1"><span>GST</span></label>
- <label class="opt"><input type="checkbox" name="zda" value="1"><span>ZDA</span></label>
- <p class="note">O Teensy só usa a GGA e a VTG; as outras só ocupam a porta.</p>
+<div class="card"><h2>UART1 (wired to the Teensy)</h2>
+ <label class="opt"><input type="checkbox" name="gga" value="1"><span>GGA<small>Position. The Teensy needs it.</small></span></label>
+ <label class="opt"><input type="checkbox" name="vtg" value="1"><span>VTG<small>Speed and course. The Teensy needs it.</small></span></label>
+ <label class="opt"><input type="checkbox" name="inRtcm" value="1"><span>Take RTCM3 corrections<small>From NTRIP and the radio, through the Teensy. Off: no RTK.</small></span></label>
+ <p class="note">The Teensy only uses the GGA and the VTG.</p>
+ <p id="uOther" class="note warn hidden"></p>
 </div>
-<div class="card"><h2>Constelações</h2>
+<div class="card"><h2>Constellations</h2>
  <label class="opt"><input type="checkbox" name="gps" value="1"><span>GPS</span></label>
  <label class="opt"><input type="checkbox" name="glo" value="1"><span>GLONASS</span></label>
  <label class="opt"><input type="checkbox" name="gal" value="1"><span>Galileo</span></label>
  <label class="opt"><input type="checkbox" name="bds" value="1"><span>BeiDou</span></label>
  <label class="opt"><input type="checkbox" name="qzss" value="1"><span>QZSS</span></label>
  <label class="opt"><input type="checkbox" name="sbas" value="1"><span>SBAS</span></label>
- <p class="note">Mudar as constelações reinicia o GNSS do recetor: o RTK perde-se durante uns segundos.</p>
+ <p class="note">Changing the constellations restarts the receiver's GNSS: RTK is lost for a few seconds.</p>
 </div>
-<div class="card"><h2>Porta UART1 (ligada ao Teensy)</h2>
- <label class="opt"><input type="checkbox" name="inRtcm" value="1"><span>Receber correções RTCM3<small>As do NTRIP e do rádio, que chegam pelo Teensy. Desligado: sem RTK.</small></span></label>
- <dl><dt>Velocidade</dt><dd id="uBaud">–</dd><dt>Entrada UBX</dt><dd id="uInUbx">–</dd><dt>Saída UBX</dt><dd id="uOutUbx">–</dd><dt>Saída NMEA</dt><dd id="uOutNmea">–</dd></dl>
- <p class="note">Estas não se mudam aqui: o Teensy deixaria de ouvir o recetor.</p>
-</div>
-</div>
-<div class="row"><button class="sec" type="button" id="uRead">Ler do recetor</button><button class="act" type="submit" id="uWrite">Gravar no recetor</button><span id="uMsg" class="note"></span></div>
-<p class="note">Lê o que o recetor está a usar. Grava só o que mudou, na RAM, BBR e flash do recetor (fica guardado depois de desligar). Só com o autosteer desligado.</p>
+<div class="row"><button class="sec" type="button" id="uRead">Read from the receiver</button><button class="act" type="submit" id="uWrite">Write to the receiver</button><span id="uMsg" class="note"></span></div>
+<p class="note">Reads what the receiver is using. Writes only what changed, to the receiver's RAM, BBR and flash (kept after a power off). Only with autosteer off.</p>
 </form>
 <form id="fm" class="hidden" novalidate>
-<div class="grid" style="margin-top:12px">
-<div class="card"><h2>Posição (UM982)</h2>
- <div class="opt"><span style="flex:1">Frequência da GGA, VTG e HPR<small>O AgOpenGPS e o AgOpenWeb usam 10 Hz. As três vão sempre juntas.</small></span><select name="rate"><option value="">–</option><option value="1000">1 Hz</option><option value="500">2 Hz</option><option value="200">5 Hz</option><option value="100">10 Hz</option><option value="50">20 Hz</option></select></div>
- <p id="mRateWarn" class="note warn hidden">A VTG ou o HPR não saem à frequência da GGA: gravar acerta-os.</p>
- <div class="opt"><span style="flex:1">Modo de trabalho<small>MODE ROVER. A Unicore indica o survey para a agricultura de precisão.</small></span><select name="mode"><option value="">–</option><option value="0">UAV (predefinição)</option><option value="1">automóvel</option><option value="2">survey</option><option value="3">survey, corta-relva</option></select></div>
- <div class="opt"><span style="flex:1">Elevação mínima dos satélites</span><select name="elev"><option value="">–</option><option value="0">0°</option><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option></select></div>
- <div class="opt"><span style="flex:1">Idade máxima das correções RTK<small>Sem correções durante mais tempo, o recetor sai do RTK. Predefinição do UM982: 600 s.</small></span><select name="rtkTo"><option value="">–</option><option value="10">10 s</option><option value="30">30 s</option><option value="60">60 s</option><option value="120">120 s</option><option value="300">300 s</option><option value="600">600 s</option></select></div>
- <div class="opt"><span style="flex:1">SBAS<small>Correções por satélite (EGNOS na Europa), úteis só sem RTK.</small></span><select name="sbas"><option value="">–</option><option value="0">desligado</option><option value="1">automático</option><option value="2">EGNOS</option></select></div>
+<div class="card"><h2>Position (UM982)</h2>
+ <div class="opt"><span style="flex:1">Rate of the GGA, VTG and HPR<small>AgOpenGPS and AgOpenWeb use 10 Hz. The three always go together.</small></span><select name="rate"><option value="">–</option><option value="1000">1 Hz</option><option value="500">2 Hz</option><option value="200">5 Hz</option><option value="100">10 Hz</option><option value="50">20 Hz</option></select></div>
+ <p id="mRateWarn" class="note warn hidden">The VTG or the HPR does not come at the GGA's rate: writing sets them right.</p>
+ <div class="opt"><span style="flex:1">Working mode<small>MODE ROVER. Unicore gives survey for precision agriculture.</small></span><select name="mode"><option value="">–</option><option value="0">UAV (default)</option><option value="1">automotive</option><option value="2">survey</option><option value="3">survey, lawn mower</option></select></div>
+ <div class="opt"><span style="flex:1">Longest age of the RTK corrections<small>With no corrections for longer, the receiver leaves RTK. UM982 default: 600 s.</small></span><select name="rtkTo"><option value="">–</option><option value="10">10 s</option><option value="30">30 s</option><option value="60">60 s</option><option value="120">120 s</option><option value="300">300 s</option><option value="600">600 s</option></select></div>
+ <div class="opt"><span style="flex:1">SBAS<small>Corrections by satellite (EGNOS in Europe), useful only without RTK.</small></span><select name="sbas"><option value="">–</option><option value="0">off</option><option value="1">automatic</option><option value="2">EGNOS</option></select></div>
 </div>
-<div class="card"><h2>Heading das duas antenas</h2>
- <div class="opt"><span style="flex:1">Modo do heading<small>CONFIG HEADING. Predefinição: distância fixa.</small></span><select name="hdMode"><option value="">–</option><option value="0">distância fixa</option><option value="1">distância variável</option><option value="2">antenas paradas</option><option value="3">pouco movimento</option><option value="4">trator</option></select></div>
- <div class="opt"><span style="flex:1">Distância entre as antenas<small>De centro a centro, em cm, e a tolerância. Vazio: automática. Errada, não há heading.</small></span><span class="pair"><input type="number" name="hdLen" min="10" max="20000" step="1" placeholder="auto" style="width:5.2em"><span>±</span><input type="number" name="hdTol" min="1" max="1000" step="1" placeholder="3" style="width:3.9em"><span>cm</span></span></div>
- <div class="opt"><span style="flex:1">Correção do heading<small>CONFIG HEADING OFFSET, em graus. Use esta ou o DualHeadingOffset do AgOpenWeb, não as duas.</small></span><input type="number" name="hdOff" min="-180" max="180" step="0.01"></div>
- <div class="opt"><span style="flex:1">Correção do pitch<small>Em graus.</small></span><input type="number" name="ptOff" min="-90" max="90" step="0.01"></div>
+<div class="card" id="mHd"><h2>Dual-antenna heading</h2>
+ <div class="opt"><span style="flex:1">Heading mode<small>CONFIG HEADING. Default: fixed length.</small></span><select name="hdMode"><option value="">–</option><option value="0">fixed length</option><option value="1">variable length</option><option value="2">static antennas</option><option value="3">low dynamics</option><option value="4">tractor</option></select></div>
+ <div class="opt"><span style="flex:1">Distance between the antennas<small>Centre to centre, in cm, and the tolerance. Empty: automatic. Wrong: no heading.</small></span><span class="pair"><input type="number" name="hdLen" min="10" max="20000" step="1" placeholder="auto" style="width:5.2em"><span>±</span><input type="number" name="hdTol" min="1" max="1000" step="1" placeholder="3" style="width:3.9em"><span>cm</span></span></div>
+ <div class="opt"><span style="flex:1">Heading correction<small>CONFIG HEADING OFFSET, in degrees. Use this or AgOpenWeb's DualHeadingOffset, not both.</small></span><input type="number" name="hdOff" min="-180" max="180" step="0.01"></div>
+ <div class="opt"><span style="flex:1">Pitch correction<small>In degrees.</small></span><input type="number" name="ptOff" min="-90" max="90" step="0.01"></div>
 </div>
-<div class="card"><h2>Mensagens para o Teensy (<span id="mPortName">–</span>)</h2>
- <label class="opt"><input type="checkbox" name="gga" value="1"><span>GGA<small>Posição. O Teensy precisa dela.</small></span></label>
- <label class="opt"><input type="checkbox" name="vtg" value="1"><span>VTG<small>Velocidade e rumo. O Teensy precisa dela.</small></span></label>
- <label class="opt"><input type="checkbox" name="hpr" value="1"><span>HPR<small>Heading das duas antenas. O Teensy precisa dela.</small></span></label>
- <label class="opt"><input type="checkbox" name="rmc" value="1"><span>RMC</span></label>
- <label class="opt"><input type="checkbox" name="gsa" value="1"><span>GSA</span></label>
- <label class="opt"><input type="checkbox" name="gsv" value="1"><span>GSV</span></label>
- <label class="opt"><input type="checkbox" name="gst" value="1"><span>GST</span></label>
- <label class="opt"><input type="checkbox" name="zda" value="1"><span>ZDA</span></label>
- <label class="opt"><input type="checkbox" name="ths" value="1"><span>THS</span></label>
- <label class="opt"><input type="checkbox" name="ksxt" value="1"><span>KSXT</span></label>
- <p class="note">O Teensy só usa a GGA, a VTG e o HPR; as outras só ocupam a porta. As que se ligam aqui saem uma vez por segundo.</p>
-</div>
-<div class="card"><h2>Constelações (UM982)</h2>
+<div class="card"><h2>Constellations (UM982)</h2>
  <label class="opt"><input type="checkbox" name="gps" value="1"><span>GPS</span></label>
  <label class="opt"><input type="checkbox" name="glo" value="1"><span>GLONASS</span></label>
  <label class="opt"><input type="checkbox" name="gal" value="1"><span>Galileo</span></label>
  <label class="opt"><input type="checkbox" name="bds" value="1"><span>BeiDou</span></label>
  <label class="opt"><input type="checkbox" name="qzss" value="1"><span>QZSS</span></label>
- <p class="note">MASK / UNMASK. Mudar as constelações pode fazer perder o RTK durante uns segundos.</p>
+ <p class="note">MASK / UNMASK. Changing the constellations can lose RTK for a few seconds.</p>
 </div>
-<div class="card"><h2>Portas do UM982</h2>
- <dl><dt>COM1</dt><dd id="mCom1">–</dd><dt>COM2</dt><dd id="mCom2">–</dd><dt>COM3</dt><dd id="mCom3">–</dd><dt>Ligada ao Teensy</dt><dd id="mPort">–</dd><dt>Versão NMEA</dt><dd id="mNmea">–</dd><dt>Modo</dt><dd id="mModeTxt">–</dd></dl>
- <p id="mOther" class="note"></p>
- <p class="note">A velocidade das portas não se muda aqui: o Teensy deixaria de ouvir o recetor.</p>
+<div class="card"><h2>Messages to the Teensy (<span id="mPortName">–</span>)</h2>
+ <label class="opt"><input type="checkbox" name="ksxt" value="1"><span>KSXT<small>KSXT 0.1 (10 Hz) on the Teensy's port. The GGA, VTG and HPR the Teensy needs are in the receiver check.</small></span></label>
+ <p id="mKsxtWarn" class="note warn hidden"></p>
+ <p id="mMsgOther" class="note warn hidden"></p>
 </div>
-</div>
-<div class="row"><button class="sec" type="button" id="mRead">Ler do recetor</button><button class="act" type="submit" id="mWrite">Gravar no recetor</button><span id="mMsg" class="note"></span></div>
-<p class="note">Lê com CONFIG, MASK, UNILOGLIST e MODE. Grava só o que mudou, um comando de cada vez, e no fim SAVECONFIG (fica guardado depois de desligar). «–»: o recetor não indicou o valor. Só com o autosteer desligado.</p>
-<details class="card" style="margin-top:12px"><summary>O que o recetor respondeu</summary><div id="mRaw" class="mono" style="margin-top:8px">–</div></details>
+<div class="row"><button class="sec" type="button" id="mRead">Read from the receiver</button><button class="act" type="submit" id="mWrite">Write to the receiver</button><span id="mMsg" class="note"></span></div>
+<p class="note">Reads with CONFIG, MASK, UNILOGLIST and MODE. Writes only what changed, one command at a time, then SAVECONFIG (kept after a power off). «–»: the receiver did not give the value. Only with autosteer off.</p>
 </form>
+</div>
 <div id="gUm">
 <div class="card" style="margin-top:12px">
- <h2>Comando para o UM982</h2>
- <div class="row"><input type="text" id="umCmd" placeholder="ex.: UNILOGLIST" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="act" id="umSend">Enviar</button></div>
- <div class="row"><span class="note">Preencher:</span><button class="sec" data-c="CONFIG">CONFIG</button><button class="sec" data-c="UNILOGLIST">UNILOGLIST</button><button class="sec" data-c="GPHPR 0.1">GPHPR 0.1</button><button class="sec" data-c="SAVECONFIG">SAVECONFIG</button></div>
- <p class="note">O comando vai para a porta do UM982 ligada ao Teensy. <b>CONFIG</b> mostra a configuração e <b>UNILOGLIST</b> as mensagens ativas. Uma alteração só fica guardada depois de <b>SAVECONFIG</b>. Cuidado com FRESET (volta às definições de fábrica, incluindo a velocidade da porta) e com mudar a velocidade da porta: o Teensy deixa de ouvir o recetor.</p>
+ <h2>Command for the UM982</h2>
+ <div class="row"><input type="text" id="umCmd" placeholder="e.g. UNILOGLIST" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="act" id="umSend">Send</button></div>
+ <div class="row"><span class="note">Fill in:</span><button class="sec" data-c="CONFIG">CONFIG</button><button class="sec" data-c="UNILOGLIST">UNILOGLIST</button><button class="sec" data-c="SAVECONFIG">SAVECONFIG</button></div>
+ <p class="note">The command goes to the UM982 port wired to the Teensy. <b>CONFIG</b> shows the configuration and <b>UNILOGLIST</b> the active messages. A change is kept only after <b>SAVECONFIG</b>. Careful with FRESET (back to the factory settings, port speed included) and with changing the port speed: the Teensy stops hearing the receiver.</p>
 </div>
-<p class="note" style="margin-top:12px">Respostas do UM982 (5 s depois de cada comando):</p>
+<p class="note" style="margin-top:12px">UM982 replies (for 5 s after each command):</p>
 <div id="umOut" class="mono"></div>
 </div>
 </section>
 
 <section id="t-firmware" class="hidden">
 <div class="grid">
-<div class="card"><h2>Firmware a correr</h2>
- <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Versão</dt><dd id="fwVer">–</dd><dt>Compilado</dt><dd id="built">–</dd><dt>Placa</dt><dd id="target">–</dd><dt>Último arranque</dt><dd id="bootWhy">–</dd><dt>Cão de guarda</dt><dd id="wdt">–</dd></dl>
- <div class="row"><button class="danger" id="reboot">Reiniciar o Teensy</button></div></div>
-<div class="card"><h2>Versão no GitHub</h2>
- <dl><dt>No GitHub</dt><dd id="ghVer">–</dd></dl>
- <div class="row"><button class="act" id="ghInstall" disabled>Instalar a partir do GitHub</button><button class="sec" id="ghCheck">Procurar agora</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">Ver no GitHub</a></div>
- <p class="note">O aparelho onde esta página está aberta (tablet, telemóvel, PC) precisa de internet. O Teensy não vai à internet: recebe o ficheiro deste aparelho e verifica-o como na instalação de um ficheiro.</p></div>
-<div class="card"><h2>Atualizar o firmware</h2>
- <div class="row"><label class="act">Escolher .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">nenhum ficheiro</span></div>
- <label class="opt"><input type="checkbox" id="force"><span>Outro firmware<small>Instala mesmo sem esta página de atualização lá dentro (a próxima atualização terá de ser por USB).</small></span></label>
- <div class="row"><button class="act" id="install" disabled>Instalar</button></div>
+<div class="card"><h2>Running firmware</h2>
+ <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="target">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
+ <div class="row"><button class="danger" id="reboot">Restart Teensy</button></div></div>
+<div class="card"><h2>Version on GitHub</h2>
+ <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
+ <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
+ <p class="note">The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.</p></div>
+<div class="card"><h2>Update the firmware</h2>
+ <div class="row"><label class="act">Choose .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">no file</span></div>
+ <label class="opt"><input type="checkbox" id="force"><span>Other firmware<small>Installs it even without this update page inside (the next update will then have to be by USB).</small></span></label>
+ <div class="row"><button class="act" id="install" disabled>Install</button></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
- <p class="note">Só com o autosteer desligado e o trator parado. O ficheiro é verificado inteiro antes de substituir o firmware atual; se algo falhar, o atual continua. Nos segundos finais da instalação <b>não desligue a corrente</b>. As definições guardadas mantêm-se.</p></div>
+ <p class="note">Only with autosteer off and the tractor stopped (on a bench, with the simulator mode on or no WAS, also while the program's simulator drives). The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation <b>do not switch the power off</b>. The saved settings are kept.</p></div>
+<div class="card"><h2>Report for an analysis</h2>
+ <p class="note">Puts the status, the messages, the settings, the GPS receiver and the Teensy's inner workings in one file, to send when something goes wrong. The file is downloaded by this browser.</p>
+ <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div>
+</div>
 </div>
 </section>
 </main>
@@ -301,50 +309,35 @@ a{color:var(--acc)}
 const $=id=>document.getElementById(id);
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
+// The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
+// module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
+const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
 function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.createElement("span");s.className="pill "+(cls||"");s.textContent=txt;e.appendChild(s);}
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
-const OFF={keya:"deslize do motor Keya",keyafault:"avaria do motor Keya",angle:"ângulo das rodas acima de 50°",fast:"velocidade acima de 25 km/h",switch:"interruptor",button:"botão",pressure:"sensor de pressão",current:"sensor de corrente",encoder:"encoder do volante",was:"avaria do WAS",silent:"o programa deixou de enviar",program:"pelo programa",speed:"velocidade abaixo de 0,1 km/h",other:"outro"};
-const BW={power:"ligado à corrente (ou botão / USB)",upload:"programação",restart:"reinício pedido (página, atualização ou programa)",watchdog:"cão de guarda (o firmware parou)",crash:"falha do firmware","crash-wdt":"falha do firmware, reiniciado pelo cão de guarda",temp:"temperatura alta",other:"outro",unknown:"outro"};
-const WHYF={1:"sem RELPOSNED do segundo F9P (porta GPS2: UART1 a 460800, UBX-NAV-RELPOSNED ligado)",2:"o RELPOSNED não chega com o GGA",3:"o segundo F9P não tem solução RTK fixa entre as antenas",4:"heading vazio"};
-const WHY={1:"sem HPR do recetor (uma antena, ou HPR desligado no UM982)",2:"o HPR não chega com o GGA",3:"o UM982 não tem solução de heading das duas antenas",4:"heading vazio no HPR"};
+const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above 25 km/h",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program",speed:"speed below 0.1 km/h",other:"other"};
+const BW={power:"power on (or button / USB)",upload:"programming",restart:"restart requested (page, update or program)",watchdog:"watchdog (the firmware stopped)",crash:"firmware fault","crash-wdt":"firmware fault, restarted by the watchdog",temp:"high temperature",other:"other",unknown:"other"};
+const WHYF={1:"no RELPOSNED from the second F9P (GPS2 port: UART1 at 460800, UBX-NAV-RELPOSNED on)",2:"the RELPOSNED does not come with the GGA",3:"the second F9P has no RTK fixed solution between the antennas",4:"empty heading"};
+const WHY={1:"no HPR from the receiver (single antenna, or HPR off in the UM982)",2:"the HPR does not arrive with the GGA",3:"the UM982 has no heading solution from its two antennas",4:"empty heading in the HPR"};
 
-// ---- language: Portuguese (the page as written) or English (this table). The choice stays in this
-// browser; without one, the browser's language decides. The [status] messages are always in English.
-const EN={"Motor Keya (CAN)":"Keya motor (CAN)","Ângulo pelo GPS":"Angle from the GPS","sem heartbeat":"no heartbeat","sem WAS: ângulo pela posição do Keya":"no WAS: angle from the Keya position","Deslize do Keya":"Keya slip","deslize do motor Keya":"Keya motor slip","avaria do motor Keya":"Keya motor fault","ângulo das rodas acima de 50°":"wheel angle above 50°","velocidade acima de 25 km/h":"speed above 25 km/h","só acima de 1 km/h, com heading":"only above 1 km/h, with a heading","Fonte":"Source","Distância entre antenas":"Antenna distance","sem RELPOSNED do segundo F9P (porta GPS2: UART1 a 460800, UBX-NAV-RELPOSNED ligado)":"no RELPOSNED from the second F9P (GPS2 port: UART1 at 460800, UBX-NAV-RELPOSNED on)","o RELPOSNED não chega com o GGA":"the RELPOSNED does not come with the GGA","o segundo F9P não tem solução RTK fixa entre as antenas":"the second F9P has no RTK fixed solution between the antennas","heading vazio":"empty heading","sem RELPOSNED":"no RELPOSNED","nenhum RELPOSNED recebido":"no RELPOSNED received","segundo F9P (RELPOSNED)":"second F9P (RELPOSNED)","sem solução":"no solution","porta GPS2 desligada":"GPS2 port off","porta GPS2 com o segundo F9P":"GPS2 port set to the second F9P","Porta GPS2 (Serial2)":"GPS2 port (Serial2)","Ligado à porta GPS2":"On the GPS2 port","Uma coisa de cada vez, a 460800. XIAO ESP32: quando o XIAO diz «ESP32-hello», os pacotes do AgOpenWeb (UDP 8888) seguem para ele e os PGN dele seguem para o AgOpenWeb (UDP 9999), como no firmware v26. Segundo F9P: F9P duplo, como no firmware AiO; o segundo F9P envia o UBX-NAV-RELPOSNED pela UART1 e dá o heading das duas antenas. Desligada: o Teensy ignora a porta.":"One thing at a time, at 460800. XIAO ESP32: when the XIAO says «ESP32-hello», the AgOpenWeb packets (UDP 8888) go on to it and its PGNs go to AgOpenWeb (UDP 9999), as in firmware v26. Second F9P: dual F9P, as in the AiO firmware; the second F9P sends UBX-NAV-RELPOSNED on its UART1 and gives the dual-antenna heading. Off: the Teensy ignores the port.","segundo F9P":"second F9P","ligação ao módulo":"link to the module","a ligar…":"connecting…","Estado":"Status","Mensagens":"Messages","Definições":"Settings","Satélites":"Satellites","Idade das correções":"Correction age","Velocidade":"Speed","Erros de checksum":"Checksum errors","Heading das duas antenas":"Dual-antenna heading","Qualidade (QF)":"Quality (QF)","Roll das antenas":"Antenna roll","Yaw em bruto":"Raw yaw","Alinhamento":"Alignment","Sentido do yaw":"Yaw direction","Direção":"Steering","Ângulo pedido":"Requested angle","Interruptor":"Switch","Velocidade (programa)":"Speed (program)","Ligações":"Connections","Cabo Ethernet":"Ethernet cable","Programa":"Program","IP do programa":"Program IP","Correções RTCM":"RTCM corrections","RTCM recebido":"RTCM received","IP do módulo":"Module IP","Ligado há":"Up for","O recetor envia (últimos 5 s):":"The receiver sends (last 5 s):","Frases enviadas":"Sentences sent","Modo":"Mode","Escolha":"Choice","Heading enviado":"Heading sent","No AgOpenGPS":"In AgOpenGPS","Épocas enviadas":"Epochs sent","Último hello":"Last hello","Pacotes para o XIAO":"Packets to the XIAO","PGN do XIAO":"PGNs from the XIAO","Último PGN do XIAO":"Last PGN from the XIAO","Perdidos":"Lost","Recebido / enviado":"Received / sent","Versão do XIAO":"XIAO version","WiFi do XIAO":"XIAO WiFi","Rede WiFi":"WiFi network","IP na rede WiFi":"IP on the WiFi network","Pausar":"Pause","Continuar":"Resume","Limpar ecrã":"Clear screen","Mensagens [status] do firmware, só quando algo muda. O módulo guarda as últimas 60.":"[status] messages from the firmware, only when something changes. The module keeps the last 60.","Modo de funcionamento":"Operating mode","Automático":"Automatic","Vê qual programa está ligado, pelo «hello» que ele envia a cada segundo, e envia as frases desse programa. Até lá, as do AgOpenGPS, que o AgOpenWeb também lê.":"Finds out which program is connected, from the «hello» it sends every second, and sends that program's sentences. Until then, the AgOpenGPS ones, which AgOpenWeb reads too.","$GNGGA, $GNVTG, $GNTHS (heading das antenas) e $INHPR (IMU) em cada época.":"$GNGGA, $GNVTG, $GNTHS (antenna heading) and $INHPR (IMU) every epoch.","$PAOGI (UM982 ou F9P duplo) ou $PANDA (X20P / F9P) em cada época.":"$PAOGI (UM982 or dual F9P) or $PANDA (X20P / F9P) every epoch.","Heading das duas antenas (UM982 / F9P duplo)":"Dual-antenna heading (UM982 / dual F9P)","Aceitar heading em float (QF 5)":"Accept a float heading (QF 5)","Desligado: só com QF 4 (fixo). Só para o UM982: o F9P duplo usa só o fixo, como o firmware AiO.":"Off: only with QF 4 (fixed). UM982 only: the dual F9P uses only the fixed one, as the AiO firmware.","Espera máxima pelo VTG e heading depois do GGA":"Longest wait for the VTG and heading after the GGA","Predefinição 60 ms. Mais tempo atrasa a época; menos pode perder o heading (HPR ou RELPOSNED).":"Default 60 ms. Longer delays the epoch; shorter may miss the heading (HPR or RELPOSNED).","Trocar roll e pitch":"Swap roll and pitch","IMU rodado 90° na placa. O \"Use Y axis\" do AgOpenGPS também troca.":"IMU turned 90° on the board. The \"Use Y axis\" of AgOpenGPS swaps them too.","Automático: aprende nas curvas, com o heading das antenas ou, sem ele, com o rumo do GPS.":"Automatic: learned in turns, from the antenna heading or, without it, from the GPS course.","automático":"automatic","Guardar":"Save","Repor predefinições":"Restore defaults","Ficam guardadas no Teensy (EEPROM) e aplicam-se logo, sem reiniciar. As definições de direção continuam a vir do AgOpenWeb / AgOpenGPS.":"Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.","Comando para o UM982":"Command for the UM982","ex.: UNILOGLIST":"e.g. UNILOGLIST","Enviar":"Send","Preencher:":"Fill in:","O comando vai para a porta do UM982 ligada ao Teensy.":"The command goes to the UM982 port wired to the Teensy.","mostra a configuração e":"shows the configuration and","as mensagens ativas. Uma alteração só fica guardada depois de":"the active messages. A change is kept only after",". Cuidado com FRESET (volta às definições de fábrica, incluindo a velocidade da porta) e com mudar a velocidade da porta: o Teensy deixa de ouvir o recetor.":". Careful with FRESET (back to the factory settings, port speed included) and with changing the port speed: the Teensy stops hearing the receiver.","Respostas do UM982 (5 s depois de cada comando):":"UM982 replies (for 5 s after each command):","Firmware a correr":"Running firmware","Versão":"Version","Compilado":"Built","Placa":"Board","Reiniciar o Teensy":"Restart the Teensy","Atualizar o firmware":"Update the firmware","Escolher .hex":"Choose .hex","nenhum ficheiro":"no file","Outro firmware":"Other firmware","Instala mesmo sem esta página de atualização lá dentro (a próxima atualização terá de ser por USB).":"Installs it even without this update page inside (the next update will then have to be by USB).","Instalar":"Install","Só com o autosteer desligado e o trator parado. O ficheiro é verificado inteiro antes de substituir o firmware atual; se algo falhar, o atual continua. Nos segundos finais da instalação":"Only with autosteer off and the tractor stopped. The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation","não desligue a corrente":"do not switch the power off",". As definições guardadas mantêm-se.":". The saved settings are kept.","sem dados do recetor":"no data from the receiver","OK (fixo)":"OK (fixed)","sem HPR":"no HPR","sem heading":"no heading","sem HPR do recetor (uma antena, ou HPR desligado no UM982)":"no HPR from the receiver (single antenna, or HPR off in the UM982)","o HPR não chega com o GGA":"the HPR does not arrive with the GGA","o UM982 não tem solução de heading das duas antenas":"the UM982 has no heading solution from its two antennas","heading vazio no HPR":"empty heading in the HPR","nenhum HPR recebido":"no HPR received","sem dados":"no data","não detetado":"not detected","com as antenas":"with the antennas","não alinhado":"not aligned","fixo":"fixed","a aprender":"learning","a conduzir":"steering","desligado":"off","ligado":"on","sem comunicação":"no communication","dois programas":"two programs","a comunicar":"talking","a chegar":"arriving","paradas":"stopped","automática":"automatic","automática, à espera do hello":"automatic, waiting for the hello","manual: o AgOpenGPS não lê estas frases":"manual: AgOpenGPS does not read these sentences","IMU (o AgOpenGPS faz a fusão)":"IMU (AgOpenGPS does the fusion)","antenas":"antennas","IMU (sem antenas)":"IMU (no antennas)","rumo GPS (sem antenas nem IMU)":"GPS course (no antennas, no IMU)","mantido (parado / IMU por alinhar)":"held (stopped / IMU not aligned yet)","fonte do heading":"heading source","ponte desligada":"bridge off","sem hello":"no hello","nunca":"never","cliente":"client","clientes":"clients","não configurada":"not set","sem ligação":"not connected","(predefinições: ainda nada guardado)":"(defaults: nothing saved yet)","Guardado.":"Saved.","Erro":"Error","erro":"error","Sem ligação ao módulo.":"No connection to the module.","sem ligação ao módulo":"no connection to the module","Repor as predefinições desta página?":"Restore the defaults of this page?","Este comando pode cortar a ligação entre o UM982 e o Teensy. Enviar mesmo assim?":"This command can cut the link between the UM982 and the Teensy. Send it anyway?","Escolha um ficheiro .hex.":"Choose a .hex file.","A enviar o ficheiro…":"Sending the file…","Ficheiro enviado; o Teensy está a verificar e a gravar…":"File sent; the Teensy is checking and writing it…","A ligação falhou. O firmware atual continua.":"The connection failed. The current firmware keeps running.","Reiniciar o Teensy? O autosteer e o GPS param uns segundos.":"Restart the Teensy? Autosteer and GPS stop for a few seconds.","A reiniciar…":"Restarting…","Sensor do WAS":"WAS sensor","Sensor de pressão":"Pressure sensor","Sensor de corrente":"Current sensor","Último corte":"Last turned off","Aviso no programa":"Message to the program","Definições de direção (do programa)":"Steering settings (from the program)","Recebidas":"Received","Ganho (Kp)":"Gain (Kp)","PWM máximo":"Maximum PWM","PWM mínimo":"Minimum PWM","PWM baixo":"Low PWM","Contagens por grau":"Counts per degree","Offset do WAS":"WAS offset","Relé ativo em":"Relay active","Limite do corte":"Kickout limit","Eixo do IMU (roll)":"IMU axis (roll)","NTRIP (programa)":"NTRIP (program)","Recebido":"Received","Mensagens RTCM":"RTCM messages","Tipos":"Types","Rádio (XBee)":"Radio (XBee)","Mensagens com erro: bytes perdidos ou trocados pelo caminho (sinal de rádio fraco, velocidade da porta errada).":"Messages with errors: bytes lost or changed on the way (weak radio signal, wrong port speed).","Segurança do autosteer":"Autosteer safety","Verificar o sensor do WAS":"Check the WAS sensor","Se a tensão do WAS sair de 0,2–4,8 V (fio partido, curto-circuito, ficha solta), o autosteer desliga-se e fica bloqueado até a leitura voltar ao normal (o volante funciona sempre). Desligue só na bancada, sem WAS ligado: o Estado e o programa avisam enquanto estiver desligada, e com o WAS fora da faixa o ângulo das rodas vai para o programa como 0°.":"If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°.","Cão de guarda (watchdog)":"Watchdog","Reinicia o Teensy se o firmware parar 2 s; meio segundo antes desliga as saídas do autosteer (válvula ou motor). Desligar só tem efeito depois de reiniciar o Teensy.":"Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.","Último arranque":"Last start","Cão de guarda":"Watchdog","sem ADS1115":"no ADS1115","fora da faixa":"out of range","verificação desligada":"check off","ângulo enviado: 0°":"angle sent: 0°","corte desligado":"kickout off","interruptor":"steer switch","botão":"steer button","sensor de pressão":"pressure kickout","sensor de corrente":"current kickout","encoder do volante":"wheel encoder","avaria do WAS":"WAS fault","o programa deixou de enviar":"the program stopped sending","pelo programa":"by the program","velocidade abaixo de 0,1 km/h":"speed below 0.1 km/h","outro":"other","ainda não (guardadas no Teensy)":"not yet (saved in the Teensy)","invertido":"inverted","entrada simples":"single input","diferencial":"differential","sentido invertido":"direction reversed","alto":"high","baixo":"low","nenhum (botão do programa)":"none (the program's button)","pressão":"pressure","corrente":"current","nenhum":"none","com erro":"with errors","nada recebido":"nothing received","ADS1115 não encontrado: sem leitura do WAS, o autosteer está desligado.":"ADS1115 not found: no WAS reading, autosteer is off.","Verificação do WAS desligada (bancada): um fio do WAS partido não desliga o autosteer.":"WAS check off (bench): a broken WAS wire does not switch autosteer off.","O Teensy reiniciou depois de uma falha do firmware (ver Firmware e Mensagens).":"The Teensy restarted after a firmware fault (see Firmware and Messages).","ligado à corrente (ou botão / USB)":"power on (or button / USB)","programação":"programming","reinício pedido (página, atualização ou programa)":"restart requested (page, update or program)","cão de guarda (o firmware parou)":"watchdog (the firmware stopped)","falha do firmware":"firmware fault","falha do firmware, reiniciado pelo cão de guarda":"firmware fault, restarted by the watchdog","temperatura alta":"high temperature","ligado até reiniciar":"on until the next restart","ligado (2 s)":"on (2 s)","Desligar a verificação do WAS? Faça-o só na bancada, sem WAS ligado.":"Switch the WAS check off? Do it only on a bench with no WAS connected.","Versão no GitHub":"Version on GitHub","No GitHub":"On GitHub","Instalar a partir do GitHub":"Install from GitHub","Procurar agora":"Check now","Ver no GitHub":"See on GitHub","O aparelho onde esta página está aberta (tablet, telemóvel, PC) precisa de internet. O Teensy não vai à internet: recebe o ficheiro deste aparelho e verifica-o como na instalação de um ficheiro.":"The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.","a procurar…":"checking…","sem resposta do GitHub (este aparelho tem internet?)":"no answer from GitHub (does this device have internet?)","nenhuma versão no GitHub":"no version on GitHub","A descarregar do GitHub…":"Downloading from GitHub…","Definições do Teensy 4.1":"Teensy 4.1 Settings","Recetor":"Receiver","Tipo":"Type","IMU (TM171 / BNO085)":"IMU (TM171 / BNO085)","Recetor GPS":"GPS receiver","Fabricante":"Make","Protocolo":"Protocol","Identificado":"Identified","Perguntar de novo":"Ask again","Ligar a saída UBX (u-blox)":"Switch the UBX output on (u-blox)","O Teensy pergunta ao recetor o que é: VERSIONA ao UM982, UBX-MON-VER ao F9P / X20P. As frases enviadas ao programa não dependem disto.":"The Teensy asks the receiver what it is: VERSIONA to the UM982, UBX-MON-VER to the F9P / X20P. The sentences sent to the program do not depend on it.","Posição":"Position","Frequência":"Rate","O AgOpenGPS e o AgOpenWeb usam 10 Hz.":"AgOpenGPS and AgOpenWeb use 10 Hz.","Modelo dinâmico":"Dynamic model","O movimento que o recetor espera.":"The movement the receiver expects.","portátil":"portable","estacionário":"stationary","pedestre":"pedestrian","automóvel":"automotive","mar":"sea","aéreo <1 g":"airborne <1 g","aéreo <2 g":"airborne <2 g","aéreo <4 g":"airborne <4 g","pulso":"wrist","bicicleta":"bike","corta-relva":"lawn mower","trotinete":"e-scooter","Elevação mínima dos satélites":"Minimum satellite elevation","NMEA de alta precisão":"High-precision NMEA","Mais casas decimais na latitude, longitude e altitude.":"More decimals in the latitude, longitude and altitude.","Frases NMEA para o Teensy (UART1)":"NMEA sentences to the Teensy (UART1)","Posição. O Teensy precisa dela.":"Position. The Teensy needs it.","Velocidade e rumo. O Teensy precisa dela.":"Speed and course. The Teensy needs it.","O Teensy só usa a GGA e a VTG; as outras só ocupam a porta.":"The Teensy only uses the GGA and the VTG; the others only take up the port.","Constelações":"Constellations","Mudar as constelações reinicia o GNSS do recetor: o RTK perde-se durante uns segundos.":"Changing the constellations restarts the receiver's GNSS: RTK is lost for a few seconds.","Porta UART1 (ligada ao Teensy)":"UART1 port (wired to the Teensy)","Receber correções RTCM3":"Take RTCM3 corrections","As do NTRIP e do rádio, que chegam pelo Teensy. Desligado: sem RTK.":"From NTRIP and the radio, through the Teensy. Off: no RTK.","Entrada UBX":"UBX input","Saída UBX":"UBX output","Saída NMEA":"NMEA output","Estas não se mudam aqui: o Teensy deixaria de ouvir o recetor.":"These are not changed here: the Teensy would stop hearing the receiver.","Ler do recetor":"Read from the receiver","Gravar no recetor":"Write to the receiver","Lê o que o recetor está a usar. Grava só o que mudou, na RAM, BBR e flash do recetor (fica guardado depois de desligar). Só com o autosteer desligado.":"Reads what the receiver is using. Writes only what changed, to the receiver's RAM, BBR and flash (kept after a power off). Only with autosteer off.","ligada":"on","desligada":"off","a perguntar…":"asking…","não identificado":"not identified","o recetor não envia nada":"the receiver sends nothing","sem resposta (envia HPR: Unicore)":"no answer (it sends HPR: Unicore)","sem resposta":"no answer","A ler do recetor…":"Reading from the receiver…","A gravar no recetor…":"Writing to the receiver…","A ligar a saída UBX…":"Switching the UBX output on…","O recetor não respondeu (saída UBX desligada na UART1?).":"The receiver did not answer (UBX output off on UART1?).","Gravado no recetor (RAM, BBR e flash) e lido de novo.":"Written to the receiver (RAM, BBR and flash) and read back.","Gravado na RAM e BBR do recetor; a flash recusou (perde-se sem a bateria de reserva).":"Written to the receiver's RAM and BBR; the flash refused (lost without the backup battery).","O recetor recusou as alterações: nada foi mudado.":"The receiver refused the changes: nothing was changed.","O recetor não respondeu: a gravação não foi confirmada.":"The receiver did not answer: the write was not confirmed.","Ligar a saída UBX na UART1 do recetor (só u-blox)? Fica gravado no recetor.":"Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver.","Nada mudou.":"Nothing changed.","Sem correções RTCM3 o recetor não chega a RTK.":"Without RTCM3 corrections the receiver gets no RTK.","Posição (UM982)":"Position (UM982)","Frequência da GGA, VTG e HPR":"Rate of the GGA, VTG and HPR","O AgOpenGPS e o AgOpenWeb usam 10 Hz. As três vão sempre juntas.":"AgOpenGPS and AgOpenWeb use 10 Hz. The three always go together.","A VTG ou o HPR não saem à frequência da GGA: gravar acerta-os.":"The VTG or the HPR does not come at the GGA's rate: writing sets them right.","Modo de trabalho":"Working mode","MODE ROVER. A Unicore indica o survey para a agricultura de precisão.":"MODE ROVER. Unicore gives survey for precision agriculture.","UAV (predefinição)":"UAV (default)","survey, corta-relva":"survey, lawn mower","Idade máxima das correções RTK":"Longest age of the RTK corrections","Sem correções durante mais tempo, o recetor sai do RTK. Predefinição do UM982: 600 s.":"With no corrections for longer, the receiver leaves RTK. UM982 default: 600 s.","Correções por satélite (EGNOS na Europa), úteis só sem RTK.":"Corrections by satellite (EGNOS in Europe), useful only without RTK.","Modo do heading":"Heading mode","CONFIG HEADING. Predefinição: distância fixa.":"CONFIG HEADING. Default: fixed length.","distância fixa":"fixed length","distância variável":"variable length","antenas paradas":"static antennas","pouco movimento":"low dynamics","trator":"tractor","Distância entre as antenas":"Distance between the antennas","De centro a centro, em cm, e a tolerância. Vazio: automática. Errada, não há heading.":"Centre to centre, in cm, and the tolerance. Empty: automatic. Wrong: no heading.","Correção do heading":"Heading correction","CONFIG HEADING OFFSET, em graus. Use esta ou o DualHeadingOffset do AgOpenWeb, não as duas.":"CONFIG HEADING OFFSET, in degrees. Use this or AgOpenWeb's DualHeadingOffset, not both.","Correção do pitch":"Pitch correction","Em graus.":"In degrees.","Mensagens para o Teensy (":"Messages to the Teensy (","Heading das duas antenas. O Teensy precisa dela.":"Dual-antenna heading. The Teensy needs it.","O Teensy só usa a GGA, a VTG e o HPR; as outras só ocupam a porta. As que se ligam aqui saem uma vez por segundo.":"The Teensy only uses the GGA, the VTG and the HPR; the others only take up the port. Those switched on here come once a second.","Constelações (UM982)":"Constellations (UM982)","MASK / UNMASK. Mudar as constelações pode fazer perder o RTK durante uns segundos.":"MASK / UNMASK. Changing the constellations can lose RTK for a few seconds.","Portas do UM982":"UM982 ports","Ligada ao Teensy":"Wired to the Teensy","Versão NMEA":"NMEA version","A velocidade das portas não se muda aqui: o Teensy deixaria de ouvir o recetor.":"The port speeds are not changed here: the Teensy would stop hearing the receiver.","Lê com CONFIG, MASK, UNILOGLIST e MODE. Grava só o que mudou, um comando de cada vez, e no fim SAVECONFIG (fica guardado depois de desligar). «–»: o recetor não indicou o valor. Só com o autosteer desligado.":"Reads with CONFIG, MASK, UNILOGLIST and MODE. Writes only what changed, one command at a time, then SAVECONFIG (kept after a power off). «–»: the receiver did not give the value. Only with autosteer off.","O que o recetor respondeu":"What the receiver answered","Recusados:":"Refused:","O UM982 não respondeu ao CONFIG.":"The UM982 did not answer CONFIG.","Gravado no UM982 (SAVECONFIG) e lido de novo.":"Written to the UM982 (SAVECONFIG) and read back.","Mudado, mas o SAVECONFIG não foi confirmado: perde-se ao desligar.":"Changed, but SAVECONFIG was not confirmed: lost at a power off.","O UM982 não aceitou nenhum comando: nada foi mudado.":"The UM982 took no command: nothing was changed.","outro (ver as respostas)":"other (see the answers)","(pela GGA)":"(from the GGA)","não identificada":"not known","Noutras portas:":"On other ports:","Valor fora dos limites.":"Value out of range.","Mudar as constelações ou o modo de trabalho pode fazer perder o RTK durante uns segundos.":"Changing the constellations or the working mode can lose RTK for a few seconds.","Com a distância entre as antenas errada, o UM982 não dá heading.":"With a wrong distance between the antennas, the UM982 gives no heading.","Português / English":"Português / English"};
-const REV={};for(const k in EN)REV[EN[k]]=k;
-let LANG="";try{LANG=localStorage.getItem("lang")||"";}catch(e){}
-if(LANG!=="pt"&&LANG!=="en")LANG=/^pt/i.test(navigator.language||"")?"pt":"en";
-const T=s=>LANG==="en"&&EN[s]!==undefined?EN[s]:s;          // a fixed text
-const L=(pt,en)=>LANG==="en"?en:pt;                           // a text with numbers or names in it
-const ago=s=>L("há "+dur(s),dur(s)+" ago");
-const VPT={"no fix":"sem fix","RTK fixed":"RTK fixo","other":"outro","positions":"posições"};   // words the module sends in English
-const V=v=>LANG==="pt"&&VPT[v]?VPT[v]:v;
-function ptOf(k){return EN[k]!==undefined?k:REV[k];}            // a text in either language -> its Portuguese
-function applyLang(){
- document.documentElement.lang=LANG;
- document.title=T("Definições do Teensy 4.1");
- const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest("script,style,.mono")?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
- // each text remembers its Portuguese the first time it is seen (two Portuguese texts can have the same English)
- for(let n=w.nextNode();n;n=w.nextNode()){if(n.k===undefined){n.raw=n.nodeValue;n.was=n.raw.trim();n.k=n.was&&ptOf(n.was)||"";}
-  if(n.k)n.nodeValue=n.raw.replace(n.was,T(n.k));}
- for(const e of document.querySelectorAll("[title],[placeholder]"))for(const a of ["title","placeholder"]){const v=e.getAttribute(a),pt=v&&ptOf(v);if(pt)e.setAttribute(a,T(pt));}
- $("lang").textContent=LANG==="en"?"PT":"EN";
- $("logPause").textContent=T(logPaused?"Continuar":"Pausar");
- if(lastS)render(lastS);
- if(gpsJ)renderGps(gpsJ);
-}
-$("lang").addEventListener("click",()=>{LANG=LANG==="en"?"pt":"en";try{localStorage.setItem("lang",LANG);}catch(e){}applyLang();});
+const ago=s=>(dur(s)+" ago");
+
+// ---- light / dark: the device's setting until the header button is used, then this browser's choice
+function themeNow(){return document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");}
+function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
+try{const t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}
+$("theme").addEventListener("click",()=>{const t=themeNow()==="light"?"dark":"light";document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}themeShow();});
+themeShow();
 
 function render(s){
  lastS=s;lastUp=s.up;
- $("hdr").textContent=s.fw+" · "+s.ip;
+ $("hdr").textContent=(s.fw.lastIndexOf(" ")>0?s.fw.slice(0,s.fw.lastIndexOf(" ")):s.fw)+" · "+s.ip;
  const g=s.gnss,fixCls=g.fix===4?"ok":(g.fix===5||g.fix===2)?"warn":"bad";
- set("fixName",g.gga?V(g.fixName):T("sem dados do recetor"),fixCls);
+ set("fixName",g.gga?(g.fixName):"no data from the receiver",fixCls);
  set("sats",g.sats||"–");set("hdop",g.hdop||"–");set("age",g.age?g.age+" s":"–");
- set("kmh",fmt(g.kmh,1," km/h")+(g.speedSrc!=="-"?" ("+V(g.speedSrc)+")":""));
+ set("kmh",fmt(g.kmh,1," km/h")+(g.speedSrc!=="-"?" ("+(g.speedSrc)+")":""));
  set("lat",g.lat!==null?g.lat.toFixed(7)+"°":"–");set("lon",g.lon!==null?g.lon.toFixed(7)+"°":"–");
  set("alt",(g.lat!==null&&g.alt)?Number(g.alt).toFixed(2)+" m":"–");
  set("crc",String(g.crcErr),g.crcErr?"warn":"");
@@ -352,103 +345,114 @@ function render(s){
  const d=s.dual,f2=d.f9p2||null;
  // AiO_WEB: the dual heading comes from the UM982 (HPR) or from a second F9P on the GPS2 port (RELPOSNED)
  const f9=d.src==="f9p"||(!d.src&&!!f2&&f2.on);
+ $("dualCard").classList.toggle("hidden",!!g.single);   /* one antenna (F9P / X20P alone, UM980 / UM981, UM982 set to one): no card */
  set("dualHdg",d.ok?Number(d.heading).toFixed(2)+"°":"–",d.ok?"ok":"");
- if(d.ok)pill("dualState",d.qf===4?T("OK (fixo)"):"OK (float)","ok");
- else if(!d.hpr)pill("dualState",T(f9?"sem RELPOSNED":"sem HPR"),"warn");
- else pill("dualState",T("sem heading"),"bad");
- set("dualSrc",f9?T("segundo F9P (RELPOSNED)"):d.src?"UM982 (HPR)":"–");
+ if(d.ok)pill("dualState",d.qf===4?"OK (fixed)":"OK (float)","ok");
+ else if(!d.hpr)pill("dualState",(f9?"no RELPOSNED":"no HPR"),"warn");
+ else pill("dualState","no heading","bad");
+ set("dualSrc",f9?"second F9P (RELPOSNED)":d.src?"UM982 (HPR)":"–");
  set("qf",d.hpr?String(d.lastQf):"–");set("antRoll",d.hpr?fmt(d.antRoll,2,"°"):"–");
- set("dualBase",f9&&f2&&f2.frames?fmt(f2.baseline,1," cm")+" · carrSoln "+(f2.carr===2?T("fixo"):f2.carr===1?"float":T("sem solução")):"–",f9&&f2&&f2.frames&&f2.carr!==2?"warn":"");
+ set("dualBase",f9&&f2&&f2.frames?fmt(f2.baseline,1," cm")+" · carrSoln "+(f2.carr===2?"fixed":f2.carr===1?"float":"no solution"):"–",f9&&f2&&f2.frames&&f2.carr!==2?"warn":"");
  const W=f9?WHYF:WHY;
- $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?T(W[d.why])+"\n":"")+(d.raw||(f9?T("nenhum RELPOSNED recebido")+(f2&&f2.bytes?" ("+f2.bytes+L(" bytes, "," bytes, ")+f2.bad+L(" com erro)"," with errors)"):""):T("nenhum HPR recebido")));
+ $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?(W[d.why])+"\n":"")+(d.raw||(f9?"no RELPOSNED received"+(f2&&f2.bytes?" ("+f2.bytes+" bytes, "+f2.bad+" with errors)":""):"no HPR received"));
  const t=s.tm;
  set("tmHdg",t.ok?fmt(t.out,2,"°"):"–",t.ok?"":"bad");
- pill("tmState",t.ok?"OK":t.seen?T("sem dados"):T("não detetado"),t.ok?"ok":"bad");
- set("imuType",t.type?t.type+" · "+t.port:T("não detetado"),t.type?"":"bad");
+ pill("tmState",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");
+ set("imuType",t.type?t.type+" · "+t.port:"not detected",t.type?"":"bad");
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
- set("align",t.aligned?T("com as antenas")+" ("+fmt(t.offset,1,"°")+")":T("não alinhado"));
- set("sign",(t.sign>0?"+1":"−1")+" ("+T(t.locked?"fixo":"a aprender")+")");
+ set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
+ set("sign",(t.sign>0?"+1":"−1")+" ("+(t.locked?"fixed":"learning")+")");
  const st=s.steer;
  set("was",fmt(st.was,1,"°"));set("setp",fmt(st.set,1,"°"));set("pwm",String(st.pwm));
- pill("active",T(st.active?"a conduzir":"desligado"),st.active?"ok":"");
- set("sw",T(st.switchOn?"ligado":"desligado"));set("motor",st.motor);set("aogKmh",fmt(st.aogKmh,1," km/h"));
+ pill("active",(st.active?"steering":"off"),st.active?"ok":"");
+ set("sw",(st.switchOn?"on":"off"));set("aogKmh",fmt(st.aogKmh,1," km/h"));
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top
  const sc=s.steerCfg,b=s.boot;
- if(st.wasless)set("wasV",T("sem WAS: ângulo pela posição do Keya"));
- else if(!st.adc)set("wasV",T("sem ADS1115"),"bad");
- else set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(st.wasOut?" · "+T("fora da faixa"):"")+(!st.wasCheck?" · "+T("verificação desligada"):"")+(st.wasZero?" · "+T("ângulo enviado: 0°"):""),st.wasOut?"bad":!st.wasCheck?"warn":"");
- set("sensT",T(st.sensor==="current"?(st.motor==="Keya"?"Deslize do Keya":"Sensor de corrente"):"Sensor de pressão"));
- set("sens",fmt(st.sensorV,0)+" · "+L("máx. ","max ")+fmt(st.sensorMax,0)+" · "+(st.sensor?L("corta a ","cuts at ")+st.kick:T("corte desligado")),st.sensor&&st.sensorV>=st.kick?"bad":"");
+ if(st.wasless)set("wasV","no WAS: angle from the Keya position");
+ else if(!st.adc)set("wasV","no ADS1115","bad");
+ else set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":""),st.wasOut?"bad":!st.wasCheck?"warn":"");
+ set("sensT",(st.sensor==="current"?(st.motor==="Keya"?"Keya slip":"Current sensor"):"Pressure sensor"));
+ set("sens",pct255(st.sensorV),st.sensor&&st.sensorV>=st.kick?"bad":"");   // the value read; the cut is in the steering settings card
  let ot="–";
- if(st.off){ot=T(OFF[st.off]||st.off);if(st.off==="pressure"||st.off==="current"||st.off==="keya")ot+=" ("+st.offVal+" / "+st.kick+")";else if(st.off==="keyafault")ot+=" (0x"+(st.offVal>>>0).toString(16).toUpperCase().padStart(4,"0")+")";else if(st.off==="angle")ot+=" ("+st.offVal+"°)";else if(st.off==="fast")ot+=" ("+st.offVal+" km/h)";else if(st.off==="encoder")ot+=" ("+st.offVal+L(" impulsos"," pulses")+")";if(st.offAgo>=0)ot+=" ("+ago(st.offAgo)+")";}
+ if(st.off){ot=(OFF[st.off]||st.off);if(st.off==="pressure"||st.off==="current"||st.off==="keya")ot+=" ("+pct255(st.offVal)+" / "+pct255(st.kick)+")";else if(st.off==="keyafault")ot+=" (0x"+(st.offVal>>>0).toString(16).toUpperCase().padStart(4,"0")+")";else if(st.off==="angle")ot+=" ("+st.offVal+"°)";else if(st.off==="fast")ot+=" ("+st.offVal+" km/h)";else if(st.off==="encoder")ot+=" ("+st.offVal+" pulses"+")";if(st.offAgo>=0)ot+=" ("+ago(st.offAgo)+")";}
  set("off",ot,st.off==="keyafault"?"bad":["pressure","current","encoder","was","silent","keya","angle","fast"].includes(st.off)?"warn":"");
  set("hwMsg",b&&b.hwMsg?b.hwMsg:"–");
  const k=st.keya;
- if(!k||!k.found){set("keya",T("não detetado"));set("gpsWas","–");}
+ if(!k||!k.found){set("keya","not detected");set("gpsWas","–");}
  else{const live=k.ago>=0&&k.ago<1000;
-  set("keya",(live?"":T("sem heartbeat")+" · ")+L("posição ","position ")+k.pos+" · "+L("corrente ","current ")+k.current+" · "+L("deslize ","slip ")+fmt(k.slip,0)+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
-  set("gpsWas",k.gpsWasOk?fmt(k.gpsWas,1,"°"):T("só acima de 1 km/h, com heading"));}
+  set("keya",(live?"":"no heartbeat"+" · ")+"position "+k.pos+" · "+"current "+k.current+" · "+"slip "+pct255(k.slip)+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
+  set("gpsWas",k.gpsWasOk?fmt(k.gpsWas,1,"°"):"only above 1 km/h, with a heading");}
  if(sc){
-  set("scGot",sc.got252>=0?ago(sc.got252):T("ainda não (guardadas no Teensy)"));
+  set("scGot",sc.got252>=0?ago(sc.got252):"not yet (saved in the Teensy)");
   set("scKp",String(sc.kp));set("scHi",String(sc.hiPwm));set("scMin",String(sc.minPwm));set("scLow",String(sc.lowPwm));
-  set("scCounts",fmt(sc.counts,1));set("scOff",String(sc.offset));set("scAck",fmt(sc.ackerman,0," %"));
-  set("scWas",T(sc.invertWas?"invertido":"normal")+" · "+T(sc.singleWas?"entrada simples":"diferencial"));
-  set("scMotor",st.motor+(sc.danfoss&&st.motor!=="Danfoss"?" · Danfoss":"")+(sc.motorDir?" · "+T("sentido invertido"):""));
-  set("scRelay",T(sc.relayHigh?"alto":"baixo"));
-  set("scSw",T(sc.sw?"interruptor":sc.btn?"botão":"nenhum (botão do programa)"));
-  set("scSens",[sc.pressure?T("pressão"):"",sc.current?T("corrente"):"",sc.encoder?"encoder":""].filter(x=>x).join(" · ")||T("nenhum"));
-  set("scKick",sc.pressure||sc.current||sc.encoder?String(sc.kickMax):"–");
+  set("scCounts",fmt(sc.counts,0));set("scOff",String(sc.offset));set("scAck",fmt(sc.ackerman,0));
+  set("scWas",(sc.invertWas?"inverted":"normal")+" · "+(sc.singleWas?"single input":"differential"));
+  set("scMotor",st.motor+(sc.danfoss&&st.motor!=="Danfoss"?" · Danfoss":"")+(sc.motorDir?" · "+"direction reversed":""));
+  set("scRelay",(sc.relayHigh?"high":"low"));
+  set("scSw",(sc.sw?"steer switch":sc.btn?"steer button":"none (the program's button)"));
+  set("scSens",[sc.pressure?"pressure":"",sc.current?"current":"",sc.encoder?"encoder":""].filter(x=>x).join(" · ")||"none");
+  set("scKick",sc.pressure||sc.current?pct255(sc.kickMax):sc.encoder?sc.kickMax+" pulses":"–");
   set("scAxis",sc.yAxis?"Y":"X");
  }
  const al=[];
- if(!st.adc)al.push(T("ADS1115 não encontrado: sem leitura do WAS, o autosteer está desligado."));
- else if(st.wasBlock)al.push(L("Autosteer bloqueado: avaria do WAS ("+fmt(st.wasV,2," V")+"). O volante funciona normalmente. Verifique o sensor, o fio e a ficha.","Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
- if(!st.wasCheck)al.push(T("Verificação do WAS desligada (bancada): um fio do WAS partido não desliga o autosteer."));
- if(b&&/watchdog|crash/.test(b.why))al.push(T("O Teensy reiniciou depois de uma falha do firmware (ver Firmware e Mensagens)."));
+ if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
+ else if(st.wasBlock)al.push(("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
+ if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
+ if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
+ if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
+ if(g.ckH==="junk")al.push("The GPS receiver is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Receiver check.");
+ if(g.ck2H==="junk")al.push("The second F9P is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Second F9P check.");
  $("alert").textContent=al.join("\n");$("alert").classList.toggle("hidden",!al.length);
  const n=s.net;
- pill("link",n.link?L("ligado","connected"):L("desligado","unplugged"),n.link?"ok":"bad");
+ pill("link",n.link?"connected":"unplugged",n.link?"ok":"bad");
  const hn=n.host==="AgOpenWeb"||n.host==="AgOpenGPS"?n.host:"";
- pill("aog",!n.aog?T("sem comunicação"):n.hostBoth?T("dois programas"):hn?hn+" · "+T("a comunicar"):T("a comunicar"),!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp:"–");
- pill("rtcm",T(n.rtcm?"a chegar":"paradas"),n.rtcm?"ok":"warn");set("rtcmKB",n.rtcmKB.toFixed(0)+" kB"+(n.rtcm?" · "+n.rtcmBps+" B/s":""));
- set("rtcmMsg",n.rtcmOk+" · "+n.rtcmBad+" "+T("com erro"),n.rtcmBad?"warn":"");set("rtcmTypes",n.rtcmTypes||"–");
- pill("radio",T(n.radio?"a chegar":n.radioKB>0?"paradas":"nada recebido"),n.radio?"ok":n.radioKB>0?"warn":"");
+ pill("aog",!n.aog?"no communication":n.hostBoth?"two programs":hn?hn+" · "+"talking":"talking",!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp:"–");
+ pill("rtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");set("rtcmKB",n.rtcmKB.toFixed(0)+" kB"+(n.rtcm?" · "+n.rtcmBps+" B/s":""));
+ set("rtcmMsg",n.rtcmOk+" · "+n.rtcmBad+" "+"with errors",n.rtcmBad?"warn":"");set("rtcmTypes",n.rtcmTypes||"–");
+ pill("radio",(n.radio?"arriving":n.radioKB>0?"stopped":"nothing received"),n.radio?"ok":n.radioKB>0?"warn":"");
  set("radioKB",n.radioKB.toFixed(0)+" kB"+(n.radio?" · "+n.radioBps+" B/s":""));
- set("radioMsg",n.radioOk+" · "+n.radioBad+" "+T("com erro"),n.radioBad?"warn":"");set("radioTypes",n.radioTypes||"–");
- set("ip",s.ip);set("up",dur(s.up));
+ set("radioMsg",n.radioOk+" · "+n.radioBad+" "+"with errors",n.radioBad?"warn":"");set("radioTypes",n.radioTypes||"–");
+ set("up",dur(s.up));
  $("rx").textContent=g.rx?g.rx.split(", ").join("\n"):"–";
  const cl=s.out.mode==="classic";
  set("mode",cl?(s.out.kind===3?"AgOpenGPS ($PANDA)":"AgOpenGPS ($PAOGI)"):"AgOpenWeb");
- set("modeSel",T(s.out.auto?(n.host?"automática":"automática, à espera do hello"):!cl&&n.host==="AgOpenGPS"?"manual: o AgOpenGPS não lê estas frases":"manual"),!s.out.auto&&!cl&&n.host==="AgOpenGPS"?"warn":"");
- set("cSrc",s.out.mode!=="classic"?"–":T(s.out.kind===3?"IMU (o AgOpenGPS faz a fusão)":(["–","antenas","IMU (sem antenas)","rumo GPS (sem antenas nem IMU)","mantido (parado / IMU por alinhar)"][s.out.classicSrc]||"–")),s.out.classicSrc>=2?"warn":"");
- set("aogSrc",s.out.aogSrc?T("fonte do heading")+": "+s.out.aogSrc:"–");
- set("epochs",String(s.out.epochs));
+ set("modeSel",(s.out.auto?(n.host?"automatic":"automatic, waiting for the hello"):!cl&&n.host==="AgOpenGPS"?"manual: AgOpenGPS does not read these sentences":"manual"),!s.out.auto&&!cl&&n.host==="AgOpenGPS"?"warn":"");
+ set("cSrc",s.out.mode!=="classic"?"–":(s.out.kind===3?"IMU (AgOpenGPS does the fusion)":(["–","antennas","IMU (no antennas)","GPS course (no antennas, no IMU)","held (stopped / IMU not aligned yet)"][s.out.classicSrc]||"–")),s.out.classicSrc>=2?"warn":"");
+ set("aogSrc",s.out.aogSrc?"heading source"+": "+s.out.aogSrc:"–");
+ set("epochs",String(s.out.epochs)+(s.out.sim?" · "+s.out.held+" "+"held back (simulator mode)":""),s.out.simHeld?"warn":"");
  $("sent").textContent=s.out.lines.length?s.out.lines.join("\n"):"–";
  const x=s.xiao;
  if(x){
-  const xs=x.port===2?[T("porta GPS2 com o segundo F9P"),""]:x.port===1?[T("porta GPS2 desligada"),""]:!x.on?[T("ponte desligada"),""]:x.det?[L("ligado","connected"),"ok"]:x.hellos?[T("sem hello"),"bad"]:[T("não detetado"),"warn"];
+  const xs=x.port===2?["GPS2 port set to the second F9P",""]:x.port===1?["GPS2 port off",""]:!x.on?["bridge off",""]:x.det?["connected","ok"]:x.hellos?["no hello","bad"]:["not detected","warn"];
   set("xState",xs[0],xs[1]);
-  set("xHello",x.helloAgo<0?T("nunca"):ago(x.helloAgo));
+  set("xHello",x.helloAgo<0?"never":ago(x.helloAgo));
   set("xTo",String(x.to));set("xFrom",String(x.from));set("xLast",x.lastPgn<0?"–":String(x.lastPgn));
   set("xCrc",String(x.crcErr),x.crcErr?"warn":"");set("xDrop",String(x.drop+x.cut),(x.drop+x.cut)?"warn":"");
   set("xKB",x.rxKB.toFixed(1)+" / "+x.txKB.toFixed(1)+" kB");
   let xi=null;try{xi=x.info?JSON.parse(x.info):null;}catch(e){}
   if(xi){set("xProg",(xi.v||"?")+(xi.c?" · "+xi.c:"")+(x.infoAgo>15?" ("+ago(x.infoAgo)+")":""));
-   set("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+T(xi.cl==1?"cliente":"clientes"):""));
-   set("xSta",!xi.sta?T("não configurada"):xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+T("sem ligação"),xi.sta&&xi.st!=="ok"?"warn":"");
+   set("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""));
+   set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
    set("xIp",xi.sta&&xi.st==="ok"?xi.ip:"–");}
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
  }
  renderGh();
- const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("fwVer",sp>0?s.fw.slice(sp+1):"–");set("built",s.built);set("target",s.target);
- if(b){set("bootWhy",T(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
-  set("wdt",b.wdt?T(b.wdtOff?"ligado até reiniciar":"ligado (2 s)"):T("desligado"),b.wdt?"":"warn");}
+ const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
+ if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
+  set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
 
+// The Teensy restarted (its time on went back, or another build runs): the whole page again from the
+// module, on the same tab - a new firmware brings its own page, and every card, list and form starts afresh.
+function reloadAfterRestart(msg){
+ try{sessionStorage.setItem("tab",tab);if(msg)sessionStorage.setItem("fwMsg",msg);}catch(e){}
+ location.reload();
+}
 async function pollStatus(){
  try{const s=await getJ("/api/status");if(s.error)throw 0;
+  if(lastS&&(s.up+3<lastS.up||s.built!==lastS.built)){reloadAfterRestart(waitingBoot?"Updated. Running: "+s.fw+", built "+s.built+".":"");return;}
   if(waitingBoot&&s.up<upBefore){waitingBoot=false;busy=false;$("prog").classList.add("hidden");$("install").disabled=!$("hexFile").files[0];
-   fwMsg(L("Atualizado. A correr: "+s.fw+", compilado "+s.built+".","Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
+   fwMsg(("Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
   setOnline(true);render(s);
  }catch(e){setOnline(false);}
 }
@@ -469,123 +473,127 @@ async function pollLog(){
   addLines($("log"),j.lines,true);if(j.lines.length)logAfter=j.lines[j.lines.length-1].s;}catch(e){}
 }
 // ---- the GPS receiver (zReceiver.ino): what it is; the u-blox settings
-const UBX_SEL=["rate","dyn","minElev"],UBX_CB=["hp","gga","vtg","rmc","gsa","gsv","gll","gst","zda","gps","glo","gal","bds","qzss","sbas","inRtcm"],UBX_SIG=["gps","glo","gal","bds","qzss","sbas"];
+const UBX_SEL=["rate","dyn"],UBX_CB=["hp","gga","vtg","gps","glo","gal","bds","qzss","sbas","inRtcm"],UBX_SIG=["gps","glo","gal","bds","qzss","sbas"],
+ UBX_OTHER=["rmc","gsa","gsv","gll","gst","zda"];   /* sentences the Teensy does not use: not on the page, only named when the receiver sends them */
 let gpsJ=null,ubxShown=-1,ubxAsked=false,uLocal=null,uLocalAt=0;
 function uSay(t,c){uLocal=[t,c];uLocalAt=Date.now();set("uMsg",t,c);}   /* a message of this page, shown for 5 s */
 async function pollGps(){try{const j=await getJ("/api/gps");if(j.error)return;gpsJ=j;renderGps(j);}catch(e){}}
-function onOff(v){return v===undefined?"–":T(v?"ligada":"desligada");}
 function ubxMsg(u){
- if(u.op==="read")return [T("A ler do recetor…"),""];
- if(u.op==="write")return [T("A gravar no recetor…"),""];
- if(u.op==="ubx-on")return [T("A ligar a saída UBX…"),""];
+ if(u.op==="read")return ["Reading from the receiver…",""];
+ if(u.op==="write")return ["Writing to the receiver…",""];
+ if(u.op==="ubx-on")return ["Switching the UBX output on…",""];
  switch(u.res){
-  case "read":return [L("Lido do recetor ","Read from the receiver ")+(u.readAgo>=0?ago(u.readAgo):"")+".","ok"];
-  case "read-none":return [T("O recetor não respondeu (saída UBX desligada na UART1?)."),"bad"];
-  case "write":return [T("Gravado no recetor (RAM, BBR e flash) e lido de novo."),"ok"];
-  case "write-ram":return [T("Gravado na RAM e BBR do recetor; a flash recusou (perde-se sem a bateria de reserva)."),"warn"];
-  case "write-nak":return [T("O recetor recusou as alterações: nada foi mudado."),"bad"];
-  case "write-none":return [T("O recetor não respondeu: a gravação não foi confirmada."),"bad"];
+  case "read":return ["Read from the receiver "+(u.readAgo>=0?ago(u.readAgo):"")+".","ok"];
+  case "read-none":return ["The receiver did not answer (UBX output off on UART1?).","bad"];
+  case "write":return ["Written to the receiver (RAM, BBR and flash) and read back.","ok"];
+  case "write-ram":return ["Written to the receiver's RAM and BBR; the flash refused (lost without the backup battery).","warn"];
+  case "write-nak":return ["The receiver refused the changes: nothing was changed.","bad"];
+  case "write-none":return ["The receiver did not answer: the write was not confirmed.","bad"];
   default:return ["",""];}
 }
+function otherOn(id,v,names){      /* the receiver sends sentences the Teensy does not use (not on the page); every poll */
+ const list=names.filter(n=>v&&v[n]>0).map(n=>n.toUpperCase());
+ set(id,list.length?"Also on in the receiver (the Teensy does not use them):"+" "+list.join(", ")+".":"","warn");$(id).classList.toggle("hidden",!list.length);}
 function fillUbx(u){
  const f=$("fu"),v=u.v||{};
  for(const n of UBX_SEL){const s=f[n];
-  if(v[n]!==undefined){const val=String(v[n]);if(![...s.options].some(o=>o.value===val)){const o=document.createElement("option");o.value=val;o.textContent=n==="rate"?(1000/v[n]).toFixed(1)+" Hz":n==="minElev"?val+"°":val;s.appendChild(o);}s.value=val;}
+  if(v[n]!==undefined){const val=String(v[n]);if(![...s.options].some(o=>o.value===val)){const o=document.createElement("option");o.value=val;o.textContent=n==="rate"?(1000/v[n]).toFixed(1)+" Hz":val;s.appendChild(o);}s.value=val;}
   s.disabled=v[n]===undefined;}
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
- set("uBaud",v.baud!==undefined?v.baud+" baud":"–",v.baud!==undefined&&v.baud!==460800?"warn":"");
- set("uInUbx",onOff(v.inUbx));set("uOutUbx",onOff(v.outUbx));set("uOutNmea",onOff(v.outNmea));
 }
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
- set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?T("a perguntar…"):T("não identificado")),j.model||k?"":"warn");
+ set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?"asking…":"not identified"),j.model||k?"":"warn");
  set("gKind",k==="ublox"?"u-blox":k==="um982"?"Unicore":"–");
- set("gFw",j.fw||"–");set("gProt",j.prot||"–");
- set("gId",!j.talks?T("o recetor não envia nada"):j.id==="done"?ago(j.idAgo):j.id==="none"?T(j.hpr?"sem resposta (envia HPR: Unicore)":"sem resposta"):T("a perguntar…"),!j.talks||j.id==="none"?"warn":"");
+ set("gFw",j.fw||"–");set("gProt",j.prot||"–");$("gProtT").classList.toggle("hidden",k!=="ublox");$("gProt").classList.toggle("hidden",k!=="ublox");   /* u-blox only */
+ const um=k==="um982";                                  /* NMEA version: UM982 only, from its CONFIG (zReceiver.ino) */
+ set("gNmea",um&&j.um&&j.um.nmea||"–");$("gNmeaT").classList.toggle("hidden",!um);$("gNmea").classList.toggle("hidden",!um);
+ set("gId",!j.talks?"the receiver sends nothing":j.id==="done"?ago(j.idAgo):j.id==="none"?(j.hpr?"no answer (it sends HPR: Unicore)":"no answer"):"asking…",!j.talks||j.id==="none"?"warn":"");
  $("gUbxOn").classList.toggle("hidden",!(j.id==="none"&&!j.hpr&&j.talks));
  $("fu").classList.toggle("hidden",k!=="ublox");
  $("fm").classList.toggle("hidden",k!=="um982");
  $("gUm").classList.toggle("hidden",k==="ublox");
+ renderCk(j);
+ $("gIdent").disabled=ckBusy0(j);
+ $("mHd").classList.toggle("hidden",k==="um982"&&!!((j.ck&&j.ck.umSingle)||(j.model&&j.model!=="UM982")));   /* one antenna: no heading setup */
  if(k==="um982")renderUm(j.um);
  if(k!=="ublox")return;
  const u=j.ubx;
  if(u.seq!==ubxShown&&!u.op){ubxShown=u.seq;fillUbx(u);}
- $("uRead").disabled=$("uWrite").disabled=!!u.op;
+ otherOn("uOther",u.v,UBX_OTHER);
+ $("uRead").disabled=$("uWrite").disabled=!!u.op||ckBusy0(j);
  const m=uLocal&&Date.now()-uLocalAt<5000?uLocal:ubxMsg(u);set("uMsg",m[0],m[1]);
- if(!u.op&&u.readAgo<0&&!ubxAsked&&tab==="gps"){ubxAsked=true;gpsAct("act=read");}   /* read once, the first time the tab shows a u-blox */
+ if(!u.op&&u.readAgo<0&&!ubxAsked&&tab==="gps"&&!ckBusy0(j)){ubxAsked=true;gpsAct("act=read");}   /* read once, the first time the tab shows a u-blox */
 }
 async function gpsAct(body,say){
  say=say||uSay;
  try{const j=await getJ("/api/gps",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
-  if(!j.ok){say(T("Erro")+": "+ptErr(j.error),"bad");return false;}
-  uLocal=mLocal=null;await pollGps();return true;}catch(e){say(T("Sem ligação ao módulo."),"bad");return false;}
+  if(!j.ok){say("Error"+": "+ptErr(j.error),"bad");return false;}
+  uLocal=mLocal=null;ckLocal=[null,null];await pollGps();return true;}catch(e){say("No connection to the module.","bad");return false;}
 }
 $("gIdent").addEventListener("click",()=>{ubxAsked=false;ubxShown=-1;umAsked=false;umShown=-1;gpsAct("act=identify");});
-$("gUbxOn").addEventListener("click",()=>{if(confirm(T("Ligar a saída UBX na UART1 do recetor (só u-blox)? Fica gravado no recetor.")))gpsAct("act=ubxon");});
+$("gUbxOn").addEventListener("click",()=>{if(confirm("Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver."))gpsAct("act=ubxon");});
 $("uRead").addEventListener("click",()=>gpsAct("act=read"));
 $("fu").addEventListener("submit",e=>{e.preventDefault();
  if(!gpsJ||!gpsJ.ubx)return;
  const f=$("fu"),v=gpsJ.ubx.v||{},p=new URLSearchParams();p.set("act","write");const ch=[];
  for(const n of UBX_SEL){if(v[n]===undefined||f[n].disabled)continue;const nv=Number(f[n].value);if(nv!==v[n]){p.set(n,String(nv));ch.push(n);}}
  for(const n of UBX_CB){if(v[n]===undefined||f[n].disabled)continue;if(f[n].checked!==!!v[n]){p.set(n,f[n].checked?"1":"0");ch.push(n);}}
- if(!ch.length){uSay(T("Nada mudou."),"");return;}
- let q=L("Gravar "+ch.length+(ch.length===1?" alteração":" alterações")+" no recetor?","Write "+ch.length+(ch.length===1?" change":" changes")+" to the receiver?");
- if(ch.some(n=>UBX_SIG.includes(n)))q+="\n\n"+T("Mudar as constelações reinicia o GNSS do recetor: o RTK perde-se durante uns segundos.");
- if(p.get("inRtcm")==="0")q+="\n\n"+T("Sem correções RTCM3 o recetor não chega a RTK.");
+ if(!ch.length){uSay("Nothing changed.","");return;}
+ let q=("Write "+ch.length+(ch.length===1?" change":" changes")+" to the receiver?");
+ if(ch.some(n=>UBX_SIG.includes(n)))q+="\n\n"+"Changing the constellations restarts the receiver's GNSS: RTK is lost for a few seconds.";
+ if(p.get("inRtcm")==="0")q+="\n\n"+"Without RTCM3 corrections the receiver gets no RTK.";
  if(!confirm(q))return;
  gpsAct(p.toString());});
 // ---- the UM982 settings (zReceiver.ino)
-const UM_SEL=["rate","mode","elev","rtkTo","sbas","hdMode"],UM_NUM=["hdLen","hdTol","hdOff","ptOff"],UM_FIX=["gga","vtg","hpr"],
- UM_MSG=["rmc","gsa","gsv","gst","zda","ths","ksxt"],UM_SYSN=["gps","glo","gal","bds","qzss"];
+const UM_SEL=["rate","mode","rtkTo","sbas","hdMode"],UM_NUM=["hdLen","hdTol","hdOff","ptOff"],
+ UM_MSG=["ksxt"],UM_SYSN=["gps","glo","gal","bds","qzss"],
+ UM_OTHER=["rmc","gsa","gsv","gst","zda","ths"];   /* messages the Teensy does not use: not on the page, only named when the UM982 sends them */
 let umShown=-1,umAsked=false,mLocal=null,mLocalAt=0;
 function mSay(t,c){mLocal=[t,c];mLocalAt=Date.now();set("mMsg",t,c);}   /* a message of this page, shown for 5 s */
 function hz(ms){const f=1000/ms;return (f>=1?String(Math.round(f*10)/10):f.toFixed(2))+" Hz";}
 function umMsg(u){
- if(u.op==="read")return [T("A ler do recetor…"),""];
- if(u.op==="write")return [T("A gravar no recetor…"),""];
- const f=(u.fail||[]).length?" "+T("Recusados:")+" "+u.fail.join("; "):"";
+ if(u.op==="read")return ["Reading from the receiver…",""];
+ if(u.op==="write")return ["Writing to the receiver…",""];
+ const f=(u.fail||[]).length?" "+"Refused:"+" "+u.fail.join("; "):"";
  switch(u.res){
-  case "read":return [L("Lido do recetor ","Read from the receiver ")+(u.readAgo>=0?ago(u.readAgo):"")+".","ok"];
-  case "read-none":return [T("O UM982 não respondeu ao CONFIG."),"bad"];
-  case "write":return [T("Gravado no UM982 (SAVECONFIG) e lido de novo."),"ok"];
-  case "write-part":return [L("Gravado em parte: "+u.okN+" de "+u.cmds+" comandos aceites (SAVECONFIG feito).","Partly written: "+u.okN+" of "+u.cmds+" commands taken (SAVECONFIG done).")+f,"warn"];
-  case "write-nosave":return [T("Mudado, mas o SAVECONFIG não foi confirmado: perde-se ao desligar.")+f,"warn"];
-  case "write-none":return [T("O UM982 não aceitou nenhum comando: nada foi mudado.")+f,"bad"];
+  case "read":return ["Read from the receiver "+(u.readAgo>=0?ago(u.readAgo):"")+".","ok"];
+  case "read-none":return ["The UM982 did not answer CONFIG.","bad"];
+  case "write":return ["Written to the UM982 (SAVECONFIG) and read back.","ok"];
+  case "write-part":return [("Partly written: "+u.okN+" of "+u.cmds+" commands taken (SAVECONFIG done).")+f,"warn"];
+  case "write-nosave":return ["Changed, but SAVECONFIG was not confirmed: lost at a power off."+f,"warn"];
+  case "write-none":return ["The UM982 took no command: nothing was changed."+f,"bad"];
   default:return ["",""];}
 }
 function fillUm(u){
  const f=$("fm"),v=u.v||{};
  for(const n of UM_SEL){const s=f[n],has=v[n]!==undefined;
   if(has){const val=String(v[n]);if(![...s.options].some(o=>o.value===val)){const o=document.createElement("option");o.value=val;
-   o.textContent=n==="rate"?hz(v[n]):n==="elev"?val+"°":n==="rtkTo"?val+" s":n==="sbas"?T("outro (ver as respostas)"):val;s.appendChild(o);}}
+   o.textContent=n==="rate"?hz(v[n]):n==="rtkTo"?val+" s":n==="sbas"?"other (see the answers)":val;s.appendChild(o);}}
   s.querySelector('option[value=""]').hidden=has;s.value=has?String(v[n]):"";}
  f.hdLen.value=v.hdLen>0?String(v.hdLen):"";f.hdTol.value=v.hdLen>0&&v.hdTol!==undefined?String(v.hdTol):"";
  f.hdOff.value=v.hdOff!==undefined?String(v.hdOff):"";f.ptOff.value=v.ptOff!==undefined?String(v.ptOff):"";
  f.hdOff.placeholder=f.ptOff.placeholder=v.hdOff===undefined?"–":"";
- for(const n of UM_FIX.concat(UM_MSG)){const c=f[n];c.checked=v[n]>0;c.dataset.na=v[n]===undefined||UM_FIX.includes(n)?"1":"";}
+ for(const n of UM_MSG){const c=f[n];c.checked=v[n]>0;c.dataset.na=v[n]===undefined?"1":"";}
  for(const n of UM_SYSN){const c=f[n];c.checked=v[n]===1;c.dataset.na=v[n]===undefined?"1":"";}
  $("mRateWarn").classList.toggle("hidden",!(v.rate!==undefined&&(v.vtg!==v.rate||v.hpr!==v.rate)));
+ const kx=v.ksxt>0&&v.ksxt!==100;   /* a KSXT at another rate: "Write to the receiver" sets it to 10 Hz */
+ set("mKsxtWarn",kx?("The KSXT comes at "+hz(v.ksxt)+": writing sets it to 10 Hz."):"","warn");$("mKsxtWarn").classList.toggle("hidden",!kx);
 }
-function umInfo(u){            /* the read-only part, every poll (also after a language change) */
+function umInfo(u){            /* the read-only part, every poll */
  const port=u.port>0?"COM"+u.port:"";
  set("mPortName",port||"–");
- for(let k=1;k<=3;k++){const b=(u.baud||{})["COM"+k];set("mCom"+k,b?b+" baud"+(u.port===k?" · Teensy":""):"–");}
- set("mPort",port?port+(u.portGuess?" "+T("(pela GGA)"):""):T("não identificada"),port?"":"warn");
- set("mNmea",u.nmea||"–");set("mModeTxt",u.modeText||"–");
- const other={};for(const e of u.logs||[])if(e.p!==u.port){const k=e.p>0?"COM"+e.p:"?";(other[k]=other[k]||[]).push(e.m+(e.ms>0?" "+hz(e.ms):""));}
- const ks=Object.keys(other);
- set("mOther",ks.length?T("Noutras portas:")+" "+ks.map(k=>k+": "+other[k].join(", ")).join(" · "):"");
- set("mRaw",(u.raw||[]).length?u.raw.join("\n"):"–");
 }
 function renderUm(u){
  if(!u)return;
  if(u.seq!==umShown&&!u.op){umShown=u.seq;fillUm(u);}
  umInfo(u);
+ otherOn("mMsgOther",u.v,UM_OTHER);
  const dis=!!u.op||u.readAgo<0;
  for(const e of $("fm").elements)if(e.name)e.disabled=dis||e.dataset.na==="1";
- $("mRead").disabled=!!u.op;$("mWrite").disabled=dis;
+ $("mRead").disabled=!!u.op||ckBusy0(gpsJ);$("mWrite").disabled=dis||ckBusy0(gpsJ);
  const m=mLocal&&Date.now()-mLocalAt<5000?mLocal:umMsg(u);set("mMsg",m[0],m[1]);
- if(!u.op&&u.readAgo<0&&!umAsked&&tab==="gps"){umAsked=true;gpsAct("act=umread",mSay);}   /* read once, the first time the tab shows a UM982 */
+ if(!u.op&&u.readAgo<0&&!umAsked&&tab==="gps"&&!ckBusy0(gpsJ)){umAsked=true;gpsAct("act=umread",mSay);}   /* read once, the first time the tab shows a UM982 */
 }
 $("mRead").addEventListener("click",()=>gpsAct("act=umread",mSay));
 $("fm").addEventListener("submit",e=>{e.preventDefault();
@@ -594,7 +602,7 @@ $("fm").addEventListener("submit",e=>{e.preventDefault();
  for(const n of UM_SEL){const s=f[n];if(s.disabled||s.value==="")continue;const nv=Number(s.value);if(nv!==v[n]){p.set(n,String(nv));ch.push(n);}}
  if(!ch.includes("rate")&&v.rate!==undefined&&(v.vtg!==v.rate||v.hpr!==v.rate)){p.set("rate",String(v.rate));ch.push("rate");}
  const val=n=>f[n].value.trim(),bad=n=>val(n)!==""&&!f[n].checkValidity();
- for(const n of UM_NUM)if(bad(n)){mSay(T("Valor fora dos limites.")+" ("+n+")","bad");f[n].focus();return;}
+ for(const n of UM_NUM)if(bad(n)){mSay("Value out of range."+" ("+n+")","bad");f[n].focus();return;}
  const len=val("hdLen"),tol=val("hdTol"),curLen=v.hdLen>0?String(v.hdLen):"",curTol=v.hdLen>0&&v.hdTol!==undefined?String(v.hdTol):"";
  if(!f.hdLen.disabled&&(len!==curLen||(len!==""&&tol!==curTol))){
   if(len===""){if(v.hdLen>0){p.set("hdLen","0");ch.push("hdLen");}}
@@ -602,11 +610,11 @@ $("fm").addEventListener("submit",e=>{e.preventDefault();
  const off=val("hdOff"),pt=val("ptOff"),curOff=v.hdOff!==undefined?String(v.hdOff):"",curPt=v.ptOff!==undefined?String(v.ptOff):"";
  if(!f.hdOff.disabled&&(off!==curOff||pt!==curPt)&&(off!==""||pt!=="")){p.set("hdOff",off||"0");p.set("ptOff",pt||"0");ch.push("hdOff");}
  for(const n of UM_MSG.concat(UM_SYSN)){const c=f[n];if(c.disabled)continue;const sys=UM_SYSN.includes(n),on=sys?v[n]===1:v[n]>0;
-  if(c.checked!==on){p.set(n,c.checked?(sys?"1":"1000"):"0");ch.push(n);}}
- if(!ch.length){mSay(T("Nada mudou."),"");return;}
- let q=L("Gravar "+ch.length+(ch.length===1?" alteração":" alterações")+" no UM982 (e SAVECONFIG)?","Write "+ch.length+(ch.length===1?" change":" changes")+" to the UM982 (and SAVECONFIG)?");
- if(ch.some(n=>UM_SYSN.includes(n))||ch.includes("mode"))q+="\n\n"+T("Mudar as constelações ou o modo de trabalho pode fazer perder o RTK durante uns segundos.");
- if(ch.includes("hdLen")&&p.get("hdLen")!=="0")q+="\n\n"+T("Com a distância entre as antenas errada, o UM982 não dá heading.");
+  if(c.checked!==on||(!sys&&c.checked&&v[n]!==100)){p.set(n,c.checked?(sys?"1":"100"):"0");ch.push(n);}}   /* the KSXT at 10 Hz (KSXT 0.1) */
+ if(!ch.length){mSay("Nothing changed.","");return;}
+ let q=("Write "+ch.length+(ch.length===1?" change":" changes")+" to the UM982 (and SAVECONFIG)?");
+ if(ch.some(n=>UM_SYSN.includes(n))||ch.includes("mode"))q+="\n\n"+"Changing the constellations or the working mode can lose RTK for a few seconds.";
+ if(ch.includes("hdLen")&&p.get("hdLen")!=="0")q+="\n\n"+"With a wrong distance between the antennas, the UM982 gives no heading.";
  if(!confirm(q))return;
  gpsAct(p.toString(),mSay);});
 async function pollUm(){
@@ -614,6 +622,136 @@ async function pollUm(){
   if(j.next<=umAfter){umAfter=0;return;}
   addLines($("umOut"),j.lines,false);umAfter=j.next-1;}catch(e){}
 }
+// ---- the receiver check (zRxCheck.ino): the data at 460800, the baud rate, what the Teensy needs, the AgOpenGPS settings
+const CK_N={ubxIn:"UBX in on UART1",rtcmIn:"RTCM3 in on UART1",ubxOut:"UBX out on UART1",nmeaOut:"NMEA out on UART1",gga:"GGA on UART1",vtg:"VTG on UART1",
+ rate:"time between measurements",navRate:"measurements per solution",baud1:"UART1 baud rate",rtcmOut2:"RTCM3 out on UART2",baud2:"UART2 baud rate",
+ relpos:"RELPOSNED on UART1",rtcmIn2:"RTCM3 in on UART2"},
+ CK_BOOL=["ubxIn","rtcmIn","ubxOut","nmeaOut","rtcmOut2","rtcmIn2"];
+let ckLocal=[null,null],ckLocalAt=[0,0];
+const ckBusy0=j=>!!(j&&j.ck&&j.ck.op&&j.ck.port===0);     /* the check has the receiver on Serial7: the GPS tab's reads wait */
+function ckName(id){const m=/^r(\d+)$/.exec(id);if(m){const n=m[1]==="4072"?"4072.0":m[1];return ("RTCM "+n+" on UART2");}return (CK_N[id]||id);}
+function ckVal(id,v){
+ if(CK_BOOL.includes(id))return (v?"on":"off");
+ if(id==="rate")return v+" ms";
+ if(id==="baud1"||id==="baud2")return v+" baud";
+ if(id==="navRate")return String(v);
+ return v>0?(v===1?"on":("on, 1 in "+v)):"off";}
+const hz10=x=>(x/10).toFixed(x%10?1:0)+" Hz";   /* (no line break before "Hz") */
+function ckSay(port,t,c){ckLocal[port]=[t,c];ckLocalAt[port]=Date.now();set("ck"+port+"Msg",t,c);}
+function ckHealth(id,p){
+ if(!p.on||p.health==="wait"){set(id,"–");return;}
+ if(p.health==="ok")pill(id,"valid"+" · "+(p.good+" in 5 s"),"ok");
+ else if(p.health==="junk")pill(id,"wrong baud rate","bad");
+ else pill(id,"nothing arriving","warn");}
+// the UM982 (zReceiver.ino's read): GGA, VTG and HPR at 10 Hz on the Teensy's port, that port at 460800
+function umNeed(u,single){
+ if(!u||u.readAgo<0)return null;
+ const v=u.v||{},miss=[];
+ for(const n of single?["gga","vtg"]:["gga","vtg","hpr"])if(v[n]!==100)miss.push(n.toUpperCase()+" "+"at 10 Hz");
+ const b=u.port>0?(u.baud||{})["COM"+u.port]:0;
+ if(b&&b!==460800)miss.push("port at 460800");
+ return miss;}
+function ckMsgText(c,p,port,um){
+ if(c.op&&c.port===port){
+  if(c.op==="scan")return [("Finding the baud rate: "+c.baudTry+" baud…"),""];
+  if(c.op==="baud")return ["Changing the receiver's baud rate…",""];
+  if(c.op==="load")return [c.msgs?("Loading: message "+(c.msg+1)+" of "+c.msgs+"…"):"Loading the commands into the UM982…",""];
+  return [c.msgs?("Comparing with the AgOpenGPS settings: "+(c.msg+1)+" of "+c.msgs+"…"):"Checking…",""];}
+ const out=[];let cls="";
+ const kn={ublox:"u-blox",unicore:"Unicore",nmea:"NMEA"}[p.foundKind]||"";
+ const boot=p.boot==="scan"&&p.baud!=="baud-ok"?"At start-up: ":"";
+ if(p.scan==="found"){out.push(boot+("the receiver answers at "+p.found+" baud ("+kn+")."));
+  if(p.found!==460800){out.push("The Teensy needs 460800: press «Set to 460800 and save».");cls="warn";}}
+ if(p.scan==="notfound"){out.push(boot+"no baud rate gave valid data: nothing connected, a silent receiver, or TX / RX swapped.");cls="bad";}
+ if(p.baud==="baud-ok"){out.push("The receiver is at 460800 baud now.");cls="ok";}
+ if(p.baud==="baud-fail"){out.push(("No valid data at 460800 after the change: is the receiver still at "+p.found+" baud?"));cls="bad";}
+ if(p.chk==="noanswer"){out.push("The receiver did not answer the check (UBX output off on UART1?).");cls="bad";}
+ const tot=p.loadTotal,ok=p.loadOk+p.loadRam,w=um?"commands":"messages",r=um?"recusados":"recusadas";
+ if(p.load==="loaded"){out.push(("AgOpenGPS settings loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken"+(p.loadRam?", "+p.loadRam+" in RAM and BBR only":"")+"."));cls="ok";}
+ if(p.load==="load-part"){out.push(("AgOpenGPS settings partly loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken, "+p.loadNak+" refused, "+p.loadNone+" not answered"+(um&&p.loadNak+p.loadNone===0?", SAVECONFIG not confirmed":"")+"."));cls="warn";}
+ if(p.load==="load-fail"){out.push(("The AgOpenGPS settings were not loaded ("+p.loadFile+"): the receiver did not take them."));cls="bad";}
+ if([p.scan,p.baud,p.chk,p.load].includes("stopped")){out.push("Stopped: the program (AgIO) took the receiver, or the GPS2 port changed.");cls="warn";}
+ return [out.join(" "),cls];}
+function renderCk(j){
+ const c=j.ck;if(!c)return;
+ const ublox=j.kind==="ublox",um=j.kind==="um982";
+ for(const port of [0,1]){
+  const p=c.ports[port],id="ck"+port;
+  if(port===1){$("ck1").classList.toggle("hidden",!p.on);if(!p.on)continue;set("ck1Model",p.model||"–");}
+  ckHealth(id+"Data",p);
+  const fast=p.health==="ok"&&Math.abs(p.hz[0]-100)>5?"warn":"";
+  if(port===0){const n=["GGA","VTG","HPR"].slice(0,um||p.hz[2]?3:2),hzs=n.map((x,i)=>p.hz[i]);
+   set(id+"Hz",p.health!=="ok"?"–":hzs.every(x=>x===hzs[0])?n.join(", ")+": "+hz10(hzs[0]):n.map((x,i)=>x+" "+hz10(hzs[i])).join(" · "),fast);}
+  else set(id+"Hz",p.health==="ok"?"RELPOSNED "+hz10(p.hz[0]):"–",fast);
+  // the F9P's firmware: HPG 1.13 (AOGConfigOMatic's), another one in red with where to download HPG 1.13
+  const fwBad=p.fwSt==="older"||p.fwSt==="newer";
+  set(port===0?"gFw":id+"Fw",(port===0&&j.fw)||p.fw||"–",p.fwSt==="same"?"ok":fwBad?"bad":"");   /* the first receiver's: in the GPS receiver card */
+  $(id+"FwNote").classList.toggle("hidden",!fwBad);
+  // what the Teensy needs: u-blox from its keys, the UM982 from the GPS tab's read
+  // values read: the wrong ones first (orange), the right ones below in a closed list
+  const ub=port===1||ublox,list=[],bad=[];let miss=null;
+  if(ub&&p.essAgo>=0){miss=[];
+   for(const e of p.ess){const good=e.st===1&&e.v===e.want;if(!good)miss.push(ckName(e.id));
+    (good?list:bad).push((good?"✓ ":e.st===2?"? ":"✗ ")+ckName(e.id)+": "+(e.st===1?ckVal(e.id,e.v):e.st===2?"unknown to the receiver":"not read")+(good||e.st===2?"":" — AgOpenGPS: "+ckVal(e.id,e.want)));}}
+  if(port===0&&um)miss=umNeed(j.um,c.umSingle);
+  set(id+"Need",miss===null?(ub||um?"not checked yet":"–"):miss.length?"missing:"+" "+miss.join(", "):"all good",miss===null?"":miss.length?"bad":"ok");
+  $(id+"Vals").classList.toggle("hidden",!list.length&&!bad.length);
+  $(id+"Bad").textContent=bad.join("\n");$(id+"Bad").classList.toggle("hidden",!bad.length);
+  $(id+"Det").classList.toggle("hidden",!list.length);$(id+"List").textContent=list.join("\n");
+  $(id+"OkSum").textContent=("Correct ("+list.length+")");
+  // the AgOpenGPS settings: u-blox F9P compared key by key, the UM982 command by command
+  let ago="–",agoC="";
+  if(ub){if(!p.f9p)ago="ZED-F9P only";
+   else if(p.cmpAgo>=0){ago=(p.same+" the same, "+p.diff+" different"+(p.unk?", "+p.unk+" not compared":""))+" ("+p.file+")";agoC=p.diff||p.unk?"warn":"ok";}
+   else ago="not compared";}
+  let differs=ub&&p.f9p&&p.cmpAgo>=0&&(p.diff>0||p.unk>0);
+  if(port===0&&um&&document.activeElement!==$("ck0Um")&&Date.now()-ckUmAt>3000)$("ck0Um").value=c.umSingle?"s":"d";   /* the setting */
+  if(!ub&&um){const s=$("ck0Um").value==="s",cmds=s?c.um982s:c.um982d,mask=s?p.umS:p.umD;
+   const HM=/^CONFIG HEADING (FIXLENGTH|VARIABLELENGTH|STATIC|LOWDYNAMIC|TRACTOR)$/i,   /* one heading mode at a time: */
+    gone=cmds.map((x,i)=>HM.test(x)&&cmds.slice(i+1).some(y=>HM.test(y)));             /* the file's TRACTOR is replaced by its VARIABLELENGTH */
+   if(p.umListed){const tot=cmds.filter((x,i)=>!gone[i]).length,n=cmds.filter((x,i)=>!gone[i]&&mask&(1<<i)).length;
+    ago=(n+" of "+tot+" in the receiver");agoC=n===tot?"ok":"warn";differs=n<tot;}
+   else ago="not read";
+   $("ck0CmdList").textContent=cmds.map((x,i)=>(gone[i]?"– ":p.umListed&&mask&(1<<i)?"✓ ":"· ")+x+(gone[i]?" "+"(replaced by the next one)":"")).join("\n");}
+  set(id+"Ago",ago,agoC);
+  if(port===0){for(const e of ["ck0Um","ck0UmNote","ck0Cmd"])$(e).classList.toggle("hidden",!um);}
+  const w=p.health==="junk"?(p.bytes+" bytes in 5 s with nothing valid at 460800 baud: the receiver is at another baud rate (or has other settings, or is wired wrong)."):
+   miss&&miss.length?"The receiver lacks settings the Teensy needs. «Load the AgOpenGPS settings» sets them.":"";
+  set(id+"Warn",w,"bad");$(id+"Warn").classList.toggle("hidden",!w);
+  // the buttons: "set to 460800" when the start-up search found another speed; "load" when something is not as AgOpenGPS wants
+  const busy=!!c.op,canLoad=port===1?p.f9p:(ublox&&p.f9p)||um;
+  $(id+"Check").disabled=busy||p.health==="junk"||(port===0&&!ublox&&!um)||(ub&&!p.f9p);
+  $(id+"Baud").classList.toggle("hidden",!(p.scan==="found"&&p.found!==460800));$(id+"Baud").disabled=busy;
+  $(id+"Load").classList.toggle("hidden",!(canLoad&&((miss&&miss.length)||differs)));
+  $(id+"Load").disabled=busy||p.health==="junk";
+  const m=ckLocal[port]&&Date.now()-ckLocalAt[port]<5000?ckLocal[port]:ckMsgText(c,p,port,port===0&&um);set(id+"Msg",m[0],m[1]);
+ }
+}
+const ckAct=(port,act,extra)=>gpsAct("act=ck"+act+"&port="+port+(extra||""),(t,c)=>ckSay(port,t,c));
+function ckLoad(port){
+ const j=gpsJ;if(!j||!j.ck)return;const p=j.ck.ports[port];
+ if(port===0&&j.kind==="um982"){
+  const s=$("ck0Um").value==="s",n=(s?j.ck.um982s:j.ck.um982d).length,f=s?"ConfigUM982S.txt":"ConfigUM982D.txt";
+  if(confirm(("Load the AgOpenGPS settings into the UM982 ("+(s?"one antenna":"two antennas")+")?\n\nAOGConfigOMatic "+f+": "+n+" commands, one at a time, then SAVECONFIG (kept after a power off). They replace the receiver's settings these commands change. The GPS can drop out for a few seconds.")))ckAct(0,"load","&um="+(s?"s":"d"));
+  return;}
+ let q=("Load the AgOpenGPS settings into the receiver?\n\nAOGConfigOMatic "+p.file+" ("+p.role+"): "+p.keys+" settings, written to the receiver's RAM, BBR and flash (kept after a power off). They replace its current settings: rate, constellations, messages and ports. The GPS can drop out for a few seconds.");
+ if(p.fwSt&&p.fwSt!=="same")q+="\n\n"+("These settings are for firmware HPG 1.13; the receiver has "+p.fw+".");
+ if(confirm(q))ckAct(port,"load");}
+for(const port of [0,1]){
+ $("ck"+port+"Check").addEventListener("click",()=>ckAct(port,"check"));
+ $("ck"+port+"Baud").addEventListener("click",()=>{const p=gpsJ&&gpsJ.ck&&gpsJ.ck.ports[port];if(!p)return;
+  const uni=port===0&&p.foundKind!=="ublox",ubx=p.foundKind!=="unicore";
+  let q=("Set the receiver to 460800 baud and save? It is at "+p.found+" baud.");
+  if(ubx)q+="\n\n"+"u-blox: the UART1 speed is written to all the receiver's layers (RAM, BBR and flash).";
+  if(uni)q+="\n\n"+"Unicore: CONFIG COM1, COM2 and COM3 460800, then SAVECONFIG.";
+  if(confirm(q+"\n\n"+"Only with autosteer off: the GPS stops for a few seconds."))ckAct(port,"baud");});
+ $("ck"+port+"Load").addEventListener("click",()=>ckLoad(port));
+}
+let ckUmAt=0;
+$("ck0Um").addEventListener("change",async()=>{     /* UM982 antennas: a setting (Settings block), also the AgOpenGPS file */
+ ckUmAt=Date.now();if(gpsJ)renderCk(gpsJ);
+ try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"umSingle="+($("ck0Um").value==="s"?1:0)});
+  if(!j.ok)ckSay(0,"Error"+": "+ptErr(j.error),"bad");else await pollGps();}catch(e){ckSay(0,"No connection to the module.","bad");}});
 function show(t){
  tab=t;for(const b of document.querySelectorAll("nav button"))b.classList.toggle("on",b.dataset.t===t);
  for(const s of document.querySelectorAll("main>section"))s.classList.toggle("hidden",s.id!=="t-"+t);
@@ -631,80 +769,88 @@ function fillSettings(s){
  f.epochWaitMs.value=String(s.epochWaitMs);
  if(f.epochWaitMs.value!==String(s.epochWaitMs)){const o=document.createElement("option");o.textContent=s.epochWaitMs;f.epochWaitMs.appendChild(o);f.epochWaitMs.value=String(s.epochWaitMs);}
  f.tm171YawSign.value=String(s.tm171YawSign);f.xiaoOff.value=String(s.xiaoOff);
- f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;lastSet=s;
+ f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;lastSet=s;
 }
-async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":T("(predefinições: ainda nada guardado)");}}catch(e){}}
+async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
 async function postSettings(body){
  const m=$("setMsg");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
-  if(j.ok){fillSettings(j.settings);m.textContent=T("Guardado.");m.className="note ok";}else{m.textContent=T("Erro")+": "+ptErr(j.error);m.className="note bad";}
- }catch(e){m.textContent=T("Sem ligação ao módulo.");m.className="note bad";}
+  if(j.ok){fillSettings(j.settings);m.textContent="Saved.";m.className="note ok";}else{m.textContent="Error"+": "+ptErr(j.error);m.className="note bad";}
+ }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
 }
 $("fs").addEventListener("submit",e=>{e.preventDefault();const f=$("fs");
  const p=new URLSearchParams();p.set("outputMode",f.querySelector("input[name=outputMode]:checked").value);
  p.set("hprAcceptFloat",f.hprAcceptFloat.checked?"1":"0");p.set("epochWaitMs",f.epochWaitMs.value);
  p.set("tm171SwapRollPitch",f.tm171SwapRollPitch.checked?"1":"0");p.set("tm171YawSign",f.tm171YawSign.value);
  p.set("xiaoOff",f.xiaoOff.value);
- if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!confirm(T("Desligar a verificação do WAS? Faça-o só na bancada, sem WAS ligado.")))return;
+ if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!confirm("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
+ if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!confirm("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
+ p.set("simMode",f.simMode.checked?"1":"0");
  postSettings(p.toString());});
-$("defaults").addEventListener("click",()=>{if(confirm(T("Repor as predefinições desta página?")))postSettings("defaults=1");});
+$("defaults").addEventListener("click",()=>{if(confirm("Restore the defaults of this page?"))postSettings("defaults=1");});
 
 // ---- UM982
 for(const b of document.querySelectorAll("[data-c]"))b.addEventListener("click",()=>{$("umCmd").value=b.dataset.c;$("umCmd").focus();});
 async function umSend(){
  const c=$("umCmd").value.trim();if(!c)return;
- if(/^(FRESET|RESET|UNLOG\b)/i.test(c)||/^CONFIG\s+COM\d\s+\d+/i.test(c)){if(!confirm(T("Este comando pode cortar a ligação entre o UM982 e o Teensy. Enviar mesmo assim?")))return;}
+ if(/^(FRESET|RESET|UNLOG\b)/i.test(c)||/^CONFIG\s+COM\d\s+\d+/i.test(c)){if(!confirm("This command can cut the link between the UM982 and the Teensy. Send it anyway?"))return;}
  addLines($("umOut"),["> "+c],false);
  try{const j=await getJ("/api/um982",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"cmd="+encodeURIComponent(c)});
-  if(!j.ok)addLines($("umOut"),[T("erro")+": "+ptErr(j.error)],false);}catch(e){addLines($("umOut"),[T("sem ligação ao módulo")],false);}
+  if(!j.ok)addLines($("umOut"),["error"+": "+ptErr(j.error)],false);}catch(e){addLines($("umOut"),["no connection to the module"],false);}
  umUntil=Date.now()+6000;$("umCmd").select();
 }
 $("umSend").addEventListener("click",umSend);
 $("umCmd").addEventListener("keydown",e=>{if(e.key==="Enter")umSend();});
 
 // ---- firmware
-const PT=[["autosteer is engaged","o autosteer está ligado — desligue-o primeiro"],["is moving","o trator está em movimento — pare primeiro"],
- ["size not plausible","ficheiro vazio ou com tamanho impossível"],["not an Intel HEX","não é um ficheiro .hex (Intel HEX)"],
- ["checksum error","ficheiro .hex danificado (erro de checksum)"],["bad hex","ficheiro .hex danificado (linha inválida)"],
- ["out of order","ficheiro .hex com endereços fora de ordem"],["outside the Teensy","endereços fora da memória do Teensy 4.1"],
- ["incomplete","ficheiro incompleto (cortado)"],["too small","ficheiro demasiado pequeno para ser um firmware"],
- ["does not start","o firmware não começa no início da memória do Teensy 4.1"],["fw_teensy41 missing","não foi compilado para Teensy 4.1, ou não tem atualização pela rede"],
- ["not this firmware","não é este firmware (não tem a página de atualização) — marque «Outro firmware» para o instalar na mesma"],
- ["flash erase","erro a apagar a memória do Teensy"],["flash verify","erro ao verificar a memória do Teensy"],
- ["connection lost","a ligação caiu durante o envio"],["timeout","o envio parou (tempo esgotado)"],
- ["too large for the update","o firmware atual é demasiado grande para a atualização"],["unsupported","ficheiro .hex com formato não suportado"],
- ["invalid value","valor inválido"],["not a u-blox receiver","o recetor não é u-blox"],["not a UM982 receiver","o recetor não é um UM982"],["at least one of GPS","pelo menos uma das constelações GPS, GLONASS, Galileo e BeiDou tem de ficar ligada"],["busy","o recetor está ocupado com uma leitura ou gravação"],["nothing to change","nada mudou"],["cannot be written","esta definição não se muda aqui"],["unknown action","pedido desconhecido"],["hex line too long","ficheiro .hex com uma linha demasiado comprida"],["too long","comando vazio ou demasiado comprido"],["invalid character","carácter inválido no comando"]];
-function ptErr(e){e=String(e||"");if(LANG==="en")return e;for(const [k,v] of PT)if(e.indexOf(k)>=0)return v;return e;}
+function ptErr(e){return String(e||"");}
 function fwMsg(t,c){const m=$("fwMsg");m.textContent=t;m.className="note "+(c||"");}
-$("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];$("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":T("nenhum ficheiro");$("install").disabled=!f||busy;fwMsg("");});
+$("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];$("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");});
 $("install").addEventListener("click",()=>{
  const f=$("hexFile").files[0];if(!f||busy)return;
- if(!f.name.toLowerCase().endsWith(".hex")){fwMsg(T("Escolha um ficheiro .hex."),"bad");return;}
- if(!confirm(L("Instalar "+f.name+"?\n\nO autosteer tem de estar desligado e o trator parado. O autosteer fica desligado durante a atualização.","Install "+f.name+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ if(!f.name.toLowerCase().endsWith(".hex")){fwMsg("Choose a .hex file.","bad");return;}
+ if(!confirm(("Install "+f.name+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  sendHex(f,$("force").checked,0);
 });
 // The .hex to the Teensy (a chosen file, or one downloaded from GitHub); progress from p0 to 95 %
 function sendHex(blob,force,p0){
- const p=$("prog");fwMsg(T("A enviar o ficheiro…"));
+ const p=$("prog");fwMsg("Sending the file…");
  const x=new XMLHttpRequest();
  x.open("POST","/api/ota"+(force?"?force=1":""));
  x.setRequestHeader("Content-Type","text/plain");
  x.upload.onprogress=e=>{if(e.lengthComputable)p.value=p0+Math.round(e.loaded/e.total*(95-p0));};
- x.upload.onload=()=>fwMsg(T("Ficheiro enviado; o Teensy está a verificar e a gravar…"));
+ x.upload.onload=()=>fwMsg("File sent; the Teensy is checking and writing it…");
  const fail=t=>{busy=false;$("install").disabled=!$("hexFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;waitingBoot=true;setOnline(false);
-   fwMsg(L("Verificado ("+Math.round(j.size/1024)+" kB). A instalar e a reiniciar — não desligue a corrente…","Checked ("+Math.round(j.size/1024)+" kB). Installing and restarting — do not switch the power off…"),"warn");}
-  else fail(L("Não instalado: ","Not installed: ")+ptErr(j.error||(T("erro")+" "+x.status))+L(". O firmware atual continua.",". The current firmware keeps running."));};
- x.onerror=()=>fail(T("A ligação falhou. O firmware atual continua."));
+   fwMsg(("Checked ("+Math.round(j.size/1024)+" kB). Installing and restarting — do not switch the power off…"),"warn");}
+  else fail("Not installed: "+ptErr(j.error||("error"+" "+x.status))+". The current firmware keeps running.");};
+ x.onerror=()=>fail("The connection failed. The current firmware keeps running.");
  x.send(blob);
 }
 
+// ---- the report for an analysis: every answer of the module in one .json file, downloaded by this browser
+$("dumpBtn").addEventListener("click",async()=>{
+ const b=$("dumpBtn"),m=$("dumpMsg");b.disabled=true;m.className="note";m.textContent="Gathering…";
+ const r={made:new Date().toString(),page:location.href,browser:navigator.userAgent};
+ for(const [k,u] of [["diag","/api/diag"],["status","/api/status"],["settings","/api/settings"],["gps","/api/gps"]]){try{r[k]=await getJ(u);}catch(e){r[k]={error:String(e)};}}
+ const log=[];let after=0;
+ for(let i=0;i<30;i++){let j;try{j=await getJ("/api/log?after="+after);}catch(e){break;}
+  if(!j.lines||!j.lines.length)break;for(const l of j.lines)log.push(dur(Math.floor(l.t/1000))+"  "+l.x);
+  after=j.lines[j.lines.length-1].s;if(after>=j.next-1)break;}
+ r.log=log;
+ try{const j=await getJ("/api/um982?after=0");r.um982Console=j.lines||j;}catch(e){}
+ const d=new Date(),z=n=>String(n).padStart(2,"0"),fw=((r.status&&r.status.fw)||"teensy").split(" ")[0];
+ const name=fw+"_report_"+d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"_"+z(d.getHours())+z(d.getMinutes())+".json";
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,1)],{type:"application/json"}));a.download=name;
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+ m.className="note ok";m.textContent="Downloaded: "+name;b.disabled=false;});
+
 // ---- a newer version on GitHub (renatorgr/Boards, folder Firmware, one folder per version:
 // vX.Y_AiO_WEB with vX.Y_AiO_WEB.hex in it).
-// Asked by this browser when the page opens, every 6 hours, and with "Procurar agora".
+// Asked by this browser when the page opens, every 6 hours, and with "Check now".
 const GH_API="https://api.github.com/repos/renatorgr/Boards/contents/Firmware",GH_WEB="https://github.com/renatorgr/Boards/tree/main/Firmware";
 const GH_RX=/^v(\d+(?:\.\d+)*)_AiO_WEB$/;
 let gh=null,ghState="",ghAt=0;
@@ -723,37 +869,37 @@ async function ghCheck(){
 function ghNewer(){const r=runningVer();return !!(gh&&r&&verCmp(gh.ver,r)>0);}
 function renderGh(){
  const r=runningVer(),nw=ghNewer();
- set("ghVer",ghState==="busy"?T("a procurar…"):ghState==="fail"?T("sem resposta do GitHub (este aparelho tem internet?)"):ghState==="none"?T("nenhuma versão no GitHub"):
-  !gh?"–":gh.ver+(nw?L(" — versão nova (instalada: "+r+")"," — new version (installed: "+r+")"):verCmp(gh.ver,r)===0?L(" — atualizado, é a versão instalada"," — up to date, latest version installed"):L(" — a instalada ("+r+") é mais recente"," — the installed version ("+r+") is newer")),
+ set("ghVer",ghState==="busy"?"checking…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
+  !gh?"–":gh.ver+(nw?(" — new version (installed: "+r+")"):verCmp(gh.ver,r)===0?" — latest version installed":(" — the installed version ("+r+") is newer")),
   nw?"ok":ghState==="fail"?"warn":"");
  $("ghInstall").disabled=!nw||busy;
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?L("Há uma versão nova do firmware no GitHub: "+gh.ver+" (instalada: "+r+"). Instale-a no separador Firmware.","There is a new firmware version on GitHub: "+gh.ver+" (installed: "+r+"). Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("There is a new firmware version on GitHub: "+gh.ver+" (installed: "+r+"). Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
 }
 async function ghInstall(){
  if(!ghNewer()||busy)return;
  const name=gh.dir+".hex";
- if(!confirm(L("Instalar a versão "+gh.ver+" do GitHub?\n\nO autosteer tem de estar desligado e o trator parado. O autosteer fica desligado durante a atualização.","Install version "+gh.ver+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ if(!confirm(("Install version "+gh.ver+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
- fwMsg(T("A descarregar do GitHub…"));
+ fwMsg("Downloading from GitHub…");
  try{
   const f=(await ghList(gh.dir)).find(e=>e.type==="file"&&e.name===name);
-  if(!f)throw new Error(L("o ficheiro "+name+" não está no GitHub","the file "+name+" is not on GitHub"));
+  if(!f)throw new Error(("the file "+name+" is not on GitHub"));
   const res=await fetch(f.download_url);if(!res.ok)throw new Error("GitHub: HTTP "+res.status);
   const rd=res.body.getReader(),parts=[];let got=0;
   for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;p.value=Math.round(got/f.size*45);}
   const blob=new Blob(parts);
-  if(blob.size!==f.size)throw new Error(L("ficheiro incompleto ("+blob.size+" de "+f.size+" bytes)","file incomplete ("+blob.size+" of "+f.size+" bytes)"));
+  if(blob.size!==f.size)throw new Error(("file incomplete ("+blob.size+" of "+f.size+" bytes)"));
   sendHex(blob,false,45);
  }catch(e){busy=false;$("install").disabled=!$("hexFile").files[0];p.classList.add("hidden");renderGh();
-  fwMsg(L("Não descarregado: ","Not downloaded: ")+e.message+L(". O firmware atual continua.",". The current firmware keeps running."),"bad");}
+  fwMsg("Not downloaded: "+e.message+". The current firmware keeps running.","bad");}
 }
 $("ghCheck").addEventListener("click",ghCheck);
 $("ghInstall").addEventListener("click",ghInstall);
-$("reboot").addEventListener("click",async()=>{if(!confirm(T("Reiniciar o Teensy? O autosteer e o GPS param uns segundos.")))return;
- try{await getJ("/api/reboot",{method:"POST"});}catch(e){}fwMsg(T("A reiniciar…"),"warn");});
-$("logPause").addEventListener("click",()=>{logPaused=!logPaused;$("logPause").textContent=T(logPaused?"Continuar":"Pausar");});
+$("reboot").addEventListener("click",async()=>{if(!confirm("Restart the Teensy? Autosteer and GPS stop for a few seconds."))return;
+ try{await getJ("/api/reboot",{method:"POST"});}catch(e){}fwMsg("Restarting…","warn");});
+$("logPause").addEventListener("click",()=>{logPaused=!logPaused;$("logPause").textContent=(logPaused?"Resume":"Pause");});
 $("logClear").addEventListener("click",()=>{$("log").textContent="";});
 
 // ---- one request at a time to the module, every second
@@ -767,7 +913,9 @@ async function tick(){
  if(tab==="log"||tickN%5===0)await pollLog();
  if(tab==="gps"){await pollGps();if(Date.now()<umUntil)await pollUm();}
 }
-applyLang();
+// after a reload for a restart: the same tab, and the update's result
+try{const t=sessionStorage.getItem("tab"),m=sessionStorage.getItem("fwMsg");sessionStorage.removeItem("tab");sessionStorage.removeItem("fwMsg");
+ if(t&&$("t-"+t))show(t);if(m)fwMsg(m,"ok");}catch(e){}
 (async function loop(){await tick();setTimeout(loop,1000);})();
 </script>
 </body>

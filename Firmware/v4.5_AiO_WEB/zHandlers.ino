@@ -8,7 +8,11 @@
    found (TM171 or BNO085, zImu.ino); the receiver's #VERSIONA answer and UBX message names go to
    zReceiver.ino. AiO_WEB 4.5: the dual heading also from a second F9P (hprTake(), zDualF9P.ino);
    with no IMU, the $PAOGI roll from the two antennas; the wheel angle from the heading's turn rate
-   (for the Keya without a WAS), as the AgOpenGPS AiO v4 firmware.
+   (for the Keya without a WAS), as the AgOpenGPS AiO v4 firmware; the IMU aligned to the GPS course
+   only once the rig has driven straight for 2.5 s / 5 m, and kept on the course afterwards only for the
+   $PAOGI of a dual-antenna receiver (AgOpenWeb and AgOpenGPS with $PANDA align it themselves); the valid sentences and the
+   GGA / VTG / HPR rates counted for the receiver check (zRxCheck.ino); the simulator mode setting
+   (the GPS not sent to the program).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -94,9 +98,12 @@
 #define COURSE_FWD_DEG        45.0f  // |course - heading| below this = driving forward
 #define COURSE_REV_DEG        135.0f // |course - heading| above this = reversing (the course is 180 deg off the heading)
 #define COURSE_RESEED_EPOCHS  30     // driving straight 3 s with a course that fits neither: re-align to the course (forward assumed)
-#define COURSE_SEED_KMH       3.0f   // TM171 never aligned since start-up: aligned to the course above this speed (forward assumed)
-#define STD_STEP_DEG          0.5f   // standard $INHPR: a TM171 re-alignment larger than this in one epoch (course seed,
-                                     // re-seed, new yaw direction) is not passed on as a step (AgOpenWeb aligns the IMU itself)
+#define COURSE_SEED_KMH       3.0f   // TM171 never aligned since start-up: aligned to the course above this speed (forward assumed)...
+#define COURSE_SEED_MS        2500   // ...without a break for this long...
+#define COURSE_SEED_DIST_M    5.0f   // ...over at least this distance...
+#define COURSE_SEED_SPREAD_DEG 10.0f // ...the course staying within this of where the run started. A receiver standing still
+                                     // without RTK jumps 1-2 m now and then (one "course" above 3 km/h), but does not travel
+                                     // 5 m the same way for 2.5 s; a tractor does, with or without RTK
 #define SIGN_LEARN_DUAL_DEG   60.0f  // turning needed to lock the TM171 yaw direction against the dual heading
 #define SIGN_LEARN_COURSE_DEG 30.0f  // ...against the GPS course (no dual heading: learn it sooner)
 #define POS_HISTORY           30     // GGA positions kept (3 s at 10 Hz) for the speed fallback and the course
@@ -194,7 +201,8 @@ int           epochHprQf   = -1;     // QF of this epoch's HPR, -1 = no HPR for 
 float         dualHeading  = 0;
 char          speedSource  = '-';    // 'v' receiver VTG, 'p' GGA positions, '-' none
 float         lastSpeedKmh = 0, lastOut = 0, lastRoll = 0;
-float         stdShift     = 0;      // standard $INHPR heading = lastOut + stdShift (0 while the dual heading is in use)
+float         stdShift     = 0;      // standard $INHPR heading = lastOut + stdShift (0 while the dual heading is in use;
+                                     // without it, the course alignment taken back out: AgOpenWeb does its own)
 float         classicHdg   = 0;      // heading of the last classic $PAOGI (UM982)
 bool          haveClassicHdg = false;
 bool          classicHdgTrusted = false; // classicHdg came from the dual heading, an aligned TM171 or the GPS course
@@ -324,6 +332,7 @@ uint16_t      rxTypeOthers = 0;      // lines of further types that did not fit 
 
 static void noteRxTypeName(const char* name)
 {
+    rxCkNoteType(name);                                    // the GGA / VTG / HPR rates (zRxCheck.ino)
     for (uint8_t k = 0; k < rxTypeCount; k++)
         if (!strcmp(rxTypes[k].name, name)) { if (rxTypes[k].count < 65535) rxTypes[k].count++; return; }
     if (rxTypeCount < RX_TYPES_MAX)
@@ -411,6 +420,7 @@ void rawNmeaTee(char c)
         if (rawLen > 2 && (rawLine[0] == '$' || rawLine[0] == '#'))
         {
             rawLine[rawLen] = '\0';
+            if (nmeaLineOk(rawLine)) rxCkGood[RXCK_GPS]++;     // valid data at 460800 (zRxCheck.ino)
             if (!strncmp(rawLine, "#VERSIONA", 9)) rxIdLine(rawLine);   // the Unicore receiver's answer (zReceiver.ino)
             else if (!umIsReply(rawLine)) noteRxType(rawLine);           // answers to commands are not sentence types
         }
@@ -682,6 +692,8 @@ static void wheelAngleFromHeading(uint32_t now, const char* track)
 char          lastSent[SENT_SLOTS][128] = {};
 uint32_t      epochsSent   = 0;
 uint8_t       lastSentKind = 0;      // 0 none yet, 1 standard set, 2 $PAOGI, 3 $PANDA
+uint32_t      epochsHeld   = 0;      // simulator mode (cfg.simMode): epochs not sent
+bool          simHeld      = false;  // simulator mode: the last epoch was held back
 
 static void sendLine(const char* line, uint8_t slot)
 {
@@ -841,12 +853,28 @@ static void courseCorrect(float tmRaw)
     const float tmYaw = yawSign * tmRaw;                   // after a possible sign change
     if (!offsetSeeded)
     {
-        if (kmh >= COURSE_SEED_KMH)
+        // the first alignment: COURSE_SEED_MS straight above COURSE_SEED_KMH over COURSE_SEED_DIST_M (see the #defines)
+        static uint32_t seedMs = 0, seedLastMs = 0;
+        static double   seedLat = 0, seedLon = 0;
+        static float    seedCourse = 0;
+        const uint32_t now = millis();
+        const bool go = kmh >= COURSE_SEED_KMH;
+        if (!go || seedLastMs == 0 || now - seedLastMs > 400 || fabsf(wrap180(course - seedCourse)) > COURSE_SEED_SPREAD_DEG)
+        {
+            seedLastMs = 0;                                // the run is broken: a new one from here
+            if (go) { seedMs = seedLastMs = now; seedLat = posLatDeg[0]; seedLon = posLonDeg[0]; seedCourse = course; }
+            return;
+        }
+        seedLastMs = now;
+        const double dN = (posLatDeg[0] - seedLat) * 111194.9;
+        const double dE = (posLonDeg[0] - seedLon) * 111194.9 * cos(posLatDeg[0] * (M_PI / 180.0));
+        if (now - seedMs >= COURSE_SEED_MS && sqrt(dN * dN + dE * dE) >= COURSE_SEED_DIST_M)
         {
             yawOffset    = wrap180(course - tmYaw);
             offsetSeeded = true;
             offsetFrom   = 'C';
             courseState  = 'F';
+            seedLastMs   = 0;
         }
         return;
     }
@@ -855,6 +883,7 @@ static void courseCorrect(float tmRaw)
     float err;
     if (fabsf(d) <= COURSE_FWD_DEG)      { err = d;                   courseState = courseLastFix = 'F'; }
     else if (fabsf(d) >= COURSE_REV_DEG) { err = wrap180(d + 180.0f); courseState = courseLastFix = 'R'; }
+    else if (!receiverIsDual())          { courseState = 'x'; return; }
     else
     {
         // Driving straight, but the course fits neither forward nor reverse: the TM171 yaw moved
@@ -869,6 +898,11 @@ static void courseCorrect(float tmRaw)
         return;
     }
     courseBadRun = 0;
+    // After the first alignment the GPS course keeps correcting the IMU heading only for a dual-antenna
+    // receiver: its $PAOGI fallback, which AgOpenGPS (heading source Dual) takes as it is. AgOpenWeb
+    // ($INHPR, $PANDA) and AgOpenGPS with $PANDA align the IMU heading to the GPS themselves
+    // (imuGPS_Offset, AgOpenWeb's GpsHeadingFusionService): a second correction here would only fight theirs.
+    if (!receiverIsDual()) return;
     float step = COURSE_K * err;
     if (step >  COURSE_MAX_STEP_DEG) step =  COURSE_MAX_STEP_DEG;
     if (step < -COURSE_MAX_STEP_DEG) step = -COURSE_MAX_STEP_DEG;
@@ -989,15 +1023,12 @@ void gnssProcess()
 
         float out = wrap360(yawSign * tmRaw + (offsetSeeded ? yawOffset : 0.0f));
         // Standard $INHPR: aligned to the dual heading while it is in use (AgOpenWeb then uses $GNTHS);
-        // without it, a re-alignment by the GPS course goes into stdShift instead of making a step.
+        // without it, every re-alignment by the GPS course goes into stdShift: AgOpenWeb aligns the IMU
+        // heading to the GPS itself (GpsHeadingFusionService), so the firmware does not do it a second time.
         // A new yaw direction is the exception: the heading had been turning the wrong way, and the
         // re-aligned one (to the course) is closer to the truth than a continuation of it.
         if (dualActive || yawSign != signBefore) stdShift = 0.0f;
-        else
-        {
-            const float step = wrap180(out - outBefore);
-            if (fabsf(step) > STD_STEP_DEG) stdShift = wrap180(stdShift - step);
-        }
+        else stdShift = wrap180(stdShift - wrap180(out - outBefore));
         if (out >= 359.995f) out = 0.0f;                   // never print 360.00
         lastOut  = out;
         lastRoll = r;
@@ -1057,9 +1088,17 @@ void gnssProcess()
 
 
     // ---- out to AgOpenWeb / AgOpenGPS
-    if (outClassicNow()) sendClassic(kmh, r, p);       // the setting, or in automatic mode the program (zStatus.ino)
-    else                               sendStandard(track, kmh, r, p);
-    epochsSent++;
+    // Simulator mode (setting, for the program's simulator only): the GPS does not go out. AgOpenWeb
+    // switches its simulator off (its button greyed out) while it gets GPS sentences, with or without a fix.
+    const bool hold = cfg.simMode != 0;
+    simHeld = hold;                                    // (its message: the [boot] line, or the [web] line when switched on)
+    if (hold) epochsHeld++;
+    else
+    {
+        if (outClassicNow()) sendClassic(kmh, r, p);   // the setting, or in automatic mode the program (zStatus.ino)
+        else                 sendStandard(track, kmh, r, p);
+        epochsSent++;
+    }
 
     // LEDs: green = dual heading, red = TM171 heading (single antenna), red blinking = TM171 lost
     digitalWrite(GPSGREEN_LED, epochDual ? HIGH : LOW);

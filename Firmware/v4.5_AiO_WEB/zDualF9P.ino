@@ -5,7 +5,8 @@
    must be set) is the one of the AgOpenGPS AiO v4 Teensy firmware (zRelPos.ino of
    AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project, GPL v3); the UBX-NAV-RELPOSNED
    message is described in the u-blox ZED-F9P interface description.
-   Written 2026 by Claude (Anthropic) for renatorgr (v4.5_AiO_WEB).
+   Written 2026 by Claude (Anthropic) for renatorgr (v4.5_AiO_WEB). The receiver check (zRxCheck.ino)
+   gets the other UBX messages of the second F9P (its answers) and its counts.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -30,7 +31,7 @@
 #define DUALF9P_BAUD            460800
 #define DUALF9P_HEADING_OFFSET  90.0      // degrees added to relPosHeading (AiO firmware: 900 x 0.1 deg)
 #define DUALF9P_LEAP_S          18        // GPS - UTC, seconds (u-blox default; the GGA time is UTC)
-#define DUALF9P_MAX_LEN         100       // longest UBX frame kept (RELPOSNED: 64 bytes)
+#define DUALF9P_MAX_LEN         1200      // longest UBX frame kept (RELPOSNED: 64 bytes; the receiver check's answers: up to 772)
 
 
 // What the second F9P sent last (web page, [status] lines)
@@ -66,8 +67,16 @@ void gps2Begin()
     if (want == dualBaud) return;
     Serial2.begin(want == 2 ? DUALF9P_BAUD : XIAO_BAUD);         // (its buffers: xiaoSetup, zXiao.ino)
     dualBaud = want;
+    dSt = 0;                       // (what is on the port: the [boot] and [web] settings lines)
+}
+
+// After the receiver check searched or changed the second F9P's baud rate (zRxCheck.ino): Serial2 at
+// 460800 again, the frame reader from the start
+void dualF9pRestart()
+{
+    Serial2.begin(DUALF9P_BAUD);
+    dualBaud = 2;
     dSt = 0;
-    Serial.println(want == 2 ? "GPS2 port (Serial2): second F9P (dual F9P), 460800" : "GPS2 port (Serial2): XIAO ESP32, 460800");
 }
 
 static int32_t le32(const uint8_t* p) { return (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24)); }
@@ -120,7 +129,7 @@ static inline void dCk(uint8_t b) { dCkA += b; dCkB += dCkA; }
 void dualF9pProcess()
 {
     gps2Begin();
-    if (!dualF9pOn()) return;
+    if (!dualF9pOn() || rxCkOwns(RXCK_GPS2)) return;     // (the receiver check searches its baud rate)
     const uint32_t now = millis();
     if (dSt && now - dLastMs > 100) dSt = 0;               // a frame cut off: forget it
     int budget = 512;
@@ -128,6 +137,7 @@ void dualF9pProcess()
     {
         const uint8_t b = (uint8_t)Serial2.read();
         dualF9pBytes++;
+        rxCkBytes[RXCK_GPS2]++;
         dLastMs = now;
         switch (dSt)
         {
@@ -150,7 +160,12 @@ void dualF9pProcess()
             case 7: dSt = (b == dCkA) ? 8 : 9; break;
             case 8:
                 dSt = 0;
-                if (b == dCkB) { if (dCls == 0x01 && dId == 0x3C) relPosNed(dBuf, dLen); }
+                if (b == dCkB)
+                {
+                    rxCkGood[RXCK_GPS2]++;
+                    if (dCls == 0x01 && dId == 0x3C) relPosNed(dBuf, dLen);
+                    else rxCkUbx(RXCK_GPS2, dCls, dId, dBuf, dLen);    // answers to the receiver check (zRxCheck.ino)
+                }
                 else dualF9pBad++;
                 break;
             default: dSt = 0; dualF9pBad++; break;

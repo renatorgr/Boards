@@ -14,9 +14,11 @@
 //   - Settings (zSettings.ino), saved in the EEPROM
 //   - GPS (was "UM982"): the receiver's model (zReceiver.ino); UM982: console, commands to the
 //     receiver and its replies; u-blox F9P / X20P: its settings, read and written with UBX
+//     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload
 //   - Firmware update (zOTA.ino) and restart
+//   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
-//   corrections, why the Teensy started; the WAS check and the watchdog in the settings
+//   corrections, why the Teensy started; the WAS check, the watchdog and the simulator mode in the settings
 //
 // One request at a time, answered with "Connection: close". Reading a request and sending the
 // answer never wait for the browser longer than WEB_TIMEOUT_MS, so the GNSS / steering loop keeps
@@ -55,6 +57,11 @@ static struct
 
 static char webBuf[16384];       // JSON answers
 
+// For the report (GET /api/diag, web page Firmware tab): requests answered, error answers (with the last
+// one), and requests closed with no answer (the browser too slow or gone)
+static uint32_t webReqN = 0, webErrN = 0, webDropN = 0;
+static char     webErrLast[96] = "";
+
 // ---------------------------------------------------------------- sending
 static bool webWrite(EthernetClient& c, const char* d, size_t n)
 {
@@ -66,6 +73,7 @@ static bool webWrite(EthernetClient& c, const char* d, size_t n)
         {
             if (!c.connected() || millis() - t0 > WEB_TIMEOUT_MS) return false;
             wdtFeed();                                   // a slow browser must not trip the watchdog
+            netPoll();                                   // the network stack (zNet.h): retransmissions
             delayMicroseconds(200);
             continue;
         }
@@ -105,6 +113,8 @@ static void webSendError(EthernetClient& c, int code, const char* msg)
     for (const char* p = msg; *p && k < sizeof(e) - 2; p++) { if (*p == '"' || *p == '\\') e[k++] = '\\'; e[k++] = *p; }
     e[k] = '\0';
     snprintf(j, sizeof(j), "{\"ok\":false,\"error\":\"%s\"}", e);
+    webErrN++;
+    snprintf(webErrLast, sizeof(webErrLast), "%d %s %s: %s", code, rq.method, rq.path, msg);
     webSendJson(c, code, j);
 }
 
@@ -259,6 +269,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     if (full) j.str("rx", rxTypesLast);                     // the long texts only for the web page
     j.str("model", rxModel);                                // the receiver, as it answered (zReceiver.ino)
     if (full) { j.str("rxKind", rxKindName()); j.str("rxFw", rxFw); }
+    if (full) { j.str("ckH", rxCkHealthName(RXCK_GPS)); j.str("ck2H", rxCkHealthName(RXCK_GPS2)); }   // the data at 460800 (zRxCheck.ino)
+    if (full) j.bo("single", rxSingleAntenna());          // one antenna: the page leaves the dual heading card out
 
     j.u("crcErr", nmeaCrcErrors);
     j.close();
@@ -377,6 +389,9 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.str("aogSrc", !outClassicNow() ? "" : receiverIsDual() ? "Dual" : (hprPresent ? "" : "Fix"));
     j.i("classicSrc", outClassicNow() && receiverIsDual() ? classicSrc : 0);
     j.u("epochs", epochsSent);
+    j.bo("sim", cfg.simMode != 0);           // simulator mode (zHandlers.ino): the GPS is not sent to the program
+    j.bo("simHeld", cfg.simMode && simHeld);  // ...and epochs are being held back
+    j.u("held", epochsHeld);
     if (full)
     {
         j.arr("lines");
@@ -447,6 +462,8 @@ static void settingsJson(Json& j)
     j.i("xiaoOff", cfg.xiaoOff);
     j.i("wasCheckOff", cfg.wasCheckOff);
     j.i("wdtOff", cfg.wdtOff);
+    j.i("umSingle", cfg.umSingle);
+    j.i("simMode", cfg.simMode);
     j.close();
     j.bo("saved", cfgFromEeprom);
     j.bo("wdt", wdtRunning);
@@ -479,6 +496,8 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
             {"xiaoOff",            0, 2,   &s.xiaoOff,            false},   // GPS2 port: XIAO / off / second F9P
             {"wasCheckOff",        0, 1,   &s.wasCheckOff,        false},
             {"wdtOff",             0, 1,   &s.wdtOff,             false},
+            {"umSingle",           0, 1,   &s.umSingle,           false},   // UM982 antennas (GPS tab, receiver check)
+            {"simMode",            0, 1,   &s.simMode,            false},   // simulator mode (zHandlers.ino)
         };
         for (const Field& f : fields)
         {
@@ -499,6 +518,8 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
     const bool xiaoChanged = s.xiaoOff != cfg.xiaoOff;
     const bool wasChanged  = s.wasCheckOff != cfg.wasCheckOff;
     const bool wdtChanged  = s.wdtOff != cfg.wdtOff;
+    const bool umChanged   = s.umSingle != cfg.umSingle;
+    const bool simChanged  = s.simMode != cfg.simMode;
     cfg = s;
     settingsSave();
     settingsApply(yawChanged);
@@ -519,6 +540,12 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
                    cfg.hprAcceptFloat ? "yes" : "no", cfg.epochWaitMs, cfg.tm171SwapRollPitch ? "yes" : "no",
                    cfg.tm171YawSign == 0 ? "auto" : cfg.tm171YawSign > 0 ? "+1" : "-1", gps2Name(),
                    cfg.wasCheckOff ? "OFF" : "on", cfg.wdtOff ? "off" : "on");
+    if (umChanged)
+        StatusLog.line(cfg.umSingle ? "[web] UM982 with one antenna: no dual-antenna heading on the page, AgOpenGPS settings ConfigUM982S.txt"
+                                    : "[web] UM982 with two antennas: AgOpenGPS settings ConfigUM982D.txt");
+    if (simChanged)
+        StatusLog.line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program"
+                                   : "[web] Simulator mode off: the GPS goes to the program again");
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
     j.bo("ok", true);
@@ -538,6 +565,7 @@ static void apiUm982Post(EthernetClient& c, const char* body)
     while (n && p[n - 1] == ' ') p[--n] = '\0';
     if (n == 0 || n > 120) { webSendError(c, 400, "empty or too long command"); return; }
     if (umQuiet()) { webSendError(c, 409, "busy: the page is reading or writing the UM982 settings"); return; }
+    if (rxCkBusy(RXCK_GPS)) { webSendError(c, 409, "busy: the receiver check is running"); return; }
     for (size_t k = 0; k < n; k++) if ((uint8_t)p[k] < 0x20 || (uint8_t)p[k] > 0x7E) { webSendError(c, 400, "invalid character"); return; }
     rxReplyStartCapture();
     SerialGPS->print(p);
@@ -577,6 +605,20 @@ static void apiGpsPost(EthernetClient& c, const char* body)
     char act[16], v[16];
     if (!formValue(body, "act", act, sizeof(act))) { webSendError(c, 400, "no action"); return; }
     const char* err = nullptr;
+    // the receiver check (zRxCheck.ino): ckcheck / ckscan / ckbaud / ckload, port=0 (GPS) or 1 (second F9P),
+    // um=d / s (UM982: two antennas / one)
+    if (!strncmp(act, "ck", 2))
+    {
+        const uint8_t port = formValue(body, "port", v, sizeof(v)) && !strcmp(v, "1") ? RXCK_GPS2 : RXCK_GPS;
+        const uint8_t um = formValue(body, "um", v, sizeof(v)) && !strcmp(v, "s") ? 1 : 0;
+        // the search, the speed change and the load stop the GPS data for a while
+        if (strcmp(act, "ckcheck") && autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+        err = rxCkStart(act + 2, port, um);
+        if (err) { webSendError(c, !strcmp(err, "busy") ? 409 : 400, err); return; }
+        webSendJson(c, 200, "{\"ok\":true}");
+        return;
+    }
+    if (rxCkBusy(RXCK_GPS)) { webSendError(c, 409, "busy"); return; }     // the receiver check has the receiver
     if (!strcmp(act, "identify"))
     {
         receiverIdentifyAgain();
@@ -619,9 +661,37 @@ static void apiGpsPost(EthernetClient& c, const char* body)
 
 static void restartTeensy()
 {
-    delay(300);
+    netDelay(300);                                         // let the answer leave
     SCB_AIRCR = 0x05FA0004;
     for (;;) {}
+}
+
+// A refused update is answered only once the browser has sent the whole file (read and dropped here):
+// an answer while it is still sending cuts the connection, and the page could only say "the
+// connection failed" instead of why.
+static void otaDrain(EthernetClient& c, uint32_t got)
+{
+    static uint8_t buf[512];
+    uint32_t last = millis();
+    while (got < rq.contentLength && c.connected() && millis() - last < 5000)
+    {
+        wdtFeed();
+        netPoll();
+        const int n = c.available();
+        if (n > 0)
+        {
+            const int r = c.read(buf, n < (int)sizeof(buf) ? n : (int)sizeof(buf));
+            if (r > 0) { got += r; last = millis(); }
+        }
+        else netDelay(1);
+    }
+}
+
+static void otaRefuse(EthernetClient& c, int code, const char* why, uint32_t got)
+{
+    StatusLog.line("[web] firmware update REFUSED: %s (old firmware kept)", why);
+    if (rq.contentLength <= 8000000) otaDrain(c, got);
+    webSendError(c, code, why);
 }
 
 // The firmware update: takes over the loop until the whole file is in (or fails).
@@ -630,9 +700,23 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
 {
     char v[8];
     const bool force = formValue(rq.query, "force", v, sizeof(v)) && !strcmp(v, "1");
-    if (autosteerEngaged())                                  { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
-    if (lastSpeedKmh > OTA_MAX_KMH || gpsSpeed > OTA_MAX_KMH) { webSendError(c, 409, "the tractor is moving - stop first"); return; }
-    if (rq.contentLength < 1000 || rq.contentLength > 8000000) { webSendError(c, 400, "no file, or file size not plausible"); return; }
+    // Moving: the program's speed, or the receiver's with RTK. Without RTK a receiver standing still
+    // gives a few km/h of noise (a UM982 with a GPS fix on the bench: 2.7 km/h).
+    // Not checked on a bench: the simulator mode on, or a wheel angle that a tractor does not give (the
+    // WAS voltage out of range - no WAS - or an angle beyond the WAS map, +-50 deg). A Keya used as the
+    // WAS has no WAS voltage: only its angle counts. The program's simulator gives a speed there.
+    const bool keyaWas = isKeya && !steerConfig.SingleInputWAS;
+    const bool angleOdd = (!keyaWas && wasOut) ||
+                          ((keyaWas || wasVoltsOk()) && (steerAngleActual < inputWAS[0] || steerAngleActual > inputWAS[WAS_MAP_N - 1]));
+    const bool bench = cfg.simMode || angleOdd;
+    const bool rtk = fixQuality[0] == '4' || fixQuality[0] == '5';
+    if (autosteerEngaged())                                    { otaRefuse(c, 409, "autosteer is engaged - disengage it first", preLen); return; }
+    if (!bench && ((rtk && lastSpeedKmh > OTA_MAX_KMH) || gpsSpeed > OTA_MAX_KMH))
+    {
+        otaRefuse(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)", preLen);
+        return;
+    }
+    if (rq.contentLength < 1000 || rq.contentLength > 8000000) { otaRefuse(c, 400, "no file, or file size not plausible", preLen); return; }
 
     steerSafeOff();
     StatusLog.line("[web] firmware update: receiving %lu bytes, steering off", (unsigned long)rq.contentLength);
@@ -644,6 +728,7 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
     while (!err && got < rq.contentLength)
     {
         wdtFeed();
+        netPoll();                                         // the network stack (zNet.h): ACKs, window
         const int n = c.available();
         if (n > 0)
         {
@@ -657,23 +742,18 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
         }
         else if (!c.connected())              err = "connection lost during the upload";
         else if (millis() - last > 15000)     err = "upload stopped (timeout)";
-        else                                  delay(1);
+        else                                  netDelay(1);
     }
     uint32_t size = 0;
     if (!err) err = otaFinish(force, &size);
-    if (err)
-    {
-        StatusLog.line("[web] firmware update REFUSED: %s (old firmware kept)", err);
-        webSendError(c, 400, err);
-        return;
-    }
+    if (err) { otaRefuse(c, 400, err, got); return; }
     StatusLog.line("[web] firmware update: %lu bytes checked, installing and restarting", (unsigned long)size);
     char j[160];
     snprintf(j, sizeof(j), "{\"ok\":true,\"size\":%lu}", (unsigned long)size);
     webSendJson(c, 200, j);
-    delay(400);                                            // let the answer leave (the network runs on a timer)
+    netDelay(400);                                         // let the answer leave
     c.stop();
-    delay(100);
+    netDelay(100);
     otaInstall(size);                                      // does not return
 }
 
@@ -684,8 +764,46 @@ static void webFinish()
     rq.active = false;
 }
 
+// GET /api/diag: the firmware's own state, for the report (web page, Firmware tab)
+static void apiDiag(EthernetClient& c)
+{
+    const uint32_t now = millis();
+    Json j(webBuf, sizeof(webBuf));
+    j.raw("{");
+    j.str("fw", FW_NAME " " FW_VERSION);
+    j.str("built", __DATE__ " " __TIME__);
+#ifdef TEENSYDUINO
+    j.i("teensyduino", TEENSYDUINO);
+#endif
+    j.u("upMs", now);
+    j.obj("ram");
+#if defined(__IMXRT1062__)
+    extern unsigned long _heap_end, _ebss;
+    extern char* __brkval;
+    char here;
+    j.i("heapFree", (long)((char*)&_heap_end - __brkval));     // RAM2 (malloc / DMAMEM)
+    j.i("stackFree", (long)(&here - (char*)&_ebss));           // RAM1, between the variables and the stack
+#endif
+    j.close();
+    j.obj("loop");
+    j.u("n", loopCount);
+    j.u("maxUs", loopMaxUs);
+    j.u("max5sUs", loopMax5Us);
+    j.close();
+    j.obj("web");
+    j.u("req", webReqN);
+    j.u("err", webErrN);
+    j.u("drop", webDropN);
+    j.str("lastErr", webErrLast);
+    j.close();
+    j.u("logLines", StatusLog.nextSeq - 1);
+    j.raw("}");
+    webSendJson(c, 200, webBuf);
+}
+
 static void webDispatch()
 {
+    webReqN++;
     EthernetClient& c = rq.client;
     const bool get = !strcmp(rq.method, "GET"), post = !strcmp(rq.method, "POST");
     const char* body = rq.bodyAt >= 0 ? rq.head + rq.bodyAt : "";
@@ -694,6 +812,7 @@ static void webDispatch()
     else if (get  && !strcmp(rq.path, "/api/status"))   apiStatus(c);
     else if (get  && !strcmp(rq.path, "/api/log"))      apiLog(c);
     else if (get  && !strcmp(rq.path, "/api/settings")) apiSettingsGet(c);
+    else if (get  && !strcmp(rq.path, "/api/diag"))     apiDiag(c);
     else if (post && !strcmp(rq.path, "/api/settings")) apiSettingsPost(c, body);
     else if (get  && !strcmp(rq.path, "/api/um982"))    apiUm982Get(c);
     else if (post && !strcmp(rq.path, "/api/um982"))    apiUm982Post(c, body);
@@ -731,9 +850,7 @@ void webSetup()
     if (!Ethernet_running) return;
     webServer.begin();
     webRunning = true;
-    IPAddress a = Ethernet.localIP();
-    StatusLog.line("[web] page at http://%u.%u.%u.%u/  (%s %s, built %s)", (unsigned)a[0], (unsigned)a[1], (unsigned)a[2], (unsigned)a[3],
-                   FW_NAME, FW_VERSION, __DATE__);
+    // (its address: the "[status] Ethernet: link up ..." line, zStatus.ino)
 }
 
 // Called from loop()
@@ -754,12 +871,12 @@ void webLoop()
     }
     EthernetClient& c = rq.client;
     if (millis() - rq.startMs > WEB_TIMEOUT_MS ||
-        (rq.len == 0 && millis() - rq.startMs > WEB_FIRST_BYTE_MS)) { webFinish(); return; }
+        (rq.len == 0 && millis() - rq.startMs > WEB_FIRST_BYTE_MS)) { if (rq.len) webDropN++; webFinish(); return; }
 
     const int n = c.available();
     if (n <= 0)
     {
-        if (!c.connected()) webFinish();
+        if (!c.connected()) { if (rq.len) webDropN++; webFinish(); }
         return;
     }
     const int room = WEB_HEAD_MAX - rq.len;

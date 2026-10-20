@@ -19,13 +19,13 @@
 //     A phone that joins it gets the page by itself (captive page), or opens http://192.168.4.1/
 //   - optionally joins another WiFi network too (farm, phone hotspot): then also http://<name>.local/
 //     or its IP on that network
-//   - web page (Portuguese or English, button at the top), 4 tabs:
-//       Estado     the module (Teensy): GNSS, dual heading, TM171, steering, network - sent by the
+//   - web page (English; dark, or light when the phone asks for it, button at the top), 4 tabs:
+//       Status     the module (Teensy): GNSS, dual heading, TM171, steering, network - sent by the
 //                  Teensy once a second; what AgOpenGPS / AgOpenWeb sends to the module (speed, angle
 //                  asked for, autosteer, sections, hydraulic lift, tramline); the XIAO itself
-//       Mensagens  the module's [status] messages, and the XIAO's own events
+//       Messages   the module's [status] messages, and the XIAO's own events
 //       WiFi       network settings (saved in the XIAO, applied after a restart), network scan
-//       Programa   version, program update over WiFi (.bin from the Arduino IDE), restart
+//       Firmware   version, program update over WiFi (.bin from the Arduino IDE), restart
 //     Changes (WiFi, update, restart) ask for the password of the XIAO's own WiFi network.
 //   - tells the Teensy its version and WiFi state (shown in the XIAO card of the Teensy page) and
 //     writes its events to the Teensy log ("[xiao] > ...")

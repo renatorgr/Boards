@@ -3,15 +3,24 @@
    (renatorgr).
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
-   Small change 2026 by Claude (Anthropic): two messages.
+   Changed 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
+   (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
+   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 void EthernetStart()
 {
 #ifdef ARDUINO_TEENSY41
-  // start the Ethernet connection:
-  Serial.println("Initializing ethernet with static IP address");
+  // start the Ethernet connection (its [boot] line at the end; the link and the module IP: the
+  // "[status] Ethernet: link up ..." line, zStatus.ino, also when the cable is plugged in later)
+
+  // Socket buffers of 8 KB (the library's are 2 KB): an answer of the web page goes into the network
+  // stack at once and is sent while loop() runs on. With 2 KB, loop() waited for the browser's ACKs, up to
+  // 130 ms per answer, and the GPS serial buffer filled up ("reading the receiver late"). 8 sockets x
+  // 2 x 8 KB + a 96 KB stack heap, in RAM2.
+  Ethernet.setStackHeap(96 * 1024);
+  Ethernet.setSocketSize(8 * 1024);
 
   // try to congifure using IP:
   Ethernet.begin(mac,0);          // Start Ethernet with IP 0.0.0.0
@@ -19,15 +28,11 @@ void EthernetStart()
   // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) 
   {
-    Serial.println("Ethernet shield was not found. GPS via USB only.");
+    StatusLog.println("[boot] Ethernet: no Ethernet hardware - GPS by USB only");
 
     return;
   }
 
-  if (Ethernet.linkStatus() == LinkOFF) 
-  {
-    Serial.println("Ethernet cable is not connected - Starting ethernet anyway.");
-  }
 
 //grab the ip from EEPROM
   Eth_myip[0] = networkAddress.ipOne;
@@ -43,9 +48,6 @@ void EthernetStart()
   }
 
   Ethernet.setLocalIP(Eth_myip);  // Change IP address to IP set by user
-  Serial.println("\r\nEthernet status OK");
-  Serial.print("IP set Manually: ");
-  Serial.println(Ethernet.localIP());
 
   Ethernet_running = true;
 
@@ -54,29 +56,48 @@ void EthernetStart()
   Eth_ipDestination[2] = Eth_myip[2];
   Eth_ipDestination[3] = 255;
 
-  Serial.print("\r\nEthernet IP of module: "); Serial.println(Ethernet.localIP());
-  Serial.print("Ethernet sending to IP: "); Serial.println(Eth_ipDestination);
-  Serial.print("All data sending to port: "); Serial.println(portDestination);
-
-  // init UPD Port sending to AOG
-  if (Eth_udpPAOGI.begin(portMy))
-  {
-    Serial.print("Ethernet GNSS UDP sending from port: ");
-    Serial.println(portMy);
-  }
-
-  // init UPD Port getting NTRIP from AOG
-  if (Eth_udpNtrip.begin(AOGNtripPort)) // AOGNtripPort
-  {
-    Serial.print("Ethernet NTRIP UDP listening to port: ");
-    Serial.println(AOGNtripPort);
-  }
-
-  // init UPD Port getting AutoSteer data from AOG
-  if (Eth_udpAutoSteer.begin(AOGAutoSteerPort)) // AOGAutoSteerPortipPort
-  {
-    Serial.print("Ethernet AutoSteer UDP listening to & send from port: ");
-    Serial.println(AOGAutoSteerPort);
-  }
+  // the UDP ports: GNSS out (from portMy), NTRIP in, steering in and out
+  const bool gOk = Eth_udpPAOGI.begin(portMy);
+  const bool nOk = Eth_udpNtrip.begin(AOGNtripPort);
+  const bool aOk = Eth_udpAutoSteer.begin(AOGAutoSteerPort);
+  StatusLog.line("[boot] Ethernet: UDP ports %u GNSS out%s, %u NTRIP in%s, %u steering in / out%s",
+                 portMy, gOk ? "" : " (FAILED)", AOGNtripPort, nOk ? "" : " (FAILED)", AOGAutoSteerPort, aOk ? "" : " (FAILED)");
  #endif
+}
+
+// ---------------------------------------------------------------- the network stack, from loop()
+// (zNet.h) netPollOn: the library's 1 ms timer is stopped and fnet_poll() is called here, by loop()
+// (netPoll) and by the code that waits for the network (netDelay, the web page's waits in zWeb.ino).
+static bool     netPollOn = false;
+static uint32_t netPollUs = 0;
+
+void netPollFromLoop()
+{
+#ifdef ARDUINO_TEENSY41
+  netPollTimer(NetPollTimerTag())->end();       // no more fnet_poll() in the timer interrupt
+  netPollOn = fnet_netif_get_default() != 0;    // FNET started (Ethernet.begin() worked)
+  netPollUs = micros();
+  if (netPollOn) fnet_poll();
+#endif
+}
+
+void netPoll()
+{
+#ifdef ARDUINO_TEENSY41
+  if (!netPollOn) return;
+  const uint32_t now = micros();
+  if (now - netPollUs < 1000) return;           // once a millisecond, as the library's timer did
+  netPollUs = now;
+  fnet_poll();
+#endif
+}
+
+void netDelay(uint32_t ms)
+{
+  const uint32_t t0 = millis();
+  while (millis() - t0 < ms)
+  {
+    netPoll();
+    delayMicroseconds(100);
+  }
 }

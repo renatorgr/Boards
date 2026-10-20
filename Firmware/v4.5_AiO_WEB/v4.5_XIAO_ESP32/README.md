@@ -27,7 +27,8 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - Runs on the **XIAO ESP32C3 and the XIAO ESP32S3**; the page refuses an update made for the other one.
 - The page in **Portuguese or English** (the EN / PT button at the top).
 - The module card names the program that talks to the module (AgOpenWeb or AgOpenGPS), the GPS receiver's model and the IMU the Teensy found (TM171 or BNO085).
-- The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below); "up to date" when it is the one installed.
+- The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below); "latest version installed" when it is the one installed.
+- The page shows its cards in **three columns** on a wide screen (one column on a phone), and the tab with the version and the update is called **Firmware**.
 - **Link to the Teensy at 460800**, as the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
 
 ## What it does
@@ -53,7 +54,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 | | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
-| **Program** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. |
+| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - Typed once, it is filled in both tabs until the page is closed.
@@ -96,8 +97,8 @@ No other libraries are needed: everything is in the esp32 package.
 
 ## Update from GitHub
 
-- The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Program tab).
-- A newer one shows at the top of Status and in Program.
+- The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Firmware tab).
+- A newer one shows at the top of Status and in Firmware.
 - **Install from GitHub** (with the password of the XIAO's network):
   - the browser downloads the `.bin` for this XIAO (in the version folder `vX.Y_AiO_WEB`: `vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `...S3.bin`, chosen from the chip it reports);
   - it checks that the file is for this chip and that its size matches GitHub;
@@ -111,7 +112,7 @@ No other libraries are needed: everything is in the esp32 package.
 2. Use **`v4.5_XIAO_ESP32.ino.bin`**. Not the files with `merged`, `bootloader` or `partitions` in the name (the page refuses them).
    - A `.bin` compiled for the XIAO ESP32C3 does not run on the ESP32S3, and the other way round. The page reads the start of the file and says so before sending it.
    - With both XIAOs, rename the files after exporting (for example `…_C3.bin` and `…_S3.bin`).
-3. Phone or PC on the XIAO's network → page → **Program** → choose the file → password → **Install**.
+3. Phone or PC on the XIAO's network → page → **Firmware** → choose the file → password → **Install**.
 4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings stay.
 
 If the update fails half way (WiFi lost), the old program keeps running: just try again.

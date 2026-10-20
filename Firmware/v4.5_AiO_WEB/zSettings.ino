@@ -34,6 +34,7 @@ static void settingsDefaults(WebSettings& s)
     s.autoSet            = 1;
     s.wasCheckOff        = 0;         // WAS check on
     s.wdtOff             = 0;         // hardware watchdog on
+    s.simMode            = 0;         // simulator mode off: the GPS goes to the program
 }
 
 static uint8_t settingsChecksum(const WebSettings& s)
@@ -59,6 +60,8 @@ static void settingsSanitize(WebSettings& s)
     if (s.autoSet > 1)                                               s.autoSet = 1;
     if (s.wasCheckOff > 1)                                           s.wasCheckOff = d.wasCheckOff;
     if (s.wdtOff > 1)                                                s.wdtOff = d.wdtOff;
+    if (s.umSingle > 1)                                              s.umSingle = d.umSingle;
+    if (s.simMode > 1)                                               s.simMode = d.simMode;
 }
 
 // Side effects of the settings on the running firmware. yawChanged: the TM171 yaw direction

@@ -3,7 +3,8 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr (AiO_WEB: the angle and speed causes,
-   wasVoltsOk).
+   wasVoltsOk, the crash hook and the longer crash line, the simulator mode on the program's screen,
+   the kickout values in %, the loop time for the report).
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb
    reads the same way ("AiO Board Msgs").
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -20,11 +21,14 @@
 //     silent. Shown on the program's screen (PGN 221), in the [status] messages and on the web page.
 //   - Hardware watchdog (WDOG1): the Teensy restarts if the loop stops for 2 s. 0.5 s before, an
 //     interrupt switches the autosteer outputs (valve / motor) off and notes where the firmware was stuck.
+//   - Crash (a fault): before the Teensy core's crash handler, faultHook switches the autosteer outputs
+//     off at once and notes the code that called the crashed function.
 //   - Why the Teensy started (power, restart, watchdog, crash), at boot and on the web page.
 // Autosteer.ino calls wasCheck(), steerKick(), steerOnNote() and sensorViewNote() from its 40 Hz
 // steering loop; loop() calls wdtFeed().
 
 #include "zSafety.h"      // SteerOff, BootWhy (included first by the main .ino)
+#include "zVersion.h"     // FW_NAME (in the crash and watchdog lines)
 
 // ---------------------------------------------------------------- PGN 221: text on the program's screen
 // { 0x80, 0x81, source, 221, text length + 2, seconds to show, 0 = warning colour, text, CRC }
@@ -187,20 +191,24 @@ const char* offName(uint8_t c)          // for the web page
     }
 }
 
+// The kickout sensor's 0-255 value (and PulseCountMax, the trip point) in %, as AgOpenWeb / AgOpenGPS show them
+static int pct255(int v) { return (v * 100 + 127) / 255; }
+
 static void offText(char* b, size_t n, uint8_t c, int v)
 {
+    const int lim = pct255(steerConfig.PulseCountMax);
     switch (c)
     {
         case SO_SWITCH:   snprintf(b, n, "steer switch"); break;
         case SO_BUTTON:   snprintf(b, n, "steer button"); break;
-        case SO_PRESSURE: snprintf(b, n, "pressure kickout (%d, limit %d)", v, (int)steerConfig.PulseCountMax); break;
-        case SO_CURRENT:  snprintf(b, n, "current kickout (%d, limit %d)", v, (int)steerConfig.PulseCountMax); break;
+        case SO_PRESSURE: snprintf(b, n, "pressure kickout (%d %%, limit %d %%)", pct255(v), lim); break;
+        case SO_CURRENT:  snprintf(b, n, "current kickout (%d %%, limit %d %%)", pct255(v), lim); break;
         case SO_ENCODER:  snprintf(b, n, "wheel encoder kickout (%d pulses)", v); break;
         case SO_WAS:      snprintf(b, n, "WAS fault (%.2f V)", wasVolts); break;
         case SO_SILENT:   snprintf(b, n, "no steering data from the program for 2.5 s"); break;
         case SO_PROGRAM:  snprintf(b, n, "by the program"); break;
         case SO_SPEED:    snprintf(b, n, "speed below 0.1 km/h"); break;
-        case SO_KEYA:     snprintf(b, n, "Keya kickout (%d, limit %d)", v, (int)steerConfig.PulseCountMax); break;
+        case SO_KEYA:     snprintf(b, n, "Keya kickout (%d %%, limit %d %%)", pct255(v), lim); break;
         case SO_KEYA_FAULT: snprintf(b, n, "Keya motor fault (0x%04X)", v & 0xFFFF); break;
         case SO_ANGLE:    snprintf(b, n, "wheel angle %d deg, beyond +-50", v); break;
         case SO_FAST:     snprintf(b, n, "speed %d km/h, above 25", v); break;
@@ -245,9 +253,13 @@ void steerOnNote(bool on)
 // (CrashReport, at the top of RAM2). After a watchdog reset, the warning interrupt below has left
 // in the core's breadcrumbs: a mark, the loop step and the address of the code that was running.
 #define BC_MARK      0x57D0600Du        // breadcrumb 4: "the watchdog warning interrupt wrote 5 and 6"
+#define BC_FAULT     0xFA017C0Du        // breadcrumb 1: "the crash hook wrote 2 and 3" (faultHookC)
 uint8_t  bootWhy     = BOOT_UNKNOWN;
 uint32_t bootSrsr    = 0;
 uint32_t bootFaultPc = 0, bootCfsr = 0; // crash: the faulting code, the fault status
+uint32_t bootFaultLr = 0;               // crash: the code that called the crashed function (0: unknown)
+uint32_t bootFaultAddr = 0;             // crash: the memory address it could not use (MMFAR / BFAR)
+bool     bootFaultAddrOk = false;
 uint32_t bootStuckPc = 0;               // watchdog: the code that was running
 uint8_t  bootStep    = 0;               // watchdog: the loop step
 
@@ -270,6 +282,7 @@ const char* stepName(uint8_t s)
         case 11: return "steering";
         case 12: return "Ethernet link";
         case 13: return "GPS receiver";
+        case 14: return "Ethernet stack";
         case 20: return "firmware update";
         default: return "?";
     }
@@ -302,11 +315,16 @@ void bootCapture()
         const struct arm_fault_info_struct* fi = (const struct arm_fault_info_struct*)0x2027FF80;
         bootFaultPc = fi->ret;
         bootCfsr    = fi->cfsr;
+        if (fi->cfsr & 0x80u)          { bootFaultAddr = fi->mmfar; bootFaultAddrOk = true; }   // MMARVALID
+        else if (fi->cfsr & 0x8000u)   { bootFaultAddr = fi->bfar;  bootFaultAddrOk = true; }   // BFARVALID
     }
     volatile struct crashreport_breadcrumbs_struct* bc = (struct crashreport_breadcrumbs_struct*)0x2027FFC0;
     const bool marked = (bootSrsr & SRC_SRSR_WDOG_RST_B) && (bc->bitmask & 0x38) == 0x38 && bc->value[3] == BC_MARK;
     if (marked) { bootStep = (uint8_t)bc->value[4]; bootStuckPc = bc->value[5]; }
-    bc->bitmask &= ~0x38u;                                       // breadcrumbs 4, 5, 6 used
+    // the crash hook: the caller, and the first faulting code (the core's record holds the last fault,
+    // which is in the hook if the hook itself failed)
+    if (crash && (bc->bitmask & 0x07) == 0x07 && bc->value[0] == BC_FAULT) { bootFaultLr = bc->value[1]; bootFaultPc = bc->value[2]; }
+    bc->bitmask &= ~0x3Fu;                                       // breadcrumbs 1 to 6 used
     arm_dcache_flush((void*)bc, sizeof(struct crashreport_breadcrumbs_struct));
     if (crash) CrashReport.clear();                             // also clears SRC_SRSR and SRC_GPR5
     SRC_SRSR = SRC_SRSR;                                         // write-1-to-clear: the next start sees only its own reason
@@ -326,16 +344,26 @@ void bootReport()
 {
     char stuck[80] = "";
     if (bootStep) snprintf(stuck, sizeof(stuck), ", in the %s part of the loop at 0x%08lX", stepName(bootStep), (unsigned long)bootStuckPc);
+    // the crash: the caller, the fault status and the address it could not use; then the firmware and
+    // the Teensyduino it was built with (the addresses only mean something with that build)
+    char from[32] = "", addr[24] = "", built[64];
+    if (bootFaultLr)     snprintf(from, sizeof(from), ", called from 0x%08lX", (unsigned long)(bootFaultLr & ~1u));
+    if (bootFaultAddrOk) snprintf(addr, sizeof(addr), ", address 0x%08lX", (unsigned long)bootFaultAddr);
+#ifdef TEENSYDUINO
+    snprintf(built, sizeof(built), "%s, Teensyduino %d.%02d", FW_NAME, TEENSYDUINO / 100, TEENSYDUINO % 100);
+#else
+    snprintf(built, sizeof(built), "%s", FW_NAME);
+#endif
     switch (bootWhy)
     {
         case BOOT_POWER:     StatusLog.line("[boot] Start: power on (or the Teensy's button, or a USB upload)"); break;
         case BOOT_UPLOAD:    StatusLog.line("[boot] Start: after programming (JTAG reset)"); break;
         case BOOT_RESTART:   StatusLog.line("[boot] Start: restart by software (web page, firmware update, or the program's subnet change)"); break;
-        case BOOT_WATCHDOG:  StatusLog.line("[boot] Start: WATCHDOG - the firmware stopped for 2 s%s. Please send this line", stuck); break;
-        case BOOT_CRASH:     StatusLog.line("[boot] Start: CRASH - the firmware stopped at 0x%08lX (fault status 0x%08lX), restarted. Please send this line",
-                                            (unsigned long)bootFaultPc, (unsigned long)bootCfsr); break;
-        case BOOT_CRASH_WDT: StatusLog.line("[boot] Start: CRASH - the firmware stopped at 0x%08lX (fault status 0x%08lX), restarted by the watchdog. Please send this line",
-                                            (unsigned long)bootFaultPc, (unsigned long)bootCfsr); break;
+        case BOOT_WATCHDOG:  StatusLog.line("[boot] Start: WATCHDOG - the firmware stopped for 2 s%s (%s). Please send this line", stuck, built); break;
+        case BOOT_CRASH:
+        case BOOT_CRASH_WDT: StatusLog.line("[boot] Start: CRASH at 0x%08lX%s (fault 0x%08lX%s), restarted%s (%s). Please send this line",
+                                            (unsigned long)bootFaultPc, from, (unsigned long)bootCfsr, addr,
+                                            bootWhy == BOOT_CRASH_WDT ? " by the watchdog" : "", built); break;
         case BOOT_TEMP:      StatusLog.line("[boot] Start: the Teensy got too hot (temperature monitor)"); break;
         default:             StatusLog.line("[boot] Start: reason unknown (reset status 0x%lX)", (unsigned long)bootSrsr); break;
     }
@@ -359,16 +387,43 @@ void wdtFeed()
     WDOG1_WSR = 0xAAAA;
 }
 
+// ---------------------------------------------------------------- loop time (the report, web page Firmware tab)
+// The time between two starts of loop(): the longest since start-up and in the last 5 s window (a firmware
+// update or a slow browser show up here too).
+uint32_t loopCount = 0, loopMaxUs = 0, loopMax5Us = 0;
+static uint32_t loopLastUs = 0, loopWinMaxUs = 0, loopWinMs = 0;
+
+void loopTick()
+{
+    const uint32_t us = micros();
+    if (loopCount)
+    {
+        const uint32_t d = us - loopLastUs;
+        if (d > loopMaxUs)    loopMaxUs = d;
+        if (d > loopWinMaxUs) loopWinMaxUs = d;
+    }
+    loopLastUs = us;
+    loopCount++;
+    const uint32_t ms = millis();
+    if (ms - loopWinMs >= 5000) { loopWinMs = ms; loopMax5Us = loopWinMaxUs; loopWinMaxUs = 0; }
+}
+
+// Valve / motor driver outputs off at once (Cytron: PWM 0 and the valve relay off; IBT2: both PWM 0
+// and the enable low), from the watchdog warning and the crash hook. The Keya is told on the CAN bus
+// (not from the watchdog warning: it could interrupt the loop in the middle of a CAN write).
+static void steerPinsOff()
+{
+    if (isKeya) return;
+    analogWrite(PWM1_LPWM, 0);
+    if (steerConfig.CytronDriver) digitalWrite(PWM2_RPWM, steerConfig.IsRelayActiveHigh ? 1 : 0);
+    else { analogWrite(PWM2_RPWM, 0); digitalWrite(DIR1_RL_ENABLE, 0); }
+}
+
 // The warning interrupt: the loop has not fed the watchdog for 1.5 s. Autosteer outputs off now,
 // note where the firmware was (the reset follows 0.5 s later).
 extern "C" __attribute__((used)) void wdtWarnC(const uint32_t* frame)
 {
-    if (!isKeya)
-    {
-        analogWrite(PWM1_LPWM, 0);
-        if (steerConfig.CytronDriver) digitalWrite(PWM2_RPWM, steerConfig.IsRelayActiveHigh ? 1 : 0);
-        else { analogWrite(PWM2_RPWM, 0); digitalWrite(DIR1_RL_ENABLE, 0); }
-    }
+    steerPinsOff();
     CrashReport.breadcrumb(4, BC_MARK);
     CrashReport.breadcrumb(5, loopStep);
     CrashReport.breadcrumb(6, frame ? frame[6] : 0);     // the stacked return address = the code that was running
@@ -392,6 +447,66 @@ static void wdtWarnIsr()
 }
 #else
 static void wdtWarnIsr() { wdtWarnC(nullptr); }      // (test build on a PC: no stacked frame)
+#endif
+
+// ---------------------------------------------------------------- crash (fault): outputs off, the caller noted
+// The Teensy core's crash handler (unused_interrupt_vector, startup.c) records the crash and then waits
+// (8 s, or until the watchdog resets) with every interrupt off: the watchdog warning above cannot run
+// and the valve / motor outputs would keep their last value until the reset. faultHook goes first on a
+// HardFault, MemManage, BusFault or UsageFault: outputs off, and in the core's breadcrumbs (they stay
+// over the reset) the code that called the crashed function (the stacked LR) and the faulting code
+// (the stacked PC); then the core's handler, with the stack as the fault left it.
+static volatile uint8_t faultHookRuns = 0;
+
+extern "C" __attribute__((used)) void faultHookC(const uint32_t* frame)
+{
+    if (faultHookRuns++) return;                          // once: a fault in here goes straight to the core's handler
+    CrashReport.breadcrumb(2, frame ? frame[5] : 0);      // stacked LR
+    CrashReport.breadcrumb(3, frame ? frame[6] : 0);      // stacked PC
+    CrashReport.breadcrumb(1, BC_FAULT);
+    steerPinsOff();
+    if (isKeya) disableKeyaSteer();                       // speed 0 and disable, on the CAN bus
+}
+
+#if defined(__arm__)
+// (_ebss and unused_interrupt_vector: the core's linker script and startup.c, named only in the asm)
+static void faultHook() __attribute__((naked));
+static void faultHook()
+{
+    // r0 = the stacked frame (main or process stack). The C part only runs with 512 bytes of stack
+    // left above the end of RAM1's variables (a stack overflow goes straight to the core's handler).
+    // The stack and LR (EXC_RETURN) are as they came when the core's handler starts.
+    asm volatile(
+        "tst lr, #4                              \n"
+        "ite eq                                  \n"
+        "mrseq r0, msp                           \n"
+        "mrsne r0, psp                           \n"
+        "movw r1, #:lower16:_ebss                \n"
+        "movt r1, #:upper16:_ebss                \n"
+        "add r1, r1, #512                        \n"
+        "mov r2, sp                              \n"
+        "cmp r2, r1                              \n"
+        "blo 1f                                  \n"
+        "push {r0, lr}                           \n"
+        "movw r1, #:lower16:faultHookC           \n"
+        "movt r1, #:upper16:faultHookC           \n"
+        "blx r1                                  \n"
+        "pop {r0, lr}                            \n"
+        "1:                                      \n"
+        "movw r1, #:lower16:unused_interrupt_vector \n"
+        "movt r1, #:upper16:unused_interrupt_vector \n"
+        "bx r1                                   \n");
+}
+
+// First thing in setup(), after bootCapture(): the four fault vectors (HardFault, MemManage, BusFault,
+// UsageFault) go to faultHook; every other unused vector stays on the core's handler.
+void faultHookInstall()
+{
+    for (int v = 3; v <= 6; v++) _VectorsRam[v] = faultHook;
+    asm volatile("dsb" ::: "memory");
+}
+#else
+void faultHookInstall() {}                                // (test build on a PC)
 #endif
 
 // End of setup(), and when it is switched on on the web page
@@ -424,7 +539,7 @@ void wdtLongTimeout()
 // ---------------------------------------------------------------- the program says hello
 // When a program starts talking to the module (first hello, or after 5 s without one): what it
 // should know, on its screen. Once per start: a watchdog / crash restart. Every time: the WAS
-// check switched off.
+// check switched off, the simulator mode on (zHandlers.ino).
 static uint32_t helloLastMs = 0;
 static bool     bootMsgSent = false;
 
@@ -442,5 +557,6 @@ void safetyNoteHello()
         else if (bootWhy == BOOT_CRASH || bootWhy == BOOT_CRASH_WDT) snprintf(m, sizeof(m), "Module restarted after a crash");
     }
     if (cfg.wasCheckOff) strncat(m, m[0] ? " - WAS check OFF" : "WAS check OFF (bench setting)", sizeof(m) - strlen(m) - 1);
+    if (cfg.simMode)     strncat(m, m[0] ? " - simulator mode" : "Simulator mode: the GPS is not sent", sizeof(m) - strlen(m) - 1);
     if (m[0]) hwMessage(m, 10, true);
 }

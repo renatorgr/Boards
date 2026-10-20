@@ -8,7 +8,8 @@
    the program told apart by its hello, IMU hello for the TM171 only, BNO08x code taken out;
    WAS voltage check, autosteer off at once when switched off, why it went off, sensor value
    for the web page (see zSafety.ino); wheel angle sent as 0 on the bench (WAS check off, WAS
-   out of range), IMU hello only when an IMU was found (zImu.ino).
+   out of range), IMU hello only when an IMU was found (zImu.ino); the ADS1115 / autosteer state as one
+   [boot] line (the USB serial and the web page).
    AiO_WEB 4.5 (Claude (Anthropic) for renatorgr), from the AiO firmware 27.04.2025: its Keya (motor slip as the kickout, the motor
    position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut beyond
    the WAS map (+-50 deg; only with the WAS voltage in range, zSafety.ino) or above 25 km/h, the WAS
@@ -250,15 +251,7 @@ void autosteerSetup()
 	Wire1.begin();
 
 	// Check ADC 
-	if (adc.testConnection())
-	{
-		Serial.println("ADC Connection OK");
-	}
-	else
-	{
-		Serial.println("ADC Connecton FAILED!");
-		Autosteer_running = false;
-	}
+	if (!adc.testConnection()) Autosteer_running = false;   // no ADS1115: no WAS reading (the [boot] line below)
 
 	//50Khz I2C
 	//TWBR = 144;   //Is this needed?
@@ -284,7 +277,7 @@ void autosteerSetup()
 
 	if (Autosteer_running)
 	{
-		Serial.println("Autosteer running, waiting for AgOpenGPS");
+		StatusLog.line("[boot] Autosteer: ADS1115 (WAS) found, waiting for the program");
 		// Autosteer Led goes Red if ADS1115 is found
 		digitalWrite(AUTOSTEER_ACTIVE_LED, 0);
 		digitalWrite(AUTOSTEER_STANDBY_LED, 1);
@@ -292,8 +285,7 @@ void autosteerSetup()
 	else
 	{
 		Autosteer_running = false;  //Turn off auto steer if no ethernet (Maybe running T4.0)
-		//    if(!Ethernet_running)Serial.println("Ethernet not available");
-		Serial.println("Autosteer disabled, GPS only mode");
+		StatusLog.line("[boot] Autosteer OFF: ADS1115 (WAS) not found on I2C (Wire1) - GPS only, module IP x.x.x.120");
 		return;
 	}
 
