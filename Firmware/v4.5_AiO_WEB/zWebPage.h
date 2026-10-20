@@ -180,6 +180,12 @@ a{color:var(--acc)}
 <div class="card"><h2>Autosteer safety</h2>
  <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°.</small></span></label>
  <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.</small></span></label>
+</div>
+<div class="card"><h2>Steering</h2>
+ <div class="opt"><span style="flex:1">Minimum speed<small>Below it (the program's speed) the wheels are not turned. Default 0.2 km/h.</small></span><select name="steerMinKmhX10"><option value="1">0.1 km/h</option><option value="2">0.2 km/h</option><option value="3">0.3 km/h</option><option value="5">0.5 km/h</option><option value="10">1.0 km/h</option><option value="15">1.5 km/h</option><option value="20">2.0 km/h</option><option value="30">3.0 km/h</option></select></div>
+ <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
+ <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
+ <div class="opt"><span style="flex:1">Current kickout delay<small>Current sensor only (not the Keya): autosteer switches off only when the current stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once, as before.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
@@ -317,7 +323,7 @@ function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.create
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
-const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above 25 km/h",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program",speed:"speed below 0.1 km/h",other:"other"};
+const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program",speed:"speed below 0.1 km/h",other:"other"};
 const BW={power:"power on (or button / USB)",upload:"programming",restart:"restart requested (page, update or program)",watchdog:"watchdog (the firmware stopped)",crash:"firmware fault","crash-wdt":"firmware fault, restarted by the watchdog",temp:"high temperature",other:"other",unknown:"other"};
 const WHYF={1:"no RELPOSNED from the second F9P (GPS2 port: UART1 at 460800, UBX-NAV-RELPOSNED on)",2:"the RELPOSNED does not come with the GGA",3:"the second F9P has no RTK fixed solution between the antennas",4:"empty heading"};
 const WHY={1:"no HPR from the receiver (single antenna, or HPR off in the UM982)",2:"the HPR does not arrive with the GGA",3:"the UM982 has no heading solution from its two antennas",4:"empty heading in the HPR"};
@@ -375,12 +381,12 @@ function render(s){
  set("sens",pct255(st.sensorV),st.sensor&&st.sensorV>=st.kick?"bad":"");   // the value read; the cut is in the steering settings card
  let ot="–";
  if(st.off){ot=(OFF[st.off]||st.off);if(st.off==="pressure"||st.off==="current"||st.off==="keya")ot+=" ("+pct255(st.offVal)+" / "+pct255(st.kick)+")";else if(st.off==="keyafault")ot+=" (0x"+(st.offVal>>>0).toString(16).toUpperCase().padStart(4,"0")+")";else if(st.off==="angle")ot+=" ("+st.offVal+"°)";else if(st.off==="fast")ot+=" ("+st.offVal+" km/h)";else if(st.off==="encoder")ot+=" ("+st.offVal+" pulses"+")";if(st.offAgo>=0)ot+=" ("+ago(st.offAgo)+")";}
- set("off",ot,st.off==="keyafault"?"bad":["pressure","current","encoder","was","silent","keya","angle","fast"].includes(st.off)?"warn":"");
+ set("off",ot,st.off==="keyafault"?"bad":["pressure","current","encoder","was","silent","keya","angle","fast","keyalost"].includes(st.off)?"warn":"");
  set("hwMsg",b&&b.hwMsg?b.hwMsg:"–");
  const k=st.keya;
  if(!k||!k.found){set("keya","not detected");set("gpsWas","–");}
  else{const live=k.ago>=0&&k.ago<1000;
-  set("keya",(live?"":"no heartbeat"+" · ")+"position "+k.pos+" · "+"current "+k.current+" · "+"slip "+pct255(k.slip)+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
+  set("keya",(k.lost?"NOT RESPONDING"+" · ":live?"":"no heartbeat"+" · ")+(k.lostCount?"lost "+k.lostCount+"× · ":"")+"position "+k.pos+" · "+"current "+k.current+" · "+"slip "+pct255(k.slip)+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
   set("gpsWas",k.gpsWasOk?fmt(k.gpsWas,1,"°"):"only above 1 km/h, with a heading");}
  if(sc){
   set("scGot",sc.got252>=0?ago(sc.got252):"not yet (saved in the Teensy)");
@@ -397,6 +403,7 @@ function render(s){
  const al=[];
  if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
  else if(st.wasBlock)al.push(("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
+ if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
  if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
  if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
@@ -762,6 +769,7 @@ function show(t){
 $("nav").addEventListener("click",e=>{if(e.target.dataset.t)show(e.target.dataset.t);});
 
 // ---- settings
+function selVal(e,v){e.value=String(v);if(e.value!==String(v)){const o=document.createElement("option");o.value=String(v);o.textContent=String(v);e.appendChild(o);e.value=String(v);}}
 function fillSettings(s){
  const f=$("fs");
  f.querySelector('input[name=outputMode][value="'+s.outputMode+'"]').checked=true;
@@ -769,7 +777,8 @@ function fillSettings(s){
  f.epochWaitMs.value=String(s.epochWaitMs);
  if(f.epochWaitMs.value!==String(s.epochWaitMs)){const o=document.createElement("option");o.textContent=s.epochWaitMs;f.epochWaitMs.appendChild(o);f.epochWaitMs.value=String(s.epochWaitMs);}
  f.tm171YawSign.value=String(s.tm171YawSign);f.xiaoOff.value=String(s.xiaoOff);
- f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;lastSet=s;
+ f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;
+ selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);lastSet=s;
 }
 async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
 async function postSettings(body){
@@ -787,6 +796,8 @@ $("fs").addEventListener("submit",e=>{e.preventDefault();const f=$("fs");
  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!confirm("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
  p.set("simMode",f.simMode.checked?"1":"0");
+ p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
+ p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);
  postSettings(p.toString());});
 $("defaults").addEventListener("click",()=>{if(confirm("Restore the defaults of this page?"))postSettings("defaults=1");});
 

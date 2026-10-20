@@ -5,9 +5,51 @@
    Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Change by Claude (Anthropic) 2026 for renatorgr (v4.5_AiO_WEB): the Keya gets its speed and
    enable / disable as in the AiO firmware 27.04.2025 (SteerKeya, KeyaCANBUS.ino).
+   AiO_WEB 4.5, 20 Oct 2026: the soft start, after the one of the AgOpenGPS AiO 26 firmware
+   (AutosteerProcessor.cpp, GPL v3): steerRamp().
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
+// Soft start (web page, Settings > Steering; off by default). When autosteer engages, the output
+// rises from 0 to the PID value over the time set; on a hard step (from about minPWM to about
+// highPWM) or a reversal it rises again over half that time. Linear, as the AiO 26 default.
+static uint8_t  rampMode = 0;      // 0 = steering off, 1 = soft start, 2 = soft step / reversal, 3 = normal
+static uint32_t rampMs   = 0;      // when the ramp began
+static int16_t  rampLast = 0;      // the PID value of the last loop (before the ramp)
+
+// Autosteer.ino, steering off: the next engage starts with the soft start
+void steerRampReset()
+{
+    rampMode = 0;
+    rampLast = 0;
+}
+
+static int16_t steerRamp(int16_t pwm)
+{
+    const uint32_t startMs = (uint32_t)cfg.softStartX10ms * 10;
+    if (startMs == 0) { rampMode = 3; rampLast = pwm; return pwm; }
+    const uint32_t now = millis();
+    const int16_t hi = steerSettings.highPWM, lo = steerSettings.minPWM;
+    if (rampMode == 0) { rampMode = 1; rampMs = now; }
+    else if (rampMode == 3)
+    {
+        const int16_t th = (hi - lo) / 3;
+        const bool hardStep = abs(pwm) > hi - th && abs(rampLast) < lo + th;
+        const bool reversal = ((rampLast > 0 && pwm < 0) || (rampLast < 0 && pwm > 0)) && abs(pwm) > lo + 20;
+        if (hardStep || reversal) { rampMode = 2; rampMs = now; }
+    }
+    rampLast = pwm;
+    if (rampMode == 3) return pwm;
+    const uint32_t dur = rampMode == 1 ? startMs : startMs / 2;
+    const uint32_t el  = now - rampMs;
+    if (el >= dur) { rampMode = 3; return pwm; }
+    int16_t out = (int16_t)((float)pwm * (float)el / (float)dur);
+    // keep at least minPWM, so the valve / motor moves at all during the ramp
+    const int16_t floorPwm = abs(pwm) < lo ? abs(pwm) : lo;
+    if (pwm != 0 && abs(out) < floorPwm) out = pwm > 0 ? floorPwm : -floorPwm;
+    return out;
+}
+
 void calcSteeringPID(void)
 {
     //Proportional only
@@ -33,6 +75,8 @@ void calcSteeringPID(void)
     //limit the pwm drive
     if (pwmDrive > newMax) pwmDrive = newMax;
     if (pwmDrive < -newMax) pwmDrive = -newMax;
+
+    pwmDrive = steerRamp(pwmDrive);    // AiO_WEB: soft start (off by default)
 
     if (steerConfig.MotorDriveDirection) pwmDrive *= -1;
 

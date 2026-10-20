@@ -32,7 +32,8 @@ enum SteerOff : uint8_t
     SO_KEYA,        // AiO_WEB: Keya motor slip kickout (the driver holds the wheel)
     SO_KEYA_FAULT,  // AiO_WEB: the Keya reports a fault
     SO_ANGLE,       // AiO_WEB: wheel angle beyond the WAS map (+-50 deg)
-    SO_FAST         // AiO_WEB: the program's speed above 25 km/h
+    SO_FAST,        // AiO_WEB: the program's speed above the maximum (web page, default 25 km/h)
+    SO_KEYA_LOST    // AiO_WEB: no Keya heartbeat for 0.5 s (KeyaCANBUS.ino)
 };
 #define SO_FROM_MODULE(c) (((c) >= SO_SWITCH && (c) <= SO_SILENT) || (c) >= SO_KEYA)
 
@@ -56,6 +57,8 @@ void  bootReport();
 bool  wasCheck(int16_t raw);
 bool  wasBenchZero();
 bool  wasVoltsOk();
+bool  keyaCheck();                    // KeyaCANBUS.ino
+extern bool keyaBlock;
 void  steerKick(uint8_t cause, int value);
 void  steerNote254();
 void  steerNote252();

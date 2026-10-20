@@ -331,6 +331,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.i("offAgo", offMs ? (long)((now - offMs) / 1000) : -1);
     j.i("offVal", offValue);
     j.bo("wasless", isKeya && !steerConfig.SingleInputWAS);   // AiO_WEB: wheel angle from the Keya position
+    j.bo("keyaLost", keyaLost);        // AiO_WEB: no Keya heartbeat (KeyaCANBUS.ino)
+    j.bo("keyaBlock", keyaBlock);
     if (full) keyaJson(j);
     j.close();
 
@@ -464,6 +466,10 @@ static void settingsJson(Json& j)
     j.i("wdtOff", cfg.wdtOff);
     j.i("umSingle", cfg.umSingle);
     j.i("simMode", cfg.simMode);
+    j.i("steerMinKmhX10", cfg.steerMinKmhX10);
+    j.i("steerMaxKmh", cfg.steerMaxKmh);
+    j.i("softStartX10ms", cfg.softStartX10ms);
+    j.i("currentKickX10ms", cfg.currentKickX10ms);
     j.close();
     j.bo("saved", cfgFromEeprom);
     j.bo("wdt", wdtRunning);
@@ -498,6 +504,10 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
             {"wdtOff",             0, 1,   &s.wdtOff,             false},
             {"umSingle",           0, 1,   &s.umSingle,           false},   // UM982 antennas (GPS tab, receiver check)
             {"simMode",            0, 1,   &s.simMode,            false},   // simulator mode (zHandlers.ino)
+            {"steerMinKmhX10",     1, 30,  &s.steerMinKmhX10,     false},   // steering (Autosteer.ino, AutosteerPID.ino)
+            {"steerMaxKmh",        5, 40,  &s.steerMaxKmh,        false},
+            {"softStartX10ms",     0, 100, &s.softStartX10ms,     false},
+            {"currentKickX10ms",   0, 200, &s.currentKickX10ms,   false},
         };
         for (const Field& f : fields)
         {
@@ -520,6 +530,8 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
     const bool wdtChanged  = s.wdtOff != cfg.wdtOff;
     const bool umChanged   = s.umSingle != cfg.umSingle;
     const bool simChanged  = s.simMode != cfg.simMode;
+    const bool steerChanged = s.steerMinKmhX10 != cfg.steerMinKmhX10 || s.steerMaxKmh != cfg.steerMaxKmh ||
+                              s.softStartX10ms != cfg.softStartX10ms || s.currentKickX10ms != cfg.currentKickX10ms;
     cfg = s;
     settingsSave();
     settingsApply(yawChanged);
@@ -546,6 +558,10 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
     if (simChanged)
         StatusLog.line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program"
                                    : "[web] Simulator mode off: the GPS goes to the program again");
+    if (steerChanged)
+        StatusLog.line("[web] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), current kickout delay %u ms",
+                       cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
+                       (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10);
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
     j.bo("ok", true);
