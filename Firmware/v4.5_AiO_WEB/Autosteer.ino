@@ -14,6 +14,9 @@
    position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut-off beyond
    the WAS map (+-50 deg; only with the WAS voltage in range, zSafety.ino) or above 25 km/h, the WAS
    map, no steering below 0.2 km/h, PWM at 122 Hz and LOW_HIGH_DEGREES 1.5.
+   AiO_WEB 4.5, 20 Oct 2026, ideas of the AgOpenGPS AiO 26 firmware: the minimum and maximum speed set on the
+   web page, the current kickout only after the current is high for a while, the soft start
+   (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -39,6 +42,13 @@
 // (AiO_WEB 4.5: 122 Hz as in the AiO firmware; was 490 Hz. Low enough to act as dither on a proportional
 // hydraulic valve: the spool does not stick, small corrections get through)
 #define PWM_Frequency 1
+
+// AiO_WEB: DEFAULTS of the steering settings on the web page (zSettings.ino, Settings > Steering), from
+// the AiO 26 firmware's ideas. They can be changed there without reprogramming.
+#define STEER_MIN_KMH_X10   2     // below 0.2 km/h (the program's speed) the wheels are not turned (was fixed)
+#define STEER_MAX_KMH       25    // above 25 km/h autosteer is cut (was fixed)
+#define SOFT_START_X10MS    0     // soft start (x 10 ms): 0 = off, as before; the AiO 26 firmware uses 500 ms
+#define CURRENT_KICK_X10MS  50    // current sensor kickout: the current must stay high 0.5 s (AiO 26: 1 s)
 
 /////////////////////////////////////////////
 
@@ -401,13 +411,21 @@ void autosteerLoop()
 				sensorReading = sensorReading * 0.7 + sensorSample * 0.3;
 				sensorReading = min(sensorReading, 255);
 
+				// AiO_WEB, as in the AiO 26 firmware: only a current that stays high for the time set on the web page
+				// (Settings > Steering) is a kickout; a short peak (the valve or motor starting) is not
+				static uint32_t currentHighMs = 0;   // when it went above the limit (0 = below)
 				if (sensorReading >= steerConfig.PulseCountMax)
 				{
-					steerSwitch = 1; // reset values like it turned off
-					currentState = 1;
-					previous = 0;
-					steerKick(SO_CURRENT, (int)sensorReading);
+					if (currentHighMs == 0) currentHighMs = currentTime | 1;
+					if (currentTime - currentHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+					{
+						steerSwitch = 1; // reset values like it turned off
+						currentState = 1;
+						previous = 0;
+						steerKick(SO_CURRENT, (int)sensorReading);
+					}
 				}
+				else currentHighMs = 0;
 
 			}
 		}
@@ -454,6 +472,15 @@ void autosteerLoop()
 		// WAS voltage check (zSafety.ino). Out of range (wire, plug, sensor) = autosteer
 		// blocked and turned off like a kickout, so the program sees the switch off.
 		if (!keyaWas && wasCheck(steeringPosition))
+		{
+			steerSwitch = 1;
+			currentState = 1;
+			previous = 0;
+		}
+
+		// AiO_WEB: Keya heartbeat lost (CAN cable, plug, motor power) = autosteer off and blocked, like the
+		// WAS check (KeyaCANBUS.ino)
+		if (keyaCheck())
 		{
 			steerSwitch = 1;
 			currentState = 1;
@@ -511,12 +538,13 @@ void autosteerLoop()
 		}
 
 		// AiO_WEB, as in the AiO firmware: a wheel angle beyond the WAS map (+-50 deg: a wrong calibration, a
-		// slipped sensor) or the program's speed above 25 km/h cuts autosteer. With the WAS voltage out
-		// of range the WAS check above decides (zSafety.ino), not this.
+		// slipped sensor) or the program's speed above the maximum (web page, default 25 km/h) cuts autosteer.
+		// With the WAS voltage out of range the WAS check above decides (zSafety.ino), not this.
 		const bool angleOut = (steerAngleActual < inputWAS[0] || steerAngleActual > inputWAS[WAS_MAP_N - 1]) && (keyaWas || wasVoltsOk());
-		if (angleOut || gpsSpeed > 25)
+		const bool tooFast  = gpsSpeed > cfg.steerMaxKmh;
+		if (angleOut || tooFast)
 		{
-			if (steerSwitch == 0) steerKick(gpsSpeed > 25 ? SO_FAST : SO_ANGLE, gpsSpeed > 25 ? (int)gpsSpeed : (int)steerAngleActual);
+			if (steerSwitch == 0) steerKick(tooFast ? SO_FAST : SO_ANGLE, tooFast ? (int)gpsSpeed : (int)steerAngleActual);
 			steerSwitch = 1; // reset values like it turned off
 			currentState = 1;
 			previous = 0;
@@ -547,8 +575,9 @@ void autosteerLoop()
 			steerAngleError = steerAngleActual - steerAngleSetPoint;   //calculate the steering error
 			//if (abs(steerAngleError)< steerSettings.lowPWM) steerAngleError = 0;
 
-			// AiO firmware: don't turn the wheels below 0.2 km/h (the program's speed)
-			if (gpsSpeed < 0.2) steerAngleError = 0;
+			// AiO firmware: don't turn the wheels below the minimum speed (the program's speed; web page,
+			// default 0.2 km/h)
+			if (gpsSpeed < cfg.steerMinKmhX10 * 0.1f) steerAngleError = 0;
 
 			keyaIntendToSteer = true;
 			calcSteeringPID();  //do the pid
@@ -579,6 +608,7 @@ void autosteerLoop()
 			}
 
 			pwmDrive = 0; //turn off steering motor
+			steerRampReset();           // the next engage starts with the soft start (AutosteerPID.ino)
 			keyaIntendToSteer = false;  // Keya: motorDrive() sends it the disable command
 			motorDrive(); //out to motors the pwm value
 			pulseCount = 0;

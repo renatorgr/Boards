@@ -15,7 +15,8 @@
 
 #define SETTINGS_EEPROM_ADDR  200
 #define SETTINGS_MAGIC        0x5A17
-#define SETTINGS_VERSION      1
+#define SETTINGS_VERSION      2         // 2: steering speeds, soft start, current kickout delay (a version 1 block is
+                                        //    taken over with their defaults, settingsLoad)
 
 // The GPS2 port (cfg.xiaoOff)
 #define GPS2_XIAO 0
@@ -63,7 +64,14 @@ struct WebSettings
     uint8_t  simMode;             // 1 = simulator mode, for the program's simulator only: GPS data is not sent to the
                                   //       program (AgOpenWeb stops its simulator while it gets GPS sentences, with or
                                   //       without a fix), zHandlers.ino. 0 = off (default; was reserved = 0)
-    uint8_t  reserved[1];         // room for later settings (keep the block size)
+    // AiO_WEB version 2 (from the AiO 26 firmware's ideas), Autosteer.ino / AutosteerPID.ino:
+    uint8_t  steerMinKmhX10;      // below this speed (x 0.1 km/h, the program's speed) the wheels are not turned (default 2 = 0.2)
+    uint8_t  steerMaxKmh;         // above this speed (km/h) autosteer is cut (default 25)
+    uint8_t  softStartX10ms;      // soft start of the valve / motor (x 10 ms; 0 = off, the default): the output rises over
+                                  //       this time when autosteer engages, and over half of it on a hard step or a reversal
+    uint8_t  currentKickX10ms;    // current sensor kickout only after the current is high this long (x 10 ms; 0 = at once;
+                                  //       default 50 = 0.5 s), so a short peak does not switch autosteer off
+    uint8_t  reserved[1];         // room for later settings
     uint8_t  checksum;
 };
 

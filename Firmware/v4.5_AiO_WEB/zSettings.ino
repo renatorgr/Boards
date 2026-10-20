@@ -35,14 +35,38 @@ static void settingsDefaults(WebSettings& s)
     s.wasCheckOff        = 0;         // WAS check on
     s.wdtOff             = 0;         // hardware watchdog on
     s.simMode            = 0;         // simulator mode off: the GPS goes to the program
+    s.steerMinKmhX10     = STEER_MIN_KMH_X10;
+    s.steerMaxKmh        = STEER_MAX_KMH;
+    s.softStartX10ms     = SOFT_START_X10MS;
+    s.currentKickX10ms   = CURRENT_KICK_X10MS;
+}
+
+static uint8_t settingsChecksumN(const uint8_t* p, size_t n)
+{
+    uint8_t sum = 0x5A;
+    for (size_t i = 0; i < n; i++) sum = (uint8_t)((sum << 1) | (sum >> 7)) ^ p[i];
+    return sum;
 }
 
 static uint8_t settingsChecksum(const WebSettings& s)
 {
-    const uint8_t* p = (const uint8_t*)&s;
-    uint8_t sum = 0x5A;
-    for (size_t i = 0; i < offsetof(WebSettings, checksum); i++) sum = (uint8_t)((sum << 1) | (sum >> 7)) ^ p[i];
-    return sum;
+    return settingsChecksumN((const uint8_t*)&s, offsetof(WebSettings, checksum));
+}
+
+// A version 1 block (builds up to 20 Oct 2026): the same fields up to simMode (bytes 0-14), then reserved
+// (15) and the checksum (16). Its settings are kept; the version 2 ones get their defaults.
+#define SETTINGS_V1_FIELDS   15
+#define SETTINGS_V1_CHECKSUM 16
+static bool settingsFromV1(WebSettings& s)
+{
+    uint8_t b[SETTINGS_V1_CHECKSUM + 1];
+    EEPROM.get(SETTINGS_EEPROM_ADDR, b);
+    const uint16_t magic = (uint16_t)(b[0] | (b[1] << 8));
+    if (magic != SETTINGS_MAGIC || b[2] != 1 || b[SETTINGS_V1_CHECKSUM] != settingsChecksumN(b, SETTINGS_V1_CHECKSUM)) return false;
+    settingsDefaults(s);
+    memcpy(&s, b, SETTINGS_V1_FIELDS);
+    s.version = SETTINGS_VERSION;
+    return true;
 }
 
 // Values out of range are replaced by the default (never trust what is in the EEPROM).
@@ -62,6 +86,10 @@ static void settingsSanitize(WebSettings& s)
     if (s.wdtOff > 1)                                                s.wdtOff = d.wdtOff;
     if (s.umSingle > 1)                                              s.umSingle = d.umSingle;
     if (s.simMode > 1)                                               s.simMode = d.simMode;
+    if (s.steerMinKmhX10 < 1 || s.steerMinKmhX10 > 30)               s.steerMinKmhX10 = d.steerMinKmhX10;
+    if (s.steerMaxKmh < 5 || s.steerMaxKmh > 40)                     s.steerMaxKmh = d.steerMaxKmh;
+    if (s.softStartX10ms > 100)                                      s.softStartX10ms = d.softStartX10ms;
+    if (s.currentKickX10ms > 200)                                    s.currentKickX10ms = d.currentKickX10ms;
 }
 
 // Side effects of the settings on the running firmware. yawChanged: the TM171 yaw direction
@@ -84,7 +112,10 @@ void settingsLoad()
 {
     WebSettings s;
     EEPROM.get(SETTINGS_EEPROM_ADDR, s);
-    if (s.magic == SETTINGS_MAGIC && s.version == SETTINGS_VERSION && s.checksum == settingsChecksum(s))
+    bool fromV1 = false;
+    if (!(s.magic == SETTINGS_MAGIC && s.version == SETTINGS_VERSION && s.checksum == settingsChecksum(s)))
+        fromV1 = settingsFromV1(s);
+    if (fromV1 || (s.magic == SETTINGS_MAGIC && s.version == SETTINGS_VERSION && s.checksum == settingsChecksum(s)))
     {
         settingsSanitize(s);
         cfg = s;
@@ -98,6 +129,7 @@ void settingsLoad()
             settingsSave();
             settingsAutoSetNow = true;
         }
+        if (fromV1) settingsSave();       // kept as a version 2 block from now on
     }
     else
     {

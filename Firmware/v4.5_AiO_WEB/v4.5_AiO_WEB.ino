@@ -222,6 +222,9 @@ void setup()
                    cfg.outputMode == OUT_CLASSIC ? "classic $PAOGI/$PANDA" : "standard set",
                    settingsAutoSetNow ? " (set to automatic by this version, once; can be changed on the web page)" : "",
                    gps2Name());
+    StatusLog.line("[boot] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), current kickout delay %u ms",
+                   cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
+                   (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10);
     if (cfg.wasCheckOff) StatusLog.line("[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer");
     if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program");
 

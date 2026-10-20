@@ -10,6 +10,8 @@
    the faults reported once in the [status] messages and as the reason autosteer went off
    (zSafety.ino) instead of being printed on every heartbeat; no prints on the USB serial while steering;
    the fault name "less phase" written "phase loss".
+   AiO_WEB 4.5, 20 Oct 2026, as in the AgOpenGPS AiO 26 firmware (KeyaCANDriver.h: no heartbeat for 500 ms
+   = the motor is lost): keyaCheck() turns autosteer off and blocks it while the heartbeat is missing.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -22,7 +24,11 @@
 //   - the motor position as the wheel angle when AgOpenGPS has the WAS on "differential" (no WAS on
 //     the board): position / counts per degree, corrected slowly by the wheel angle measured from
 //     the GPS heading (zHandlers.ino), as in the AiO firmware;
-//   - a fault (over / under voltage, over current, stall, hall, ...) turns autosteer off.
+//   - a fault (over / under voltage, over current, stall, hall, ...) turns autosteer off;
+//   - no heartbeat for KEYA_LOST_MS (CAN cable or plug loose, no power to the motor) turns autosteer off
+//     and blocks it until the heartbeat is back (keyaCheck, below).
+
+#define KEYA_LOST_MS 500        // as in the AiO 26 firmware (the Keya sends every 20 ms)
 
 #ifndef lowByte
 #define lowByte(w) ((uint8_t)((w) & 0xFF))
@@ -204,6 +210,38 @@ void keyaCommand(uint8_t command[])
     }
 }
 
+// Called from the 40 Hz steering loop (Autosteer.ino). True: autosteer must stay off. Like the WAS check
+// (zSafety.ino): blocked while there is no heartbeat and, with a steer switch, until the switch has been seen
+// off (so autosteer does not come back by itself when the cable is plugged in again).
+bool     keyaLost      = false;   // no heartbeat now
+bool     keyaBlock     = false;   // autosteer blocked by it
+uint32_t keyaLostCount = 0;
+
+bool keyaCheck()
+{
+    if (!isKeya) return false;                        // (isKeya only after a first heartbeat: keyaHeartbeatMs is set)
+    const bool lostNow = millis() - keyaHeartbeatMs > KEYA_LOST_MS;
+    if (lostNow && !keyaLost)
+    {
+        keyaLost  = true;
+        keyaBlock = true;
+        keyaLostCount++;
+        keyaSlip  = 0;                                // (its last value would trip the kickout when it comes back)
+        StatusLog.line("[status] Keya motor: no heartbeat for %u ms (CAN cable, plug, motor power?) - autosteer off and blocked",
+                       (unsigned)KEYA_LOST_MS);
+        hwMessage("Keya not responding (CAN cable?): autosteer off", 8, true);
+    }
+    else if (!lostNow && keyaLost)
+    {
+        keyaLost = false;
+        const bool switchStillOn = steerConfig.SteerSwitch && digitalRead(STEERSW_PIN) == LOW;
+        StatusLog.line("[status] Keya motor: heartbeat back%s",
+                       switchStillOn ? " - turn the steer switch off and on again to engage autosteer" : " - autosteer can be engaged again");
+    }
+    if (keyaBlock && !keyaLost && (!steerConfig.SteerSwitch || digitalRead(STEERSW_PIN) == HIGH)) keyaBlock = false;
+    return keyaBlock;
+}
+
 // Motor off (autosteer off, firmware update, ...)
 void disableKeyaSteer()
 {
@@ -218,6 +256,9 @@ void keyaJson(Json& j)
     keyaFaultText(keyaFaults & 0xFFFE, t, sizeof(t));
     j.obj("keya");
     j.bo("found", isKeya);
+    j.bo("lost", keyaLost);
+    j.bo("block", keyaBlock);
+    j.u("lostCount", keyaLostCount);
     j.i("ago", keyaHeartbeats ? (long)(now - keyaHeartbeatMs) : -1);   // ms
     j.i("pos", keyaSteeringPosition);
     j.i("speed", keyaCurrentActualSpeed);

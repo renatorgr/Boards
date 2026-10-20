@@ -187,6 +187,7 @@ const char* offName(uint8_t c)          // for the web page
         case SO_KEYA_FAULT: return "keyafault";
         case SO_ANGLE:    return "angle";
         case SO_FAST:     return "fast";
+        case SO_KEYA_LOST: return "keyalost";
         default:          return "";
     }
 }
@@ -211,7 +212,8 @@ static void offText(char* b, size_t n, uint8_t c, int v)
         case SO_KEYA:     snprintf(b, n, "Keya kickout (%d %%, limit %d %%)", pct255(v), lim); break;
         case SO_KEYA_FAULT: snprintf(b, n, "Keya motor fault (0x%04X)", v & 0xFFFF); break;
         case SO_ANGLE:    snprintf(b, n, "wheel angle %d deg, beyond +-50", v); break;
-        case SO_FAST:     snprintf(b, n, "speed %d km/h, above 25", v); break;
+        case SO_FAST:     snprintf(b, n, "speed %d km/h, above %u", v, (unsigned)cfg.steerMaxKmh); break;
+        case SO_KEYA_LOST: snprintf(b, n, "Keya not responding (no heartbeat for 0.5 s)"); break;
         default:          snprintf(b, n, "other"); break;
     }
 }
@@ -227,6 +229,7 @@ void steerOnNote(bool on)
     uint8_t c;
     int v = 0;
     if (wasBlock)                                           c = SO_WAS;
+    else if (keyaBlock)                                     c = SO_KEYA_LOST;
     else if (kickCause != SO_NONE && now - kickMs < 500)    { c = kickCause; v = kickValue; }
     else if (pgn254Ms == 0 || now - pgn254Ms > 1000)        c = SO_SILENT;
     else if (steerSwitch == 1 && steerConfig.SteerSwitch)   c = SO_SWITCH;
@@ -241,7 +244,7 @@ void steerOnNote(bool on)
     char t[72];
     offText(t, sizeof(t), c, v);
     StatusLog.line("[status] Autosteer OFF: %s", t);
-    if (c == SO_WAS) return;                                // wasCheck() has put it on the program's screen
+    if (c == SO_WAS || c == SO_KEYA_LOST) return;           // wasCheck() / keyaCheck() have put it on the program's screen
     char m[96];
     snprintf(m, sizeof(m), "Autosteer off: %s", t);
     const bool byHand = c == SO_SWITCH || c == SO_BUTTON;

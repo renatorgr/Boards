@@ -24,6 +24,12 @@ From the AgOpenGPS AiO v4 firmware (27.04.2025):
 
 ### Changes on 19 and 20 Oct 2026 (same version number)
 
+Steering, from ideas of the AgOpenGPS AiO 26 firmware (20 Oct 2026, evening; not tried on a tractor yet):
+
+- **Keya not responding**: no heartbeat for 0.5 s (CAN cable, plug, motor power) turns autosteer off and blocks it until the heartbeat is back (with a steer switch: and the switch seen off). Shown on the program's screen and the web page.
+- **Settings > Steering** on the web page: minimum speed (was fixed at 0.2 km/h), maximum speed (was fixed at 25 km/h), **soft start** (off by default) and the **current kickout delay** (default 0.5 s: a short current peak no longer switches autosteer off).
+- The web page settings block is now version 2; the settings saved by an earlier build are kept.
+
 Safety and stability:
 
 - **Crash fixed**: the network stack is now run from the loop (a Teensy built with Teensyduino 1.57.3 crashed at `0x0001D542` when a browser opened the page). See "Network stack".
@@ -92,7 +98,7 @@ The page refreshes once a second. When the Teensy restarts, the page reloads its
 
 ### Settings
 
-Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer settings), applied at once, kept through firmware updates. The defaults are the `#define`s at the top of `zHandlers.ino`.
+Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer settings), applied at once, kept through firmware updates. The defaults are the `#define`s at the top of `zHandlers.ino` (the Steering card's: at the top of `Autosteer.ino`).
 
 | Setting | Default | |
 |---|---|---|
@@ -106,6 +112,10 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Check the WAS sensor | on | Off only on a bench without a WAS (see "WAS check"). Asks first. |
 | Watchdog | on | Off from the next start. |
 | UM982 antennas | two | Set on the GPS tab. One: no dual heading card, `ConfigUM982S.txt`; two: `ConfigUM982D.txt`. |
+| Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
+| Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
+| Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
+| Current kickout delay (Steering) | 0.5 s | 0 (at once, as before), 0.25, 0.5 or 1 s. Current sensor only, not the Keya: the current must stay above the limit this long. |
 
 ### Firmware update over the network
 
@@ -214,9 +224,10 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 - Kickout: with "current sensor" on in the program, the Keya's slip is compared with the program's limit.
 - A motor fault (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
+- No heartbeat for 0.5 s (cable, plug, power) turns autosteer off and blocks it until the heartbeat is back, as in the AiO 26 firmware.
 - **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. Set the tractor's wheelbase in `WHEELBASE_M` (main .ino, 3.20 m).
 
-**For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned; a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
+**For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
 At the top of `Autosteer.ino`:
 
@@ -246,7 +257,8 @@ Autosteer stops at the next steering loop (25 ms). The reason goes to Messages, 
 | pressure / current kickout | `Autosteer off: pressure kickout (40 %, limit 36 %)` |
 | wheel encoder | `Autosteer off: wheel encoder kickout (5 pulses)` |
 | Keya slip / fault | `Autosteer off: Keya kickout (34 %, limit 31 %)` / `Keya motor fault (0x0002)` |
-| wheel angle / speed beyond the limits | `Autosteer off: wheel angle 63 deg, beyond +-50` / `speed 27 km/h, above 25` |
+| Keya not responding (no heartbeat for 0.5 s) | `Keya not responding (CAN cable?): autosteer off` |
+| wheel angle / speed beyond the limits | `Autosteer off: wheel angle 63 deg, beyond +-50` / `speed 27 km/h, above 25` (the maximum set on the web page) |
 | WAS out of range | `WAS fault (0.03 V): autosteer blocked` |
 | no steering data for 2.5 s | `Autosteer off: no steering data from the program for 2.5 s` |
 
@@ -391,6 +403,7 @@ This firmware is built on other people's work:
 | Part | From |
 |---|---|
 | Structure of the main file, steering (`Autosteer.ino`, `AutosteerPID.ino`), Ethernet, NTRIP | the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project) |
+| The soft start, the Keya heartbeat timeout (0.5 s), the current kickout delay, the steering speeds as settings (ideas, rewritten for this board) | the AgOpenGPS AiO 26 firmware (`AgOpenGPS-Official/Firmware_Teensy_AiO_26`, GPL v3) |
 | Keya CAN (`KeyaCANBUS.ino`), dual F9P RELPOSNED (heading + 90°, roll, the flags), wheel angle from the GPS heading for the Keya without a WAS, the cut beyond ±50° or above 25 km/h, no steering below 0.2 km/h, the WAS map | the AgOpenGPS AiO v4 Teensy firmware `AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025` (AgOpenGPS project, GPL v3) |
 | UM982 dual heading from HPR, the first `zHandlers.ino` | chriskinal, AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3 |
 | TM171, Danfoss and IBT2 output, the version of the AgOpenGPS files used here | Balázs Gunics, fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1) |
