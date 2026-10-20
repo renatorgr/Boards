@@ -30,6 +30,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below); "latest version installed" when it is the one installed.
 - The page shows its cards in **three columns** on a wide screen (one column on a phone), and the tab with the version and the update is called **Firmware**.
 - Changed later on 20 Oct 2026: the page only in English, a light mode, and no repeated rows (the XIAO's version only in the header and the Firmware tab, the requested steer angle only in Program → module).
+- Fixes on 20 Oct 2026 (evening): the start-up reason and the USB help in English (`status | wifi-reset | restart`; the old Portuguese names still work); the page opens on the farm network under any name the router gives the XIAO (only requests on the XIAO's own network are sent to 192.168.4.1); a warning at the top of Status when the Teensy runs another version; "no heading (QF too low)" instead of "UM982 without a solution" (it is also the second F9P's reason).
 - **Link to the Teensy at 460800**, like the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
 
 ## What it does

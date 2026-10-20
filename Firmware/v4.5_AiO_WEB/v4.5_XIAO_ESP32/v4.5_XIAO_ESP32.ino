@@ -29,8 +29,8 @@
 //     Changes (WiFi, update, restart) ask for the password of the XIAO's own WiFi network.
 //   - tells the Teensy its version and WiFi state (shown in the XIAO card of the Teensy page) and
 //     writes its events to the Teensy log ("[xiao] > ...")
-//   - USB-C serial monitor (any baud), for the bench or the panel USB port: "estado", "wifi-reset"
-//     (WiFi settings back to the defaults, e.g. a forgotten password), "reiniciar"
+//   - USB-C serial monitor (any baud), for the bench or the panel USB port: "status", "wifi-reset"
+//     (WiFi settings back to the defaults, e.g. a forgotten password), "restart"
 //
 // Arduino IDE: board package "esp32" by Espressif Systems (3.x), board "XIAO_ESP32C3" or "XIAO_ESP32S3",
 // Tools > USB CDC On Boot: Enabled, Partition Scheme: the default one (it has room for updates over
@@ -164,7 +164,7 @@ struct Json
         ch('"');
     }
     void str(const char* k, const char* v)   { key(k); esc(v); }
-    void num(const char* k, double v, int d) { key(k); char t[32]; snprintf(t, sizeof(t), "%.*f", d, v); raw(t); }
+    void num(const char* k, double v, int d) { key(k); if (isnan(v) || isinf(v)) { raw("null"); return; } char t[32]; snprintf(t, sizeof(t), "%.*f", d, v); raw(t); }
     void i(const char* k, long v)            { key(k); char t[16]; snprintf(t, sizeof(t), "%ld", v); raw(t); }
     void u(const char* k, unsigned long v)   { key(k); char t[16]; snprintf(t, sizeof(t), "%lu", v); raw(t); }
     void bo(const char* k, bool v)           { key(k); raw(v ? "true" : "false"); }
@@ -187,16 +187,16 @@ static const char* resetReasonText()
 {
     switch (esp_reset_reason())
     {
-        case ESP_RST_POWERON:  return "corrente ligada";               // the module was switched on
-        case ESP_RST_SW:       return "reinício pedido";               // page, update, new WiFi settings, USB command
-        case ESP_RST_PANIC:    return "erro do programa";
+        case ESP_RST_POWERON:  return "power on";                      // the module was switched on
+        case ESP_RST_SW:       return "restart requested";             // page, update, new WiFi settings, USB command
+        case ESP_RST_PANIC:    return "program error";
         case ESP_RST_INT_WDT:
         case ESP_RST_TASK_WDT:
-        case ESP_RST_WDT:      return "programa parado (watchdog)";
-        case ESP_RST_BROWNOUT: return "falha de tensão";
+        case ESP_RST_WDT:      return "program stopped (watchdog)";
+        case ESP_RST_BROWNOUT: return "low voltage (brownout)";
         case ESP_RST_DEEPSLEEP:return "deep sleep";
-        case ESP_RST_EXT:      return "botão RESET";
-        default:               return "outro";
+        case ESP_RST_EXT:      return "RESET button";
+        default:               return "other";
     }
 }
 
@@ -293,11 +293,15 @@ static bool passwordOk()
     return false;
 }
 
-// Requests for any other host name (phones checking for internet) go to our page
+// Requests that come in on our own network for any other host name (phones checking for internet) go
+// to our page. Never on the other network: there the router may give the XIAO its own name
+// (xiao.home, ...), and 192.168.4.1 does not exist on that network.
 static bool captiveRedirect()
 {
-    const String h = server.hostHeader();
-    if (h.length() == 0 || h == "192.168.4.1" || h == staIpStr || h == cfg.host + ".local") return false;
+    if (!(server.client().localIP() == WiFi.softAPIP())) return false;
+    String h = server.hostHeader();
+    h.toLowerCase();
+    if (h.length() == 0 || h == "192.168.4.1" || h == cfg.host + ".local") return false;
     server.sendHeader("Location", "http://192.168.4.1/", true);
     server.send(302, "text/plain", "");
     return true;
@@ -614,7 +618,7 @@ static void printState()
     if (cfg.staOn) Serial.printf("Other network '%s': %s %s\n", cfg.staSsid.c_str(), staState(), WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
     Serial.printf("Teensy: %s, %lu frames, %lu bad checksums, status %ld s ago\n", teensy.teensyTalking(millis()) ? "talking" : "SILENT",
                   (unsigned long)teensy.goodFrames, (unsigned long)teensy.crcErr, teensy.statusMs ? (long)((millis() - teensy.statusMs) / 1000) : -1L);
-    Serial.println("Commands: estado | wifi-reset | reiniciar");
+    Serial.println("Commands: status | wifi-reset | restart");
 }
 
 static void usbCommands()
@@ -626,7 +630,7 @@ static void usbCommands()
         if (c != '\n') { if (cmdLen < sizeof(cmd) - 1) cmd[cmdLen++] = c; continue; }
         cmd[cmdLen] = '\0';
         cmdLen = 0;
-        if (!strcmp(cmd, "estado") || !strcmp(cmd, "status")) printState();
+        if (!strcmp(cmd, "status") || !strcmp(cmd, "estado")) printState();             // "estado", "reiniciar": the old names still work
         else if (!strcmp(cmd, "wifi-reset"))
         {
             settingsReset();
@@ -634,8 +638,8 @@ static void usbCommands()
             delay(300);
             ESP.restart();
         }
-        else if (!strcmp(cmd, "reiniciar") || !strcmp(cmd, "restart")) { delay(100); ESP.restart(); }
-        else if (cmd[0]) Serial.println("Commands: estado | wifi-reset | reiniciar");
+        else if (!strcmp(cmd, "restart") || !strcmp(cmd, "reiniciar")) { delay(100); ESP.restart(); }
+        else if (cmd[0]) Serial.println("Commands: status | wifi-reset | restart");
     }
 }
 
