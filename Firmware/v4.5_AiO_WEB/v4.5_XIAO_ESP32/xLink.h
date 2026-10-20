@@ -31,7 +31,7 @@
 #define LINK_BAUD               460800   // = XIAO_BAUD in the Teensy firmware (zXiao.h)
 #define LINK_HELLO_MS           2000
 #define LINK_INFO_MS            5000
-#define LINK_SILENT_MS          3000     // nothing from the Teensy for this long: "sem dados"
+#define LINK_SILENT_MS          3000     // nothing from the Teensy for this long: "no data"
 #define LINK_GAP_MS             50       // a frame not finished this long after its last byte is dropped
 #define LINK_LOG_LINES          60       // module log lines kept (= LOG_LINES in the Teensy)
 #define LINK_LOG_LEN            200

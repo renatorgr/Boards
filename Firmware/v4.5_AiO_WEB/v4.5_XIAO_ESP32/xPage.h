@@ -81,6 +81,7 @@ h3{font-size:14px;margin:14px 0 4px}
 .nets .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nets .r{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .info{background:color-mix(in srgb,var(--acc) 16%,transparent);border:1px solid var(--acc);border-radius:12px;padding:9px 12px;margin:0 0 12px;font-weight:600}
+.info.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);border-color:var(--warn)}
 a{color:var(--acc)}
 .tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
@@ -92,6 +93,7 @@ a{color:var(--acc)}
 <main>
 
 <section id="t-status">
+<div id="verNote" class="info warn hidden"></div>
 <div id="ghNote" class="info hidden"></div>
 <div class="grid3">
  <div class="card"><h2>Module (Teensy)<span class="age" id="mAge"></span></h2>
@@ -182,8 +184,7 @@ function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.create
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
 function ago(s){return s<0?"never":s<2?"now":(dur(s)+" ago");}
-function ptErr(e){return String(e||"");}
-const WHY={1:"no HPR",2:"HPR late",3:"UM982 without a solution",4:"HPR empty"};
+const WHY={1:"no HPR",2:"HPR late",3:"QF too low",4:"HPR empty"};
 
 function renderModule(t){
  lastTeensy=t;
@@ -205,6 +206,14 @@ function renderModule(t){
  $("aName").textContent=hn||"Program";
  pill("mRtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");
  const fw=s.fw||"–",sp=fw.lastIndexOf(" ");set("mFw",(sp>0?fw.slice(0,sp):fw).replace(/_/g,"_\u200b"));   // "name version": the name has the version already; may break after "_"
+ renderVer();
+}
+// The XIAO and the Teensy must run the same version (the link changed between versions)
+function renderVer(){
+ const tv=lastTeensy&&lastTeensy.s&&lastTeensy.s.fw?lastTeensy.s.fw.slice(lastTeensy.s.fw.lastIndexOf(" ")+1):"",xv=lastState?lastState.ver:"";
+ const bad=!!(tv&&xv&&tv!==xv),n=$("verNote");
+ n.textContent=bad?"The Teensy runs version "+tv+" and this XIAO version "+xv+": they must be the same. Install the same version on both.":"";
+ n.classList.toggle("hidden",!bad);
 }
 function renderState(x){
  lastState=x;lastUp=x.up;if(x.chipId!==undefined){chipId=x.chipId;chipName=x.chip;}
@@ -231,6 +240,7 @@ function renderState(x){
  set("xCrc",String(x.link.crcErr),x.link.crcErr?"warn":"");
  set("xHeap",Math.round(x.heap/1024)+" kB");
  renderGh();
+ renderVer();
  set("pFw",x.fw);set("pBuilt",x.built);set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");
 }
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
@@ -285,7 +295,7 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m
  if(!confirm("Save and restart the XIAO? The XIAO WiFi goes off for a few seconds."))return;
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
-  if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error"+": "+ptErr(j.error);m.className="note bad";}
+  if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
  }catch(e){m.textContent="No connection to the XIAO.";m.className="note bad";}});
 // the networks found, one per line, strongest first; a tap chooses one
 function sig(r){return (r>=-60?"strong":r>=-72?"medium":"weak");}
@@ -333,7 +343,7 @@ function sendBin(blob,name,p0){
  const fail=t=>{busy=false;$("install").disabled=!$("binFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
-  else fail("Not installed: "+ptErr(j.error||("error"+" "+x.status))+". The current program keeps running.");};
+  else fail("Not installed: "+(j.error||("error "+x.status))+". The current program keeps running.");};
  x.onerror=()=>fail("The connection failed. The current program keeps running.");
  x.send(fd);}
 
@@ -393,7 +403,7 @@ $("ghCheck").addEventListener("click",ghCheck);
 $("ghInstall").addEventListener("click",ghInstall);
 $("reboot").addEventListener("click",async()=>{if(busy||!confirm("Restart the XIAO?"))return;
  try{const j=await getJ("/api/restart",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
-  fwMsg(j.ok?"Restarting…":"Error"+": "+ptErr(j.error),j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});
+  fwMsg(j.ok?"Restarting…":"Error: "+j.error,j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});
 
 // ---- one request at a time, every second
 let tickN=0;
