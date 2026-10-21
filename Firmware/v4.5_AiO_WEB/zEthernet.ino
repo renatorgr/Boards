@@ -56,12 +56,14 @@ void EthernetStart()
   Eth_ipDestination[2] = Eth_myip[2];
   Eth_ipDestination[3] = 255;
 
-  // the UDP ports: GNSS out (from portMy), NTRIP in, steering in and out
+  // the UDP ports: GNSS out (from portMy), NTRIP in, steering in and out, the machine module in (9999)
   const bool gOk = Eth_udpPAOGI.begin(portMy);
   const bool nOk = Eth_udpNtrip.begin(AOGNtripPort);
   const bool aOk = Eth_udpAutoSteer.begin(AOGAutoSteerPort);
-  StatusLog.line("[boot] Ethernet: UDP ports %u GNSS out%s, %u NTRIP in%s, %u steering in / out%s",
-                 portMy, gOk ? "" : " (FAILED)", AOGNtripPort, nOk ? "" : " (FAILED)", AOGAutoSteerPort, aOk ? "" : " (FAILED)");
+  const bool mOk = Eth_udpModules.begin(portDestination);    // the machine module's PGNs (zMachine.ino)
+  StatusLog.line("[boot] Ethernet: UDP ports %u GNSS out%s, %u NTRIP in%s, %u steering in / out%s, %u machine module in%s",
+                 portMy, gOk ? "" : " (FAILED)", AOGNtripPort, nOk ? "" : " (FAILED)", AOGAutoSteerPort, aOk ? "" : " (FAILED)",
+                 portDestination, mOk ? "" : " (FAILED)");
  #endif
 }
 

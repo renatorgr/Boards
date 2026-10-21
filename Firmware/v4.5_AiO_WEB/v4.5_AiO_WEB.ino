@@ -110,6 +110,7 @@ char Eth_NTRIP_packetBuffer[512];
 EthernetUDP Eth_udpPAOGI;
 EthernetUDP Eth_udpNtrip;
 EthernetUDP Eth_udpAutoSteer;
+EthernetUDP Eth_udpModules;            // UDP 9999 in: the machine module's PGNs (zMachine.ino)
 
 IPAddress Eth_ipDestination;
 #endif
@@ -442,6 +443,10 @@ void loop()
     loopStep = 11;
     if (Autosteer_running) autosteerLoop();
     else ReceiveUdp();
+
+    // the machine module's PGNs on UDP 9999, for the web page's Machine tab (zMachine.ino)
+    loopStep = 15;
+    machineLoop();
 
     // the receiver's model, the u-blox settings from the web page (zReceiver.ino)
     loopStep = 13;

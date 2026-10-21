@@ -286,6 +286,7 @@ const char* stepName(uint8_t s)
         case 12: return "Ethernet link";
         case 13: return "GPS receiver";
         case 14: return "Ethernet stack";
+        case 15: return "machine module";
         case 20: return "firmware update";
         default: return "?";
     }

@@ -15,6 +15,7 @@
 //   - GPS (was "UM982"): the receiver's model (zReceiver.ino); UM982: console, commands to the
 //     receiver and its replies; u-blox F9P / X20P: its settings, read and written with UBX
 //     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload
+//   - Machine: the machine module (sprayer Nano, PGN 160 on UDP 9999), only once it has been heard (zMachine.ino)
 //   - Firmware update (zOTA.ino) and restart
 //   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
@@ -422,6 +423,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     if (full) j.str("info", xiaoInfo);                        // the XIAO's own JSON (program, WiFi), as text
     j.i("infoAgo", xiaoInfoMs ? (long)((now - xiaoInfoMs) / 1000) : -1);
     j.close();
+
+    if (full) machineJson(j, now);                            // the machine module (Machine tab, zMachine.ino)
 
     j.raw("}");
 }
