@@ -1,11 +1,11 @@
-/* zNet.h - the network stack (FNET, under NativeEthernet) runs from loop(), not from an interrupt.
+/* Net.h - the network stack (FNET, under NativeEthernet) runs from loop(), not from an interrupt.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// zNet.h
+// Net.h
 // NativeEthernet runs the network stack (fnet_poll: the TCP timers and its web server's accept) from
 // a 1 ms IntervalTimer interrupt. FNET's own lock only holds back the Ethernet receive interrupt, not
 // that timer, so the timer could change the sockets, NativeEthernet's socket table and the stack's

@@ -1,4 +1,4 @@
-/* zADS1115.h - ADS1115 (WAS) on I2C.
+/* ADS1115.h - ADS1115 (WAS) on I2C.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit

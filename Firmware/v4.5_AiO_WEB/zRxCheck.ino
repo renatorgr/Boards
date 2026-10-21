@@ -4,7 +4,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
+   The AgOpenGPS settings (RxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
    UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13.
@@ -43,7 +43,7 @@
 // (zReceiver.ino's queue), except while a baud rate search or change has the port.
 
 #include "zRxCheck.h"
-#include "zRxConfig.h"
+#include "src/gnss/RxConfig.h"
 
 // The operations, the web page's answer and the comparisons run from flash (FLASHMEM), not from the
 // Teensy's fast RAM (ITCM): they are rare and not time-critical, and the RAM stays free for the rest.

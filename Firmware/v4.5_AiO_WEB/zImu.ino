@@ -25,7 +25,7 @@
 // TM171. The yaw direction is learned (or set on the web page) as with the TM171.
 
 #include "zImu.h"
-#include "BNO08x_AOG.h"
+#include "src/imu/BNO08x_AOG.h"
 
 #define IMU_DETECT_MS      1500    // listening on Serial5 at start-up
 #define RVC_FRAMES_NEEDED  3       // BNO085 RVC frames with a good checksum before it counts as found

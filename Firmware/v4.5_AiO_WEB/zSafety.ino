@@ -28,7 +28,7 @@
 // steering loop; loop() calls wdtFeed().
 
 #include "zSafety.h"      // SteerOff, BootWhy (included first by the main .ino)
-#include "zVersion.h"     // FW_NAME (in the crash and watchdog lines)
+#include "src/system/Version.h"     // FW_NAME (in the crash and watchdog lines)
 
 // ---------------------------------------------------------------- PGN 221: text on the program's screen
 // { 0x80, 0x81, source, 221, text length + 2, seconds to show, 0 = warning colour, text, CRC }

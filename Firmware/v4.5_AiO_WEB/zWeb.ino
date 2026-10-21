@@ -27,10 +27,10 @@
 //
 // There is no password: anyone on the module's network can open the page.
 
-#include "zWebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
-#include "zWebJson.h"            // small JSON writer for the answers
+#include "src/net/WebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
+#include "src/net/WebJson.h"            // small JSON writer for the answers
 
-#include "zVersion.h"            // FW_NAME, FW_VERSION (also included by the main .ino)
+#include "src/system/Version.h"         // FW_NAME, FW_VERSION (also included by the main .ino)
 
 #define WEB_PORT         80
 #define WEB_HEAD_MAX     2048    // request line + headers + small body (settings, UM982 command)
@@ -74,7 +74,7 @@ static bool webWrite(EthernetClient& c, const char* d, size_t n)
         {
             if (!c.connected() || millis() - t0 > WEB_TIMEOUT_MS) return false;
             wdtFeed();                                   // a slow browser must not trip the watchdog
-            netPoll();                                   // the network stack (zNet.h): retransmissions
+            netPoll();                                   // the network stack (Net.h): retransmissions
             delayMicroseconds(200);
             continue;
         }
@@ -749,7 +749,7 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
     while (!err && got < rq.contentLength)
     {
         wdtFeed();
-        netPoll();                                         // the network stack (zNet.h): ACKs, window
+        netPoll();                                         // the network stack (Net.h): ACKs, window
         const int n = c.available();
         if (n > 0)
         {

@@ -83,14 +83,16 @@ jobs:
           dir="${{ steps.fw.outputs.dir }}"
           name="${{ steps.fw.outputs.name }}"
           test -s "build/$name.ino.hex"
-          # the web page refuses an update without these two strings (zOTA.ino)
-          marker=$(sed -n 's/^#define OTA_MARKER *"\([^"]*\)".*/\1/p' "$dir/zOTA.ino")
+          # the Teensy's own sources: the sketch folder and its src/, not the XIAO program
+          src=(--include='*.ino' --include='*.h' --include='*.cpp' --include='*.c' --exclude-dir='v*_XIAO_ESP32*')
+          # the web page refuses an update without these two strings (OTA_MARKER: the OTA code)
+          marker=$(grep -rh "${src[@]}" -E '^#define +OTA_MARKER +"' "$dir" | sed -n 's/^#define OTA_MARKER *"\([^"]*\)".*/\1/p' | head -n 1)
           test -n "$marker"
           strings "build/$name.ino.elf" | grep -qF "$marker" || { echo "::error::OTA marker $marker not in the firmware"; exit 1; }
           strings "build/$name.ino.elf" | grep -qF fw_teensy41 || { echo "::error::fw_teensy41 not in the firmware"; exit 1; }
           # diagnostics switched on are fine on the bench, not in a published build
-          if grep -nE '^#define +(FUSION_DEBUG|RAW_NMEA_DEBUG|SEND_TO_USB) +1' "$dir/zHandlers.ino"; then
-            echo "::warning::a diagnostic switch is 1 in zHandlers.ino (set it to 0 before publishing)"
+          if grep -rnE "${src[@]}" '^#define +(FUSION_DEBUG|RAW_NMEA_DEBUG|SEND_TO_USB) +1' "$dir"; then
+            echo "::warning::a diagnostic switch is 1 (FUSION_DEBUG, RAW_NMEA_DEBUG or SEND_TO_USB): set it to 0 before publishing"
           fi
           cp "build/$name.ino.hex" "$name.hex"
 

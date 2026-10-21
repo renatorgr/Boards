@@ -1,11 +1,11 @@
-/* zWebPage.h - the module's web page (English).
+/* WebPage.h - the module's web page (English).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// zWebPage.h
+// WebPage.h
 // The module's web page (served by zWeb.ino): one self-contained HTML file, no internet needed.
 // Kept in flash (PROGMEM). In English (the Portuguese version and its language button are gone, 20 Oct 2026).
 // Dark, or light when the device asks for it; the header button switches and this browser remembers it.

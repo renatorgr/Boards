@@ -12,8 +12,8 @@
 #define ZRECEIVER_H
 
 #include <stdint.h>
-#include "zWebJson.h"
-#include "zRtcm.h"
+#include "src/net/WebJson.h"
+#include "src/gnss/Rtcm.h"
 #include "zRxCheck.h"
 
 // The receiver on Serial7, as it answered (zReceiver.ino)

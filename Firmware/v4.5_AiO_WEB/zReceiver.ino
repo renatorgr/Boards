@@ -29,7 +29,7 @@
 //     on the page, then SAVECONFIG (kept after power-off), then read again. Commands without a
 //     port name act on the port they arrive on: the one wired to the Teensy. Never written from the
 //     page: the port baud rates (CONFIG COMx) and FRESET (the Teensy would lose the receiver).
-//   - Every query goes to the receiver between two RTCM messages of the corrections (zRtcm.h),
+//   - Every query goes to the receiver between two RTCM messages of the corrections (Rtcm.h),
 //     never in the middle of one. The receiver check (zRxCheck.ino) sends through the same queue,
 //     takes the UBX answers meant for it (rxCkUbx), loads the UM982 AgOpenGPS commands through the
 //     form's write (umWriteRaw), and has Serial7 to itself while it searches for or changes the baud rate.

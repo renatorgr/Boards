@@ -70,7 +70,7 @@ Messages:
   - 1.59 to 1.61 use the same compiler as 1.58 (1.59 and 1.60 checked: they build), but have not been tried on a tractor.
   - 1.62 brings a new compiler (gcc 15) and has not been checked.
 - Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
-- Nothing else to install: the BNO085 library and the flash routines (`FlashTxx.c` / `.h`) are in the sketch folder, and FlexCAN_T4 comes with Teensyduino.
+- Nothing else to install: the BNO085 library and the flash routines (`FlashTxx.c` / `.h`) are in the sketch's `src` folder, which the IDE compiles too, and FlexCAN_T4 comes with Teensyduino.
 - Warnings do not stop the build (the ones in NativeEthernet, FNET and mbedtls come with Teensyduino and are normal); only an "error" does.
 - `arm-none-eabi-g++ ... not found`: that Teensyduino's compiler did not install. Remove Teensy in the Boards Manager and install it again.
 
@@ -279,7 +279,7 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 
 ## Network stack
 
-NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
+NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`src/net/Net.h`). NativeEthernet itself is not changed.
 
 ## Inputs
 
@@ -353,25 +353,27 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 
 ## Files
 
+The sketch is being sorted into folders like the official AiO 26 firmware's modules: `src/autosteer`, `src/gnss`, `src/imu`, `src/net`, `src/system`. The Arduino IDE compiles a sketch's `src` folder too, so it is still opened and built as before. The `.ino` files move there module by module.
+
 | File | |
 |---|---|
 | `v4.5_AiO_WEB.ino` | setup and loop |
-| `zVersion.h` | version number and firmware name |
+| `src/system/Version.h` | version number and firmware name |
 | `zHandlers.ino` | receiver sentences, epochs, standard / classic output |
 | `zReceiver.ino` / `.h` | receiver identification, u-blox and UM982 settings |
-| `zRxCheck.ino` / `.h`, `zRxConfig.h` | receiver check; the AgOpenGPS settings of AOGConfigOMatic |
+| `zRxCheck.ino` / `.h`, `src/gnss/RxConfig.h` | receiver check; the AgOpenGPS settings of AOGConfigOMatic |
 | `zDualF9P.ino` | GPS2 port, second F9P |
-| `zImu.ino` / `.h`, `TM171.ino`, `BNO08x_AOG.*` | IMU detection and reading |
+| `zImu.ino` / `.h`, `TM171.ino`, `src/imu/BNO08x_AOG.*` | IMU detection and reading |
 | `KeyaCANBUS.ino` | Keya motor |
 | `zSafety.ino` / `.h` | WAS check, autosteer off, program's screen messages, watchdog, crash, start reason |
-| `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop |
-| `zRtcm.h` | RTCM counter |
-| `zStatus.ino`, `zStatusLog.h` | messages |
+| `zEthernet.ino`, `src/net/Net.h` | Ethernet, network stack run from the loop |
+| `src/gnss/Rtcm.h` | RTCM counter |
+| `zStatus.ino`, `src/system/StatusLog.h` | messages |
 | `zSettings.ino` / `.h` | settings (EEPROM) |
-| `zWeb.ino`, `zWebPage.h`, `zWebJson.h` | web server and page |
-| `zOTA.ino`, `FlashTxx.*` | firmware update |
+| `zWeb.ino`, `src/net/WebPage.h`, `src/net/WebJson.h` | web server and page |
+| `zOTA.ino`, `src/net/FlashTxx.*` | firmware update |
 | `zXiao.ino` / `.h` | XIAO link |
-| `Autosteer.ino`, `AutosteerPID.ino`, `zUdpNtrip.ino`, `zADS1115.*`, `zNMEAParser.h` | from the AgOpenGPS / Gunics firmware, changed (each file says how) |
+| `Autosteer.ino`, `AutosteerPID.ino`, `zUdpNtrip.ino`, `src/autosteer/ADS1115.*`, `src/gnss/NMEAParser.h` | from the AgOpenGPS / Gunics firmware, changed (each file says how) |
 | `v4.5_AiO_WEB.hex` | compiled firmware (Teensyduino 1.58) |
 | `v4.5_XIAO_ESP32/`, `v4.5_XIAO_ESP32_bin/` | the XIAO program, and compiled for the C3 and S3 |
 | `COPYING` | GNU GPL v3 |
@@ -414,16 +416,16 @@ This firmware is built on other people's work:
 | BNO080 / BNO085 I2C library (`BNO08x_AOG.*`) | Nathan Seidle, SparkFun Electronics (SparkFun_BNO080_Arduino_Library, MIT License), in the AgOpenGPS version |
 | u-blox messages and configuration keys, UBX-NAV-RELPOSNED | the u-blox ZED-F9P / ZED-X20P interface descriptions (key IDs checked against the list of SparkFun's u-blox GNSS library v3) |
 | UM982 commands (`VERSIONA`, `CONFIG`, `MASK`, `UNMASK`, `UNILOGLIST`, `MODE`, `UNLOG`, `SAVECONFIG`, the log commands) | the Unicore N4 high precision commands and logs reference |
-| NMEA parser (`zNMEAParser.h`) | Glinnes Hulden (CC0) |
-| ADS1115 (`zADS1115.*`) | ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), from the Adafruit library |
+| NMEA parser (`NMEAParser.h`) | Glinnes Hulden (CC0) |
+| ADS1115 (`ADS1115.*`) | ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), from the Adafruit library |
 | Flash routines for the update (`FlashTxx.*`) | FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from Niels A. Moseley and Frank Boesing (public domain) |
 | Protocol of the XIAO link | the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn" (AgOpenGPS-Official) |
 | Format of the messages on the program's screen (PGN 221) | AgOpenGPS (`UDPComm`, case 221), read the same way by AgOpenWeb |
 | Crash record and reset reason used at start-up | the Teensy core (`CrashReport`, PJRC) |
 | Ethernet library and network stack (used as they are, run from the loop) | NativeEthernet (vjmuzik) and FNET, as they come with Teensyduino |
 | Pin comparison of the AiO v4.5 Micro and Standard | the AgOpenGPS board design files (EasyEDA, 2024-02-05) |
-| The AgOpenGPS receiver settings (`zRxConfig.h`) and how they are sent: the F9P files `Single.txt`, `DualPosition.txt`, `DualRelPos.txt` (firmware HPG 1.13), the UM982 commands `ConfigUM982D.txt`, `ConfigUM982S.txt` | AOGConfigOMatic by lansalot (github.com/lansalot/AOGConfigOMatic, GPL v3); the F9P configuration by Jaap van den Handel |
+| The AgOpenGPS receiver settings (`RxConfig.h`) and how they are sent: the F9P files `Single.txt`, `DualPosition.txt`, `DualRelPos.txt` (firmware HPG 1.13), the UM982 commands `ConfigUM982D.txt`, `ConfigUM982S.txt` | AOGConfigOMatic by lansalot (github.com/lansalot/AOGConfigOMatic, GPL v3); the F9P configuration by Jaap van den Handel |
 
-The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page, settings, messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output, the rewritten `zHandlers.ino`, the autosteer safety, watchdog and crash hook (`zSafety.ino`), the network stack run from the loop (`zNet.h`), the RTCM counter (`zRtcm.h`), the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`), the IMU detection (`zImu.ino`), the GPS2 port setting, the second F9P (`zDualF9P.ino`) and the Keya and steering changes around the AiO firmware's code. Every file says at the top where it comes from and what was changed.
+The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page, settings, messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output, the rewritten `zHandlers.ino`, the autosteer safety, watchdog and crash hook (`zSafety.ino`), the network stack run from the loop (`Net.h`), the RTCM counter (`Rtcm.h`), the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`), the IMU detection (`zImu.ino`), the GPS2 port setting, the second F9P (`zDualF9P.ino`) and the Keya and steering changes around the AiO firmware's code. Every file says at the top where it comes from and what was changed.
 
 **Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from. It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor. The files from other authors keep their own notes too (CC0, public domain, Adafruit, MIT for the BNO080 library).

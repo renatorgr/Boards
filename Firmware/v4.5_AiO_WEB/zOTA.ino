@@ -25,7 +25,7 @@
 //     without firmware, and it must be reprogrammed over USB (the Teensy itself is not damaged).
 
 extern "C" {
-#include "FlashTxx.h"
+#include "src/net/FlashTxx.h"
 }
 
 #define OTA_BUFFER_ADDR   (FLASH_BASE_ADDR + 0x400000)   // 4 MB into the flash
