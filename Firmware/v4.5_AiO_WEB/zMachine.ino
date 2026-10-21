@@ -20,6 +20,7 @@
 #define MACH_SRC          0x7B   // the machine module's source byte (IP .123)
 #define MACH_PGN_SPRAYER  0xA0   // 160
 #define MACH_PKTS_LOOP    16     // packets read from UDP 9999 per loop at most
+#define MACH_SILENCE_MS   5000   // silent after this long (as STATUS_SILENCE_MS, which zStatus.ino defines after this file)
 
 static struct
 {
@@ -27,7 +28,7 @@ static struct
     uint32_t pkts, bad;          // its packets, those with a wrong checksum
     int16_t  lastPgn;
     uint8_t  ip[4];
-    bool     here;               // heard in the last STATUS_SILENCE_MS (for the [machine] lines)
+    bool     here;               // heard in the last MACH_SILENCE_MS (for the [machine] lines)
 
     uint32_t sprayMs, sprayN;    // last sprayer PGN 160 (0: never), how many
     uint16_t pressCbar, flowCLmin;
@@ -73,13 +74,13 @@ void machineLoop()
         }
     }
 
-    const bool here = mach.lastMs != 0 && now - mach.lastMs < STATUS_SILENCE_MS;
+    const bool here = mach.lastMs != 0 && now - mach.lastMs < MACH_SILENCE_MS;
     if (here != mach.here)
     {
         mach.here = here;
         if (here) StatusLog.line("[machine] machine module %u.%u.%u.%u heard on UDP 9999 (web page: Machine tab)",
                                  mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
-        else      StatusLog.line("[machine] machine module silent for %u s", (unsigned)(STATUS_SILENCE_MS / 1000));
+        else      StatusLog.line("[machine] machine module silent for %u s", (unsigned)(MACH_SILENCE_MS / 1000));
     }
 #endif
 }
@@ -93,7 +94,7 @@ void machineJson(Json& j, uint32_t now)
     char ip[20];
     snprintf(ip, sizeof(ip), "%u.%u.%u.%u", mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
     j.str("ip", ip);
-    j.bo("here", now - mach.lastMs < STATUS_SILENCE_MS);
+    j.bo("here", now - mach.lastMs < MACH_SILENCE_MS);
     j.i("ago", (long)((now - mach.lastMs) / 1000));
     j.u("pkts", mach.pkts);
     j.u("bad", mach.bad);
