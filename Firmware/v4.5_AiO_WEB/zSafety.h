@@ -58,7 +58,8 @@ bool  wasCheck(int16_t raw);
 bool  wasBenchZero();
 bool  wasVoltsOk();
 bool  keyaCheck();                    // KeyaCANBUS.ino
-extern bool keyaBlock;
+extern bool keyaBlock;                 // KeyaCANBUS.ino: autosteer blocked by a lost Keya heartbeat
+extern bool keyaLost;                  // KeyaCANBUS.ino: no Keya heartbeat now (zWeb.ino)
 void  steerKick(uint8_t cause, int value);
 void  steerNote254();
 void  steerNote252();
