@@ -674,7 +674,7 @@ static void wheelAngleFromHeading(uint32_t now, const char* track)
         if (lastSpeedKmh > 1.0f)
         {
             const float ms = lastSpeedKmh / 3.6f;
-            const float a  = atanf(headingRateDps * DEG_TO_RAD * WHEELBASE_M / ms) * RAD_TO_DEG * workingDir;
+            const float a  = atanf(headingRateDps * DEG_TO_RAD * wheelbaseM / ms) * RAD_TO_DEG * workingDir;
             wheelAngleGPSOk = a > -50.0f && a < 50.0f;
             if (wheelAngleGPSOk) wheelAngleGPS = a;
         }
@@ -683,6 +683,23 @@ static void wheelAngleFromHeading(uint32_t now, const char* track)
     hPrev  = h;
     msPrev = now;
     have   = true;
+}
+
+// PGN 247 vehicle geometry from AgOpenWeb (its Docs/PGN.md "Vehicle geometry", issue #387).
+// Only the wheelbase is used (bytes 7-8, cm). Later layouts only add fields at the end, so a
+// longer message is fine. Not saved: AgOpenWeb sends it again when the Teensy restarts.
+void vehicleGeometry(const uint8_t* p, int n)
+{
+    if (n < 10 || p[4] < 4) return;                 // too short to hold the wheelbase
+    const int last = 5 + p[4];                       // the CRC byte
+    if (n <= last) return;
+    uint8_t crc = 0;
+    for (int i = 2; i < last; i++) crc += p[i];
+    if (crc != p[last]) return;
+    const uint16_t cm = p[7] | (p[8] << 8);
+    if (cm < 50 || cm > 1500) return;                // 0.5 to 15 m, else keep the old value
+    wheelbaseM = cm / 100.0f;
+    pgn247Ms   = millis();
 }
 
 // ---------------------------------------------------------------- output

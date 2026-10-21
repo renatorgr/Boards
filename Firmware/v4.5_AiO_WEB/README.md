@@ -224,7 +224,7 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 - Kickout: with "current sensor" on in the program, the Keya's slip is compared with the program's limit.
 - A motor fault (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
 - No heartbeat for 0.5 s (cable, plug, power) turns autosteer off and blocks it until the heartbeat is back, as in the AiO 26 firmware.
-- **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. Set the tractor's wheelbase in `WHEELBASE_M` (main .ino, 3.20 m).
+- **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts); until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m). The Steering settings card shows which one is in use.
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 

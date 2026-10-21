@@ -343,6 +343,8 @@ void statusJson(Json& j, uint32_t now, bool full)
         j.obj("steerCfg");
         j.i("got252", pgn252Ms ? (long)((now - pgn252Ms) / 1000) : -1);
         j.i("got251", pgn251Ms ? (long)((now - pgn251Ms) / 1000) : -1);
+        j.i("got247", pgn247Ms ? (long)((now - pgn247Ms) / 1000) : -1);
+        j.num("wheelbase", wheelbaseM, 2);
         j.i("kp", steerSettings.Kp);
         j.i("hiPwm", steerSettings.highPWM);
         j.i("minPwm", steerSettings.minPWM);
