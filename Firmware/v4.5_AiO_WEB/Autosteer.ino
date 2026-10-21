@@ -859,6 +859,10 @@ void ReceiveUdp()
 				steerNote251();                // shown on the web page (zSafety.ino)
 
 			}//end FB
+			else if (autoSteerUdpData[3] == 0xF7)  //247 vehicle geometry (AgOpenWeb), the whole packet
+			{
+				vehicleGeometry(udpPacket, got);   // zHandlers.ino
+			}
 			else if (autoSteerUdpData[3] == 200) // Hello from AgIO
 			{
 				// AgOpenWeb or AgOpenGPS? (automatic output mode, zStatus.ino)

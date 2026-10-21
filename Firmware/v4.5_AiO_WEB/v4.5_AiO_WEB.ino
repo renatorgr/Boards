@@ -160,7 +160,9 @@ elapsedMillis TM171lastData;
 
 // AiO_WEB: wheel angle from the GPS heading (zHandlers.ino), for the Keya without a WAS (Autosteer.ino),
 // as in the AgOpenGPS AiO v4 firmware
-#define WHEELBASE_M     3.20            // metres (the AiO firmware's wheelBase)
+#define WHEELBASE_M     3.20            // metres (the AiO firmware's wheelBase), until AgOpenWeb sends PGN 247
+float   wheelbaseM      = WHEELBASE_M;  // metres, from PGN 247 vehicle geometry (zHandlers.ino)
+uint32_t pgn247Ms       = 0;            // last PGN 247 (millis; 0 = never)
 float   wheelAngleGPS   = 0;            // degrees
 bool    wheelAngleGPSOk = false;        // moving above 1 km/h with a heading that turns believably
 float   headingRateDps  = 0;            // degrees / second

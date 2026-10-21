@@ -131,7 +131,7 @@ a{color:var(--acc)}
   <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
    <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
    <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
-   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd></dl></div>
+   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd></dl></div>
  <div class="card"><h2>Connections</h2>
   <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd>
    <dt>Up for</dt><dd id="up">–</dd></dl>
@@ -392,6 +392,7 @@ function render(s){
   set("scGot",sc.got252>=0?ago(sc.got252):"not yet (saved in the Teensy)");
   set("scKp",String(sc.kp));set("scHi",String(sc.hiPwm));set("scMin",String(sc.minPwm));set("scLow",String(sc.lowPwm));
   set("scCounts",fmt(sc.counts,0));set("scOff",String(sc.offset));set("scAck",fmt(sc.ackerman,0));
+  set("scWb",fmt(sc.wheelbase,2," m")+" · "+(sc.got247>=0?"from AgOpenWeb, "+ago(sc.got247):"firmware default (AgOpenWeb has not sent it)"));
   set("scWas",(sc.invertWas?"inverted":"normal")+" · "+(sc.singleWas?"single input":"differential"));
   set("scMotor",st.motor+(sc.danfoss&&st.motor!=="Danfoss"?" · Danfoss":"")+(sc.motorDir?" · "+"direction reversed":""));
   set("scRelay",(sc.relayHigh?"high":"low"));
