@@ -98,7 +98,7 @@ a{color:var(--acc)}
 </head>
 <body>
 <header><span class="dot" id="dot" title="link to the module"></span><h1>Teensy 4.1 Settings</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
-<nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="settings">Settings</button><button data-t="gps">GPS</button><button data-t="firmware">Firmware</button></nav>
+<nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="settings">Settings</button><button data-t="gps">GPS</button><button data-t="machine" id="navMach" class="hidden">Machine</button><button data-t="firmware">Firmware</button></nav>
 <main>
 
 <section id="t-status">
@@ -150,6 +150,22 @@ a{color:var(--acc)}
    <dt>Checksum errors</dt><dd id="xCrc">–</dd><dt>Lost</dt><dd id="xDrop">–</dd><dt>Received / sent</dt><dd id="xKB" class="nw">–</dd>
    <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd></dl>
   </div>
+</div>
+</section>
+
+<section id="t-machine" class="hidden">
+<div class="grid">
+ <div class="card"><h2>Machine module</h2>
+  <div class="big" id="mState">–</div>
+  <dl style="margin-top:6px"><dt>IP</dt><dd id="mIp" class="nw">–</dd><dt>Last packet</dt><dd id="mAgo" class="nw">–</dd>
+   <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd></dl>
+  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it. Only to look at: nothing here changes the module or the steering.</p></div>
+ <div class="card"><h2>Sprayer (PGN 160)</h2>
+  <div class="big" id="mBar">–</div>
+  <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the Nano started</dt><dd id="mTotal">–</dd>
+   <dt>Main switch</dt><dd id="mMain">–</dd><dt>Last PGN 160</dt><dd id="mSprayAgo" class="nw">–</dd></dl>
+  <p class="note">Sections: asked for by the program (PGN 254) / open on the Nano. A red one is not the same in both.</p>
+  <div class="row" id="mSec">–</div></div>
 </div>
 </section>
 
@@ -444,10 +460,27 @@ function render(s){
    set("xIp",xi.sta&&xi.st==="ok"?xi.ip:"–");}
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
  }
+ renderMach(s.mach);
  renderGh();
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
+}
+
+// The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays
+function renderMach(m){
+ if(!m)return;
+ $("navMach").classList.remove("hidden");
+ set("mState",m.here?"sending":"silent",m.here?"ok":"bad");
+ set("mIp",m.ip);set("mAgo",ago(m.ago),m.here?"":"warn");
+ set("mPkts",String(m.pkts));set("mBad",String(m.bad),m.bad?"warn":"");set("mPgn",m.lastPgn<0?"–":String(m.lastPgn));
+ if(m.sprayAgo<0){set("mBar","no PGN 160 yet");for(const id of["mFlow","mTotal","mMain","mSprayAgo"])set(id,"–");$("mSec").textContent="–";return;}
+ const old=m.sprayAgo>=5;
+ set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
+ set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");
+ const box=$("mSec");box.textContent="";
+ for(let k=0;k<8;k++){const a=(m.cmd>>k)&1,o=(m.sec>>k)&1;if(k>=5&&!a&&!o)continue;
+  const e=document.createElement("span");e.className="pill "+(a!==o?"bad":o?"ok":"");e.textContent=(k+1)+": "+(a?"on":"off")+" / "+(o?"open":"closed");box.appendChild(e);}
 }
 
 // The Teensy restarted (its time on went back, or another build runs): the whole page again from the
