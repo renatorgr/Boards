@@ -1,0 +1,110 @@
+# Teensy firmware build check.
+# Compiles the newest Firmware/vX.Y_AiO_WEB sketch on every change, with the same tools as the
+# Arduino IDE (arduino-cli + Teensyduino 1.58, the version the published .hex is built with), so a
+# compile error shows on the pull request before it is merged. The .hex is kept for download
+# (Actions run page, "Artifacts"), named as the web page's "Install from GitHub" looks for it.
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Teensy firmware
+
+on:
+  pull_request:
+    paths:
+      - 'Firmware/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '!Firmware/**/*.hex'
+      - '!Firmware/**/*.bin'
+      - '.github/workflows/teensy-firmware.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Firmware/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '!Firmware/**/*.hex'
+      - '!Firmware/**/*.bin'
+      - '.github/workflows/teensy-firmware.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS: https://www.pjrc.com/teensy/package_teensy_index.json
+  TEENSYDUINO: '1.58'
+  # Tools menu as in the README: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster"
+  FQBN: teensy:avr:teensy41:usb=serial,speed=600,opt=o2std,keys=en-us
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the newest firmware folder
+        id: fw
+        run: |
+          dir=$(ls -d Firmware/v*_AiO_WEB | sort -V | tail -n 1)
+          sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$dir")" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha::7}" >> "$GITHUB_OUTPUT"
+          echo "Firmware folder: $dir"
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Install Teensyduino ${{ env.TEENSYDUINO }}
+        run: |
+          arduino-cli core update-index
+          # the newest 1.58.x release in PJRC's index
+          version=$(curl -fsSL "$ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS" | python3 -c '
+          import json, os, re, sys
+          want = os.environ["TEENSYDUINO"] + "."
+          found = [p["version"] for pk in json.load(sys.stdin)["packages"] for p in pk["platforms"]
+                   if p["architecture"] == "avr" and p["version"].startswith(want)
+                   and re.fullmatch(r"\d+\.\d+\.\d+", p["version"])]
+          print(max(found, key=lambda v: [int(x) for x in v.split(".")]))
+          ')
+          echo "Teensy core teensy:avr@$version"
+          arduino-cli core install "teensy:avr@$version"
+
+      - name: Compile
+        run: |
+          arduino-cli compile --fqbn "$FQBN" --warnings default --output-dir build "${{ steps.fw.outputs.dir }}" 2>&1 | tee build.log
+
+      - name: Check the .hex
+        run: |
+          dir="${{ steps.fw.outputs.dir }}"
+          name="${{ steps.fw.outputs.name }}"
+          test -s "build/$name.ino.hex"
+          # the web page refuses an update without these two strings (zOTA.ino)
+          marker=$(sed -n 's/^#define OTA_MARKER *"\([^"]*\)".*/\1/p' "$dir/zOTA.ino")
+          test -n "$marker"
+          strings "build/$name.ino.elf" | grep -qF "$marker" || { echo "::error::OTA marker $marker not in the firmware"; exit 1; }
+          strings "build/$name.ino.elf" | grep -qF fw_teensy41 || { echo "::error::fw_teensy41 not in the firmware"; exit 1; }
+          # diagnostics switched on are fine on the bench, not in a published build
+          if grep -nE '^#define +(FUSION_DEBUG|RAW_NMEA_DEBUG|SEND_TO_USB) +1' "$dir/zHandlers.ino"; then
+            echo "::warning::a diagnostic switch is 1 in zHandlers.ino (set it to 0 before publishing)"
+          fi
+          cp "build/$name.ino.hex" "$name.hex"
+
+      - name: Summary
+        run: |
+          {
+            echo "### ${{ steps.fw.outputs.name }} compiled"
+            echo
+            echo "Teensyduino ${TEENSYDUINO}.x, commit ${{ steps.fw.outputs.sha }}. The \`.hex\` is under **Artifacts** on this page."
+            echo
+            echo '```'
+            grep -E 'FLASH:|RAM1:|RAM2:' build.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.fw.outputs.name }}-${{ steps.fw.outputs.sha }}
+          path: ${{ steps.fw.outputs.name }}.hex
+          if-no-files-found: error
+          retention-days: 30
