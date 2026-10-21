@@ -74,6 +74,8 @@ Messages:
 - Warnings do not stop the build (the ones in NativeEthernet, FNET and mbedtls come with Teensyduino and are normal); only an "error" does.
 - `arm-none-eabi-g++ ... not found`: that Teensyduino's compiler did not install. Remove Teensy in the Boards Manager and install it again.
 
+**Compiled on GitHub too:** every pull request and every change on `main` that touches the firmware is compiled by GitHub (Actions, "Teensy firmware") with Teensyduino 1.58 and the same board settings. A green tick on the pull request means it compiles; a red cross shows the error. The `.hex` (named `v4.5_AiO_WEB.hex`) is under **Artifacts** on the run's page, for 30 days. It is a check, not a test: the bench test is still needed.
+
 **Already compiled:** `v4.5_AiO_WEB.hex` (Teensyduino 1.58). The IDE ignores it and the XIAO folders.
 
 - From a firmware that already has this web page: web page → Firmware → choose the `.hex`.
