@@ -1,4 +1,4 @@
-/* zNMEAParser.h - NMEA sentence parser.
+/* NMEAParser.h - NMEA sentence parser.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    NMEA parser library by Glinnes Hulden (CC0, original header kept below), as used in the AgOpenGPS

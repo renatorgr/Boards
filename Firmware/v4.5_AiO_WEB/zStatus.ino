@@ -13,7 +13,7 @@
 //   - AgOpenWeb or AgOpenGPS talking to the module (first packet, and silence); which one,
 //     from its hello, and the automatic output mode that follows it
 //   - RTCM corrections arriving from AgOpenWeb (NTRIP); and from the radio (XBee), with
-//     bad checksums and bytes that are not RTCM 3 (zRtcm.h)
+//     bad checksums and bytes that are not RTCM 3 (Rtcm.h)
 //   - GPS: first position, fix quality changes, no GGA / VTG from the receiver
 //   - Dual antenna heading (UM982 HPR) available or lost; single-antenna receiver (no HPR)
 //     Without dual heading: WHY (UM982 HPR QF 0 / HPR not arriving with its GGA / empty
@@ -23,13 +23,13 @@
 // A state must hold for STATUS_STABLE_MS before it is reported, so a fix or dual state
 // that flickers at 10 Hz does not flood the monitor.
 
-#include "zStatusLog.h"     // the log class (included first by the main .ino)
+#include "src/system/StatusLog.h"     // the log class (included first by the main .ino)
 
 #define STATUS_STABLE_MS    1000    // a new state is reported after it has held this long
 #define STATUS_SILENCE_MS   5000    // AgOpenWeb / RTCM / GGA considered gone after this long
 
 
-StatusLogClass StatusLog;      // see zStatusLog.h
+StatusLogClass StatusLog;      // see StatusLog.h
 
 // Sentence names in the messages, by output mode (zSettings.ino; automatic: by the program)
 static const char* dualSentence() { return outClassicNow() ? "$PAOGI" : "$GNTHS"; }
@@ -43,7 +43,7 @@ static const char* simHeldTag() { return cfg.simMode ? " (now held back: simulat
 
 static uint32_t aogLastMs  = 0;     // last UDP packet from AgOpenWeb (port 8888)
 static uint8_t  aogIp[4]   = {0, 0, 0, 0};
-// the corrections, counted as RTCM 3 messages (zRtcm.h): from the program (NTRIP, UDP 2233)
+// the corrections, counted as RTCM 3 messages (Rtcm.h): from the program (NTRIP, UDP 2233)
 // and from the radio (XBee LR on Serial3)
 RtcmCounter ntripRtcm, radioRtcm;
 

@@ -1,4 +1,4 @@
-/* zRxConfig.h - the AgOpenGPS receiver settings of AOGConfigOMatic, for the receiver check (zRxCheck.ino).
+/* RxConfig.h - the AgOpenGPS receiver settings of AOGConfigOMatic, for the receiver check (zRxCheck.ino).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Made 2026 by Claude (Anthropic) for renatorgr, with a script, from the files of AOGConfigOMatic by
@@ -9,7 +9,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// zRxConfig.h
+// RxConfig.h
 // u-blox: each CFG-VALGET line of a u-center file is one message here, its key + value pairs (the
 // 4-byte header of the answer left out); zRxCheck.ino sends each one as a UBX-CFG-VALSET (as
 // AOGConfigOMatic does) and compares the receiver's values with them (UBX-CFG-VALGET).

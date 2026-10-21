@@ -1,11 +1,11 @@
-/* zWebPage.h - the module's web page (English).
+/* WebPage.h - the module's web page (English).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// zWebPage.h
+// WebPage.h
 // The module's web page (served by zWeb.ino): one self-contained HTML file, no internet needed.
 // Kept in flash (PROGMEM). In English (the Portuguese version and its language button are gone, 20 Oct 2026).
 // Dark, or light when the device asks for it; the header button switches and this browser remembers it.
@@ -18,7 +18,7 @@
 // console below; only the options that matter to AgOpenWeb / AgOpenGPS, and the KSXT; the other
 // NMEA sentences / messages are only named when the receiver sends them; the receiver check, zRxCheck.ino:
 // data at 460800, baud rate search, what the Teensy needs, the AgOpenGPS settings loaded) and Firmware (start reason, watchdog, a newer version on GitHub - renatorgr/Boards,
-// folder Firmware - installed through the same update as a file, zOTA.ino; the module itself never
+// folder Firmware - installed through the same update as a file, Ota.cpp; the module itself never
 // goes to the internet), and a report for an analysis (every answer of the module in one .json file).
 #ifndef ZWEBPAGE_H
 #define ZWEBPAGE_H

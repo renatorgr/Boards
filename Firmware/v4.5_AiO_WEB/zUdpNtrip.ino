@@ -4,7 +4,7 @@
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic): datagrams read in pieces of the buffer size, [status] count;
-   the RTCM messages counted (zRtcm.h, zStatus.ino); not written while the receiver check searches or
+   the RTCM messages counted (Rtcm.h, zStatus.ino); not written while the receiver check searches or
    changes the receiver's baud rate (zRxCheck.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
