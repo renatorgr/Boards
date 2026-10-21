@@ -7,7 +7,7 @@
    Licence: public domain (FlasherX); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 //******************************************************************************
-// FlasherX (https://github.com/joepasquariello/FlasherX, public domain), used by zOTA.ino.
+// FlasherX (https://github.com/joepasquariello/FlasherX, public domain), used by Ota.cpp.
 // Only change: FLASH_RESERVE for Teensy 4.1 (see below).
 //******************************************************************************
 // Flash write/erase functions (TLC/T3x/T4x/TMM), LMEM cache functions for T3.6

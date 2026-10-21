@@ -371,7 +371,7 @@ The sketch is being sorted into folders like the official AiO 26 firmware's modu
 | `zStatus.ino`, `src/system/StatusLog.h` | messages |
 | `zSettings.ino` / `.h` | settings (EEPROM) |
 | `zWeb.ino`, `src/net/WebPage.h`, `src/net/WebJson.h` | web server and page |
-| `zOTA.ino`, `src/net/FlashTxx.*` | firmware update |
+| `src/net/Ota.*`, `src/net/FlashTxx.*` | firmware update |
 | `zXiao.ino` / `.h` | XIAO link |
 | `Autosteer.ino`, `AutosteerPID.ino`, `zUdpNtrip.ino`, `src/autosteer/ADS1115.*`, `src/gnss/NMEAParser.h` | from the AgOpenGPS / Gunics firmware, changed (each file says how) |
 | `v4.5_AiO_WEB.hex` | compiled firmware (Teensyduino 1.58) |

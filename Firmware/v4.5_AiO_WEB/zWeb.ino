@@ -16,7 +16,7 @@
 //     receiver and its replies; u-blox F9P / X20P: its settings, read and written with UBX
 //     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload
 //   - Machine: the machine module (sprayer Nano, PGN 160 on UDP 9999), only once it has been heard (zMachine.ino)
-//   - Firmware update (zOTA.ino) and restart
+//   - Firmware update (src/net/Ota.cpp) and restart
 //   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
 //   corrections, why the Teensy started; the WAS check, the watchdog and the simulator mode in the settings
@@ -29,6 +29,7 @@
 
 #include "src/net/WebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
 #include "src/net/WebJson.h"            // small JSON writer for the answers
+#include "src/net/Ota.h"                // firmware update: otaBegin / otaFeed / otaFinish / otaInstall
 
 #include "src/system/Version.h"         // FW_NAME, FW_VERSION (also included by the main .ino)
 

@@ -18,7 +18,7 @@
 // console below; only the options that matter to AgOpenWeb / AgOpenGPS, and the KSXT; the other
 // NMEA sentences / messages are only named when the receiver sends them; the receiver check, zRxCheck.ino:
 // data at 460800, baud rate search, what the Teensy needs, the AgOpenGPS settings loaded) and Firmware (start reason, watchdog, a newer version on GitHub - renatorgr/Boards,
-// folder Firmware - installed through the same update as a file, zOTA.ino; the module itself never
+// folder Firmware - installed through the same update as a file, Ota.cpp; the module itself never
 // goes to the internet), and a report for an analysis (every answer of the module in one .json file).
 #ifndef ZWEBPAGE_H
 #define ZWEBPAGE_H

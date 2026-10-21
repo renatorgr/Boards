@@ -1,4 +1,4 @@
-/* zOTA.ino - firmware update from the web page.
+/* Ota.cpp - firmware update from the web page.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
@@ -6,7 +6,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// zOTA.ino
+// Ota.cpp  (was zOTA.ino)
 // Firmware update from the web page (zWeb.ino), without opening the box: the browser sends the
 // .hex file made by the Arduino IDE ("Sketch > Export Compiled Binary"), the Teensy checks it,
 // keeps it in a free part of its flash (the "buffer", 4-6 MB) and only then copies it over the
@@ -24,15 +24,19 @@
 //   - the only risky moment is the final copy (a few seconds): a power cut THEN leaves the Teensy
 //     without firmware, and it must be reprogrammed over USB (the Teensy itself is not damaged).
 
+#include <Arduino.h>
+#include "Ota.h"
 extern "C" {
-#include "src/net/FlashTxx.h"
+#include "FlashTxx.h"
 }
+#include "../../zSafety.h"      // wdtLongTimeout() (zSafety.ino)
 
 #define OTA_BUFFER_ADDR   (FLASH_BASE_ADDR + 0x400000)   // 4 MB into the flash
 #define OTA_BUFFER_SIZE   (0x200000)                     // 2 MB (the firmware is ~0.4 MB)
 #define OTA_MARKER        "AOG-UM982-TM171-WEB-OTA-1"       // must be the same in every version that updates another from the web page
 
-// Kept in the image (printed in /api/status) so a new firmware of this family can be recognised
+// Kept in the image (printed in /api/status) so a new firmware of this family can be recognised.
+// Declared extern in Ota.h, so they stay visible to zWeb.ino (a const would otherwise be local to this file).
 const char otaMarker[]  = OTA_MARKER;
 const char otaFlashId[] = FLASH_ID;
 
@@ -56,7 +60,7 @@ struct OtaState
 };
 static OtaState ota;
 
-static int hexNib(char c)
+int hexNib(char c)
 {
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
@@ -164,7 +168,7 @@ static bool check_flash_id_str(uint32_t buffer, uint32_t size, const char* id)
     return false;
 }
 
-// ---------------------------------------------------------------- interface for zWeb.ino
+// ---------------------------------------------------------------- interface for zWeb.ino (Ota.h)
 // Can an update be stored now? (the running firmware must end below the buffer)
 const char* otaBegin()
 {

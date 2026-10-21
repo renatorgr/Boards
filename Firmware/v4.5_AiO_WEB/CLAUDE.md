@@ -59,10 +59,16 @@ files in alphabetical order, generates prototypes for the functions, and compile
   `TM171.ino`).
 - When an earlier file needs a name from a later one, declare it in the matching `z*.h` header (e.g.
   `keyaLost` is declared `extern` in `zSafety.h`) and include that header at the top of `v4.5_AiO_WEB.ino`.
-- The `.cpp` / `.c` files in `src/` (`BNO08x_AOG.cpp`, `ADS1115.cpp`, `FlashTxx.c`) are compiled separately
-  and see only what they include. A `.ino` includes them as `#include "src/<folder>/<file>.h"`; a file in
-  `src/` includes its neighbours by name and the others with a relative path (`../system/Version.h`).
+- The `.cpp` / `.c` files in `src/` (`BNO08x_AOG.cpp`, `ADS1115.cpp`, `FlashTxx.c`, `Ota.cpp`) are compiled
+  separately and see only what they include. A `.ino` includes them as `#include "src/<folder>/<file>.h"`; a
+  file in `src/` includes its neighbours by name and the others with a relative path (`../system/Version.h`).
 - Do not add a `.cpp` that uses globals from the `.ino` files without `extern` declarations in a header.
+- Moving a `.ino` to `src/<module>/Name.cpp` + `Name.h` (one module per pull request): the `.h` declares
+  what the other files use (functions, and `extern` for variables and constants: a `const` at file scope
+  is local to its `.cpp` otherwise); the `.cpp` starts with `#include <Arduino.h>` and its own `.h`, keeps
+  the rest `static`, and gets what it still needs from the `.ino` files through their `z*.h` header
+  (`#include "../../zSafety.h"`) until those move too. The `.ino` that uses the module includes its `.h`.
+  The code is the same but compiled apart, so Renato bench-tests each one.
 
 ## Folder Structure
 
@@ -75,7 +81,7 @@ Firmware/
 │   │   ├── autosteer/            # ADS1115.cpp / .h
 │   │   ├── gnss/                 # NMEAParser.h, Rtcm.h, RxConfig.h
 │   │   ├── imu/                  # BNO08x_AOG.cpp / .h
-│   │   ├── net/                  # Net.h, WebPage.h, WebJson.h, FlashTxx.c / .h
+│   │   ├── net/                  # Net.h, WebPage.h, WebJson.h, Ota.cpp / .h, FlashTxx.c / .h
 │   │   └── system/               # Version.h, StatusLog.h
 │   ├── v4.5_AiO_WEB.ino.hex      # compiled firmware (Teensyduino 1.58), uploaded by Renato
 │   ├── README.md                 # user documentation
@@ -131,7 +137,7 @@ as `.cpp` / `.h` pairs one module at a time (Renato chose this on 2026-10-21; th
 | `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload |
 | `src/net/WebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
 | `src/net/WebJson.h` | Small JSON writer |
-| `zOTA.ino`, `src/net/FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
+| `src/net/Ota.cpp` / `.h`, `src/net/FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
 | `zStatus.ino`, `src/system/StatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
 | `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200) |
 
@@ -184,7 +190,7 @@ Browser ──► port 80 ──► webLoop() (zWeb.ino)
 | 15 | `machineLoop()` |
 | 13 | `receiverLoop()`, `rxCheckLoop()` |
 | 12 | Ethernet link LEDs |
-| 20 | firmware update (zOTA.ino) |
+| 20 | firmware update (`src/net/Ota.cpp`) |
 
 There is no scheduler (AiO 26 has `SimpleScheduler`): every part runs each loop and keeps its own timers.
 
@@ -247,7 +253,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
 | `/api/reboot` | POST | restart |
-| `/api/ota` | POST | firmware upload (zOTA.ino) |
+| `/api/ota` | POST | firmware upload (`src/net/Ota.cpp`) |
 
 The page never makes the loop wait for a browser for more than 3 s. Large replies are written in pieces.
 
@@ -299,7 +305,7 @@ The addresses must not move: settings must survive a firmware update.
 4. **.ino order** (see above): declare shared names in a `z*.h` header.
 5. **Teensyduino 1.59+** split `HardwareSerial`: use the `TeensySerial` typedef from the main `.ino`.
 6. **EEPROM**: addresses fixed, write only when a value changes.
-7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AOG-UM982-TM171-WEB-OTA-1`) must stay the same, or modules in
+7. **OTA marker**: `OTA_MARKER` in `src/net/Ota.cpp` (`AOG-UM982-TM171-WEB-OTA-1`) must stay the same, or modules in
    the field refuse the new firmware from the web page.
 8. **GitHub update check**: the web page (and the XIAO page) list `Firmware/` on GitHub, take the highest
    folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, and download `<folder>.hex` from it (the XIAO:

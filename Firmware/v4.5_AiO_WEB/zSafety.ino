@@ -531,7 +531,7 @@ void wdtStart()
     StatusLog.line("[boot] Watchdog on: the Teensy restarts if the firmware stops for 2 s");
 }
 
-// Before copying a firmware update over the running one (zOTA.ino): the longest timeout, 128 s
+// Before copying a firmware update over the running one (src/net/Ota.cpp): the longest timeout, 128 s
 void wdtLongTimeout()
 {
     if (!wdtRunning) return;
