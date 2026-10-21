@@ -13,7 +13,7 @@
 // (0x0001D542 with Teensyduino 1.57.3: a received TCP segment with a broken data pointer, when a
 // browser opened a connection to the web page). FNET is designed to be polled from the main loop: after
 // Ethernet.begin() the timer is stopped and netPoll() runs fnet_poll() from loop() and from every
-// wait for the network (zEthernet.ino).
+// wait for the network (Network.cpp, the only file that includes this one).
 // EthernetClass::_fnet_poll (the timer) is private. It is reached through an explicit template
 // instantiation, where C++ does not check access (C++11 [temp.explicit]), so NativeEthernet itself
 // is not changed.
@@ -29,8 +29,6 @@ template <IntervalTimer* T> struct NetPollTimerAccess
 };
 template struct NetPollTimerAccess<&EthernetClass::_fnet_poll>;
 
-void netPollFromLoop();             // after Ethernet.begin(): the library's timer stops (zEthernet.ino)
-void netPoll();                     // fnet_poll(), once a millisecond at most (zEthernet.ino)
-void netDelay(uint32_t ms);         // delay() that keeps the network going (zEthernet.ino)
+// netPollFromLoop(), netPoll(), netDelay(): declared in Network.h
 
 #endif

@@ -8,7 +8,7 @@
 // zMachine.ino
 // The machine module (source 0x7B = 123, e.g. the sprayer Arduino Nano "Pulverizador_Nano") answers the
 // program's hello and sends its own PGNs to UDP 9999, broadcast to the whole 192.168.5.x network. The
-// Teensy listens on 9999 too (Eth_udpModules, zEthernet.ino) and keeps only what comes from the machine
+// Teensy listens on 9999 too (Eth_udpModules, src/net/Network.cpp) and keeps only what comes from the machine
 // module; everything else on 9999 (the other modules, the Teensy's own sentences) is read and dropped.
 // Nothing is sent and nothing changes in the steering: it is only for the web page (Machine tab, shown
 // once the module has been heard) and the [machine] messages.

@@ -366,7 +366,7 @@ The sketch is being sorted into folders like the official AiO 26 firmware's modu
 | `zImu.ino` / `.h`, `TM171.ino`, `src/imu/BNO08x_AOG.*` | IMU detection and reading |
 | `KeyaCANBUS.ino` | Keya motor |
 | `zSafety.ino` / `.h` | WAS check, autosteer off, program's screen messages, watchdog, crash, start reason |
-| `zEthernet.ino`, `src/net/Net.h` | Ethernet, network stack run from the loop |
+| `src/net/Network.*`, `src/net/Net.h` | Ethernet, IP address, UDP sockets, network stack run from the loop |
 | `src/gnss/Rtcm.h` | RTCM counter |
 | `zStatus.ino`, `src/system/StatusLog.h` | messages |
 | `zSettings.ino` / `.h` | settings (EEPROM) |

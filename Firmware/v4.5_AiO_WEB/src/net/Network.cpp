@@ -1,15 +1,47 @@
-/* zEthernet.ino - Ethernet start-up and the module's IP address.
+/* Network.cpp - Ethernet start-up, the module's IP address, the UDP sockets, the network stack from loop().
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see Net.h); 8 KB socket buffers; one [boot] line instead of
-   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
+   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino); the
+   network globals moved here from the main .ino (Network.h), EthernetStart(steerModule).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-void EthernetStart()
+// Network.cpp  (was zEthernet.ino)
+
+#include <Arduino.h>
+#include "Network.h"
+#include "Net.h"                        // the network stack runs from loop(), not from an interrupt
+#include "../system/StatusLog.h"        // [boot] lines (zStatus.ino)
+
+// ---------------------------------------------------------------- addresses and sockets (Network.h)
+#ifdef ARDUINO_TEENSY41
+ConfigIP networkAddress;
+
+byte Eth_myip[4] = {0, 0, 0, 0};
+byte mac[] = {0x00, 0x00, 0x56, 0x00, 0x00, 0x78};
+
+unsigned int portMy           = 5120;
+unsigned int AOGNtripPort     = 2233;
+unsigned int AOGAutoSteerPort = 8888;
+unsigned int portDestination  = 9999;
+char Eth_NTRIP_packetBuffer[512];
+
+EthernetUDP Eth_udpPAOGI;
+EthernetUDP Eth_udpNtrip;
+EthernetUDP Eth_udpAutoSteer;
+EthernetUDP Eth_udpModules;            // UDP 9999 in: the machine module's PGNs (zMachine.ino)
+
+IPAddress Eth_ipDestination;
+#endif
+
+bool Ethernet_running  = false;
+
+// ---------------------------------------------------------------- start-up
+void EthernetStart(bool steerModule)
 {
 #ifdef ARDUINO_TEENSY41
   // start the Ethernet connection (its [boot] line at the end; the link and the module IP: the
@@ -38,7 +70,7 @@ void EthernetStart()
   Eth_myip[0] = networkAddress.ipOne;
   Eth_myip[1] = networkAddress.ipTwo;
   Eth_myip[2] = networkAddress.ipThree;
-  if (Autosteer_running) 
+  if (steerModule)
   {
     Eth_myip[3] = 126;  //126 is steer module, with or without GPS
   }

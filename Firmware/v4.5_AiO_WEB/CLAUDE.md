@@ -59,8 +59,8 @@ files in alphabetical order, generates prototypes for the functions, and compile
   `TM171.ino`).
 - When an earlier file needs a name from a later one, declare it in the matching `z*.h` header (e.g.
   `keyaLost` is declared `extern` in `zSafety.h`) and include that header at the top of `v4.5_AiO_WEB.ino`.
-- The `.cpp` / `.c` files in `src/` (`BNO08x_AOG.cpp`, `ADS1115.cpp`, `FlashTxx.c`, `Ota.cpp`) are compiled
-  separately and see only what they include. A `.ino` includes them as `#include "src/<folder>/<file>.h"`; a
+- The `.cpp` / `.c` files in `src/` (the libraries, `Ota.cpp`, `Network.cpp`, ...) are compiled separately
+  and see only what they include. A `.ino` includes them as `#include "src/<folder>/<file>.h"`; a
   file in `src/` includes its neighbours by name and the others with a relative path (`../system/Version.h`).
 - Do not add a `.cpp` that uses globals from the `.ino` files without `extern` declarations in a header.
 - Moving a `.ino` to `src/<module>/Name.cpp` + `Name.h` (one module per pull request): the `.h` declares
@@ -68,6 +68,8 @@ files in alphabetical order, generates prototypes for the functions, and compile
   is local to its `.cpp` otherwise); the `.cpp` starts with `#include <Arduino.h>` and its own `.h`, keeps
   the rest `static`, and gets what it still needs from the `.ino` files through their `z*.h` header
   (`#include "../../zSafety.h"`) until those move too. The `.ino` that uses the module includes its `.h`.
+  Globals of the main `.ino` that belong to the module move into its `.cpp`, declared `extern` in its `.h`,
+  which the main `.ino` includes at the top so every `.ino` still sees them (`Network.h`).
   The code is the same but compiled apart, so Renato bench-tests each one.
 
 ## Folder Structure
@@ -81,7 +83,7 @@ Firmware/
 │   │   ├── autosteer/            # ADS1115.cpp / .h
 │   │   ├── gnss/                 # NMEAParser.h, Rtcm.h, RxConfig.h
 │   │   ├── imu/                  # BNO08x_AOG.cpp / .h
-│   │   ├── net/                  # Net.h, WebPage.h, WebJson.h, Ota.cpp / .h, FlashTxx.c / .h
+│   │   ├── net/                  # Network.cpp / .h, Net.h, WebPage.h, WebJson.h, Ota.cpp / .h, FlashTxx.c / .h
 │   │   └── system/               # Version.h, StatusLog.h
 │   ├── v4.5_AiO_WEB.ino.hex      # compiled firmware (Teensyduino 1.58), uploaded by Renato
 │   ├── README.md                 # user documentation
@@ -133,7 +135,7 @@ as `.cpp` / `.h` pairs one module at a time (Renato chose this on 2026-10-21; th
 ### Network and web (AiO 26: `aio_system`)
 | File | Purpose |
 |------|---------|
-| `zEthernet.ino`, `src/net/Net.h` | Ethernet start, IP, UDP sockets, the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
+| `src/net/Network.cpp` / `.h`, `src/net/Net.h` | Ethernet start, IP, UDP sockets (`Eth_udp*`, ports), the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
 | `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload |
 | `src/net/WebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
 | `src/net/WebJson.h` | Small JSON writer |

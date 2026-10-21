@@ -86,34 +86,8 @@ const int32_t baudRTK = 115200;         // XBee LR
 uint32_t gpsReadyTime = 0;
 /*****************************************************************/
 
-// Ethernet
-#ifdef ARDUINO_TEENSY41
-#include <NativeEthernet.h>
-#include <NativeEthernetUdp.h>
-#include "src/net/Net.h"                // the network stack runs from loop(), not from an interrupt
-
-struct ConfigIP {
-    uint8_t ipOne   = 192;
-    uint8_t ipTwo   = 168;
-    uint8_t ipThree = 5;
-}; ConfigIP networkAddress;
-
-byte Eth_myip[4] = {0, 0, 0, 0};
-byte mac[] = {0x00, 0x00, 0x56, 0x00, 0x00, 0x78};
-
-unsigned int portMy           = 5120;
-unsigned int AOGNtripPort     = 2233;
-unsigned int AOGAutoSteerPort = 8888;
-unsigned int portDestination  = 9999;
-char Eth_NTRIP_packetBuffer[512];
-
-EthernetUDP Eth_udpPAOGI;
-EthernetUDP Eth_udpNtrip;
-EthernetUDP Eth_udpAutoSteer;
-EthernetUDP Eth_udpModules;            // UDP 9999 in: the machine module's PGNs (zMachine.ino)
-
-IPAddress Eth_ipDestination;
-#endif
+// Ethernet: IP address, UDP ports and sockets, the network stack run from loop()
+#include "src/net/Network.h"
 
 // Serial buffers
 constexpr int serial_buffer_size = 512;
@@ -175,7 +149,6 @@ NMEAParser<3> parser;
 bool blink = false;
 
 bool Autosteer_running = true;
-bool Ethernet_running  = false;
 
 // Pass-through for GPS config tool
 bool passThroughGPS = false;
@@ -242,7 +215,7 @@ void setup()
     xiaoSetup();                        // GPS2 port, Serial2: XIAO ESP32 (zXiao.ino) or second F9P (zDualF9P.ino)
 
     autosteerSetup();                   // ADS1115 (WAS), steer settings from the EEPROM (Autosteer.ino)
-    EthernetStart();
+    EthernetStart(Autosteer_running);
     webSetup();                         // web page on port 80 (zWeb.ino)
     netPollFromLoop();                  // from now on the network stack runs from loop() (Net.h)
 
@@ -288,7 +261,7 @@ void loop()
     wdtFeed();                                    // hardware watchdog (zSafety.ino)
     loopTick();                                   // how long the loops take, for the report (zSafety.ino)
 
-    // the network stack: TCP timers, the web page's connections, link (Net.h, zEthernet.ino)
+    // the network stack: TCP timers, the web page's connections, link (Net.h, src/net/Network.cpp)
     loopStep = 14;
     netPoll();
 
