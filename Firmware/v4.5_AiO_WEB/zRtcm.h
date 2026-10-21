@@ -1,11 +1,11 @@
-/* Rtcm.h - counts the RTCM 3 messages in a stream of correction bytes.
+/* zRtcm.h - counts the RTCM 3 messages in a stream of correction bytes.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Rtcm.h
+// zRtcm.h
 // The corrections pass to the receiver untouched (radio on Serial3, NTRIP on UDP 2233). On the
 // way, this counts them for the web page and the [status] messages: bytes, bytes per second,
 // whole RTCM 3 messages with a good checksum (CRC-24Q), messages with a bad checksum (bytes lost

@@ -1,11 +1,11 @@
-/* WebJson.h - small JSON writer for the web server.
+/* zWebJson.h - small JSON writer for the web server.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// WebJson.h
+// zWebJson.h
 // A small JSON writer into a fixed buffer (zWeb.ino). In a header because the Arduino IDE adds
 // function prototypes at the top of the sketch, before any type defined in an .ino file.
 #ifndef ZWEBJSON_H

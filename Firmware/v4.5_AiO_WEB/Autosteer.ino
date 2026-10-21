@@ -80,7 +80,7 @@
 
 #include <Wire.h>
 #include <EEPROM.h>
-#include "src/autosteer/ADS1115.h"
+#include "zADS1115.h"
 ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);     // Use this for the 16-bit version ADS1115
 #include <IPAddress.h>
 

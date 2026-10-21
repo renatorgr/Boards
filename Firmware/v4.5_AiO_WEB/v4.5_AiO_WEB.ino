@@ -11,7 +11,7 @@
    autosteer safety and watchdog, receiver identification and settings, BNO085, the AiO firmware's
    Keya, the dual F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack
    polled from loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
-   by lansalot, RxConfig.h) and the simulator mode setting.
+   by lansalot, zRxConfig.h) and the simulator mode setting.
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -23,7 +23,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// v4.5_AiO_WEB.ino  (version number: Version.h)
+// v4.5_AiO_WEB.ino  (version number: zVersion.h)
 // AiO_WEB 4.5: one firmware for what the AiO v4.5 boards accept, with the parts of the AgOpenGPS AiO v4
 // firmware: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the autosteer
 // cut-off beyond the WAS map or above 25 km/h, and the WAS map (Autosteer.ino).
@@ -90,7 +90,7 @@ uint32_t gpsReadyTime = 0;
 #ifdef ARDUINO_TEENSY41
 #include <NativeEthernet.h>
 #include <NativeEthernetUdp.h>
-#include "src/net/Net.h"                // the network stack runs from loop(), not from an interrupt
+#include "zNet.h"                       // the network stack runs from loop(), not from an interrupt
 
 struct ConfigIP {
     uint8_t ipOne   = 192;
@@ -125,16 +125,16 @@ uint8_t RTKrxbuffer[serial_buffer_size];
 elapsedMillis speedPulseUpdateTimer = 0;
 byte velocityPWM_Pin = 36;
 
-#include "src/gnss/NMEAParser.h"
+#include "zNMEAParser.h"
 #include "zSettings.h"                  // web page settings (cfg), see zSettings.ino
-#include "src/system/StatusLog.h"       // [status] log for USB + web page, see zStatus.ino
-#include "src/net/WebJson.h"            // JSON writer for the web page (zWeb.ino)
+#include "zStatusLog.h"                 // [status] log for USB + web page, see zStatus.ino
+#include "zWebJson.h"                   // JSON writer for the web page (zWeb.ino)
 #include "zXiao.h"                      // XIAO ESP32C3 bridge state (zXiao.ino)
 #include "zSafety.h"                    // autosteer safety, watchdog, start reason (zSafety.ino)
-#include "src/gnss/Rtcm.h"              // RTCM messages counted (radio, NTRIP), zStatus.ino
+#include "zRtcm.h"                      // RTCM messages counted (radio, NTRIP), zStatus.ino
 #include "zReceiver.h"                  // receiver identification, u-blox settings (zReceiver.ino)
 #include "zImu.h"                       // TM171 or BNO085 (zImu.ino)
-#include "src/system/Version.h"         // FW_NAME, FW_VERSION
+#include "zVersion.h"                    // FW_NAME, FW_VERSION
 #include <Wire.h>
 
 #include <FlexCAN_T4.h>
@@ -244,7 +244,7 @@ void setup()
     autosteerSetup();                   // ADS1115 (WAS), steer settings from the EEPROM (Autosteer.ino)
     EthernetStart();
     webSetup();                         // web page on port 80 (zWeb.ino)
-    netPollFromLoop();                  // from now on the network stack runs from loop() (Net.h)
+    netPollFromLoop();                  // from now on the network stack runs from loop() (zNet.h)
 
     // zImu.ino: TM171 or BNO085 (RVC) on Serial5, else BNO085 on I2C. Roll always comes from
     // it; heading whenever there is no valid dual heading (always with an F9P / X20P).
@@ -265,7 +265,7 @@ void setup()
             imuProcess();
             dualF9pProcess();   // same for the GPS2 port: the second F9P,
             xiaoProcess();      // or the XIAO (its boot lines and first hello)
-            netPoll();          // the network stack (Net.h)
+            netPoll();          // the network stack (zNet.h)
 
             KeyaBus_Receive();  // a heartbeat sets isKeya (KeyaCANBUS.ino)
             if (isKeya) break;
@@ -288,7 +288,7 @@ void loop()
     wdtFeed();                                    // hardware watchdog (zSafety.ino)
     loopTick();                                   // how long the loops take, for the report (zSafety.ino)
 
-    // the network stack: TCP timers, the web page's connections, link (Net.h, zEthernet.ino)
+    // the network stack: TCP timers, the web page's connections, link (zNet.h, zEthernet.ino)
     loopStep = 14;
     netPoll();
 

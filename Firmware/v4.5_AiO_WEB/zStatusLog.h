@@ -1,11 +1,11 @@
-/* StatusLog.h - the [status] log kept for the web page.
+/* zStatusLog.h - the [status] log kept for the web page.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// StatusLog.h
+// zStatusLog.h
 // The [status] log (zStatus.ino): every line goes to the USB serial monitor and to a ring of
 // LOG_LINES lines in RAM that the web page shows (zWeb.ino). Included at the top of the main
 // .ino so every file can write to it.

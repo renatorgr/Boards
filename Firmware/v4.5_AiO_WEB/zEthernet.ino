@@ -4,7 +4,7 @@
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
-   (netPollFromLoop, netPoll, netDelay - see Net.h); 8 KB socket buffers; one [boot] line instead of
+   (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
    the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
@@ -68,7 +68,7 @@ void EthernetStart()
 }
 
 // ---------------------------------------------------------------- the network stack, from loop()
-// (Net.h) netPollOn: the library's 1 ms timer is stopped and fnet_poll() is called here, by loop()
+// (zNet.h) netPollOn: the library's 1 ms timer is stopped and fnet_poll() is called here, by loop()
 // (netPoll) and by the code that waits for the network (netDelay, the web page's waits in zWeb.ino).
 static bool     netPollOn = false;
 static uint32_t netPollUs = 0;

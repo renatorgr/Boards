@@ -12,7 +12,7 @@
 #define ZRXCHECK_H
 
 #include <stdint.h>
-#include "src/net/WebJson.h"
+#include "zWebJson.h"
 
 #ifndef FLASHMEM
 #define FLASHMEM                     // (Teensy: code run from flash; nothing elsewhere)
