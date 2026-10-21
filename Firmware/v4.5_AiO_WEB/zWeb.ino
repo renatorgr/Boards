@@ -16,7 +16,7 @@
 //     receiver and its replies; u-blox F9P / X20P: its settings, read and written with UBX
 //     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload
 //   - Machine: the machine module (sprayer Nano, PGN 160 on UDP 9999), only once it has been heard (zMachine.ino)
-//   - Firmware update (src/net/Ota.cpp) and restart
+//   - Firmware update (zOTA.ino) and restart
 //   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
 //   corrections, why the Teensy started; the WAS check, the watchdog and the simulator mode in the settings
@@ -27,11 +27,10 @@
 //
 // There is no password: anyone on the module's network can open the page.
 
-#include "src/net/WebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
-#include "src/net/WebJson.h"            // small JSON writer for the answers
-#include "src/net/Ota.h"                // firmware update: otaBegin / otaFeed / otaFinish / otaInstall
+#include "zWebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
+#include "zWebJson.h"            // small JSON writer for the answers
 
-#include "src/system/Version.h"         // FW_NAME, FW_VERSION (also included by the main .ino)
+#include "zVersion.h"            // FW_NAME, FW_VERSION (also included by the main .ino)
 
 #define WEB_PORT         80
 #define WEB_HEAD_MAX     2048    // request line + headers + small body (settings, UM982 command)
@@ -75,7 +74,7 @@ static bool webWrite(EthernetClient& c, const char* d, size_t n)
         {
             if (!c.connected() || millis() - t0 > WEB_TIMEOUT_MS) return false;
             wdtFeed();                                   // a slow browser must not trip the watchdog
-            netPoll();                                   // the network stack (Net.h): retransmissions
+            netPoll();                                   // the network stack (zNet.h): retransmissions
             delayMicroseconds(200);
             continue;
         }
@@ -750,7 +749,7 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
     while (!err && got < rq.contentLength)
     {
         wdtFeed();
-        netPoll();                                         // the network stack (Net.h): ACKs, window
+        netPoll();                                         // the network stack (zNet.h): ACKs, window
         const int n = c.available();
         if (n > 0)
         {

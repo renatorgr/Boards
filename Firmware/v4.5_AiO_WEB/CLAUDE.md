@@ -32,22 +32,16 @@ with gcc 15 has not been checked).
 - Open `v4.5_AiO_WEB.ino`. Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
 - Sketch → Export compiled binary writes `v4.5_AiO_WEB.ino.hex` into this folder.
 - No extra libraries to install: NativeEthernet, FNET, FlexCAN_T4, Wire, EEPROM come with Teensyduino; the
-  BNO085 library, ADS1115-Lite, the NMEA parser and FlasherX are copies inside `src/`.
+  BNO085 library, ADS1115-Lite, the NMEA parser and FlasherX are copies inside this folder.
 - Command line equivalent (Teensy core from `https://www.pjrc.com/teensy/package_teensy_index.json`):
   `arduino-cli compile --fqbn teensy:avr:teensy41:usb=serial,speed=600,opt=o2std --export-binaries Firmware/v4.5_AiO_WEB`
 
-**Every pull request is compiled on GitHub** (`.github/workflows/teensy-firmware.yml`: arduino-cli with
-Teensyduino 1.58.x, the same board settings). A red check means it does not compile; the run's summary
-shows the memory use and the `.hex` is under Artifacts. Claude's cloud sessions cannot install Teensyduino
-(pjrc.com, arduino.cc and the PlatformIO registry are blocked), but an approximate local build works: apt's
-`gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `libstdc++-arm-none-eabi-newlib`, plus git clones of
-PaulStoffregen/cores (tag 1.58), Wire, SPI, EEPROM, vjmuzik/NativeEthernet, vjmuzik/FNET and
-tonton81/FlexCAN_T4, with the Teensy 4.1 flags of Teensyduino's platform.txt. It is a newer gcc, so
-the GitHub build has the last word. A compile is not a test: Renato bench-tests before using it on the tractor.
-Do not commit a `.hex`: Renato publishes the ones he built.
+**Claude's cloud sessions cannot compile this firmware**: pjrc.com, arduino.cc and the PlatformIO registry
+are blocked there. Read the code carefully, say in the pull request that it was not compiled, and Renato
+compiles it before merging. Do not commit a `.hex` built from code he has not compiled.
 
-There is no PlatformIO build (`platformio.ini`): Renato chose to keep the Arduino IDE. The IDE builds every
-`.ino`, `.cpp` and `.c` in this folder and, recursively, in `src/`; it ignores the other subfolders (XIAO).
+There is no PlatformIO build (`platformio.ini`) and no `src/` folder: the Arduino IDE builds every `.ino`,
+`.cpp` and `.c` in this folder, and ignores the XIAO subfolders.
 
 ## How the Arduino IDE builds the .ino files (important)
 
@@ -59,16 +53,9 @@ files in alphabetical order, generates prototypes for the functions, and compile
   `TM171.ino`).
 - When an earlier file needs a name from a later one, declare it in the matching `z*.h` header (e.g.
   `keyaLost` is declared `extern` in `zSafety.h`) and include that header at the top of `v4.5_AiO_WEB.ino`.
-- The `.cpp` / `.c` files in `src/` (`BNO08x_AOG.cpp`, `ADS1115.cpp`, `FlashTxx.c`, `Ota.cpp`) are compiled
-  separately and see only what they include. A `.ino` includes them as `#include "src/<folder>/<file>.h"`; a
-  file in `src/` includes its neighbours by name and the others with a relative path (`../system/Version.h`).
+- The `.cpp` / `.c` files (`BNO08x_AOG.cpp`, `zADS1115.cpp`, `FlashTxx.c`) are compiled separately and see
+  only what they include.
 - Do not add a `.cpp` that uses globals from the `.ino` files without `extern` declarations in a header.
-- Moving a `.ino` to `src/<module>/Name.cpp` + `Name.h` (one module per pull request): the `.h` declares
-  what the other files use (functions, and `extern` for variables and constants: a `const` at file scope
-  is local to its `.cpp` otherwise); the `.cpp` starts with `#include <Arduino.h>` and its own `.h`, keeps
-  the rest `static`, and gets what it still needs from the `.ino` files through their `z*.h` header
-  (`#include "../../zSafety.h"`) until those move too. The `.ino` that uses the module includes its `.h`.
-  The code is the same but compiled apart, so Renato bench-tests each one.
 
 ## Folder Structure
 
@@ -76,13 +63,7 @@ files in alphabetical order, generates prototypes for the functions, and compile
 Firmware/
 ├── v4.5_AiO_WEB/                 # this firmware (folder name = main .ino name = FW_NAME)
 │   ├── v4.5_AiO_WEB.ino          # globals, setup(), loop()
-│   ├── *.ino / *.h               # the modules still in the sketch folder (being moved to src/)
-│   ├── src/                      # compiled by the Arduino IDE too (a sketch's src/ is, recursively)
-│   │   ├── autosteer/            # ADS1115.cpp / .h
-│   │   ├── gnss/                 # NMEAParser.h, Rtcm.h, RxConfig.h
-│   │   ├── imu/                  # BNO08x_AOG.cpp / .h
-│   │   ├── net/                  # Net.h, WebPage.h, WebJson.h, Ota.cpp / .h, FlashTxx.c / .h
-│   │   └── system/               # Version.h, StatusLog.h
+│   ├── *.ino / *.h / *.cpp / *.c # the modules below (flat: the Arduino IDE needs them here or in src/)
 │   ├── v4.5_AiO_WEB.ino.hex      # compiled firmware (Teensyduino 1.58), uploaded by Renato
 │   ├── README.md                 # user documentation
 │   ├── CLAUDE.md                 # this file
@@ -94,14 +75,13 @@ Firmware/
 
 ## Module Organization
 
-The files group into modules like the AiO 26 `lib/aio_*` folders. The `.ino` files move to `src/<module>/`
-as `.cpp` / `.h` pairs one module at a time (Renato chose this on 2026-10-21; the Arduino IDE stays).
+The files are flat, but they group into modules like the AiO 26 `lib/aio_*` folders.
 
 ### Main
 | File | Purpose |
 |------|---------|
 | `v4.5_AiO_WEB.ino` | Serial ports, buffers, UDP sockets, Keya state, `setup()` (start-up order) and `loop()` (steps) |
-| `src/system/Version.h` | `FW_VERSION`, `FW_NAME` |
+| `zVersion.h` | `FW_VERSION`, `FW_NAME` |
 
 ### Steering (AiO 26: `aio_autosteer`)
 | File | Purpose |
@@ -110,35 +90,35 @@ as `.cpp` / `.h` pairs one module at a time (Renato chose this on 2026-10-21; th
 | `AutosteerPID.ino` | PID and output: Cytron, IBT2, Danfoss, Keya; soft start |
 | `KeyaCANBUS.ino` | Keya on CAN3 (250 kbit/s): heartbeat, enable / speed commands, slip |
 | `zSafety.ino` / `.h` | WAS check, why autosteer went off, PGN 221 text to the program, watchdog, crash hook, boot reason, `loopStep` names |
-| `src/autosteer/ADS1115.cpp` / `.h` | ADS1115-Lite (WAS on I2C, Wire1) |
+| `zADS1115.cpp` / `.h` | ADS1115-Lite (WAS on I2C, Wire1) |
 
 ### GNSS (AiO 26: `aio_navigation`)
 | File | Purpose |
 |------|---------|
 | `zHandlers.ino` | GGA / VTG / HPR handlers, epoch assembly, IMU heading fusion, standard / classic output, PGN 247 vehicle geometry |
-| `src/gnss/NMEAParser.h` | NMEA parser (Glinnes Hulden, CC0) |
+| `zNMEAParser.h` | NMEA parser (Glinnes Hulden, CC0) |
 | `zDualF9P.ino` | Second F9P on Serial2: UBX-NAV-RELPOSNED → dual heading and roll |
 | `zReceiver.ino` / `.h` | Receiver identification (VERSIONA / UBX-MON-VER), u-blox and UM982 settings from the web page, UBX frames taken out of the stream |
 | `zRxCheck.ino` / `.h` | Receiver check: data at 460800, baud search, settings against the AgOpenGPS files |
-| `src/gnss/RxConfig.h` | AOGConfigOMatic settings (generated by a script, do not edit by hand) |
-| `zUdpNtrip.ino`, `src/gnss/Rtcm.h` | NTRIP from the program (UDP 2233) to the receiver; RTCM message counter |
+| `zRxConfig.h` | AOGConfigOMatic settings (generated by a script, do not edit by hand) |
+| `zUdpNtrip.ino`, `zRtcm.h` | NTRIP from the program (UDP 2233) to the receiver; RTCM message counter |
 
 ### IMU
 | File | Purpose |
 |------|---------|
 | `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading |
 | `TM171.ino` | TM171 on Serial5 |
-| `src/imu/BNO08x_AOG.cpp` / `.h` | SparkFun BNO080 library (MIT), AgOpenGPS version |
+| `BNO08x_AOG.cpp` / `.h` | SparkFun BNO080 library (MIT), AgOpenGPS version |
 
 ### Network and web (AiO 26: `aio_system`)
 | File | Purpose |
 |------|---------|
-| `zEthernet.ino`, `src/net/Net.h` | Ethernet start, IP, UDP sockets, the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
+| `zEthernet.ino`, `zNet.h` | Ethernet start, IP, UDP sockets, the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
 | `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload |
-| `src/net/WebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
-| `src/net/WebJson.h` | Small JSON writer |
-| `src/net/Ota.cpp` / `.h`, `src/net/FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
-| `zStatus.ino`, `src/system/StatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
+| `zWebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
+| `zWebJson.h` | Small JSON writer |
+| `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
+| `zStatus.ino`, `zStatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
 | `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200) |
 
 ### Companion modules
@@ -190,7 +170,7 @@ Browser ──► port 80 ──► webLoop() (zWeb.ino)
 | 15 | `machineLoop()` |
 | 13 | `receiverLoop()`, `rxCheckLoop()` |
 | 12 | Ethernet link LEDs |
-| 20 | firmware update (`src/net/Ota.cpp`) |
+| 20 | firmware update (zOTA.ino) |
 
 There is no scheduler (AiO 26 has `SimpleScheduler`): every part runs each loop and keeps its own timers.
 
@@ -245,7 +225,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 
 | Path | Method | Handler (zWeb.ino) |
 |------|--------|-------------------|
-| `/` | GET | the page (`WEB_PAGE`, WebPage.h) |
+| `/` | GET | the page (`WEB_PAGE`, zWebPage.h) |
 | `/api/status` | GET | `apiStatus` (also sent to the XIAO as PGN 141) |
 | `/api/log` | GET | `apiLog` |
 | `/api/settings` | GET / POST | `apiSettingsGet` / `apiSettingsPost` |
@@ -253,7 +233,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
 | `/api/reboot` | POST | restart |
-| `/api/ota` | POST | firmware upload (`src/net/Ota.cpp`) |
+| `/api/ota` | POST | firmware upload (zOTA.ino) |
 
 The page never makes the loop wait for a browser for more than 3 s. Large replies are written in pieces.
 
@@ -274,7 +254,7 @@ The addresses must not move: settings must survive a firmware update.
    `SETTINGS_VERSION` and take over the older block in `settingsLoad()` like `settingsFromV1()`).
 2. Default in `settingsDefaults()` and range check in `settingsSanitize()` (`zSettings.ino`).
 3. Add it to the table in `apiSettingsPost()` and to `apiSettingsGet()` (`zWeb.ino`).
-4. Add the control to the Settings tab in `src/net/WebPage.h`.
+4. Add the control to the Settings tab in `zWebPage.h`.
 5. Document it in the README settings table.
 
 ## Hardware Pin Reference
@@ -300,12 +280,12 @@ The addresses must not move: settings must survive a firmware update.
    the angle / speed cut-offs, the Keya heartbeat timeout and the crash hook working.
 2. **Never block the loop.** The steering runs from `loop()`. Use `netDelay()` instead of `delay()` after
    start-up, feed the watchdog (`wdtFeed()`) in any wait, and keep waits short.
-3. **The network stack runs from `loop()`** (`src/net/Net.h`): NativeEthernet's 1 ms timer is stopped on purpose.
+3. **The network stack runs from `loop()`** (`zNet.h`): NativeEthernet's 1 ms timer is stopped on purpose.
    Do not start it again and do not call the network from an interrupt.
 4. **.ino order** (see above): declare shared names in a `z*.h` header.
 5. **Teensyduino 1.59+** split `HardwareSerial`: use the `TeensySerial` typedef from the main `.ino`.
 6. **EEPROM**: addresses fixed, write only when a value changes.
-7. **OTA marker**: `OTA_MARKER` in `src/net/Ota.cpp` (`AOG-UM982-TM171-WEB-OTA-1`) must stay the same, or modules in
+7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AOG-UM982-TM171-WEB-OTA-1`) must stay the same, or modules in
    the field refuse the new firmware from the web page.
 8. **GitHub update check**: the web page (and the XIAO page) list `Firmware/` on GitHub, take the highest
    folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, and download `<folder>.hex` from it (the XIAO:
@@ -314,11 +294,11 @@ The addresses must not move: settings must survive a firmware update.
    under the `.hex` name the page looks for (or teach the page both names first).
 9. **Debug switches** at the top of `zHandlers.ino` (`FUSION_DEBUG`, `RAW_NMEA_DEBUG`, `SEND_TO_USB`) must
    be 0 in a published build.
-10. **Web page size**: `WebPage.h` is one big string in flash; keep the JavaScript plain (no libraries).
+10. **Web page size**: `zWebPage.h` is one big string in flash; keep the JavaScript plain (no libraries).
 
 ## Version and Publishing
 
-- Version in `src/system/Version.h` (`FW_VERSION`). The XIAO program (`xVersion.h`) must have the same number.
+- Version in `zVersion.h` (`FW_VERSION`). The XIAO program (`xVersion.h`) must have the same number.
 - A new version is a new folder: copy `v4.5_AiO_WEB` to `vX.Y_AiO_WEB`, rename the main `.ino` to the same
   name, set `FW_VERSION`, build, put the `.hex` (named `vX.Y_AiO_WEB.hex`) and the XIAO `.bin` files in it.
 - Add a "Version X.Y" section to the README.
@@ -337,19 +317,19 @@ The addresses must not move: settings must survive a firmware update.
 | File | Origin | Licence |
 |------|--------|---------|
 | `BNO08x_AOG.*` | SparkFun BNO080 library, AgOpenGPS version | MIT |
-| `ADS1115.*` | ADS1115-Lite, Terry Myers | MIT |
-| `NMEAParser.h` | NMEA parser, Glinnes Hulden | CC0 |
+| `zADS1115.*` | ADS1115-Lite, Terry Myers | MIT |
+| `zNMEAParser.h` | NMEA parser, Glinnes Hulden | CC0 |
 | `FlashTxx.*` | FlasherX, Joe Pasquariello | public domain |
-| `RxConfig.h` | AOGConfigOMatic, lansalot (generated) | as in the file |
+| `zRxConfig.h` | AOGConfigOMatic, lansalot (generated) | as in the file |
 
 ## Comparison with the AiO 26 organization
 
 AiO 26 uses PlatformIO (`platformio.ini`, `src/main.cpp`), one class per subsystem in `lib/aio_*/`
 (`.h` + `.cpp`), a cooperative scheduler, a PGN router with callbacks, a GitHub Actions build, and design
 notes in `docs/` and `knowledge/`. This firmware keeps the Arduino IDE sketch layout so Renato can build it
-as he always has. The module tables above map each file to the AiO 26 module it matches. The move to `.cpp`
-modules in `src/<module>/` is under way without leaving the Arduino IDE (it compiles a sketch's `src/` folder
-too), one module at a time, each one compiled on GitHub and bench-tested by Renato. Steering goes last.
+as he always has. The module tables above map each file to the AiO 26 module it matches. A move to `.cpp`
+modules in `src/<module>/` is possible without leaving the Arduino IDE (it compiles a sketch's `src/` folder
+too), one module at a time; see the project's plan before starting it.
 
 ## License
 
