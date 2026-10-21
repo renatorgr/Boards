@@ -40,6 +40,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash   # -eo pipefail: a failed compile is not hidden by tee
     steps:
       - uses: actions/checkout@v4
 
@@ -68,6 +71,7 @@ jobs:
           print(max(found, key=lambda v: [int(x) for x in v.split(".")]))
           ')
           echo "Teensy core teensy:avr@$version"
+          echo "TEENSY_CORE=$version" >> "$GITHUB_ENV"
           arduino-cli core install "teensy:avr@$version"
 
       - name: Compile
@@ -95,7 +99,7 @@ jobs:
           {
             echo "### ${{ steps.fw.outputs.name }} compiled"
             echo
-            echo "Teensyduino ${TEENSYDUINO}.x, commit ${{ steps.fw.outputs.sha }}. The \`.hex\` is under **Artifacts** on this page."
+            echo "Teensyduino ${TEENSY_CORE}, commit ${{ steps.fw.outputs.sha }}. The \`.hex\` is under **Artifacts** on this page."
             echo
             echo '```'
             grep -E 'FLASH:|RAM1:|RAM2:' build.log || true
