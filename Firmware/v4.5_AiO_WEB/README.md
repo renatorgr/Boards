@@ -93,7 +93,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below. |
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
-| **Machine** | Only once the machine module (IP .123, e.g. the sprayer Nano) has been heard on UDP 9999. Its IP, last packet, checksum errors; the sprayer PGN 160: pressure, flow, total litres, main switch, and each section as asked for by the program (PGN 254) and as open on the Nano (red when they differ). Only to look at. |
+| **Machine** | Only once the machine module (IP .123, e.g. the sprayer Nano) has been heard on UDP 9999. Its IP, last packet, checksum errors; the sprayer PGN 160: pressure, flow, total litres, main switch, and one square per section in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254) but still closed on the Nano, cyan asked off but still open. Only to look at. |
 | **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, GPS, UM982 console, build, free RAM, longest loop time, web errors); send it when something goes wrong. |
 
 The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
