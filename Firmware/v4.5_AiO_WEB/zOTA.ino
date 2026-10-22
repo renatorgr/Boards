@@ -38,7 +38,7 @@ extern "C" {
 //     accept this one from the web page; and an image with either marker is accepted.
 //   - Remove OTA_MARKER_OLD (and otaMarkerOld) in a later release, once every module runs a firmware that
 //     knows OTA_MARKER. A module still on the old firmware then needs this release first, or USB.
-#define OTA_MARKER        "AiO-WEB-OTA-2"                   // must be in every version that updates another from the web page
+#define OTA_MARKER        "AiO-WEB-OTA-1"                   // must be in every version that updates another from the web page
 #define OTA_MARKER_OLD    "AOG-UM982-TM171-WEB-OTA-1"       // transition only (see above)
 
 // Kept in the image (printed in /api/status) so a new firmware of this family can be recognised

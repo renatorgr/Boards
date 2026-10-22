@@ -285,7 +285,7 @@ The addresses must not move: settings must survive a firmware update.
 4. **.ino order** (see above): declare shared names in a `z*.h` header.
 5. **Teensyduino 1.59+** split `HardwareSerial`: use the `TeensySerial` typedef from the main `.ino`.
 6. **EEPROM**: addresses fixed, write only when a value changes.
-7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AiO-WEB-OTA-2`) must stay the same, or modules in the field
+7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AiO-WEB-OTA-1`) must stay the same, or modules in the field
    refuse the new firmware from the web page. The running firmware refuses a .hex without the marker it knows.
    Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`: `OTA_MARKER_OLD` keeps the old name in the image
    (and accepted) so modules on older firmware still take the update. Drop it only in a later release, after
