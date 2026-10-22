@@ -87,6 +87,11 @@ jobs:
           marker=$(sed -n 's/^#define OTA_MARKER *"\([^"]*\)".*/\1/p' "$dir/zOTA.ino")
           test -n "$marker"
           strings "build/$name.ino.elf" | grep -qF "$marker" || { echo "::error::OTA marker $marker not in the firmware"; exit 1; }
+          # the marker before the rename (22 Oct 2026): modules on older firmware look for it, keep it while it is defined
+          old=$(sed -n 's/^#define OTA_MARKER_OLD *"\([^"]*\)".*/\1/p' "$dir/zOTA.ino")
+          if [ -n "$old" ]; then
+            strings "build/$name.ino.elf" | grep -qF "$old" || { echo "::error::old OTA marker $old not in the firmware (modules on older firmware would refuse it)"; exit 1; }
+          fi
           strings "build/$name.ino.elf" | grep -qF fw_teensy41 || { echo "::error::fw_teensy41 not in the firmware"; exit 1; }
           # diagnostics switched on are fine on the bench, not in a published build
           if grep -nE '^#define +(FUSION_DEBUG|RAW_NMEA_DEBUG|SEND_TO_USB) +1' "$dir/zHandlers.ino"; then
