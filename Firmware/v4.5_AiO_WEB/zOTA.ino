@@ -15,8 +15,8 @@
 // Safety:
 //   - nothing is written over the running firmware until the whole file has arrived and passed
 //     every check: Intel HEX checksums, end-of-file record, starts at the flash base, fits the
-//     buffer, contains "fw_teensy41" (built for a Teensy 4.1) and OTA_MARKER (it is this firmware
-//     family, with this web page - so the next update can also be done from the web page)
+//     buffer, contains "fw_teensy41" (built for a Teensy 4.1) and OTA_MARKER or OTA_MARKER_OLD (it is
+//     this firmware family, with this web page - so the next update can also be done from the web page)
 //   - each flash sector written to the buffer is read back and compared
 //   - steering is switched off before receiving (and an update is refused while autosteer is
 //     engaged or the tractor is moving - zWeb.ino)
@@ -30,10 +30,20 @@ extern "C" {
 
 #define OTA_BUFFER_ADDR   (FLASH_BASE_ADDR + 0x400000)   // 4 MB into the flash
 #define OTA_BUFFER_SIZE   (0x200000)                     // 2 MB (the firmware is ~0.4 MB)
-#define OTA_MARKER        "AOG-UM982-TM171-WEB-OTA-1"       // must be the same in every version that updates another from the web page
+// The firmware family marker. The RUNNING firmware refuses a .hex that does not contain the marker it
+// knows, so a new name needs a transition (22 Oct 2026):
+//   - OTA_MARKER is the family's name from now on.
+//   - OTA_MARKER_OLD is the name used up to 22 Oct 2026, from the earlier firmware this one grew out of. It
+//     stays in the image (otaMarkerOld below), so modules still running a firmware from before the rename
+//     accept this one from the web page; and an image with either marker is accepted.
+//   - Remove OTA_MARKER_OLD (and otaMarkerOld) in a later release, once every module runs a firmware that
+//     knows OTA_MARKER. A module still on the old firmware then needs this release first, or USB.
+#define OTA_MARKER        "AiO-WEB-OTA-1"                   // must be in every version that updates another from the web page
+#define OTA_MARKER_OLD    "AOG-UM982-TM171-WEB-OTA-1"       // transition only (see above)
 
 // Kept in the image (printed in /api/status) so a new firmware of this family can be recognised
 const char otaMarker[]  = OTA_MARKER;
+__attribute__((used)) const char otaMarkerOld[] = OTA_MARKER_OLD;   // what the firmware before the rename looks for
 const char otaFlashId[] = FLASH_ID;
 
 extern unsigned long _flashimagelen;                     // size of the running firmware (linker)
@@ -208,7 +218,7 @@ const char* otaFinish(bool force, uint32_t* size)
     if (ota.minAddr != FLASH_BASE_ADDR)              return ota.err = "image does not start at the Teensy 4.1 flash base";
     const uint32_t len = ota.maxAddr - FLASH_BASE_ADDR;
     if (!check_flash_id(OTA_BUFFER_ADDR, len))       return ota.err = "not built for a Teensy 4.1 (fw_teensy41 missing)";
-    if (!force && !check_flash_id_str(OTA_BUFFER_ADDR, len, OTA_MARKER))
+    if (!force && !check_flash_id_str(OTA_BUFFER_ADDR, len, OTA_MARKER) && !check_flash_id_str(OTA_BUFFER_ADDR, len, OTA_MARKER_OLD))
         return ota.err = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
     *size = len;
     return nullptr;
