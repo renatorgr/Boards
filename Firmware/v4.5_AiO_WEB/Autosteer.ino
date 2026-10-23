@@ -17,6 +17,8 @@
    AiO_WEB 4.5, 20 Oct 2026, ideas of the AgOpenGPS AiO 26 firmware: the minimum and maximum speed set on the
    web page, the current kickout only after the current is high for a while, the soft start
    (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
+   AiO_WEB 4.5, 23 Oct 2026 (Claude (Anthropic) for renatorgr): with "Button" as the steer switch, the
+   program's on-screen autosteer button turns autosteer on and off too, like the physical button.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -348,6 +350,25 @@ void autosteerLoop()
 				}
 			}
 			previous = reading;
+
+			// AiO_WEB (Claude (Anthropic) for renatorgr): the program's on-screen autosteer button does the
+			// same as the physical button. Screen on = autosteer on, screen off = autosteer off; the
+			// physical button still toggles and a kickout still turns it off. The change is used once
+			// (cleared here), so a button press right after it is not undone before the next packet.
+			if (guidanceStatusChanged)
+			{
+				if (bitRead(guidanceStatus, 0) == 1 && steerSwitch == 1)
+				{
+					currentState = 0;
+					steerSwitch = 0;
+				}
+				else if (bitRead(guidanceStatus, 0) == 0 && steerSwitch == 0)
+				{
+					currentState = 1;
+					steerSwitch = 1;
+				}
+				guidanceStatusChanged = false;
+			}
 		}
 		else                                      // No steer switch and no steer button
 		{
