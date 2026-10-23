@@ -129,7 +129,9 @@ a{color:var(--acc)}
  <div class="card"><h2>IMU</h2>
   <div class="big" id="tmHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="tmState">–</dd><dt>Type</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
-   <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd></dl></div>
+   <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd>
+   <dt id="tmCalT" class="hidden">Gyro calibration</dt><dd id="tmCal" class="hidden">–</dd></dl>
+  <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn">Calibrate gyro</button><span class="note">Tractor stopped, autosteer off; the engine may run. 20 s. The result lasts until the TM171 loses power.</span></div></div>
  <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
   <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
@@ -394,6 +396,11 @@ function render(s){
  set("imuType",t.type?t.type+" · "+t.port:"not detected",t.type?"":"bad");
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
+ {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib);
+  for(const id of ["tmCalT","tmCal","tmCalRow"])$(id).classList.toggle("hidden",!tm);
+  const CAL={starting:"starting…",running:"running, "+(t.calibLeft>=0?t.calibLeft+" s left":""),finishing:"finishing…",ok:"OK",failed:"failed (the tractor moved, or too much vibration)",noanswer:"no answer from the TM171 (TX5 wire?)",aborted:"stopped"};
+  set("tmCal",t.calib?(CAL[t.calib]||t.calib)+(!busy&&t.calibAgo>=0?" ("+(t.calibAgo<90?t.calibAgo+" s":Math.round(t.calibAgo/60)+" min")+" ago)":""):"not done since power on",t.calib==="ok"?"ok":busy?"":t.calib?"warn":"");
+  $("tmCalBtn").textContent=busy?"Stop":"Calibrate gyro";}
  set("sign",(t.sign>0?"+1":"−1")+" ("+(t.locked?"fixed":"learning")+")");
  const st=s.steer;
  set("was",fmt(st.was,1,"°"));set("setp",fmt(st.set,1,"°"));set("pwm",String(st.pwm));
@@ -594,6 +601,11 @@ async function gpsAct(body,say){
   if(!j.ok){say("Error"+": "+ptErr(j.error),"bad");return false;}
   uLocal=mLocal=null;ckLocal=[null,null];await pollGps();return true;}catch(e){say("No connection to the module.","bad");return false;}
 }
+$("tmCalBtn").addEventListener("click",async()=>{
+ const busy=$("tmCalBtn").textContent==="Stop";
+ if(!busy&&!confirm("Calibrate the TM171 gyro? The tractor must stand still for 20 s (the engine may run). Autosteer must be off."))return;
+ try{const j=await getJ("/api/imu",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"act="+(busy?"calibstop":"calib")});
+  if(!j.ok)set("tmCal","Error"+": "+ptErr(j.error),"bad");}catch(e){set("tmCal","No connection to the module.","bad");}});
 $("gIdent").addEventListener("click",()=>{ubxAsked=false;ubxShown=-1;umAsked=false;umShown=-1;gpsAct("act=identify");});
 $("gUbxOn").addEventListener("click",()=>{if(confirm("Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver."))gpsAct("act=ubxon");});
 $("uRead").addEventListener("click",()=>gpsAct("act=read"));

@@ -304,6 +304,11 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.bo("aligned", offsetSeeded);
     j.num("offset", yawOffset, 2);
     j.u("crcErr", imuErrors());
+    // AiO_WEB: the TM171 gyro calibration (TM171.ino)
+    j.str("calib", tmCalibName(tmCalibState));
+    j.i("calibLeft", tm171CalibLeft());
+    j.i("calibAgo", tmCalibDoneMs ? (long)((now - tmCalibDoneMs) / 1000) : -1);
+    j.u("calibN", tmCalibCount);
     j.close();
 
     j.obj("steer");
@@ -717,22 +722,45 @@ static void otaRefuse(EthernetClient& c, int code, const char* why, uint32_t got
 
 // The firmware update: takes over the loop until the whole file is in (or fails).
 // pre/preLen = the first body bytes, already read with the headers.
-static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
+// Is the tractor moving? (the firmware update and the TM171 calibration refuse to start then)
+// Moving: the program's speed, or the receiver's with RTK. Without RTK a receiver standing still
+// gives a few km/h of noise (a UM982 with a GPS fix on the bench: 2.7 km/h).
+// Not checked on a bench: the simulator mode on, or a wheel angle that a tractor does not give (the
+// WAS voltage out of range - no WAS - or an angle beyond the WAS map, +-50 deg). A Keya used as the
+// WAS has no WAS voltage: only its angle counts. The program's simulator gives a speed there.
+static bool tractorMoving()
 {
-    char v[8];
-    const bool force = formValue(rq.query, "force", v, sizeof(v)) && !strcmp(v, "1");
-    // Moving: the program's speed, or the receiver's with RTK. Without RTK a receiver standing still
-    // gives a few km/h of noise (a UM982 with a GPS fix on the bench: 2.7 km/h).
-    // Not checked on a bench: the simulator mode on, or a wheel angle that a tractor does not give (the
-    // WAS voltage out of range - no WAS - or an angle beyond the WAS map, +-50 deg). A Keya used as the
-    // WAS has no WAS voltage: only its angle counts. The program's simulator gives a speed there.
     const bool keyaWas = isKeya && !steerConfig.SingleInputWAS;
     const bool angleOdd = (!keyaWas && wasOut) ||
                           ((keyaWas || wasVoltsOk()) && (steerAngleActual < inputWAS[0] || steerAngleActual > inputWAS[WAS_MAP_N - 1]));
     const bool bench = cfg.simMode || angleOdd;
     const bool rtk = fixQuality[0] == '4' || fixQuality[0] == '5';
+    return !bench && ((rtk && lastSpeedKmh > OTA_MAX_KMH) || gpsSpeed > OTA_MAX_KMH);
+}
+
+// POST /api/imu act=calib (start the TM171 gyro calibration) / act=calibstop (TM171.ino)
+static void apiImuPost(EthernetClient& c, const char* body)
+{
+    char act[16];
+    if (!formValue(body, "act", act, sizeof(act))) { webSendError(c, 400, "no act"); return; }
+    if (!strcmp(act, "calib"))
+    {
+        if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+        if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)"); return; }
+        const char* why = "";
+        if (!tm171CalibStart(&why)) { webSendError(c, 409, why); return; }
+    }
+    else if (!strcmp(act, "calibstop")) tm171CalibStop("web page");
+    else { webSendError(c, 400, "unknown act"); return; }
+    webSendJson(c, 200, "{\"ok\":true}");
+}
+
+static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
+{
+    char v[8];
+    const bool force = formValue(rq.query, "force", v, sizeof(v)) && !strcmp(v, "1");
     if (autosteerEngaged())                                    { otaRefuse(c, 409, "autosteer is engaged - disengage it first", preLen); return; }
-    if (!bench && ((rtk && lastSpeedKmh > OTA_MAX_KMH) || gpsSpeed > OTA_MAX_KMH))
+    if (tractorMoving())
     {
         otaRefuse(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)", preLen);
         return;
@@ -839,6 +867,7 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/um982"))    apiUm982Post(c, body);
     else if (get  && !strcmp(rq.path, "/api/gps"))      apiGpsGet(c);
     else if (post && !strcmp(rq.path, "/api/gps"))      apiGpsPost(c, body);
+    else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {
         StatusLog.line("[web] restart requested");
