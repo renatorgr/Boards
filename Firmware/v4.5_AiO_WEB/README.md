@@ -198,6 +198,25 @@ At start-up the firmware looks for:
 - All give the same roll, pitch and yaw, with the AiO firmware's conventions. "Use Y axis" in the program, or "Swap roll and pitch" on the page, swaps roll and pitch; "Roll invert" / "Roll zero" in the program.
 - RVC or I2C is chosen on the BNO085 module (its PS0 / PS1 pins).
 - A BNO085 on I2C silent for 3 s is started again (only with autosteer off).
+
+### TM171 gyro calibration from the page
+
+The yaw of a TM171 drifts with the tractor standing still and the engine running. SYD Dynamics' answer is a
+gyro calibration taken with the vehicle still ("run-time static calibration", application note AN002: the
+engine may run). The IMU card has a **Calibrate gyro** button for it:
+
+- Tractor stopped, autosteer off (the page refuses otherwise). The TM171 collects data for 20 s; the page
+  counts down. The TM171 answers **OK** or **failed** (it moved, or too much vibration: the old values stay).
+  Autosteer switched on, or the tractor moving, stops it.
+- SYD's user guide: the result is kept in the TM171's RAM, so it lasts **until the TM171 loses power**. Do it
+  after starting the tractor, when the yaw drifts.
+- **Wiring**: the board joins the TM171 TXD to the Teensy RX5 (jumper SJ1) but nothing to the TM171 RXD. The
+  button needs a wire from the **Teensy pin 20 (TX5) to the TM171 RX pin**. Without it the page says
+  "no answer from the TM171" after 3 s.
+- `[status]` lines: started, succeeded, failed, stopped, no answer. Constants in `TM171.ino`: `TM171_CALIB_S`
+  (20 s), `TM171_CALIB_LIMIT` (accepted gyro error, 0.5 °/s), `TM171_CALIB_CONF`.
+
+The magnetometer is not calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is not used.
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
 
 ## Dual F9P: second F9P on the GPS2 port

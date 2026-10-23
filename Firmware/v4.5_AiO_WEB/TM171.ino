@@ -8,6 +8,9 @@
    TeensySerial (so it compiles with Teensyduino 1.58 and 1.59 or newer); one byte at a
    time (TM171byte), so zImu.ino can listen for a TM171 and a BNO085 on Serial5 at the same time; two compiler
    warnings removed (same code).
+   AiO_WEB 4.5, 23 Oct 2026: commands TO the TM171 (tm171Send) and the gyro calibration from the web page
+   (tm171Calib*), after the SYD Dynamics TransducerM user guide (EasyProtocol, Calibration object) and
+   application note AN002. Needs Teensy TX5 (pin 20) wired to the TM171 RXD.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -153,6 +156,10 @@ bool TM171byte(uint8_t temp)
 #endif
         break;
         
+        case 23: // Calibration status report (AiO_WEB: the gyro calibration from the web page, below)
+          tm171CalibReport(ImuData[7], ImuData[8]);     // content: type, control value
+        break;
+
         case 22: // Status Output
           TemperatureV.fBytes[0] = ImuData[11];
           TemperatureV.fBytes[1] = ImuData[12];
@@ -194,6 +201,151 @@ bool TM171byte(uint8_t temp)
 
 void TM171process() {
   while (SerialImu->available()) TM171byte(SerialImu->read());
+}
+
+// ---------------------------------------------------------------- commands to the TM171 (AiO_WEB)
+// EasyProtocol frame (TransducerM user guide): AA 55, length (4 + content), payload information (32 bits
+// little-endian: CMD 7 bits, 3 reserved, FROM_ID 11 bits, TO_ID 11 bits), content, Modbus CRC16 of the
+// length and payload (little-endian). The host is ID 2; TO_ID 0 reaches every module.
+// Only works with the Teensy TX5 (pin 20) wired to the TM171 RXD: the board joins the TM171 TXD to RX5
+// (jumper SJ1), the other direction may need a wire.
+static uint16_t MODBUS_CRC16_v3(const unsigned char* buf, unsigned int len);   // below
+static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
+{
+    if (n > 64) return;
+    uint8_t f[3 + 4 + 64 + 2];
+    f[0] = 0xAA; f[1] = 0x55; f[2] = (uint8_t)(4 + n);
+    const uint32_t info = (uint32_t)(cmd & 0x7F) | (2UL << 10);     // from the host (2) to everyone (0)
+    f[3] = (uint8_t)info; f[4] = (uint8_t)(info >> 8); f[5] = (uint8_t)(info >> 16); f[6] = (uint8_t)(info >> 24);
+    memcpy(f + 7, content, n);
+    const uint16_t crc = MODBUS_CRC16_v3(f, 3 + 4 + n);              // (it skips the 2 head bytes itself)
+    f[7 + n] = (uint8_t)crc; f[8 + n] = (uint8_t)(crc >> 8);
+    SerialImu->write(f, 9 + n);
+}
+
+// Gyro bias calibration ("run-time static / forced calibration", Calibration object 23, type 0x05, key
+// 0xAA65) from the web page. The TM171 collects data while the tractor stands still (the engine may run:
+// SYD AN002), the firmware tells it to finish after TM171_CALIB_S seconds, and the TM171 reports success
+// (control 0x01) or failure (0xFF). The user guide: the result is kept in RAM, so it lasts until the TM171
+// loses power. Autosteer on, or the tractor moving, stops the calibration.
+#define TM171_CALIB_S       20     // seconds of data (SYD: anything from milliseconds to half an hour; at least 12 s is a full one)
+#define TM171_CALIB_LIMIT   50     // accepted gyro error, x 0.01 deg/s (5..500): more is discarded by the TM171
+#define TM171_CALIB_CONF    0      // how surely the tractor stands still, x 0.01 % (0 = the TM171 decides)
+#define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?)
+
+uint8_t  tmCalibState  = TMC_IDLE;
+uint32_t tmCalibMs     = 0;        // when the state was entered
+uint32_t tmCalibDoneMs = 0;        // last result (0 = none yet)
+uint32_t tmCalibCount  = 0;
+
+static void tm171CalibCmd(uint8_t ctrl, uint32_t p2, uint32_t p3)
+{
+    const uint8_t c[12] = { 0x05, ctrl, 0x65, 0xAA,
+                            (uint8_t)p2, (uint8_t)(p2 >> 8), (uint8_t)(p2 >> 16), (uint8_t)(p2 >> 24),
+                            (uint8_t)p3, (uint8_t)(p3 >> 8), (uint8_t)(p3 >> 16), (uint8_t)(p3 >> 24) };
+    tm171Send(23, c, sizeof(c));
+}
+
+static bool tmCalibBusy() { return tmCalibState == TMC_STARTING || tmCalibState == TMC_RUNNING || tmCalibState == TMC_FINISHING; }
+
+const char* tmCalibName(uint8_t s)      // for the web page
+{
+    switch (s)
+    {
+        case TMC_STARTING:  return "starting";
+        case TMC_RUNNING:   return "running";
+        case TMC_FINISHING: return "finishing";
+        case TMC_OK:        return "ok";
+        case TMC_FAILED:    return "failed";
+        case TMC_NO_ANSWER: return "noanswer";
+        case TMC_ABORTED:   return "aborted";
+        default:            return "";
+    }
+}
+
+// Web page button. False with the reason when it cannot start.
+bool tm171CalibStart(const char** why)
+{
+    if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
+    if (tmCalibBusy())        { *why = "a calibration is already running"; return false; }
+    tmCalibCount++;
+    tmCalibState = TMC_STARTING;
+    tmCalibMs    = millis();
+    tm171CalibCmd(0x03, TM171_CALIB_LIMIT, TM171_CALIB_CONF);
+    StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor still, the engine may run)", (unsigned)TM171_CALIB_S);
+    return true;
+}
+
+// Web page button, or autosteer on / the tractor moving: finish now (the TM171 decides what it can use)
+void tm171CalibStop(const char* why)
+{
+    if (!tmCalibBusy()) return;
+    tm171CalibCmd(0x04, 0, 0);
+    tmCalibState  = TMC_ABORTED;
+    tmCalibMs     = millis();
+    tmCalibDoneMs = tmCalibMs | 1;
+    StatusLog.line("[status] TM171: gyro calibration stopped (%s)", why);
+}
+
+// The TM171's report (Calibration object, type 0x15 = forced calibration)
+void tm171CalibReport(uint8_t type, uint8_t ctrl)
+{
+    if (type != 0x15) return;
+    const uint32_t now = millis();
+    if (ctrl == 0x00 && tmCalibState == TMC_STARTING) { tmCalibState = TMC_RUNNING; tmCalibMs = now; return; }
+    if (!tmCalibBusy()) return;
+    if (ctrl == 0x01)
+    {
+        tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
+        StatusLog.line("[status] TM171: gyro calibration succeeded (kept until the TM171 loses power)");
+    }
+    else if (ctrl == 0xFF)
+    {
+        tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
+        StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration) - the old values stay");
+    }
+}
+
+// From imuProcess() (zImu.ino), with a TM171
+void tm171CalibLoop()
+{
+    if (!tmCalibBusy()) return;
+    const uint32_t now = millis();
+    if (watchdogTimer < WATCHDOG_THRESHOLD) { tm171CalibStop("autosteer engaged"); return; }
+    if (gpsSpeed > 1.0f)                    { tm171CalibStop("the tractor is moving"); return; }
+    switch (tmCalibState)
+    {
+        case TMC_STARTING:
+            if (now - tmCalibMs > TM171_ANSWER_MS)
+            {
+                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+                StatusLog.line("[status] TM171: no answer to the calibration command - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+            }
+            break;
+        case TMC_RUNNING:
+            if (now - tmCalibMs >= (uint32_t)TM171_CALIB_S * 1000UL)
+            {
+                tm171CalibCmd(0x04, 0, 0);
+                tmCalibState = TMC_FINISHING; tmCalibMs = now;
+            }
+            break;
+        case TMC_FINISHING:
+            if (now - tmCalibMs > TM171_ANSWER_MS)
+            {
+                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+                StatusLog.line("[status] TM171: no answer after the calibration - result unknown");
+            }
+            break;
+        default: break;
+    }
+}
+
+// Seconds of data collection left (web page), -1 when not running
+int tm171CalibLeft()
+{
+    if (tmCalibState != TMC_RUNNING) return -1;
+    const uint32_t el = (millis() - tmCalibMs) / 1000UL;
+    return el >= TM171_CALIB_S ? 0 : (int)(TM171_CALIB_S - el);
 }
 
 bool TM171detectOnPort(TeensySerial* port, uint32_t detectionMs)

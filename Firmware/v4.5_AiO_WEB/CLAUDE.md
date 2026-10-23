@@ -107,7 +107,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | File | Purpose |
 |------|---------|
 | `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading |
-| `TM171.ino` | TM171 on Serial5 |
+| `TM171.ino` | TM171 on Serial5: reading, and the gyro calibration from the web page (commands on TX5, pin 20: needs a wire to the TM171 RXD) |
 | `BNO08x_AOG.cpp` / `.h` | SparkFun BNO080 library (MIT), AgOpenGPS version |
 
 ### Network and web (AiO 26: `aio_system`)
@@ -262,7 +262,7 @@ The addresses must not move: settings must survive a firmware update.
 | Pin / port | Function |
 |------------|----------|
 | Serial7 (28 RX / 29 TX) | GNSS receiver, 460800 |
-| Serial5 | TM171 or BNO085 RVC, 115200 |
+| Serial5 | TM171 or BNO085 RVC, 115200. TX5 (pin 20) is not wired on the board: the TM171 calibration needs a wire to the TM171 RXD |
 | Wire (18 / 19) | BNO085 on I2C |
 | Wire1 | ADS1115 (WAS) |
 | Serial3 | correction radio (XBee), 115200 |

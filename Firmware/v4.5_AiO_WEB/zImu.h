@@ -27,6 +27,27 @@ enum ImuType : uint8_t
 extern uint8_t imuType;
 extern uint8_t imuBnoAddr;
 
+// AiO_WEB: TM171 gyro calibration from the web page (TM171.ino)
+enum TmCalib : uint8_t
+{
+    TMC_IDLE = 0,
+    TMC_STARTING,   // start command sent, waiting for the TM171's "started" report
+    TMC_RUNNING,    // the TM171 collects data (TM171_CALIB_S seconds)
+    TMC_FINISHING,  // finish command sent, waiting for the result
+    TMC_OK,         // succeeded (kept until the TM171 loses power)
+    TMC_FAILED,     // the TM171 rejected the data (it moved, too much vibration)
+    TMC_NO_ANSWER,  // nothing came back (the TX5 wire?)
+    TMC_ABORTED     // stopped: web page, autosteer on, the tractor moving
+};
+extern uint8_t  tmCalibState;
+extern uint32_t tmCalibDoneMs, tmCalibCount;
+bool        tm171CalibStart(const char** why);
+void        tm171CalibStop(const char* why);
+void        tm171CalibLoop();
+void        tm171CalibReport(uint8_t type, uint8_t ctrl);
+int         tm171CalibLeft();
+const char* tmCalibName(uint8_t s);
+
 void        imuSetup();
 void        imuProcess();
 const char* imuName();      // "TM171", "BNO085", "IMU" (none found)
