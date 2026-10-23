@@ -14,6 +14,9 @@
    AiO_WEB 4.5, 23 Oct 2026: the "new install" calibration (CalibB, saved in the TM171's flash) as a second button.
    AiO_WEB 4.5, 23 Oct 2026: the TM171's settings (Setting object 21) read and written from the web page
    (tm171Setting*): magnetometer, filters and gains, outputs, boot mode, silent time, output rate.
+   AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
+   (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
+   warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -64,8 +67,10 @@ uint32_t TM171rpyCount = 0;                           // roll-pitch-yaw packets 
 
 //#define TM171DEBUG
 
+uint32_t tm171Baud = 115200;   // AiO_WEB: the baud rate Serial5 runs at (tm171ScanBaud may change it)
+
 void TM171setup() {
-  SerialImu->begin(115200); 
+  SerialImu->begin(tm171Baud); 
   SerialImu->addMemoryForWrite(SerialImutxbuffer, serial_buffer_size);
   SerialImu->addMemoryForRead(SerialImurxbuffer, serial_buffer_size);
 }
@@ -276,12 +281,86 @@ uint32_t tmSetMs     = 0;        // when read (0 = never)
 uint32_t tmSetReqMs  = 0;        // request sent, no answer yet (0 = none pending)
 uint32_t tmSetWriteMs = 0;       // our write, to read the settings back after it
 uint32_t tmSetNoAnswer = 0;      // requests without an answer (the TX5 wire?)
+uint32_t tmBaudSwitchMs = 0;     // a write changed the TM171's baud rate: Serial5 follows after this time
+uint32_t tmBaudNew = 0;
 uint32_t TM171rpyRate = 0;       // roll-pitch-yaw packets per second
 
 static uint32_t tmSetU32(const uint8_t* p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
 static uint16_t tmSetU16(const uint8_t* p) { return (uint16_t)(p[0] | (p[1] << 8)); }
 static void     tmSetPut16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
 static void     tmSetPut32(uint8_t* p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }
+
+// ---------------------------------------------------------------- set-up check (AiO_WEB)
+// Nothing at 115200 at start-up: look for the TM171 at its other baud rates (zImu.ino, imuSetup). Found:
+// Serial5 stays at that rate, so the TM171 works, and the page warns.
+#define TM171_SCAN_MS 400
+bool tm171ScanBaud()
+{
+    static const uint32_t rates[] = { 460800, 230400, 921600, 57600, 38400, 9600 };
+    for (uint8_t k = 0; k < sizeof(rates) / sizeof(rates[0]); k++)
+    {
+        SerialImu->begin(rates[k]);
+        while (SerialImu->available()) SerialImu->read();
+        parseState = WAIT_HEADER_1; TM171goodPackets = 0; TM171DataSeen = false;
+        const uint32_t t0 = millis();
+        while (millis() - t0 < TM171_SCAN_MS)
+        {
+            TM171process();
+            if (TM171goodPackets > 0) { tm171Baud = rates[k]; return true; }
+            delay(1);
+        }
+    }
+    SerialImu->begin(115200);
+    tm171Baud = 115200;
+    parseState = WAIT_HEADER_1; TM171goodPackets = 0; TM171DataSeen = false;
+    return false;
+}
+
+// The AgOpenGPS set-up (the ImuAssistant settings from the AgOpenGPS forum): magnetometer off, GyroErrFilter
+// on with the accelerometer gain 3.50, Self-Adapt on with the magnetometer gain 1.00, roll-pitch-yaw and
+// status output, UART on at 115200, 25 Hz (inhibit 40 ms), silent time 0, Auto boot mode.
+#define TM171_AOG_ACC      350
+#define TM171_AOG_MAG      100
+#define TM171_AOG_INHIBIT  40
+static const TmSetForm TM171_AOG_FORM = { false, true, true, true, true, 0, TM171_AOG_ACC, TM171_AOG_MAG, TM171_AOG_INHIBIT, 0, 1152 };
+
+uint32_t tmFixMs = 0;   // "Fix TM171 setup" pressed (0 = never)
+
+// "" when the TM171 is set up for AgOpenGPS, else what differs (for the page, the log and the program)
+const char* tm171SetupWhy()
+{
+    static char why[120];
+    why[0] = '\0';
+    if (imuType != IMU_TM171) return why;
+    auto add = [&](const char* s) { if (why[0]) strlcat(why, ", ", sizeof(why)); strlcat(why, s, sizeof(why)); };
+    if (tm171Baud != 115200) { char b[24]; snprintf(b, sizeof(b), "%lu baud", (unsigned long)tm171Baud); add(b); }
+    if (!tmSetValid) return why;
+    const uint32_t w = tmSetU32(tmSet);
+    if (TM171_SET_BIT(w, 2))  add("magnetometer on");
+    if (!TM171_SET_BIT(w, 3)) add("GyroErrFilter off");
+    if (!TM171_SET_BIT(w, 4)) add("Self-Adapt off");
+    if (!TM171_SET_BIT(w, 5)) add("status output off");
+    if (!TM171_SET_BIT(w, 11)) add("RPY output off");
+    if (((w >> 24) & 3) != 0) add("boot mode not Auto");
+    if (tmSetU16(tmSet + 6) != 1152) add("UART not 115200");
+    if (tmSetU16(tmSet + 10) != TM171_AOG_ACC) add("accelerometer gain");
+    if (tmSetU16(tmSet + 12) != TM171_AOG_MAG) add("magnetometer gain");
+    if (tmSetU16(tmSet + 14) != TM171_AOG_INHIBIT) add("output rate");
+    if (tmSetU32(tmSet + 16) != 0) add("silent time");
+    return why;
+}
+
+// The "Fix TM171 setup" button: the AgOpenGPS set-up and 115200 baud, saved to the TM171's flash. Serial5
+// follows the new baud rate 300 ms later (tm171SettingLoop) and the settings are read back.
+bool tm171FixSetup(const char** why)
+{
+    if (!tm171SettingWrite(TM171_AOG_FORM, why)) return false;
+    tmFixMs = millis() | 1;
+    return true;
+}
+
+// No reply ever to a settings request: the TM171's RX pin is not wired to Teensy TX5 (the web page explains)
+bool tm171NoWire() { return tmSetNoAnswer > 0 && tmSetMs == 0; }
 
 // Ask the TM171 for its Setting object (Request object 12)
 void tm171SettingRead()
@@ -329,13 +408,16 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     setBit(19, true);                            // UART output: never off (the Teensy would lose the TM171)
     w = (w & ~(3UL << 24)) | ((uint32_t)f.boot << 24);
     tmSetPut32(s, w);
+    if (f.baud100) tmSetPut16(s + 6, f.baud100);     // 0 = keep the baud rate as read
     tmSetPut16(s + 10, f.accGain);
     tmSetPut16(s + 12, f.magGain);
     tmSetPut16(s + 14, f.inhibit);
     tmSetPut32(s + 16, f.silent);
     tm171Send(21, s, TM171_SET_LEN);
+    SerialImu->flush();                              // sent before Serial5 may change its baud rate
     tmSetAckMs = 0;
     tmSetWriteMs = millis() | 1;
+    if (f.baud100 && (uint32_t)f.baud100 * 100UL != tm171Baud) { tmBaudNew = (uint32_t)f.baud100 * 100UL; tmBaudSwitchMs = tmSetWriteMs; }
     StatusLog.line("[status] TM171: settings written (switches 0x%08lX, gains %u/%u, inhibit %u ms, silent %lu s%s)", (unsigned long)w,
                    (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.inhibit, (unsigned long)f.silent, f.save ? ", saved to flash" : ", this session only");
     return true;
@@ -350,12 +432,40 @@ void tm171SettingLoop()
     const uint32_t now = millis();
     if (!firstMs) { firstMs = now | 1; rateMs = now; }
     if (!asked && now - firstMs > 2000) { asked = true; tm171SettingRead(); }
+    if (tmBaudSwitchMs && now - tmBaudSwitchMs > 300)
+    {
+        tmBaudSwitchMs = 0;
+        tm171Baud = tmBaudNew;
+        SerialImu->begin(tm171Baud);
+        while (SerialImu->available()) SerialImu->read();
+        parseState = WAIT_HEADER_1;
+        StatusLog.line("[status] TM171: Serial5 now at %lu baud", (unsigned long)tm171Baud);
+    }
     if (tmSetWriteMs && now - tmSetWriteMs > 500) { tmSetWriteMs = 0; tm171SettingRead(); }
+    // Set-up warning on the program's screen (PGN 221): once a minute while something differs
+    static uint32_t warnMs = 0;
+    static bool warned = false;
+    const char* why = tm171SetupWhy();
+    if (why[0] && !tmSetWriteMs && !tmBaudSwitchMs && now - firstMs > 10000 && (!warned || now - warnMs > 60000))
+    {
+        warnMs = now;
+        if (!warned) StatusLog.line("[status] TM171: not set up for AgOpenGPS (%s) - IMU tab, Fix TM171 setup", why);
+        warned = true;
+        hwMessage("TM171 not set up for AgOpenGPS: module page, IMU tab, Fix TM171 setup", 10, true);
+    }
+    else if (!why[0] && warned)
+    {
+        warned = false;
+        StatusLog.println("[status] TM171: set up for AgOpenGPS");
+    }
     if (tmSetReqMs && now - tmSetReqMs > TM171_ANSWER_MS)
     {
         tmSetReqMs = 0;
-        if (tmSetNoAnswer++ == 0)
-            StatusLog.line("[status] TM171: no reply to the settings request - is Teensy TX5 (pin 20) wired to the TM171 RX?");
+        if (tmSetNoAnswer++ == 0 && !tmSetMs)
+        {
+            StatusLog.println("[status] TM171: no reply - its RX pin is not wired to Teensy TX5 (pin 20). Roll, pitch and yaw work; calibration and settings from the page do not");
+            hwMessage("TM171 RX not wired to Teensy TX5: calibration and setup from the page unavailable", 10, true);
+        }
     }
     if (now - rateMs >= 1000) { rateMs = now; TM171rpyRate = TM171rpyCount; TM171rpyCount = 0; }
 }
@@ -372,6 +482,10 @@ void tm171SettingJson(Json& j)
     j.i("ackAge", tmSetAckMs ? (long)((now - tmSetAckMs) / 1000) : -1);
     j.u("noAnswer", tmSetNoAnswer);
     j.u("rate", TM171rpyRate);
+    j.u("baudNow", tm171Baud);
+    j.bo("noWire", tm171NoWire());
+    j.str("setupWhy", tm171SetupWhy());
+    j.i("fixAgo", tmFixMs ? (long)((now - tmFixMs) / 1000) : -1);
     if (tmSetMs)
     {
         const uint32_t w = tmSetU32(tmSet);

@@ -771,8 +771,15 @@ static void apiImuPost(EthernetClient& c, const char* body)
         if (boot < 0 || boot > 2 || acc < 0 || acc > 65535 || mg < 0 || mg > 65535 || inh < 0 || inh > 65535 || sil < 0 || sil > 65)
         { webSendError(c, 400, "value out of range"); return; }
         f.boot = (uint8_t)boot; f.accGain = (uint16_t)acc; f.magGain = (uint16_t)mg; f.inhibit = (uint16_t)inh; f.silent = (uint32_t)sil;
+        f.baud100 = 0;                                   // the baud rate is not changed from the form
         const char* why = "";
         if (!tm171SettingWrite(f, &why)) { webSendError(c, 409, why); return; }
+    }
+    else if (!strcmp(act, "fixsetup"))               // the AgOpenGPS set-up + 115200, saved to flash
+    {
+        if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+        const char* why = "";
+        if (!tm171FixSetup(&why)) { webSendError(c, 409, why); return; }
     }
     else { webSendError(c, 400, "unknown act"); return; }
     webSendJson(c, 200, "{\"ok\":true}");

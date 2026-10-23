@@ -14,7 +14,9 @@
 //   1. Serial5 at 115200 for IMU_DETECT_MS: a TM171 (packets AA 55 ..., CRC16) or a BNO085 in RVC
 //      mode (frames AA AA ..., 19 bytes, 100 a second). The TM171 sits where the BNO085 module goes
 //      on the AiO v4.5 boards, on the same Serial5 (jumper SJ1 joins the BNO085's SDA / TX to RX5).
-//   2. If neither: a BNO085 on I2C (Wire, pins 18 / 19), address 0x4A then 0x4B.
+//   2. If neither: a TM171 at its other baud rates (tm171ScanBaud, TM171.ino); found, Serial5 stays at
+//      that rate and the web page offers "Fix TM171 setup".
+//   3. If none: a BNO085 on I2C (Wire, pins 18 / 19), address 0x4A then 0x4B.
 // Whatever it finds fills the same values (roll, pitch, yaw), so the heading alignment, the yaw
 // direction learning and the output (zHandlers.ino) work the same with any of them.
 // With none found, the firmware keeps listening on Serial5: a TM171 / BNO085 that starts later
@@ -195,10 +197,14 @@ void imuSetup()
         imuListen();
         delay(1);
     }
+    if (imuType == IMU_NONE && tm171ScanBaud()) imuType = IMU_TM171;   // a TM171 at another baud rate (TM171.ino)
     if (imuType == IMU_NONE) bnoProbe();
     switch (imuType)
     {
-        case IMU_TM171:   StatusLog.println("[boot] IMU: TM171 on Serial5"); break;
+        case IMU_TM171:
+            if (tm171Baud == 115200) StatusLog.println("[boot] IMU: TM171 on Serial5");
+            else StatusLog.line("[boot] IMU: TM171 on Serial5 at %lu baud (not 115200: IMU tab, Fix TM171 setup)", (unsigned long)tm171Baud);
+            break;
         case IMU_BNO_RVC: StatusLog.println("[boot] IMU: BNO085 on Serial5 (RVC mode)"); break;
         case IMU_BNO_I2C: StatusLog.line("[boot] IMU: BNO085 on I2C 0x%02X (pins 18 / 19)", imuBnoAddr); bnoReadMs = millis(); break;
         default:          StatusLog.println("[boot] IMU NOT detected: no TM171 or BNO085 on Serial5, no BNO085 on I2C 0x4A / 0x4B - no roll, no IMU heading (still listening on Serial5)");
