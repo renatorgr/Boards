@@ -11,6 +11,7 @@
    AiO_WEB 4.5, 23 Oct 2026: commands TO the TM171 (tm171Send) and the gyro calibration from the web page
    (tm171Calib*), after the SYD Dynamics TransducerM user guide (EasyProtocol, Calibration object) and
    application note AN002. Needs Teensy TX5 (pin 20) wired to the TM171 RXD.
+   AiO_WEB 4.5, 23 Oct 2026: the "new install" calibration (CalibB, saved in the TM171's flash) as a second button.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -232,8 +233,14 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 #define TM171_CALIB_LIMIT   50     // accepted gyro error, x 0.01 deg/s (5..500): more is discarded by the TM171
 #define TM171_CALIB_CONF    0      // how surely the tractor stands still, x 0.01 % (0 = the TM171 decides)
 #define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?)
+// "New install" calibration (CalibB in ImuAssistant, Calibration object type 0x04, key 0xAA35): the TM171
+// takes about 20 s of data with the module still, writes the result to its FLASH and reports success (0x01) or
+// failure (0xFF); no "started" report, no stop command. SYD: keep the power on during those 20 s (a power-off
+// then may damage the TM171), and power-cycle the TM171 afterwards.
+#define TM171_INSTALL_MS    60000  // no result in this time = no answer
 
 uint8_t  tmCalibState  = TMC_IDLE;
+uint8_t  tmCalibKind   = TMC_KIND_GYRO;   // what the state is about: gyro (RAM) or new install (flash)
 uint32_t tmCalibMs     = 0;        // when the state was entered
 uint32_t tmCalibDoneMs = 0;        // last result (0 = none yet)
 uint32_t tmCalibCount  = 0;
@@ -263,23 +270,40 @@ const char* tmCalibName(uint8_t s)      // for the web page
     }
 }
 
-// Web page button. False with the reason when it cannot start.
-bool tm171CalibStart(const char** why)
+// Web page buttons. False with the reason when it cannot start.
+bool tm171CalibStart(uint8_t kind, const char** why)
 {
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
     if (tmCalibBusy())        { *why = "a calibration is already running"; return false; }
     tmCalibCount++;
-    tmCalibState = TMC_STARTING;
-    tmCalibMs    = millis();
-    tm171CalibCmd(0x03, TM171_CALIB_LIMIT, TM171_CALIB_CONF);
-    StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor still, the engine may run)", (unsigned)TM171_CALIB_S);
+    tmCalibKind = kind;
+    tmCalibMs   = millis();
+    if (kind == TMC_KIND_INSTALL)
+    {
+        const uint8_t c[12] = { 0x04, 0x02, 0x35, 0xAA, 0,0,0,0, 0,0,0,0 };
+        tm171Send(23, c, sizeof(c));
+        tmCalibState = TMC_RUNNING;                 // the TM171 sends no "started": only the result
+        StatusLog.line("[status] TM171: new install calibration started (about 20 s; keep the tractor still and the power ON)");
+    }
+    else
+    {
+        tmCalibState = TMC_STARTING;
+        tm171CalibCmd(0x03, TM171_CALIB_LIMIT, TM171_CALIB_CONF);
+        StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor still, the engine may run)", (unsigned)TM171_CALIB_S);
+    }
     return true;
 }
 
-// Web page button, or autosteer on / the tractor moving: finish now (the TM171 decides what it can use)
+// Web page button, or autosteer on / the tractor moving: finish now (the TM171 decides what it can use).
+// The new install calibration has no stop command: it goes on in the TM171 (it fails if the tractor moves).
 void tm171CalibStop(const char* why)
 {
     if (!tmCalibBusy()) return;
+    if (tmCalibKind == TMC_KIND_INSTALL)
+    {
+        StatusLog.line("[status] TM171: new install calibration cannot be stopped (%s) - waiting for the result", why);
+        return;
+    }
     tm171CalibCmd(0x04, 0, 0);
     tmCalibState  = TMC_ABORTED;
     tmCalibMs     = millis();
@@ -287,22 +311,37 @@ void tm171CalibStop(const char* why)
     StatusLog.line("[status] TM171: gyro calibration stopped (%s)", why);
 }
 
-// The TM171's report (Calibration object, type 0x15 = forced calibration)
+// The TM171's report (Calibration object: type 0x15 = forced gyro calibration, 0x14 = new install)
 void tm171CalibReport(uint8_t type, uint8_t ctrl)
 {
-    if (type != 0x15) return;
     const uint32_t now = millis();
-    if (ctrl == 0x00 && tmCalibState == TMC_STARTING) { tmCalibState = TMC_RUNNING; tmCalibMs = now; return; }
-    if (!tmCalibBusy()) return;
-    if (ctrl == 0x01)
+    if (type == 0x15 && tmCalibKind == TMC_KIND_GYRO)
     {
-        tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-        StatusLog.line("[status] TM171: gyro calibration succeeded (kept until the TM171 loses power)");
+        if (ctrl == 0x00 && tmCalibState == TMC_STARTING) { tmCalibState = TMC_RUNNING; tmCalibMs = now; return; }
+        if (!tmCalibBusy()) return;
+        if (ctrl == 0x01)
+        {
+            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            StatusLog.line("[status] TM171: gyro calibration succeeded (kept until the TM171 loses power)");
+        }
+        else if (ctrl == 0xFF)
+        {
+            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration) - the old values stay");
+        }
     }
-    else if (ctrl == 0xFF)
+    else if (type == 0x14 && tmCalibKind == TMC_KIND_INSTALL && tmCalibBusy())
     {
-        tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-        StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration) - the old values stay");
+        if (ctrl == 0x01)
+        {
+            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            StatusLog.line("[status] TM171: new install calibration saved in the TM171's flash - switch the module off and on");
+        }
+        else if (ctrl == 0xFF)
+        {
+            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            StatusLog.line("[status] TM171: new install calibration FAILED (the tractor moved?) - switch the module off and on, then try again");
+        }
     }
 }
 
@@ -311,6 +350,15 @@ void tm171CalibLoop()
 {
     if (!tmCalibBusy()) return;
     const uint32_t now = millis();
+    if (tmCalibKind == TMC_KIND_INSTALL)        // nothing to send: wait for the result
+    {
+        if (now - tmCalibMs > TM171_INSTALL_MS)
+        {
+            tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            StatusLog.line("[status] TM171: no result of the new install calibration - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+        }
+        return;
+    }
     if (watchdogTimer < WATCHDOG_THRESHOLD) { tm171CalibStop("autosteer engaged"); return; }
     if (gpsSpeed > 1.0f)                    { tm171CalibStop("the tractor is moving"); return; }
     switch (tmCalibState)
@@ -343,7 +391,7 @@ void tm171CalibLoop()
 // Seconds of data collection left (web page), -1 when not running
 int tm171CalibLeft()
 {
-    if (tmCalibState != TMC_RUNNING) return -1;
+    if (tmCalibState != TMC_RUNNING || tmCalibKind != TMC_KIND_GYRO) return -1;
     const uint32_t el = (millis() - tmCalibMs) / 1000UL;
     return el >= TM171_CALIB_S ? 0 : (int)(TM171_CALIB_S - el);
 }

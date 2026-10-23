@@ -216,6 +216,13 @@ engine may run). The IMU card has a **Calibrate gyro** button for it:
 - `[status]` lines: started, succeeded, failed, stopped, no answer. Constants in `TM171.ino`: `TM171_CALIB_S`
   (20 s), `TM171_CALIB_LIMIT` (accepted gyro error, 0.5 °/s), `TM171_CALIB_CONF`.
 
+A second button, **New install calibration**, is the "CalibB" of SYD's ImuAssistant: the TM171 takes about
+20 s of data with the module still and writes the result to its **flash**. For after mounting the TM171, or
+after a big change of temperature. Tractor stopped, autosteer off. It cannot be stopped once started, and
+**the power must not be cut meanwhile** (SYD: a power-off during those 20 s can damage the TM171). The page
+shows the TM171's answer (saved / failed / no result after 60 s); **switch the module off and on afterwards**,
+as SYD asks.
+
 The magnetometer is not calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is not used.
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
 

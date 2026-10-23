@@ -39,9 +39,10 @@ enum TmCalib : uint8_t
     TMC_NO_ANSWER,  // nothing came back (the TX5 wire?)
     TMC_ABORTED     // stopped: web page, autosteer on, the tractor moving
 };
-extern uint8_t  tmCalibState;
+enum TmCalibKind : uint8_t { TMC_KIND_GYRO = 0, TMC_KIND_INSTALL = 1 };   // RAM, or saved in the TM171's flash
+extern uint8_t  tmCalibState, tmCalibKind;
 extern uint32_t tmCalibDoneMs, tmCalibCount;
-bool        tm171CalibStart(const char** why);
+bool        tm171CalibStart(uint8_t kind, const char** why);
 void        tm171CalibStop(const char* why);
 void        tm171CalibLoop();
 void        tm171CalibReport(uint8_t type, uint8_t ctrl);
