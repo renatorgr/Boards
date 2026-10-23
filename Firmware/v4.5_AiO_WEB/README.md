@@ -270,7 +270,11 @@ wire is needed; without it the page can only warn.
   wrong baud rate, or when it lacks settings. The GPS tab, **Second F9P check**, has the details and the
   buttons: **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
 - A fresh F9P sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies
-  it, checks it and can load `DualRelPos.txt` into it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
+  it and checks it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
+- **Set up automatically**: a second F9P found at another baud rate is set to 460800 (saved in the F9P);
+  one that lacks what the Teensy needs gets the AgOpenGPS settings (`DualRelPos.txt`) loaded, then is
+  checked again. Once each per start-up, only with autosteer off. Status and `[status]` say what is being
+  done and what was done; the GPS tab's buttons stay for doing it by hand.
 - A GNSS receiver on the GPS2 port while the port is set to the XIAO or off (valid NMEA or UBX arriving):
   Status says to set **GPS2 port** to the second F9P.
 
