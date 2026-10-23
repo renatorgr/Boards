@@ -65,7 +65,7 @@ dd.nw{white-space:nowrap;overflow-wrap:normal}
 .pill.bad{background:color-mix(in srgb,var(--bad) 16%,transparent)}
 .mono{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .note{color:var(--mute);font-size:13.5px;margin:6px 0 0}
-#ck0 .note.bad,#ck1 .note.bad{color:var(--bad)}
+#ck0 .note.bad,#ck1 .note.bad,.note.bad{color:var(--bad)}.note.warn{color:var(--warn)}.note.ok{color:var(--ok)}
 .box{background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:8px}
 /* Machine tab sections: squares in the AgOpenWeb section colours (its SECTION_COLORS) */
 .msecs{display:grid;grid-template-columns:repeat(var(--n,5),1fr);gap:4px;margin-top:8px}
