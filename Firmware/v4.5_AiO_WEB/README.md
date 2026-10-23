@@ -149,7 +149,8 @@ What goes to the program does not depend on this: a receiver that sends HPR is t
 ### Receiver check (GPS tab)
 
 - **Data at 460800 baud**: valid, wrong baud rate (bytes but nothing valid; also a warning on Status), or nothing arriving. The GGA, VTG and HPR rates as they arrive (the Teensy wants 10 Hz).
-- **At start-up**, with no valid data at 460800 within 5 s (15 s for a silent receiver), the Teensy looks for the receiver's baud rate. **Set to 460800 and save** then changes it in the receiver (u-blox: `CFG-UART1-BAUDRATE` in all layers; UM982: `CONFIG COM1/2/3 460800` and `SAVECONFIG`).
+- **At start-up**, with no valid data at 460800 within 5 s (15 s for a silent receiver), the Teensy looks for the receiver's baud rate, then **sets it to 460800 itself** and saves it (u-blox: `CFG-UART1-BAUDRATE` in all layers; UM982: `CONFIG COM1/2/3 460800` and `SAVECONFIG`). The **Set to 460800 and save** button does the same by hand.
+- **Set up automatically**: a receiver that lacks what the Teensy needs after its check (a new module, for example) gets the AgOpenGPS settings loaded by the Teensy itself (F9P: `Single.txt` or `DualPosition.txt`, second F9P: `DualRelPos.txt`; UM982: `ConfigUM982D.txt`, or `ConfigUM982S.txt` with "one antenna" in Settings), then is checked again. Once each per start-up, only with autosteer off and while nothing else has the receiver. Status shows it in the **Setup** row of the GNSS and dual-antenna cards and in a warning at the top ("the Teensy is loading the AgOpenGPS settings…"), and `[status]` records it. The X20P is only checked (no AgOpenGPS file).
 - **What the Teensy needs**: u-blox keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`); UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800. The wrong values first, in orange; the right ones in a collapsed list.
 - **Compare with AOGConfigOMatic** (F9P: every key of the file; UM982: which commands it already has) and **Load the AgOpenGPS settings** (F9P: each line as one `UBX-CFG-VALSET` to RAM, BBR and flash; UM982: one command at a time, then `SAVECONFIG`).
 - **Firmware**: the AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**).
@@ -271,10 +272,8 @@ wire is needed; without it the page can only warn.
   buttons: **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
 - A fresh F9P sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies
   it and checks it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
-- **Set up automatically**: a second F9P found at another baud rate is set to 460800 (saved in the F9P);
-  one that lacks what the Teensy needs gets the AgOpenGPS settings (`DualRelPos.txt`) loaded, then is
-  checked again. Once each per start-up, only with autosteer off. Status and `[status]` say what is being
-  done and what was done; the GPS tab's buttons stay for doing it by hand.
+- **Set up automatically**, like the first receiver (see the receiver check): found at another baud rate it
+  is set to 460800; lacking what the Teensy needs it gets `DualRelPos.txt` loaded, then is checked again.
 - A GNSS receiver on the GPS2 port while the port is set to the XIAO or off (valid NMEA or UBX arriving):
   Status says to set **GPS2 port** to the second F9P.
 
@@ -454,6 +453,9 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 - **AiO v4.5 Micro:** in the GPS2 socket (U11), through the adapter board or the 3D-printed holder: pin 1 = 3V3, pin 2 = Teensy RX2 ← XIAO D6, pin 3 = Teensy TX2 → XIAO D7, pins 10 / 11 = GND.
 - **AiO v4.5 Standard:** header P8 (pin 1 = RX2 ← D6, pin 2 = TX2 → D7), 3.3 V and GND from another header.
 - Web page: Settings → GPS2 port: XIAO ESP32 (the default).
+- The XIAO card on Status says when the XIAO runs another program version than this firmware (update it on
+  the XIAO's page, or over USB-C), and, when no hello ever came, that a new XIAO has to be programmed first
+  (`v4.5_XIAO_ESP32C3_USB.bin` / `S3_USB.bin`, see `v4.5_XIAO_ESP32_bin/README.md`), with a link to the files.
 - Powered from the board's 3.3 V: **a USB cable to the XIAO must not carry 5 V** while it is on the board. Program it off the board, or over WiFi from its own page.
 - The box is aluminium: use an external antenna on the XIAO's U.FL connector.
 - Bench without the board: XIAO on USB-C, and D6 → Teensy pin 7, D7 → pin 8, GND → GND.

@@ -1176,6 +1176,22 @@ static const char* umResName(uint8_t r)
     }
 }
 
+// What the Teensy needs from the UM982 and its last read says it lacks (Status page, the automatic set-up
+// of zRxCheck.ino): GGA, VTG and HPR (two antennas) at 10 Hz on the port wired to the Teensy, at 460800.
+// out: "GGA at 10 Hz, port at 460800"; true when something is missing. Nothing read yet: false, "".
+bool umTeensyMissing(char* out, size_t n)
+{
+    out[0] = '\0';
+    if (!umReadMs) return false;
+    static const uint8_t ITEM[3] = {UM_GGA, UM_VTG, UM_HPR};
+    static const char* const NAME[3] = {"GGA at 10 Hz", "VTG at 10 Hz", "HPR at 10 Hz"};
+    for (uint8_t i = 0; i < (rxSingleAntenna() ? 2 : 3); i++)
+        if (!umHave[ITEM[i]] || umVal[ITEM[i]] != 100) snprintf(out + strlen(out), n - strlen(out), "%s%s", out[0] ? ", " : "", NAME[i]);
+    if (umPort >= 0 && umBaud[umPort] && umBaud[umPort] != UM_TEENSY_BAUD)
+        snprintf(out + strlen(out), n - strlen(out), "%s%s", out[0] ? ", " : "", "port at 460800");
+    return out[0] != '\0';
+}
+
 static void umJson(Json& j)
 {
     const uint32_t now = millis();
