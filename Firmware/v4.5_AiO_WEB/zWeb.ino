@@ -306,6 +306,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.u("crcErr", imuErrors());
     // AiO_WEB: the TM171 gyro calibration (TM171.ino)
     j.str("calib", tmCalibName(tmCalibState));
+    j.str("calibKind", tmCalibKind == TMC_KIND_INSTALL ? "install" : "gyro");
     j.i("calibLeft", tm171CalibLeft());
     j.i("calibAgo", tmCalibDoneMs ? (long)((now - tmCalibDoneMs) / 1000) : -1);
     j.u("calibN", tmCalibCount);
@@ -738,17 +739,18 @@ static bool tractorMoving()
     return !bench && ((rtk && lastSpeedKmh > OTA_MAX_KMH) || gpsSpeed > OTA_MAX_KMH);
 }
 
-// POST /api/imu act=calib (start the TM171 gyro calibration) / act=calibstop (TM171.ino)
+// POST /api/imu act=calib (TM171 gyro calibration, RAM) / act=install (new install calibration, flash) /
+// act=calibstop (TM171.ino)
 static void apiImuPost(EthernetClient& c, const char* body)
 {
     char act[16];
     if (!formValue(body, "act", act, sizeof(act))) { webSendError(c, 400, "no act"); return; }
-    if (!strcmp(act, "calib"))
+    if (!strcmp(act, "calib") || !strcmp(act, "install"))
     {
         if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
         if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)"); return; }
         const char* why = "";
-        if (!tm171CalibStart(&why)) { webSendError(c, 409, why); return; }
+        if (!tm171CalibStart(act[0] == 'i' ? TMC_KIND_INSTALL : TMC_KIND_GYRO, &why)) { webSendError(c, 409, why); return; }
     }
     else if (!strcmp(act, "calibstop")) tm171CalibStop("web page");
     else { webSendError(c, 400, "unknown act"); return; }
