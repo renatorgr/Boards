@@ -49,6 +49,21 @@ void        tm171CalibReport(uint8_t type, uint8_t ctrl);
 int         tm171CalibLeft();
 const char* tmCalibName(uint8_t s);
 
+// AiO_WEB: the TM171's settings from the web page (TM171.ino)
+struct TmSetForm
+{
+    bool     mag, gyroErr, selfAdapt, status, save;
+    uint8_t  boot;            // 0 auto, 1 static, 2 dynamic
+    uint16_t accGain, magGain; // x 0.01
+    uint16_t inhibit;         // ms between packets
+    uint32_t silent;          // s after power-on
+};
+extern uint32_t TM171rpyRate;
+void tm171SettingRead();
+bool tm171SettingWrite(const TmSetForm& f, const char** why);
+void tm171SettingLoop();
+void tm171SettingJson(Json& j);
+
 void        imuSetup();
 void        imuProcess();
 const char* imuName();      // "TM171", "BNO085", "IMU" (none found)

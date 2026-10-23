@@ -224,6 +224,22 @@ shows the TM171's answer (saved / failed / no result after 60 s); **switch the m
 as SYD asks.
 
 The magnetometer is not calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is not used.
+
+### TM171 settings from the page
+
+Under the IMU card, **TM171 settings** (a fold-out) shows what the TM171 answered to a settings request at
+start-up (Setting object 21): magnetometer on/off, GyroErrFilter and the accelerometer gain (the knob next to
+it in ImuAssistant), Self-Adapt filter and the magnetometer gain, status output, boot mode, output data rate
+(sent to the TM171 as an inhibit time: 25 Hz = 40 ms), power-on silent time. **AgOpenGPS values** fills in
+the settings from the AgOpenGPS forum (Mag off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART
+115200, 25 Hz, silent 0, Auto boot); **Write to the TM171** sends them, saved to the TM171's flash unless
+you untick it, and reads them back; the TM171 acknowledges the write. The measured output rate is shown.
+
+Kept out of reach on purpose: the gyro, the accelerometer, the roll-pitch-yaw output and the UART output
+are always left on, and the UART baud rate is never changed (the Teensy would lose the TM171; use
+ImuAssistant over the TM171's USB-C for that). SYD's guide does not number the bits of the settings word, so
+the firmware checks the reserved bits of what it read before writing anything; if they do not match, the
+page says "unknown layout" and refuses to write. Everything needs the TX5 wire.
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
 
 ## Dual F9P: second F9P on the GPS2 port

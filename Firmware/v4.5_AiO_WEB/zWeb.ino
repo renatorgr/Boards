@@ -310,6 +310,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.i("calibLeft", tm171CalibLeft());
     j.i("calibAgo", tmCalibDoneMs ? (long)((now - tmCalibDoneMs) / 1000) : -1);
     j.u("calibN", tmCalibCount);
+    if (imuType == IMU_TM171) tm171SettingJson(j);    // "set": the TM171's settings as read (TM171.ino)
     j.close();
 
     j.obj("steer");
@@ -753,6 +754,26 @@ static void apiImuPost(EthernetClient& c, const char* body)
         if (!tm171CalibStart(act[0] == 'i' ? TMC_KIND_INSTALL : TMC_KIND_GYRO, &why)) { webSendError(c, 409, why); return; }
     }
     else if (!strcmp(act, "calibstop")) tm171CalibStop("web page");
+    else if (!strcmp(act, "setread"))
+    {
+        if (imuType != IMU_TM171) { webSendError(c, 409, "no TM171 found"); return; }
+        tm171SettingRead();
+    }
+    else if (!strcmp(act, "setwrite"))
+    {
+        if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+        char v[12];
+        TmSetForm f;
+        auto flag = [&](const char* n) { return formValue(body, n, v, sizeof(v)) && !strcmp(v, "1"); };
+        auto num  = [&](const char* n, long dflt) { return formValue(body, n, v, sizeof(v)) ? atol(v) : dflt; };
+        f.mag = flag("mag"); f.gyroErr = flag("gyroErr"); f.selfAdapt = flag("selfAdapt"); f.status = flag("status"); f.save = flag("save");
+        const long boot = num("boot", 0), acc = num("accGain", 210), mg = num("magGain", 100), inh = num("inhibit", 40), sil = num("silent", 0);
+        if (boot < 0 || boot > 2 || acc < 0 || acc > 65535 || mg < 0 || mg > 65535 || inh < 0 || inh > 65535 || sil < 0 || sil > 65)
+        { webSendError(c, 400, "value out of range"); return; }
+        f.boot = (uint8_t)boot; f.accGain = (uint16_t)acc; f.magGain = (uint16_t)mg; f.inhibit = (uint16_t)inh; f.silent = (uint32_t)sil;
+        const char* why = "";
+        if (!tm171SettingWrite(f, &why)) { webSendError(c, 409, why); return; }
+    }
     else { webSendError(c, 400, "unknown act"); return; }
     webSendJson(c, 200, "{\"ok\":true}");
 }

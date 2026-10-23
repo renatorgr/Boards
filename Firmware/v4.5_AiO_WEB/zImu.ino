@@ -213,6 +213,7 @@ void imuProcess()
         case IMU_TM171:
             TM171process();
             tm171CalibLoop();                               // the gyro calibration from the web page (TM171.ino)
+            tm171SettingLoop();                             // the settings from the web page (TM171.ino)
             break;
         case IMU_BNO_RVC:
             while (SerialImu->available()) rvcByte(SerialImu->read(), true);

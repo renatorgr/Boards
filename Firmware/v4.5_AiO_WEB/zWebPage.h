@@ -132,7 +132,21 @@ a{color:var(--acc)}
    <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd>
    <dt id="tmCalT" class="hidden">Gyro calibration</dt><dd id="tmCal" class="hidden">–</dd></dl>
   <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn">Calibrate gyro</button><span class="note">Tractor stopped, autosteer off; the engine may run. 20 s. The result lasts until the TM171 loses power.</span></div>
-  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn">New install calibration</button><span class="note">Saved in the TM171's flash: after mounting it, or after a big change of temperature. Tractor stopped, autosteer off, about 20 s. Do NOT cut the power meanwhile; switch the module off and on afterwards.</span></div></div>
+  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn">New install calibration</button><span class="note">Saved in the TM171's flash: after mounting it, or after a big change of temperature. Tractor stopped, autosteer off, about 20 s. Do NOT cut the power meanwhile; switch the module off and on afterwards.</span></div>
+  <details class="hidden" id="tmSetDet"><summary class="note" id="tmSetSum">TM171 settings</summary>
+   <div style="margin-top:8px">
+   <label class="opt"><input type="checkbox" id="tsMag"><span>Enable Mag<small>Off for AgOpenGPS: the firmware aligns the heading to the GPS.</small></span></label>
+   <label class="opt"><input type="checkbox" id="tsGyroErr"><span>GyroErrFilter<small>Accelerometer gain: <input type="number" id="tsAcc" min="0.01" max="20" step="0.01"> (ImuAssistant knob by GyroErrFilter; AgOpenGPS forum: 3.50)</small></span></label>
+   <label class="opt"><input type="checkbox" id="tsSelfAdapt"><span>Self-Adapt Filter<small>Magnetometer gain: <input type="number" id="tsMagG" min="0.01" max="20" step="0.01"> (knob by Self-Adapt; 1.00)</small></span></label>
+   <label class="opt"><input type="checkbox" id="tsStatus"><span>Status output<small>Temperature and quality (QoS) packets. RPY output and UART output are always kept on.</small></span></label>
+   <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Takes effect after a power cycle (needs "save to flash").</span></div>
+   <div class="row"><span>Output data rate</span><input type="number" id="tsRate" min="0" max="1000" step="1"> Hz<span class="note">25 for AgOpenGPS (sent as an inhibit time of 40 ms); 0 = as fast as the TM171 can. Measured: <span id="tsRateNow">–</span></span></div>
+   <div class="row"><span>Power-on silent time (s)</span><input type="number" id="tsSilent" min="0" max="65" step="1"></div>
+   <label class="opt"><input type="checkbox" id="tsSave" checked><span>Save to the TM171's flash<small>Off: the settings last until the TM171 loses power.</small></span></label>
+   <div class="row"><button class="sec" type="button" id="tsRead">Read from the TM171</button><button class="sec" type="button" id="tsAog">AgOpenGPS values</button><button class="act" type="button" id="tsWrite">Write to the TM171</button></div>
+   <p class="note" id="tsMsg">–</p>
+   <p class="note">Read from the TM171 at start-up (needs the TX5 wire). UART stays at <span id="tsBaud">–</span>; the baud rate is not changed from here.</p>
+   </div></details></div>
  <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
   <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
@@ -398,7 +412,8 @@ function render(s){
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
-  for(const id of ["tmCalT","tmCal","tmCalRow","tmInstRow"])$(id).classList.toggle("hidden",!tm);
+  for(const id of ["tmCalT","tmCal","tmCalRow","tmInstRow","tmSetDet"])$(id).classList.toggle("hidden",!tm);
+  if(tm&&t.set)renderTmSet(t.set);
   const CAL=inst?{running:"new install: running, keep still and the power on…",ok:"new install: saved in the TM171's flash. Switch the module off and on.",failed:"new install: failed (the tractor moved?). Switch the module off and on, then try again.",noanswer:"new install: no result from the TM171 (TX5 wire?)"}
    :{starting:"starting…",running:"running, "+(t.calibLeft>=0?t.calibLeft+" s left":""),finishing:"finishing…",ok:"OK",failed:"failed (the tractor moved, or too much vibration)",noanswer:"no answer from the TM171 (TX5 wire?)",aborted:"stopped"};
   set("tmCal",t.calib?(CAL[t.calib]||t.calib)+(!busy&&t.calibAgo>=0?" ("+(t.calibAgo<90?t.calibAgo+" s":Math.round(t.calibAgo/60)+" min")+" ago)":""):"not done since power on",t.calib==="ok"?"ok":busy?"":t.calib?"warn":"");
@@ -603,6 +618,32 @@ async function gpsAct(body,say){
   if(!j.ok){say("Error"+": "+ptErr(j.error),"bad");return false;}
   uLocal=mLocal=null;ckLocal=[null,null];await pollGps();return true;}catch(e){say("No connection to the module.","bad");return false;}
 }
+let tsSeen=null;
+function tsFill(s){$("tsMag").checked=!!s.mag;$("tsGyroErr").checked=!!s.gyroErr;$("tsSelfAdapt").checked=!!s.selfAdapt;$("tsStatus").checked=!!s.status;
+ $("tsBoot").value=String(s.boot||0);$("tsAcc").value=(s.accGain/100).toFixed(2);$("tsMagG").value=(s.magGain/100).toFixed(2);
+ $("tsRate").value=s.inhibit>0?Math.round(1000/s.inhibit):0;$("tsSilent").value=s.silent||0;}
+function renderTmSet(s){
+ set("tsRateNow",s.rate+" Hz");set("tsBaud",s.baud?s.baud+" bps":"–");
+ const key=s.age>=0?s.sw+":"+s.accGain+":"+s.magGain+":"+s.inhibit+":"+s.silent+":"+(s.age<2?"n":"o"):null;
+ if(s.age>=0&&key!==tsSeen&&(tsSeen===null||s.age<2)){tsSeen=key;tsFill(s);}
+ let m="",cls="";
+ if(s.pending)m="waiting for the TM171…";
+ else if(s.odd){m="Settings read, but with an unknown layout (switches 0x"+(s.sw>>>0).toString(16)+"): nothing will be written. Use ImuAssistant.";cls="bad";}
+ else if(s.age<0)m=s.noAnswer?"No answer from the TM171 (TX5 wire?)":"not read yet";
+ else{m="Read "+(s.age<90?s.age+" s":Math.round(s.age/60)+" min")+" ago"+(s.ackAge>=0?"; the TM171 acknowledged the last write "+(s.ackAge<90?s.ackAge+" s":Math.round(s.ackAge/60)+" min")+" ago":"");cls=s.ackAge>=0&&s.ackAge<30?"ok":"";}
+ if(!$("tsMsg").dataset.err)set("tsMsg",m,cls);
+ $("tsWrite").disabled=!s.valid||s.pending;$("tsRead").disabled=!!s.pending;}
+$("tsRead").addEventListener("click",()=>{tsSeen=null;delete $("tsMsg").dataset.err;tmCalPost("setread");});
+$("tsAog").addEventListener("click",()=>{tsFill({mag:0,gyroErr:1,selfAdapt:1,status:1,boot:0,accGain:350,magGain:100,inhibit:40,silent:0});set("tsMsg","AgOpenGPS values filled in (Mag off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, 25 Hz, silent 0, Auto boot). Press \"Write to the TM171\".","warn");$("tsMsg").dataset.err="1";});
+$("tsWrite").addEventListener("click",async()=>{
+ if(!confirm("Write these settings to the TM171"+($("tsSave").checked?" and save them in its flash":"")+"?"))return;
+ const n=id=>Math.round(parseFloat($(id).value)||0),rate=n("tsRate");
+ const b="act=setwrite&mag="+(+$("tsMag").checked)+"&gyroErr="+(+$("tsGyroErr").checked)+"&selfAdapt="+(+$("tsSelfAdapt").checked)+"&status="+(+$("tsStatus").checked)+"&save="+(+$("tsSave").checked)
+  +"&boot="+$("tsBoot").value+"&accGain="+Math.round(parseFloat($("tsAcc").value)*100)+"&magGain="+Math.round(parseFloat($("tsMagG").value)*100)+"&inhibit="+(rate>0?Math.round(1000/rate):0)+"&silent="+n("tsSilent");
+ delete $("tsMsg").dataset.err;tsSeen=null;
+ try{const j=await getJ("/api/imu",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});
+  if(!j.ok){set("tsMsg","Error"+": "+ptErr(j.error),"bad");$("tsMsg").dataset.err="1";}else set("tsMsg","Written; reading back…","");}
+ catch(e){set("tsMsg","No connection to the module.","bad");$("tsMsg").dataset.err="1";}});
 async function tmCalPost(act){
  try{const j=await getJ("/api/imu",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"act="+act});
   if(!j.ok)set("tmCal","Error"+": "+ptErr(j.error),"bad");}catch(e){set("tmCal","No connection to the module.","bad");}}
