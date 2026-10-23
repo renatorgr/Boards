@@ -304,14 +304,14 @@ static void tm171SettingGot(const uint8_t* p)
     if (first || !layoutOk)
         StatusLog.line("[status] TM171: settings read (switches 0x%08lX, UART %u00 bps, inhibit %u ms)%s", (unsigned long)w,
                        (unsigned)tmSetU16(tmSet + 6), (unsigned)tmSetU16(tmSet + 14),
-                       layoutOk ? "" : " - UNKNOWN LAYOUT, the page will not write settings");
+                       layoutOk ? "" : " - LAYOUT NOT RECOGNISED, writing from the page is disabled");
 }
 
 // The web page's form. Returns false with the reason.
 bool tm171SettingWrite(const TmSetForm& f, const char** why)
 {
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
-    if (!tmSetValid)          { *why = tmSetOdd ? "the settings read from the TM171 have an unknown layout - not writing" : "read the settings from the TM171 first"; return false; }
+    if (!tmSetValid)          { *why = tmSetOdd ? "settings layout not recognised; writing is disabled" : "read the settings from the TM171 first"; return false; }
     if (f.accGain < 1 || f.accGain > 2000 || f.magGain < 1 || f.magGain > 2000) { *why = "gain out of range (0.01 - 20.00)"; return false; }
     if (f.inhibit > 65530 || f.silent > 65 || f.boot > 2) { *why = "value out of range"; return false; }
     uint8_t s[TM171_SET_LEN];
@@ -355,7 +355,7 @@ void tm171SettingLoop()
     {
         tmSetReqMs = 0;
         if (tmSetNoAnswer++ == 0)
-            StatusLog.line("[status] TM171: no answer to the settings request - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+            StatusLog.line("[status] TM171: no reply to the settings request - is Teensy TX5 (pin 20) wired to the TM171 RX?");
     }
     if (now - rateMs >= 1000) { rateMs = now; TM171rpyRate = TM171rpyCount; TM171rpyCount = 0; }
 }
@@ -424,7 +424,7 @@ const char* tmCalibName(uint8_t s)      // for the web page
 bool tm171CalibStart(uint8_t kind, const char** why)
 {
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
-    if (tmCalibBusy())        { *why = "a calibration is already running"; return false; }
+    if (tmCalibBusy())        { *why = "a calibration is already in progress"; return false; }
     tmCalibCount++;
     tmCalibKind = kind;
     tmCalibMs   = millis();
@@ -433,13 +433,13 @@ bool tm171CalibStart(uint8_t kind, const char** why)
         const uint8_t c[12] = { 0x04, 0x02, 0x35, 0xAA, 0,0,0,0, 0,0,0,0 };
         tm171Send(23, c, sizeof(c));
         tmCalibState = TMC_RUNNING;                 // the TM171 sends no "started": only the result
-        StatusLog.line("[status] TM171: new install calibration started (about 20 s; keep the tractor still and the power ON)");
+        StatusLog.line("[status] TM171: new install calibration started (about 20 s; keep the tractor parked, do not cut power)");
     }
     else
     {
         tmCalibState = TMC_STARTING;
         tm171CalibCmd(0x03, TM171_CALIB_LIMIT, TM171_CALIB_CONF);
-        StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor still, the engine may run)", (unsigned)TM171_CALIB_S);
+        StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor parked, the engine can stay running)", (unsigned)TM171_CALIB_S);
     }
     return true;
 }
@@ -451,7 +451,7 @@ void tm171CalibStop(const char* why)
     if (!tmCalibBusy()) return;
     if (tmCalibKind == TMC_KIND_INSTALL)
     {
-        StatusLog.line("[status] TM171: new install calibration cannot be stopped (%s) - waiting for the result", why);
+        StatusLog.line("[status] TM171: new install calibration cannot be stopped (%s), waiting for the result", why);
         return;
     }
     tm171CalibCmd(0x04, 0, 0);
@@ -472,12 +472,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (ctrl == 0x01)
         {
             tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: gyro calibration succeeded (kept until the TM171 loses power)");
+            StatusLog.line("[status] TM171: gyro calibration done (kept until the TM171 is powered off)");
         }
         else if (ctrl == 0xFF)
         {
             tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration) - the old values stay");
+            StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration); previous values kept");
         }
     }
     else if (type == 0x14 && tmCalibKind == TMC_KIND_INSTALL && tmCalibBusy())
@@ -485,12 +485,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (ctrl == 0x01)
         {
             tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration saved in the TM171's flash - switch the module off and on");
+            StatusLog.line("[status] TM171: new install calibration saved to flash; power-cycle the module");
         }
         else if (ctrl == 0xFF)
         {
             tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration FAILED (the tractor moved?) - switch the module off and on, then try again");
+            StatusLog.line("[status] TM171: new install calibration FAILED (did the tractor move?); power-cycle the module and try again");
         }
     }
 }
@@ -505,7 +505,7 @@ void tm171CalibLoop()
         if (now - tmCalibMs > TM171_INSTALL_MS)
         {
             tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: no result of the new install calibration - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+            StatusLog.line("[status] TM171: no result from the new install calibration - is Teensy TX5 (pin 20) wired to the TM171 RX?");
         }
         return;
     }
@@ -517,7 +517,7 @@ void tm171CalibLoop()
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
                 tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-                StatusLog.line("[status] TM171: no answer to the calibration command - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+                StatusLog.line("[status] TM171: no reply to the calibration command - is Teensy TX5 (pin 20) wired to the TM171 RX?");
             }
             break;
         case TMC_RUNNING:
@@ -531,7 +531,7 @@ void tm171CalibLoop()
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
                 tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-                StatusLog.line("[status] TM171: no answer after the calibration - result unknown");
+                StatusLog.line("[status] TM171: no reply after the calibration; result unknown");
             }
             break;
         default: break;

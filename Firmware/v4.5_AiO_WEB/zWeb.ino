@@ -749,7 +749,7 @@ static void apiImuPost(EthernetClient& c, const char* body)
     if (!strcmp(act, "calib") || !strcmp(act, "install"))
     {
         if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
-        if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)"); return; }
+        if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (on a bench, switch simulator mode on)"); return; }
         const char* why = "";
         if (!tm171CalibStart(act[0] == 'i' ? TMC_KIND_INSTALL : TMC_KIND_GYRO, &why)) { webSendError(c, 409, why); return; }
     }
@@ -785,7 +785,7 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
     if (autosteerEngaged())                                    { otaRefuse(c, 409, "autosteer is engaged - disengage it first", preLen); return; }
     if (tractorMoving())
     {
-        otaRefuse(c, 409, "the tractor is moving - stop first (or, on a bench, simulator mode on)", preLen);
+        otaRefuse(c, 409, "the tractor is moving - stop first (on a bench, switch simulator mode on)", preLen);
         return;
     }
     if (rq.contentLength < 1000 || rq.contentLength > 8000000) { otaRefuse(c, 400, "no file, or file size not plausible", preLen); return; }
