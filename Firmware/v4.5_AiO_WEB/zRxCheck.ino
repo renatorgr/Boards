@@ -115,8 +115,8 @@ struct CkPort
     uint32_t b0, g0, wb, wg;              // the window: counters at its start; the last window's bytes and valid ones
     uint8_t  health, junkN;
     bool     junkSaid;
-    uint16_t hz[3];                       // Hz x 10 in the last window: port 0 GGA, VTG, HPR; port 1 RELPOSNED
-    uint32_t relpos0;
+    uint16_t hz[3];                       // Hz x 10 in the last window: port 0 GGA, VTG, HPR; port 1 RELPOSNED, NMEA sentences
+    uint32_t relpos0, nmea0;
     char     model[24], fw[40];           // port 1: from its UBX-MON-VER (port 0: zReceiver.ino)
     int64_t  ess[CK_ESS_N];
     uint8_t  essHave[CK_ESS_N];           // 0 not read, 1 read, 2 the receiver does not know the key
@@ -408,7 +408,9 @@ FLASHMEM static void ckWindow(uint8_t port)
     else
     {
         k.hz[0] = (uint16_t)((dualF9pFrames - k.relpos0) * 10u / secs);
+        k.hz[1] = (uint16_t)((dualF9pNmea - k.nmea0) * 10u / secs);
         k.relpos0 = dualF9pFrames;
+        k.nmea0   = dualF9pNmea;
     }
     if (!ckPortActive(port)) { k.health = CKH_WAIT; k.junkN = 0; k.junkSaid = false; k.autoDone = false; return; }
     if ((port == RXCK_GPS && passThroughGPS) || rxCkOwns(port)) return;     // not read by the Teensy now
@@ -1176,8 +1178,8 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.str("health", rxCkHealthName(port));
     j.u("bytes", k.wb);
     j.u("good", k.wg);
-    j.arr("hz");                                           // x 10: port 0 GGA, VTG, HPR; port 1 RELPOSNED
-    for (uint8_t t = 0; t < (port == RXCK_GPS ? 3 : 1); t++) { char v[8]; snprintf(v, sizeof(v), "%u", k.hz[t]); j.sep(); j.raw(v); }
+    j.arr("hz");                                           // x 10: port 0 GGA, VTG, HPR; port 1 RELPOSNED, NMEA sentences
+    for (uint8_t t = 0; t < (port == RXCK_GPS ? 3 : 2); t++) { char v[8]; snprintf(v, sizeof(v), "%u", k.hz[t]); j.sep(); j.raw(v); }
     j.closeArr();
     j.str("model", ckModel(port));
     j.str("fw", ckFw(port));
@@ -1233,6 +1235,28 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.u("loadNone", k.loadNone);
     j.u("loadTotal", k.loadTotal);
     j.i("loadAgo", k.loadMs ? (long)((now - k.loadMs) / 1000) : -1);
+    j.close();
+}
+
+// GET /api/status (zWeb.ino): what the Status tab says about the second F9P in the dual-antenna card -
+// its data, model and firmware, and whether it has what the Teensy needs (the GPS tab has the details)
+FLASHMEM void rxCkStatusJson(Json& j, uint8_t port)
+{
+    if (port > 1) return;
+    const CkPort& k = ck[port];
+    const bool checked = k.essMs && k.essRole == ckUbxRole(port);
+    char miss[120] = "";
+    if (checked) ckMissing(port, miss, sizeof(miss));
+    j.obj("ck2");
+    j.str("health", rxCkHealthName(port));
+    j.str("model", ckModel(port));
+    j.str("fw", ckFw(port));
+    j.str("fwSt", ckFwState(port));
+    j.u("found", k.scanRes == CKR_FOUND ? k.found : 0);   // the baud rate the search found (0: not searched, or nothing found)
+    j.bo("notFound", k.scanRes == CKR_NOTFOUND);
+    j.bo("noAnswer", k.chkRes == CKR_NOANSWER);
+    j.bo("checked", checked);
+    j.str("miss", miss);                                   // what the Teensy needs and the receiver lacks: "gga, vtg"
     j.close();
 }
 

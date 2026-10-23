@@ -7,6 +7,10 @@
    message is described in the u-blox ZED-F9P interface description.
    Written 2026 by Claude (Anthropic) for renatorgr (v4.5_AiO_WEB). The receiver check (zRxCheck.ino)
    gets the other UBX messages of the second F9P (its answers) and its counts.
+   2026-10-23 (Claude for renatorgr): NMEA sentences from the second F9P count as valid data too, so a
+   fresh F9P (NMEA out of the box, no RELPOSNED yet) is recognised, checked and can take the AgOpenGPS
+   settings; a GNSS receiver on the GPS2 port while the port is set to the XIAO or off is noticed
+   (valid NMEA or UBX on it) and the Status page says to change the setting.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -44,11 +48,25 @@ float    dualF9pRoll     = 0;             // degrees
 uint8_t  dualF9pCarr     = 0;             // carrSoln: 0 none, 1 float, 2 fixed
 uint16_t dualF9pFlags    = 0;
 uint32_t dualF9pBytes    = 0;             // bytes from the second F9P
+uint32_t dualF9pNmea     = 0;             // NMEA sentences with a valid checksum (a fresh F9P sends NMEA, not RELPOSNED)
+uint32_t dualF9pNmeaMs   = 0;             // last one (millis, 0 = never)
 static uint8_t  dualBaud = 0;             // 0 not started, 1 XIAO speed, 2 F9P speed
 
 static uint8_t  dSt = 0, dCls = 0, dId = 0, dCkA = 0, dCkB = 0;
 static uint16_t dLen = 0, dPos = 0;
 static uint8_t  dBuf[DUALF9P_MAX_LEN];
+static char     dLine[100];               // an NMEA sentence being collected (outside the UBX frames)
+static uint8_t  dLineLen = 0;
+
+// The GPS2 port set to the XIAO or off, but a GNSS receiver sends on it (zXiao.ino hands over every byte):
+// whole NMEA sentences or UBX frames with a valid checksum. The Status page then says to set the port to
+// the second F9P. The XIAO's own frames (0x80 0x81 ...) and text lines never pass this test.
+#define GPS2_SNIFF_N      3               // valid sentences / frames before the receiver counts as seen
+#define GPS2_SNIFF_MS     15000           // ... and for how long after the last one
+uint32_t gps2SniffGood   = 0;
+uint32_t gps2SniffMs     = 0;
+static uint8_t  sSt = 0, sCkA = 0, sCkB = 0;
+static uint16_t sLen = 0, sPos = 0;
 static uint32_t dLastMs = 0;
 
 bool dualF9pOn() { return cfg.xiaoOff == GPS2_F9P; }
@@ -68,6 +86,62 @@ void gps2Begin()
     Serial2.begin(want == 2 ? DUALF9P_BAUD : XIAO_BAUD);         // (its buffers: xiaoSetup, zXiao.ino)
     dualBaud = want;
     dSt = 0;                       // (what is on the port: the [boot] and [web] settings lines)
+    dLineLen = 0;
+    sSt = 0;
+    gps2SniffGood = 0;
+    gps2SniffMs = 0;
+}
+
+// One byte of an NMEA sentence: true when a whole sentence with a valid checksum has just ended.
+// Shared by the second F9P's reader (between its UBX frames) and the GPS2 sniffer: never both at once.
+static bool dualNmeaByte(uint8_t b)
+{
+    if (b == '$') { dLineLen = 0; dLine[dLineLen++] = '$'; return false; }
+    if (!dLineLen) return false;
+    if (b == '\n')
+    {
+        dLine[dLineLen] = '\0';
+        dLineLen = 0;
+        return nmeaLineOk(dLine);                        // (zRxCheck.ino)
+    }
+    if (b == '\r') return false;
+    if (b < 0x20 || b > 0x7E || dLineLen >= sizeof(dLine) - 1) { dLineLen = 0; return false; }
+    dLine[dLineLen++] = (char)b;
+    return false;
+}
+
+static void gps2SniffHit()
+{
+    gps2SniffGood++;
+    gps2SniffMs = millis() | 1;
+    if (gps2SniffGood == GPS2_SNIFF_N)
+        StatusLog.line("[status] GPS2 port: a GNSS receiver is sending valid data on it, but the port is set to %s - "
+                       "for a dual F9P set Settings, GPS2 port, to the second F9P", gps2Name());
+}
+
+// Called by zXiao.ino for every byte from Serial2 while the port is not set to the second F9P
+void gps2SniffByte(uint8_t b)
+{
+    if (dualNmeaByte(b)) gps2SniffHit();
+    switch (sSt)                                         // a UBX frame, checked without keeping it
+    {
+        case 0: sSt = (b == 0xB5) ? 1 : 0; break;
+        case 1: sSt = (b == 0x62) ? 2 : (b == 0xB5 ? 1 : 0); break;
+        case 2: sCkA = sCkB = 0; sCkA += b; sCkB += sCkA; sSt = 3; break;
+        case 3: sCkA += b; sCkB += sCkA; sSt = 4; break;
+        case 4: sLen = b; sCkA += b; sCkB += sCkA; sSt = 5; break;
+        case 5: sLen |= (uint16_t)b << 8; sCkA += b; sCkB += sCkA; sPos = 0; sSt = (sLen > DUALF9P_MAX_LEN) ? 0 : (sLen ? 6 : 7); break;
+        case 6: sCkA += b; sCkB += sCkA; if (++sPos >= sLen) sSt = 7; break;
+        case 7: sSt = (b == sCkA) ? 8 : 0; break;
+        case 8: if (b == sCkB) gps2SniffHit(); sSt = 0; break;
+        default: sSt = 0; break;
+    }
+}
+
+// A GNSS receiver seen on the GPS2 port while the port is set to the XIAO or off (web page, Status)
+bool gps2ReceiverSeen()
+{
+    return !dualF9pOn() && gps2SniffGood >= GPS2_SNIFF_N && gps2SniffMs && millis() - gps2SniffMs < GPS2_SNIFF_MS;
 }
 
 // After the receiver check has searched for or changed the second F9P's baud rate (zRxCheck.ino): Serial2 at
@@ -77,6 +151,7 @@ void dualF9pRestart()
     Serial2.begin(DUALF9P_BAUD);
     dualBaud = 2;
     dSt = 0;
+    dLineLen = 0;
 }
 
 static int32_t le32(const uint8_t* p) { return (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24)); }
@@ -139,9 +214,13 @@ void dualF9pProcess()
         dualF9pBytes++;
         rxCkBytes[RXCK_GPS2]++;
         dLastMs = now;
+        // NMEA between the UBX frames: a fresh F9P, not set up as the second F9P yet, sends GGA and the rest
+        // instead of the RELPOSNED. Valid sentences count as valid data, so the receiver check can identify
+        // it, check it and load the AgOpenGPS settings (zRxCheck.ino refuses all that on "nothing valid").
+        if (dSt == 0 && dualNmeaByte(b)) { rxCkGood[RXCK_GPS2]++; dualF9pNmea++; dualF9pNmeaMs = now | 1; }
         switch (dSt)
         {
-            case 0: if (b == 0xB5) dSt = 1; break;
+            case 0: if (b == 0xB5) { dSt = 1; dLineLen = 0; } break;
             case 1: dSt = (b == 0x62) ? 2 : (b == 0xB5 ? 1 : 0); break;
             case 2: dCls = b; dCkA = dCkB = 0; dCk(b); dSt = 3; break;
             case 3: dId = b; dCk(b); dSt = 4; break;
@@ -183,6 +262,10 @@ void dualF9pJson(Json& j)
     j.u("frames", dualF9pFrames);
     j.u("bad", dualF9pBad);
     j.u("bytes", dualF9pBytes);
+    j.u("nmea", dualF9pNmea);                              // NMEA sentences: the F9P is not set up as the second F9P
+    j.i("nmeaAgo", dualF9pNmeaMs ? (long)((now - dualF9pNmeaMs) / 1000) : -1);
+    j.str("port", gps2Name());                             // "F9P", "XIAO", "off" (the setting)
+    j.bo("seen", gps2ReceiverSeen());                      // a receiver on the port while it is set to the XIAO or off
     j.num("heading", dualF9pHeading, 2);
     j.num("baseline", dualF9pBaseline, 1);
     j.num("roll", dualF9pRoll, 2);

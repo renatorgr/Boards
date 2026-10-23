@@ -287,7 +287,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     if (full) j.str("raw", hprRawLast);
     j.u("late", hprLateCount);
     j.str("src", dualSrc == 'F' ? "f9p" : dualSrc == 'U' ? "um982" : "");   // AiO_WEB: UM982 HPR or second F9P (zDualF9P.ino)
-    if (full) dualF9pJson(j);
+    if (full) { dualF9pJson(j); rxCkStatusJson(j, RXCK_GPS2); }   // the second F9P: its data, and the receiver check's summary
     j.close();
 
     j.obj("tm");

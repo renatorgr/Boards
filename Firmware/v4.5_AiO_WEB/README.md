@@ -264,6 +264,15 @@ wire is needed; without it the page can only warn.
 - **Second F9P** (GPS2, Serial2, pins 7 / 8, 460800): **UBX-NAV-RELPOSNED** every epoch.
 - The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
 - Web page: Settings → **GPS2 port: second F9P**.
+- **Status tab**, dual-antenna heading card: the second F9P's model and firmware, its data at 460800 (valid,
+  wrong baud rate, nothing arriving) and its **Setup** (all good, or what the Teensy needs and it lacks),
+  with a link to the GPS tab. A warning at the top of Status when nothing arrives from it, when it is at the
+  wrong baud rate, or when it lacks settings. The GPS tab, **Second F9P check**, has the details and the
+  buttons: **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
+- A fresh F9P sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies
+  it, checks it and can load `DualRelPos.txt` into it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
+- A GNSS receiver on the GPS2 port while the port is set to the XIAO or off (valid NMEA or UBX arriving):
+  Status says to set **GPS2 port** to the second F9P.
 
 The heading is `relPosHeading` **+ 90°** (antennas left and right, as in the AiO firmware), used only with RTK fixed between the antennas. The roll of the antennas goes into `$PAOGI` when there is no IMU. From there everything is as with the UM982.
 
