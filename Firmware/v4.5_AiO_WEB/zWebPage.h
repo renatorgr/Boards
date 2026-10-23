@@ -87,6 +87,7 @@ button.act,label.act{border:0;background:var(--acc);color:var(--accInk);border-r
 button.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button.danger{border:1px solid var(--bad);background:transparent;color:var(--bad);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
+.card.dim{opacity:.55}
 input:disabled,select:disabled,label.opt:has(input:disabled){opacity:.5;cursor:default}
 input[type=text]{font:inherit;font-family:var(--mono);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);flex:1;min-width:180px}
 .opt{display:flex;gap:10px;align-items:flex-start;padding:5px 0}
@@ -125,8 +126,10 @@ a{color:var(--acc)}
   </dl></div>
  <div class="card" id="dualCard"><h2>Dual-antenna heading</h2>
   <div class="big" id="dualHdg">–</div>
-  <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd></dl>
-  <div class="box mono" id="hprRaw">–</div></div>
+  <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd>
+   <dt id="f2T" class="hidden">Second F9P</dt><dd id="f2" class="hidden">–</dd><dt id="f2SetT" class="hidden">Setup</dt><dd id="f2Set" class="hidden">–</dd></dl>
+  <div class="box mono" id="hprRaw">–</div>
+  <p class="note hidden" id="f2Go">Baud rate, check and AgOpenGPS settings: <a href="#" data-go="gps">GPS tab</a></p></div>
  <div class="card"><h2>IMU</h2>
   <div class="big" id="tmHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="tmState">–</dd><dt>Type</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
@@ -157,7 +160,7 @@ a{color:var(--acc)}
  <div class="card"><h2>Sentences sent</h2>
   <dl><dt>Mode</dt><dd id="mode" class="nw">–</dd><dt>Choice</dt><dd id="modeSel">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt>In AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
   <div class="box mono" id="sent">–</div></div>
- <div class="card"><h2>XIAO ESP32 (Serial2)</h2>
+ <div class="card" id="xiaoCard"><h2>XIAO ESP32 (Serial2)</h2>
   <div class="big" id="xState">–</div>
   <dl style="margin-top:6px"><dt>Last hello</dt><dd id="xHello" class="nw">–</dd>
    <dt>Packets to the XIAO</dt><dd id="xTo">–</dd><dt>PGNs from the XIAO</dt><dd id="xFrom">–</dd><dt>Last PGN from the XIAO</dt><dd id="xLast">–</dd>
@@ -422,8 +425,28 @@ function render(s){
  set("dualSrc",f9?"second F9P (RELPOSNED)":d.src?"UM982 (HPR)":"–");
  set("qf",d.hpr?String(d.lastQf):"–");set("antRoll",d.hpr?fmt(d.antRoll,2,"°"):"–");
  set("dualBase",f9&&f2&&f2.frames?fmt(f2.baseline,1," cm")+" · carrSoln "+(f2.carr===2?"fixed":f2.carr===1?"float":"no solution"):"–",f9&&f2&&f2.frames&&f2.carr!==2?"warn":"");
- const W=f9?WHYF:WHY;
- $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?(W[d.why])+"\n":"")+(d.raw||(f9?"no RELPOSNED received"+(f2&&f2.bytes?" ("+f2.bytes+" bytes, "+f2.bad+" with errors)":""):"no HPR received"));
+ const W=f9?WHYF:WHY,nmeaOnly=!!(f9&&f2&&f2.nmea&&!f2.frames);   /* the F9P sends NMEA: not set up as the second F9P */
+ $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?(W[d.why])+"\n":"")+(d.raw||(f9?"no RELPOSNED received"+(f2&&f2.bytes?" ("+f2.bytes+" bytes, "+f2.bad+" with errors)":"")+(nmeaOnly?"\nIt sends NMEA sentences instead: not set up as the second F9P yet.":""):"no HPR received"));
+ // the second F9P itself: its data, model and firmware, and whether it has what the Teensy needs (zRxCheck.ino's summary)
+ const c2=f9&&f2&&f2.on?d.ck2:null;
+ for(const id of ["f2T","f2","f2SetT","f2Set","f2Go"])$(id).classList.toggle("hidden",!c2);
+ if(c2){
+  let t="–",cls="";
+  if(c2.health==="ok"){t=c2.model?c2.model+(c2.fw?" · "+c2.fw:""):"answering (model not read yet)";cls=c2.fwSt==="older"||c2.fwSt==="newer"?"warn":"ok";}
+  else if(c2.health==="junk"){t=c2.found&&c2.found!==460800?"wrong baud rate (it answers at "+c2.found+" baud)":"wrong baud rate (nothing valid at 460800)";cls="bad";}
+  else if(c2.health==="none"){t=c2.notFound?"nothing arriving (no baud rate gave data)":"nothing arriving";cls="warn";}
+  set("f2",t,cls);
+  let u="–",ucls="";
+  const by=c2.auto?"the Teensy is ":"";
+  if(c2.op==="baud")u=by+"setting it to 460800 baud…";
+  else if(c2.op==="load")u=by+"loading the AgOpenGPS settings…";
+  else if(c2.op==="check"||c2.op==="scan")u=c2.op==="scan"?"finding its baud rate…":"checking…";
+  else if(c2.noAnswer){u="no answer to the check (UBX output off on its UART1?)";ucls="bad";}
+  else if(c2.load==="load-fail"){u="the AgOpenGPS settings were not taken"+(c2.autoDid==="load"?" (the Teensy tried)":"");ucls="bad";}
+  else if(!c2.checked)u=c2.health==="ok"?"checking…":"not checked yet";
+  else if(c2.miss){u="missing: "+c2.miss.split(",").map(x=>ckName(x.trim())).join(", ");ucls="bad";}
+  else{u="all good"+(c2.autoDid==="load"&&(c2.load==="loaded"||c2.load==="load-part")?" · AgOpenGPS settings loaded by the Teensy "+ago(c2.loadAgo):"");ucls="ok";}
+  set("f2Set",u,ucls);}
  const t=s.tm;
  set("tmHdg",t.ok?fmt(t.out,2,"°"):"–",t.ok?"":"bad");
  pill("tmState",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");
@@ -497,6 +520,14 @@ function render(s){
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
  if(g.ckH==="junk")al.push("The GPS receiver is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Receiver check.");
  if(g.ck2H==="junk")al.push("The second F9P is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Second F9P check.");
+ const f2a=s.dual&&s.dual.f9p2,c2a=s.dual&&s.dual.ck2;
+ if(f2a&&f2a.on&&c2a){
+  if(c2a.health==="none"&&s.up>20)al.push("Nothing arrives from the second F9P on the GPS2 port. Check its power and its wiring to Serial2 (Teensy pins 7 / 8). See GPS, Second F9P check.");
+  const missT=c2a.miss?c2a.miss.split(",").map(x=>ckName(x.trim())).join(", "):"";
+  if(c2a.op==="baud"&&c2a.auto)al.push("The second F9P answered at another baud rate: the Teensy is setting it to 460800 baud and saving that in the F9P.");
+  else if(c2a.op==="load"&&c2a.auto)al.push("The second F9P lacks settings the Teensy needs ("+missT+"): the Teensy is loading the AgOpenGPS settings (DualRelPos.txt) into it. The dual heading comes once they are in.");
+  else if(c2a.checked&&c2a.miss)al.push(c2a.autoDid==="load"?"The Teensy loaded the AgOpenGPS settings into the second F9P ("+c2a.loadOk+" of "+c2a.loadTotal+" messages taken), but it still lacks: "+missT+". See GPS, Second F9P check.":"The second F9P is not set up for AgOpenGPS (missing: "+missT+"). The Teensy loads the AgOpenGPS settings into it as soon as autosteer is off; or see GPS, Second F9P check, Load the AgOpenGPS settings.");}
+ if(f2a&&!f2a.on&&f2a.seen)al.push("A GNSS receiver is sending data on the GPS2 port, but the port is set to "+(f2a.port==="off"?"off":"the XIAO ESP32")+". For a dual F9P, set GPS2 port to «second F9P» in Settings.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.setupWhy)al.push("TM171 not set up for AgOpenGPS ("+s.tm.set.setupWhy+"). See the IMU tab, Fix TM171 setup.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.noWire)al.push("TM171 RX pin not wired to Teensy TX5 (pin 20): roll, pitch and yaw still work, but gyro calibration, new install calibration, settings and Fix TM171 setup are unavailable. Solder one wire from Teensy pin 20 to the TM171 RX pin (see the IMU tab).");
  $("alert").textContent=al.join("\n");$("alert").classList.toggle("hidden",!al.length);
@@ -522,6 +553,7 @@ function render(s){
  if(x){
   const xs=x.port===2?["GPS2 port set to the second F9P",""]:x.port===1?["GPS2 port off",""]:!x.on?["bridge off",""]:x.det?["connected","ok"]:x.hellos?["no hello","bad"]:["not detected","warn"];
   set("xState",xs[0],xs[1]);
+  $("xiaoCard").classList.toggle("dim",x.port===2||x.port===1);   /* the port has the second F9P, or is off: the card is greyed */
   set("xHello",x.helloAgo<0?"never":ago(x.helloAgo));
   set("xTo",String(x.to));set("xFrom",String(x.from));set("xLast",x.lastPgn<0?"–":String(x.lastPgn));
   set("xCrc",String(x.crcErr),x.crcErr?"warn":"");set("xDrop",String(x.drop+x.cut),(x.drop+x.cut)?"warn":"");
@@ -831,7 +863,7 @@ function ckMsgText(c,p,port,um){
  if(p.baud==="baud-ok"){out.push("The receiver is at 460800 baud now.");cls="ok";}
  if(p.baud==="baud-fail"){out.push(("No valid data at 460800 after the change: is the receiver still at "+p.found+" baud?"));cls="bad";}
  if(p.chk==="noanswer"){out.push("The receiver did not answer the check (UBX output off on UART1?).");cls="bad";}
- const tot=p.loadTotal,ok=p.loadOk+p.loadRam,w=um?"commands":"messages",r=um?"recusados":"recusadas";
+ const tot=p.loadTotal,ok=p.loadOk+p.loadRam,w=um?"commands":"messages";
  if(p.load==="loaded"){out.push(("AgOpenGPS settings loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken"+(p.loadRam?", "+p.loadRam+" in RAM and BBR only":"")+"."));cls="ok";}
  if(p.load==="load-part"){out.push(("AgOpenGPS settings partly loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken, "+p.loadNak+" refused, "+p.loadNone+" not answered"+(um&&p.loadNak+p.loadNone===0?", SAVECONFIG not confirmed":"")+"."));cls="warn";}
  if(p.load==="load-fail"){out.push(("The AgOpenGPS settings were not loaded ("+p.loadFile+"): the receiver did not take them."));cls="bad";}
@@ -847,7 +879,7 @@ function renderCk(j){
   const fast=p.health==="ok"&&Math.abs(p.hz[0]-100)>5?"warn":"";
   if(port===0){const n=["GGA","VTG","HPR"].slice(0,um||p.hz[2]?3:2),hzs=n.map((x,i)=>p.hz[i]);
    set(id+"Hz",p.health!=="ok"?"–":hzs.every(x=>x===hzs[0])?n.join(", ")+": "+hz10(hzs[0]):n.map((x,i)=>x+" "+hz10(hzs[i])).join(" · "),fast);}
-  else set(id+"Hz",p.health==="ok"?"RELPOSNED "+hz10(p.hz[0]):"–",fast);
+  else set(id+"Hz",p.health!=="ok"?"–":p.hz[0]?"RELPOSNED "+hz10(p.hz[0]):p.hz[1]?"NMEA "+hz10(p.hz[1])+", no RELPOSNED":"nothing counted yet",p.health==="ok"&&!p.hz[0]?"warn":fast);
   // the F9P's firmware: HPG 1.13 (AOGConfigOMatic's), another one in red with where to download HPG 1.13
   const fwBad=p.fwSt==="older"||p.fwSt==="newer";
   set(port===0?"gFw":id+"Fw",(port===0&&j.fw)||p.fw||"–",p.fwSt==="same"?"ok":fwBad?"bad":"");   /* the first receiver's: in the GPS receiver card */

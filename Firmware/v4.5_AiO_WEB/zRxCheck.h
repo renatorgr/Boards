@@ -35,10 +35,12 @@ void rxCkUmConfig(const char* line); // one "$CONFIG,..." line of that read
 const char* rxCkHealthName(uint8_t port);   // "ok", "junk", "none", "wait"
 const char* rxCkStart(const char* what, uint8_t port, uint8_t um);   // the page's buttons: nullptr = started, else the error
 void rxCkJson(Json& j);              // GET /api/gps: "ck"
+void rxCkStatusJson(Json& j, uint8_t port);   // GET /api/status: a short summary of a port for the Status tab ("ck2")
 void rxCheckLoop();                  // from loop()
 
 // from zDualF9P.ino
 extern uint32_t dualF9pFrames;
+extern uint32_t dualF9pNmea;         // NMEA sentences with a valid checksum from the second F9P (not set up yet: it sends NMEA, no RELPOSNED)
 bool dualF9pOn();                    // the GPS2 port is set to the second F9P
 void dualF9pRestart();               // Serial2 back at 460800 after a baud rate search / change, the frame reader reset
 

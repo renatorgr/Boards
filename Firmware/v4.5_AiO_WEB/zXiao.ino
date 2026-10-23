@@ -4,6 +4,8 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same link protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
    (AgOpenGPS-Official, GPL v3), at the same speed, 460800 baud.
+   2026-10-23 (Claude for renatorgr): every byte from Serial2 also goes to the GPS2 sniffer (zDualF9P.ino),
+   which notices a GNSS receiver on the port while it is set to the XIAO or off.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -308,6 +310,7 @@ static uint8_t xfScan()
 static uint8_t xiaoByte(uint8_t b)
 {
     xiao.rxBytes++;
+    gps2SniffByte(b);                          // AiO_WEB: a GNSS receiver on the port instead of the XIAO? (zDualF9P.ino)
 
     // "ESP32-hello" wherever it is (between frames, inside a text line)
     if (b == (uint8_t)XIAO_HELLO[helloPos])

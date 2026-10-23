@@ -4,6 +4,8 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
    (renatorgr).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-23 (Claude for renatorgr): the second F9P is set up automatically (baud rate, then the AgOpenGPS
+   settings when it lacks what the Teensy needs), and the Status tab gets a summary of it (rxCkStatusJson).
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
@@ -115,8 +117,8 @@ struct CkPort
     uint32_t b0, g0, wb, wg;              // the window: counters at its start; the last window's bytes and valid ones
     uint8_t  health, junkN;
     bool     junkSaid;
-    uint16_t hz[3];                       // Hz x 10 in the last window: port 0 GGA, VTG, HPR; port 1 RELPOSNED
-    uint32_t relpos0;
+    uint16_t hz[3];                       // Hz x 10 in the last window: port 0 GGA, VTG, HPR; port 1 RELPOSNED, NMEA sentences
+    uint32_t relpos0, nmea0;
     char     model[24], fw[40];           // port 1: from its UBX-MON-VER (port 0: zReceiver.ino)
     int64_t  ess[CK_ESS_N];
     uint8_t  essHave[CK_ESS_N];           // 0 not read, 1 read, 2 the receiver does not know the key
@@ -147,6 +149,10 @@ static uint16_t ckTypeCnt[3] = {0, 0, 0};   // GGA, VTG, HPR in the current wind
 static uint32_t ckWinMs = 0;
 static uint32_t ckBootAt = 0, ckBootB0[2] = {0, 0}, ckBootG0[2] = {0, 0};
 static uint8_t  ckBootScan = 0;             // ports (bit 0 Serial7, bit 1 Serial2) the start-up check wants searched for
+// The second F9P set up automatically (Renato, 2026-10-23): once per start-up each, with autosteer off.
+static uint8_t  ckAutoTried = 0;            // bit 0: set to 460800 tried, bit 1: the AgOpenGPS settings loaded (tried)
+static uint8_t  ckAutoOp = 0;               // the running operation on Serial2 is automatic: CKOP_BAUD or CKOP_LOAD, else 0
+static uint8_t  ckAutoDid = 0;              // the last automatic operation that ended: CKOP_BAUD, CKOP_LOAD, 0 none
 
 // UM982: the AgOpenGPS CONFIG commands found in the receiver's CONFIG list (bit per command)
 static uint32_t ckUmSeen[2] = {0, 0};      // [0] ConfigUM982D.txt, [1] ConfigUM982S.txt
@@ -408,7 +414,9 @@ FLASHMEM static void ckWindow(uint8_t port)
     else
     {
         k.hz[0] = (uint16_t)((dualF9pFrames - k.relpos0) * 10u / secs);
+        k.hz[1] = (uint16_t)((dualF9pNmea - k.nmea0) * 10u / secs);
         k.relpos0 = dualF9pFrames;
+        k.nmea0   = dualF9pNmea;
     }
     if (!ckPortActive(port)) { k.health = CKH_WAIT; k.junkN = 0; k.junkSaid = false; k.autoDone = false; return; }
     if ((port == RXCK_GPS && passThroughGPS) || rxCkOwns(port)) return;     // not read by the Teensy now
@@ -449,6 +457,8 @@ bool rxCkBusy(uint8_t port)
 
 static void ckEnd()
 {
+    if (ckAutoOp) ckAutoDid = ckAutoOp;
+    ckAutoOp = 0;
     ckOp = CKOP_NONE;
     ckWait = 0;
     ckGot = 0;
@@ -509,6 +519,8 @@ static void ckBoot(uint32_t now)
     }
 }
 
+FLASHMEM static void ckLoadBegin(uint8_t port, bool automatic);
+
 // The web page's buttons (zWeb.ino, POST /api/gps act=ckcheck / ckscan / ckbaud / ckload).
 // um (load on a UM982): 0 two antennas (ConfigUM982D.txt), 1 one antenna (ConfigUM982S.txt)
 FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
@@ -540,6 +552,7 @@ FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
         if (k.scanRes != CKR_FOUND || !k.found)       return "no baud rate found yet";
         if (k.found == CK_TEENSY_BAUD)                return "the receiver is at 460800 already";
         ckOp = CKOP_BAUD; ckPort = port; ckStep = 0; ckSaved = false;
+        ckAutoOp = 0;
         k.baudRes = CKR_NONE;
         StatusLog.line("[web] %s: setting the receiver from %lu to 460800 baud", ckWho(port), (unsigned long)k.found);
         return nullptr;
@@ -557,18 +570,30 @@ FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
         }
         if (port == RXCK_GPS && rxKind != RX_UBLOX)   return "the receiver is not identified";
         if (!ckIsF9p(port))                           return "AOGConfigOMatic has AgOpenGPS settings for the ZED-F9P only";
-        ckOp = CKOP_LOAD; ckPort = port; ckStep = 0;
-        ckRole = ckUbxRole(port);
-        k.loadOk = k.loadRam = k.loadNak = k.loadNone = 0;
-        k.loadRes = CKR_NONE;
-        k.loadRole = ckRole;
-        k.loadTotal = RXCFG_UBX[ckRole].count;
-        StatusLog.line("[web] %s: loading the AgOpenGPS settings (AOGConfigOMatic %s: %u messages, %u keys)", ckWho(port),
-                       RXCFG_UBX[ckRole].file, RXCFG_UBX[ckRole].count, RXCFG_UBX[ckRole].keys);
+        ckLoadBegin(port, false);
         return nullptr;
     }
     return "unknown action";
 }
+
+// The AgOpenGPS settings (u-blox) start loading into a port: from the page, or automatically into the second F9P
+FLASHMEM static void ckLoadBegin(uint8_t port, bool automatic)
+{
+    CkPort& k = ck[port];
+    ckOp = CKOP_LOAD; ckPort = port; ckStep = 0;
+    ckRole = ckUbxRole(port);
+    ckAutoOp = automatic ? CKOP_LOAD : 0;
+    k.loadOk = k.loadRam = k.loadNak = k.loadNone = 0;
+    k.loadRes = CKR_NONE;
+    k.loadRole = ckRole;
+    k.loadTotal = RXCFG_UBX[ckRole].count;
+    StatusLog.line("%s %s: loading the AgOpenGPS settings (AOGConfigOMatic %s: %u messages, %u keys)%s", automatic ? "[status]" : "[web]",
+                   ckWho(port), RXCFG_UBX[ckRole].file, RXCFG_UBX[ckRole].count, RXCFG_UBX[ckRole].keys,
+                   automatic ? " automatically: it lacks what the Teensy needs" : "");
+}
+
+// autosteer engaged (Autosteer.ino's watchdog): nothing is written to the second F9P automatically meanwhile
+static bool ckSteerOn() { return watchdogTimer < WATCHDOG_THRESHOLD; }
 
 // UBX frames from the receivers (zReceiver.ino: Serial7, zDualF9P.ino: Serial2). True: taken here.
 bool rxCkUbx(uint8_t port, uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len)
@@ -666,6 +691,14 @@ FLASHMEM static void ckMissing(uint8_t port, char* out, size_t n)
     }
 }
 
+// the second F9P lacks something the Teensy needs (after its check)
+FLASHMEM static bool ckAutoNeeded()
+{
+    char miss[120];
+    ckMissing(RXCK_GPS2, miss, sizeof(miss));
+    return miss[0] != '\0';
+}
+
 // after a u-blox check: the [status] lines (what is missing, the firmware, the AgOpenGPS settings)
 FLASHMEM static void ckCheckSay(uint8_t port)
 {
@@ -719,7 +752,7 @@ FLASHMEM static void ckOpScan(uint32_t now)
     if (k.scanRes == CKR_FOUND)
         StatusLog.line("[status] %s: the receiver answers at %lu baud (%s)%s", ckWho(ckPort), (unsigned long)k.found,
                        k.foundKind == CKK_UBLOX ? "u-blox" : k.foundKind == CKK_UNICORE ? "Unicore" : "NMEA",
-                       k.found == CK_TEENSY_BAUD ? "" : " - the Teensy needs 460800: web page, GPS, Receiver check, set it to 460800");
+                       k.found == CK_TEENSY_BAUD ? "" : ckPort == RXCK_GPS2 ? " - the Teensy needs 460800" : " - the Teensy needs 460800: web page, GPS, Receiver check, set it to 460800");
     else
         StatusLog.line("[status] %s: no valid data at any baud rate (9600 to 921600): nothing connected, a silent receiver, or the wiring", ckWho(ckPort));
     ckEnd();
@@ -1141,6 +1174,26 @@ void rxCheckLoop()
         {
             if (ckGpsIdle()) { ckRefreshForm = false; if (rxKind == RX_UBLOX) ubxStartRead(); }
         }
+        // the second F9P set up automatically (once each per start-up, autosteer off): found at another baud
+        // rate (u-blox) -> set to 460800 and saved; checked and lacking what the Teensy needs -> the AgOpenGPS
+        // settings (DualRelPos.txt) loaded, then checked again. The Status page and [status] say what is done.
+        else if (dualF9pOn() && !(ckAutoTried & 1) && ck[RXCK_GPS2].scanRes == CKR_FOUND && ck[RXCK_GPS2].found &&
+                 ck[RXCK_GPS2].found != CK_TEENSY_BAUD && ck[RXCK_GPS2].foundKind == CKK_UBLOX && !ckSteerOn())
+        {
+            ckAutoTried |= 1;
+            CkPort& k = ck[RXCK_GPS2];
+            ckOp = CKOP_BAUD; ckPort = RXCK_GPS2; ckStep = 0; ckSaved = false;
+            ckAutoOp = CKOP_BAUD;
+            k.baudRes = CKR_NONE;
+            StatusLog.line("[status] Second F9P: setting it from %lu to 460800 baud automatically (saved in the F9P)", (unsigned long)k.found);
+        }
+        else if (dualF9pOn() && !(ckAutoTried & 2) && ck[RXCK_GPS2].chkRes == CKR_CHECKED && ck[RXCK_GPS2].essMs &&
+                 ck[RXCK_GPS2].essRole == RXCFG_ROLE_RELPOS && strstr(ck[RXCK_GPS2].model, "F9P") && ck[RXCK_GPS2].health == CKH_OK &&
+                 !ckSteerOn() && ckAutoNeeded())
+        {
+            ckAutoTried |= 2;
+            ckLoadBegin(RXCK_GPS2, true);
+        }
         // automatically: the receiver once it is identified, the second F9P once its data is valid
         else if ((rxKind == RX_UBLOX || rxKind == RX_UM982) && rxIdState == RXID_DONE && ck[RXCK_GPS].autoFor != rxIdMs &&
                  ck[RXCK_GPS].health == CKH_OK && ckGpsIdle() && !passThroughGPS)
@@ -1176,8 +1229,8 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.str("health", rxCkHealthName(port));
     j.u("bytes", k.wb);
     j.u("good", k.wg);
-    j.arr("hz");                                           // x 10: port 0 GGA, VTG, HPR; port 1 RELPOSNED
-    for (uint8_t t = 0; t < (port == RXCK_GPS ? 3 : 1); t++) { char v[8]; snprintf(v, sizeof(v), "%u", k.hz[t]); j.sep(); j.raw(v); }
+    j.arr("hz");                                           // x 10: port 0 GGA, VTG, HPR; port 1 RELPOSNED, NMEA sentences
+    for (uint8_t t = 0; t < (port == RXCK_GPS ? 3 : 2); t++) { char v[8]; snprintf(v, sizeof(v), "%u", k.hz[t]); j.sep(); j.raw(v); }
     j.closeArr();
     j.str("model", ckModel(port));
     j.str("fw", ckFw(port));
@@ -1233,6 +1286,37 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.u("loadNone", k.loadNone);
     j.u("loadTotal", k.loadTotal);
     j.i("loadAgo", k.loadMs ? (long)((now - k.loadMs) / 1000) : -1);
+    j.close();
+}
+
+// GET /api/status (zWeb.ino): what the Status tab says about the second F9P in the dual-antenna card -
+// its data, model and firmware, and whether it has what the Teensy needs (the GPS tab has the details)
+FLASHMEM void rxCkStatusJson(Json& j, uint8_t port)
+{
+    if (port > 1) return;
+    const CkPort& k = ck[port];
+    const bool checked = k.essMs && k.essRole == ckUbxRole(port);
+    char miss[120] = "";
+    if (checked) ckMissing(port, miss, sizeof(miss));
+    j.obj("ck2");
+    j.str("health", rxCkHealthName(port));
+    j.str("model", ckModel(port));
+    j.str("fw", ckFw(port));
+    j.str("fwSt", ckFwState(port));
+    j.u("found", k.scanRes == CKR_FOUND ? k.found : 0);   // the baud rate the search found (0: not searched, or nothing found)
+    j.bo("notFound", k.scanRes == CKR_NOTFOUND);
+    j.bo("noAnswer", k.chkRes == CKR_NOANSWER);
+    j.bo("checked", checked);
+    j.str("miss", miss);                                   // what the Teensy needs and the receiver lacks: "gga, vtg"
+    const bool here = ckOp != CKOP_NONE && ckPort == port;
+    j.str("op", !here ? "" : ckOp == CKOP_SCAN ? "scan" : ckOp == CKOP_BAUD ? "baud" : ckOp == CKOP_CHECK ? "check" : "load");
+    j.bo("auto", here && ckAutoOp != 0);                   // ... started by the Teensy itself
+    j.str("autoDid", ckAutoDid == CKOP_BAUD ? "baud" : ckAutoDid == CKOP_LOAD ? "load" : "");   // the last automatic one that ended
+    j.str("baud", ckResName(k.baudRes));
+    j.str("load", ckResName(k.loadRes));
+    j.u("loadOk", k.loadOk + k.loadRam);
+    j.u("loadTotal", k.loadTotal);
+    j.i("loadAgo", k.loadMs ? (long)((millis() - k.loadMs) / 1000) : -1);
     j.close();
 }
 
