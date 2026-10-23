@@ -65,7 +65,7 @@ dd.nw{white-space:nowrap;overflow-wrap:normal}
 .pill.bad{background:color-mix(in srgb,var(--bad) 16%,transparent)}
 .mono{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .note{color:var(--mute);font-size:13.5px;margin:6px 0 0}
-#ck0 .note.bad,#ck1 .note.bad{color:var(--bad)}
+#ck0 .note.bad,#ck1 .note.bad,.note.bad{color:var(--bad)}.note.warn{color:var(--warn)}.note.ok{color:var(--ok)}
 .box{background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:8px}
 /* Machine tab sections: squares in the AgOpenWeb section colours (its SECTION_COLORS) */
 .msecs{display:grid;grid-template-columns:repeat(var(--n,5),1fr);gap:4px;margin-top:8px}
@@ -87,6 +87,7 @@ button.act,label.act{border:0;background:var(--acc);color:var(--accInk);border-r
 button.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button.danger{border:1px solid var(--bad);background:transparent;color:var(--bad);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
+input:disabled,select:disabled,label.opt:has(input:disabled){opacity:.5;cursor:default}
 input[type=text]{font:inherit;font-family:var(--mono);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);flex:1;min-width:180px}
 .opt{display:flex;gap:10px;align-items:flex-start;padding:5px 0}
 .opt input{margin-top:4px}
@@ -666,10 +667,11 @@ function renderTmSet(s){
  let m="",cls="";
  if(s.pending)m="waiting for the TM171…";
  else if(s.odd){m="Settings received, but the layout is not recognised (switch word 0x"+(s.sw>>>0).toString(16)+"). Writing is disabled; use ImuAssistant instead.";cls="bad";}
- else if(s.age<0)m=s.noAnswer?"No reply from the TM171 (is the TX5 wire connected?)":"not read yet";
+ else if(s.age<0){m=s.noAnswer?"No reply from the TM171 (is the TX5 wire connected?)":"not read yet";cls=s.noAnswer?"warn":"";}
  else{m="Read "+(s.age<90?s.age+" s":Math.round(s.age/60)+" min")+" ago"+(s.ackAge>=0?". Last write acknowledged by the TM171 "+(s.ackAge<90?s.ackAge+" s":Math.round(s.ackAge/60)+" min")+" ago":"");cls=s.ackAge>=0&&s.ackAge<30?"ok":"";}
  if(!$("tsMsg").dataset.err)set("tsMsg",m,cls);
- $("tsWrite").disabled=!s.valid||s.pending;$("tsRead").disabled=!!s.pending;}
+ $("tsWrite").disabled=!s.valid||s.pending;$("tsAog").disabled=!s.valid;$("tsRead").disabled=!!s.pending;
+ for(const e of $("tmSetDet").querySelectorAll("input,select"))e.disabled=!s.valid;}   /* nothing read: nothing to choose from */
 $("tsRead").addEventListener("click",()=>{tsSeen=null;delete $("tsMsg").dataset.err;tmCalPost("setread");});
 $("tsAog").addEventListener("click",()=>{tsFill({mag:0,gyroErr:1,selfAdapt:1,status:1,boot:0,accGain:350,magGain:100,inhibit:40,silent:0});set("tsMsg","AgOpenGPS defaults loaded into the form (magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, 25 Hz, silent time 0, Auto boot). Click \"Write to TM171\" to apply.","warn");$("tsMsg").dataset.err="1";});
 $("tsWrite").addEventListener("click",async()=>{
