@@ -223,7 +223,8 @@ about 20 s of data with the module still and stores the result in its **flash me
 installing the TM171, or after a large temperature change, with the tractor parked and autosteer off. It
 cannot be stopped once started, and **power must not be cut while it runs** (SYD warns a power loss during
 those 20 s can damage the TM171). The page shows the TM171's reply (saved / failed / no result after 60 s);
-**power-cycle the module afterwards**, as SYD requires.
+**switch the whole module off and on afterwards**, as SYD requires (the TM171 has no power switch of its
+own on the AiO board).
 
 The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is unused.
 

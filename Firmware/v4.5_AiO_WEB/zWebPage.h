@@ -326,7 +326,7 @@ a{color:var(--acc)}
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
   <dl><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
   <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn">Calibrate gyro</button><span class="note">Takes 20 s. Park the tractor and switch autosteer off; the engine can stay running. The result is kept until the TM171 is powered off.</span></div>
-  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn">New install calibration</button><span class="note">Stored in the TM171's flash memory. Run it once after installing the TM171, or after a large temperature change. Takes about 20 s with the tractor parked and autosteer off. Do not cut power while it runs. Power-cycle the module when it finishes.</span></div>
+  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn">New install calibration</button><span class="note">Stored in the TM171's flash memory. Run it once after installing the TM171, or after a large temperature change. Takes about 20 s with the tractor parked and autosteer off. Do not cut power while it runs. When it finishes, switch the whole module off and on (the TM171 has no power switch of its own).</span></div>
  </div>
  <div class="card hidden" id="tmSetCard"><h2>TM171 setup</h2>
   <dl><dt>Setup</dt><dd id="tmSetup2">–</dd></dl>
@@ -337,7 +337,7 @@ a{color:var(--acc)}
    <label class="opt"><input type="checkbox" id="tsGyroErr"><span>GyroErrFilter<small>Accelerometer gain: <input type="number" id="tsAcc" min="0.01" max="20" step="0.01"> (the dial next to GyroErrFilter in ImuAssistant; 3.50 recommended)</small></span></label>
    <label class="opt"><input type="checkbox" id="tsSelfAdapt"><span>Self-Adapt Filter<small>Magnetometer gain: <input type="number" id="tsMagG" min="0.01" max="20" step="0.01"> (the dial next to Self-Adapt; 1.00 recommended)</small></span></label>
    <label class="opt"><input type="checkbox" id="tsStatus"><span>Status output<small>Temperature and signal quality (QoS). Roll-pitch-yaw and UART output are always left on.</small></span></label>
-   <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Applies after a power cycle; requires "Save to flash".</span></div>
+   <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Applies after the module is switched off and on; requires "Save to flash".</span></div>
    <div class="row"><span>Output data rate</span><input type="number" id="tsRate" min="0" max="1000" step="1"> Hz<span class="note">Use 25 for AgOpenGPS (stored as a 40 ms inhibit time). 0 = maximum rate. Currently measured: <span id="tsRateNow">–</span></span></div>
    <div class="row"><span>Power-on silent time (s)</span><input type="number" id="tsSilent" min="0" max="65" step="1"></div>
    <label class="opt"><input type="checkbox" id="tsSave" checked><span>Save to flash<small>If unchecked, the settings are lost when the TM171 is powered off.</small></span></label>
@@ -441,14 +441,14 @@ function render(s){
    set("tmFixNote","No reply from the TM171: its RX pin is not wired to Teensy TX5 (pin 20). The TM171 still sends roll, pitch and yaw, but calibration, settings and setup cannot be changed from this page. Solder one wire from Teensy pin 20 to the TM171 RX pin, then restart the module.","bad");$("tmFixBtn").disabled=true;}
   else if(why){su="not set up for AgOpenGPS: "+why;suc="warn";
    if(t.set.pending)set("tmFixNote","Writing…","");
-   else set("tmFixNote","Not set up for AgOpenGPS: "+why+". Writes 115200 baud and the AgOpenGPS defaults to the TM171's flash (requires the TX5 wire)."+(t.set.valid?"":" Settings not read yet: nothing can be written."),"warn");
+   else set("tmFixNote",t.set.valid?"Click Fix TM171 setup: it writes 115200 baud and the AgOpenGPS settings to the TM171's flash and reads them back. Then switch the whole module off and on and run New install calibration.":"Waiting for the TM171's settings (needs the TX5 wire). Until they are read, nothing can be written.","warn");
    $("tmFixBtn").disabled=!t.set.valid||!!t.set.pending;}
-  else if(fixed){su="written and saved: run New install calibration";suc="ok";set("tmFixNote","TM171 setup written and saved. Now run New install calibration (tractor parked, engine running).","ok");$("tmFixBtn").disabled=true;}
+  else if(fixed){su="written and saved: switch the module off and on, then run New install calibration";suc="ok";set("tmFixNote","TM171 setup written and saved. Switch the whole module off and on, then run New install calibration (tractor parked, engine running).","ok");$("tmFixBtn").disabled=true;}
   else if(tm&&t.set&&t.set.valid){su="AgOpenGPS";suc="ok";}
   else if(tm&&t.set&&t.set.pending){su="reading…";}
   else if(tm){su="not read yet";}
   set("tmSetup",su,suc);set("tmSetup2",su,suc);
-  const CAL=inst?{running:"new install calibration in progress. Keep still, do not cut power…",ok:"new install calibration saved to flash. Power-cycle the module now.",failed:"new install calibration failed (did the tractor move?). Power-cycle the module and try again.",noanswer:"no reply from the TM171 (is the TX5 wire connected?)"}
+  const CAL=inst?{running:"new install calibration in progress. Keep still, do not cut power…",ok:"new install calibration saved to flash. Switch the whole module off and on now.",failed:"new install calibration failed (did the tractor move?). Switch the module off and on, then try again.",noanswer:"no reply from the TM171 (is the TX5 wire connected?)"}
    :{starting:"starting…",running:"in progress, "+(t.calibLeft>=0?t.calibLeft+" s left":""),finishing:"finishing…",ok:"OK",failed:"failed (the tractor moved, or too much vibration)",noanswer:"no reply from the TM171 (is the TX5 wire connected?)",aborted:"stopped"};
   const calTxt=t.calib?(CAL[t.calib]||t.calib)+(!busy&&t.calibAgo>=0?" ("+(t.calibAgo<90?t.calibAgo+" s":Math.round(t.calibAgo/60)+" min")+" ago)":""):"not run since power-on",calCls=t.calib==="ok"?"ok":busy?"":t.calib?"warn":"";
   set("tmCal",calTxt,calCls);set("tmCal2",calTxt,calCls);
@@ -692,7 +692,7 @@ $("tmFixBtn").addEventListener("click",()=>{
  if(!confirm("Write the AgOpenGPS setup to the TM171?\nUART 115200, magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status output, 25 Hz, silent time 0, Auto boot. Saved to the TM171's flash. Autosteer must be off."))return;
  tmCalPost("fixsetup");});
 $("tmInstBtn").addEventListener("click",()=>{
- if(!confirm("Run the TM171 new install calibration?\nKeep the tractor parked for about 20 s and do NOT cut power while it runs (SYD warns this can damage the TM171). It cannot be stopped once started. The result is saved to flash; power-cycle the module afterwards."))return;
+ if(!confirm("Run the TM171 new install calibration?\nKeep the tractor parked for about 20 s and do NOT cut power while it runs (SYD warns this can damage the TM171). It cannot be stopped once started. The result is saved to flash; switch the whole module off and on afterwards."))return;
  tmCalPost("install");});
 $("gIdent").addEventListener("click",()=>{ubxAsked=false;ubxShown=-1;umAsked=false;umShown=-1;gpsAct("act=identify");});
 $("gUbxOn").addEventListener("click",()=>{if(confirm("Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver."))gpsAct("act=ubxon");});
