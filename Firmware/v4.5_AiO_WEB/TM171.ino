@@ -257,7 +257,7 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 // "New install" calibration (CalibB in ImuAssistant, Calibration object type 0x04, key 0xAA35): the TM171
 // takes about 20 s of data with the module still, writes the result to its FLASH and reports success (0x01) or
 // failure (0xFF); no "started" report, no stop command. SYD: keep the power on during those 20 s (a power-off
-// then may damage the TM171), and power-cycle the TM171 afterwards.
+// then may damage the TM171), and switch the TM171 off and on afterwards (on the AiO board: the whole module).
 #define TM171_INSTALL_MS    60000  // no result in this time = no answer
 
 // ---------------------------------------------------------------- settings (Setting object 21, AiO_WEB)
@@ -599,12 +599,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (ctrl == 0x01)
         {
             tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration saved to flash; power-cycle the module");
+            StatusLog.line("[status] TM171: new install calibration saved to flash; switch the whole module off and on");
         }
         else if (ctrl == 0xFF)
         {
             tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration FAILED (did the tractor move?); power-cycle the module and try again");
+            StatusLog.line("[status] TM171: new install calibration FAILED (did the tractor move?); switch the module off and on and try again");
         }
     }
 }
