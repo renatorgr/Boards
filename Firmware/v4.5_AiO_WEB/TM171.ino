@@ -449,9 +449,9 @@ void tm171SettingLoop()
     if (why[0] && !tmSetWriteMs && !tmBaudSwitchMs && now - firstMs > 10000 && (!warned || now - warnMs > 60000))
     {
         warnMs = now;
-        if (!warned) StatusLog.line("[status] TM171: not set up for AgOpenGPS (%s) - IMU card, Fix TM171 setup", why);
+        if (!warned) StatusLog.line("[status] TM171: not set up for AgOpenGPS (%s) - IMU tab, Fix TM171 setup", why);
         warned = true;
-        hwMessage("TM171 not set up for AgOpenGPS: module page, IMU, Fix TM171 setup", 10, true);
+        hwMessage("TM171 not set up for AgOpenGPS: module page, IMU tab, Fix TM171 setup", 10, true);
     }
     else if (!why[0] && warned)
     {

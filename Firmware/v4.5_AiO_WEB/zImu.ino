@@ -203,7 +203,7 @@ void imuSetup()
     {
         case IMU_TM171:
             if (tm171Baud == 115200) StatusLog.println("[boot] IMU: TM171 on Serial5");
-            else StatusLog.line("[boot] IMU: TM171 on Serial5 at %lu baud (not 115200: IMU card, Fix TM171 setup)", (unsigned long)tm171Baud);
+            else StatusLog.line("[boot] IMU: TM171 on Serial5 at %lu baud (not 115200: IMU tab, Fix TM171 setup)", (unsigned long)tm171Baud);
             break;
         case IMU_BNO_RVC: StatusLog.println("[boot] IMU: BNO085 on Serial5 (RVC mode)"); break;
         case IMU_BNO_I2C: StatusLog.line("[boot] IMU: BNO085 on I2C 0x%02X (pins 18 / 19)", imuBnoAddr); bnoReadMs = millis(); break;
