@@ -242,6 +242,18 @@ ImuAssistant over the TM171's USB-C port for that). SYD's guide does not number 
 word, so before writing anything the firmware checks the reserved bits of the word it read; if they do not
 match, the page reports "layout not recognised" and refuses to write. All of this needs the TX5 wire.
 
+### TM171 set-up check
+
+If nothing answers at 115200 at start-up, the firmware looks for the TM171 at its other baud rates
+(460800, 230400, 921600, 57600, 38400, 9600). Found, Serial5 stays at that rate and the TM171 works as
+usual. A baud rate other than 115200, or settings that differ from the AgOpenGPS set-up above, give a
+warning at the top of the Status page and in the IMU card, a `[status]` line, and a message on the
+AgOpenWeb / AgOpenGPS screen once a minute ("TM171 not set up for AgOpenGPS: module page, IMU, Fix TM171
+setup"). **Fix TM171 setup** writes 115200 baud and the AgOpenGPS set-up to the TM171's flash in one go,
+switches Serial5 to 115200 and reads the settings back; the card then asks for a **New install
+calibration**. Nothing is written without that click. The settings must have been read first, so the TX5
+wire is needed; without it the page can only warn.
+
 ## TM171 gyro calibration from the page
 
 The yaw of a TM171 drifts with the tractor standing still and the engine running. SYD Dynamics' answer is a

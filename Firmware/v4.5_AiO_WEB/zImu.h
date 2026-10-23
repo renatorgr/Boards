@@ -57,7 +57,13 @@ struct TmSetForm
     uint16_t accGain, magGain; // x 0.01
     uint16_t inhibit;         // ms between packets
     uint32_t silent;          // s after power-on
+    uint16_t baud100;         // UART baud rate / 100 (1152 = 115200); 0 = keep as read
 };
+extern uint32_t tm171Baud;
+bool        tm171ScanBaud();
+const char* tm171SetupWhy();
+bool        tm171NoWire();
+bool        tm171FixSetup(const char** why);
 extern uint32_t TM171rpyRate;
 void tm171SettingRead();
 bool tm171SettingWrite(const TmSetForm& f, const char** why);
