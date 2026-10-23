@@ -201,6 +201,49 @@ At start-up the firmware looks for:
 
 ### TM171 gyro calibration from the page
 
+A TM171's yaw drifts while the tractor sits with the engine running. SYD Dynamics' remedy is a gyro
+calibration taken with the vehicle parked ("run-time static calibration"; application note AN002 says the
+engine can stay running). The IMU card has a **Calibrate gyro** button for it:
+
+- Park the tractor and switch autosteer off (the page refuses otherwise). The TM171 collects data for 20 s
+  while the page counts down, then reports **OK** or **failed** (the tractor moved, or there was too much
+  vibration; the previous values are kept). Engaging autosteer or driving off stops the calibration.
+- Per SYD's user guide the result is held in the TM171's RAM, so it lasts **until the TM171 is powered
+  off**. Run it after starting the tractor whenever the yaw drifts.
+- **Wiring**: the board connects TM171 TX to Teensy RX5 (jumper SJ1) but nothing to TM171 RX. The button
+  needs a wire from **Teensy pin 20 (TX5) to the TM171 RX pin**. Without it the page reports "no reply from
+  the TM171" after 3 s.
+- `[status]` lines: started, done, failed, stopped, no reply. Constants in `TM171.ino`: `TM171_CALIB_S`
+  (20 s), `TM171_CALIB_LIMIT` (accepted gyro error, 0.5 °/s), `TM171_CALIB_CONF`.
+
+A second button, **New install calibration**, is the "CalibB" of SYD's ImuAssistant: the TM171 collects
+about 20 s of data with the module still and stores the result in its **flash memory**. Run it once after
+installing the TM171, or after a large temperature change, with the tractor parked and autosteer off. It
+cannot be stopped once started, and **power must not be cut while it runs** (SYD warns a power loss during
+those 20 s can damage the TM171). The page shows the TM171's reply (saved / failed / no result after 60 s);
+**power-cycle the module afterwards**, as SYD requires.
+
+The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is unused.
+
+### TM171 settings from the page
+
+Below the IMU card, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested
+its settings at start-up (Setting object 21): magnetometer on/off, GyroErrFilter with the accelerometer gain
+(the dial next to it in ImuAssistant), Self-Adapt filter with the magnetometer gain, status output, boot
+mode, output data rate (stored in the TM171 as an inhibit time: 25 Hz = 40 ms) and power-on silent time.
+**AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer off, GyroErrFilter
+3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, silent time 0, Auto boot). **Write to TM171**
+sends the form, saved to flash unless you untick it, waits for the TM171's acknowledgement and reads the
+settings back. The measured output rate is shown next to the rate field.
+
+Deliberately out of reach: the gyro, the accelerometer, the roll-pitch-yaw output and the UART output are
+always left on, and the UART baud rate is never changed (the Teensy would lose contact with the TM171; use
+ImuAssistant over the TM171's USB-C port for that). SYD's guide does not number the bits of the settings
+word, so before writing anything the firmware checks the reserved bits of the word it read; if they do not
+match, the page reports "layout not recognised" and refuses to write. All of this needs the TX5 wire.
+
+## TM171 gyro calibration from the page
+
 The yaw of a TM171 drifts with the tractor standing still and the engine running. SYD Dynamics' answer is a
 gyro calibration taken with the vehicle still ("run-time static calibration", application note AN002: the
 engine may run). The IMU card has a **Calibrate gyro** button for it:
@@ -224,6 +267,22 @@ shows the TM171's answer (saved / failed / no result after 60 s); **switch the m
 as SYD asks.
 
 The magnetometer is not calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is not used.
+
+### TM171 settings from the page
+
+Under the IMU card, **TM171 settings** (a fold-out) shows what the TM171 answered to a settings request at
+start-up (Setting object 21): magnetometer on/off, GyroErrFilter and the accelerometer gain (the knob next to
+it in ImuAssistant), Self-Adapt filter and the magnetometer gain, status output, boot mode, output data rate
+(sent to the TM171 as an inhibit time: 25 Hz = 40 ms), power-on silent time. **AgOpenGPS values** fills in
+the settings from the AgOpenGPS forum (Mag off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART
+115200, 25 Hz, silent 0, Auto boot); **Write to the TM171** sends them, saved to the TM171's flash unless
+you untick it, and reads them back; the TM171 acknowledges the write. The measured output rate is shown.
+
+Kept out of reach on purpose: the gyro, the accelerometer, the roll-pitch-yaw output and the UART output
+are always left on, and the UART baud rate is never changed (the Teensy would lose the TM171; use
+ImuAssistant over the TM171's USB-C for that). SYD's guide does not number the bits of the settings word, so
+the firmware checks the reserved bits of what it read before writing anything; if they do not match, the
+page says "unknown layout" and refuses to write. Everything needs the TX5 wire.
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
 
 ## Dual F9P: second F9P on the GPS2 port

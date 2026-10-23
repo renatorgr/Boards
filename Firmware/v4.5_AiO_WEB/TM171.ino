@@ -12,6 +12,8 @@
    (tm171Calib*), after the SYD Dynamics TransducerM user guide (EasyProtocol, Calibration object) and
    application note AN002. Needs Teensy TX5 (pin 20) wired to the TM171 RXD.
    AiO_WEB 4.5, 23 Oct 2026: the "new install" calibration (CalibB, saved in the TM171's flash) as a second button.
+   AiO_WEB 4.5, 23 Oct 2026: the TM171's settings (Setting object 21) read and written from the web page
+   (tm171Setting*): magnetometer, filters and gains, outputs, boot mode, silent time, output rate.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -54,6 +56,11 @@ uint8_t qos;
 
 bool TM171DataSeen = false;
 uint32_t TM171crcErrors = 0;   // packets dropped for a bad CRC (shown by FUSION_DEBUG)
+// AiO_WEB: used by the parser below, defined with the settings code further down
+#define TM171_SET_LEN 20                              // Setting object content, bytes
+static void tm171SettingGot(const uint8_t* p);
+uint32_t tmSetAckMs = 0;                              // the TM171 acknowledged our settings write
+uint32_t TM171rpyCount = 0;                           // roll-pitch-yaw packets this second
 
 //#define TM171DEBUG
 
@@ -132,6 +139,7 @@ bool TM171byte(uint8_t temp)
         switch (functionCode)
         {
         case 35: //RPY Output
+          TM171rpyCount++;                                  // AiO_WEB: the output rate, shown by the web page
           RollV.fBytes[0] = ImuData[11];
           RollV.fBytes[1] = ImuData[12];
           RollV.fBytes[2] = ImuData[13];
@@ -159,6 +167,14 @@ bool TM171byte(uint8_t temp)
         
         case 23: // Calibration status report (AiO_WEB: the gyro calibration from the web page, below)
           tm171CalibReport(ImuData[7], ImuData[8]);     // content: type, control value
+        break;
+
+        case 21: // Setting object (AiO_WEB: answer to our request, below)
+          if (packetLength == 4 + TM171_SET_LEN) tm171SettingGot(ImuData + 7);
+        break;
+
+        case 13: // Acknowledge (AiO_WEB: byte 0 = the object acknowledged)
+          if (ImuData[7] == 21) tmSetAckMs = millis() | 1;
         break;
 
         case 22: // Status Output
@@ -239,6 +255,140 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 // then may damage the TM171), and power-cycle the TM171 afterwards.
 #define TM171_INSTALL_MS    60000  // no result in this time = no answer
 
+// ---------------------------------------------------------------- settings (Setting object 21, AiO_WEB)
+// 20 bytes: switches u32, reserved u16 (1152), UART baud u16 (x100 bps), CAN baud u16, accelerometer gain
+// u16 (x0.01: the knob by GyroErrFilter in ImuAssistant), magnetometer gain u16 (x0.01: the knob by
+// Self-Adapt), inhibit time u16 (ms between two packets: 40 = 25 Hz), silent time u32 (s after power-on).
+// The switches, bit 0 first (the user guide's C bit fields, little-endian): 0 gyro, 1 accelerometer,
+// 2 magnetometer, 3 GyroErrFilter, 4 magnetometer self-adapt filter, 5 status output, 6 raw data output,
+// 7 reserved 0, 8 quaternion, 9 reserved 0, 10 Euler, 11 roll-pitch-yaw, 12 gravity, 13 reserved 1,
+// 14-16 reserved 2, 17 request acknowledge, 18 save to flash, 19 UART output, 20 reserved, 21 CAN output,
+// 22-23 reserved, 24-25 boot mode (0 auto, 1 static, 2 dynamic), 26-31 unused.
+// The guide does not number the bits, so before writing anything the firmware checks what it read: bit 13
+// = 1, bits 14-16 = 2 and the reserved word = 1152. If that does not hold, the page says so and nothing
+// is written. The firmware always keeps the gyro, the accelerometer, the roll-pitch-yaw output and the
+// UART output on, and the baud rate as read (it talks to the TM171 at 115200).
+#define TM171_SET_BIT(w, n)  (((w) >> (n)) & 1UL)
+uint8_t  tmSet[TM171_SET_LEN];   // as read from the TM171
+bool     tmSetValid  = false;    // read, and the layout check passed
+bool     tmSetOdd    = false;    // read, but the layout check failed
+uint32_t tmSetMs     = 0;        // when read (0 = never)
+uint32_t tmSetReqMs  = 0;        // request sent, no answer yet (0 = none pending)
+uint32_t tmSetWriteMs = 0;       // our write, to read the settings back after it
+uint32_t tmSetNoAnswer = 0;      // requests without an answer (the TX5 wire?)
+uint32_t TM171rpyRate = 0;       // roll-pitch-yaw packets per second
+
+static uint32_t tmSetU32(const uint8_t* p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
+static uint16_t tmSetU16(const uint8_t* p) { return (uint16_t)(p[0] | (p[1] << 8)); }
+static void     tmSetPut16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
+static void     tmSetPut32(uint8_t* p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }
+
+// Ask the TM171 for its Setting object (Request object 12)
+void tm171SettingRead()
+{
+    const uint8_t c[4] = { 21, 0, 0, 0 };
+    tm171Send(12, c, sizeof(c));
+    tmSetReqMs = millis() | 1;
+}
+
+static void tm171SettingGot(const uint8_t* p)
+{
+    memcpy(tmSet, p, TM171_SET_LEN);
+    const uint32_t w = tmSetU32(tmSet);
+    const bool layoutOk = TM171_SET_BIT(w, 13) == 1 && ((w >> 14) & 7UL) == 2 && tmSetU16(tmSet + 4) == 1152;
+    const bool first = tmSetMs == 0;
+    tmSetMs = millis() | 1;
+    tmSetReqMs = 0;
+    tmSetValid = layoutOk;
+    tmSetOdd   = !layoutOk;
+    if (first || !layoutOk)
+        StatusLog.line("[status] TM171: settings read (switches 0x%08lX, UART %u00 bps, inhibit %u ms)%s", (unsigned long)w,
+                       (unsigned)tmSetU16(tmSet + 6), (unsigned)tmSetU16(tmSet + 14),
+                       layoutOk ? "" : " - LAYOUT NOT RECOGNISED, writing from the page is disabled");
+}
+
+// The web page's form. Returns false with the reason.
+bool tm171SettingWrite(const TmSetForm& f, const char** why)
+{
+    if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
+    if (!tmSetValid)          { *why = tmSetOdd ? "settings layout not recognised; writing is disabled" : "read the settings from the TM171 first"; return false; }
+    if (f.accGain < 1 || f.accGain > 2000 || f.magGain < 1 || f.magGain > 2000) { *why = "gain out of range (0.01 - 20.00)"; return false; }
+    if (f.inhibit > 65530 || f.silent > 65 || f.boot > 2) { *why = "value out of range"; return false; }
+    uint8_t s[TM171_SET_LEN];
+    memcpy(s, tmSet, TM171_SET_LEN);
+    uint32_t w = tmSetU32(s);
+    auto setBit = [&](uint8_t n, bool v) { if (v) w |= (1UL << n); else w &= ~(1UL << n); };
+    setBit(0, true); setBit(1, true);            // gyro, accelerometer: always
+    setBit(2, f.mag);
+    setBit(3, f.gyroErr);
+    setBit(4, f.selfAdapt);
+    setBit(5, f.status);
+    setBit(11, true);                            // roll-pitch-yaw: the firmware reads it
+    setBit(17, true);                            // acknowledge our write
+    setBit(18, f.save);
+    setBit(19, true);                            // UART output: never off (the Teensy would lose the TM171)
+    w = (w & ~(3UL << 24)) | ((uint32_t)f.boot << 24);
+    tmSetPut32(s, w);
+    tmSetPut16(s + 10, f.accGain);
+    tmSetPut16(s + 12, f.magGain);
+    tmSetPut16(s + 14, f.inhibit);
+    tmSetPut32(s + 16, f.silent);
+    tm171Send(21, s, TM171_SET_LEN);
+    tmSetAckMs = 0;
+    tmSetWriteMs = millis() | 1;
+    StatusLog.line("[status] TM171: settings written (switches 0x%08lX, gains %u/%u, inhibit %u ms, silent %lu s%s)", (unsigned long)w,
+                   (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.inhibit, (unsigned long)f.silent, f.save ? ", saved to flash" : ", this session only");
+    return true;
+}
+
+// From imuProcess() (zImu.ino), with a TM171: read the settings once at the start, read them back after
+// a write, give up on a request without an answer, count the output rate
+void tm171SettingLoop()
+{
+    static uint32_t firstMs = 0, rateMs = 0;
+    static bool asked = false;
+    const uint32_t now = millis();
+    if (!firstMs) { firstMs = now | 1; rateMs = now; }
+    if (!asked && now - firstMs > 2000) { asked = true; tm171SettingRead(); }
+    if (tmSetWriteMs && now - tmSetWriteMs > 500) { tmSetWriteMs = 0; tm171SettingRead(); }
+    if (tmSetReqMs && now - tmSetReqMs > TM171_ANSWER_MS)
+    {
+        tmSetReqMs = 0;
+        if (tmSetNoAnswer++ == 0)
+            StatusLog.line("[status] TM171: no reply to the settings request - is Teensy TX5 (pin 20) wired to the TM171 RX?");
+    }
+    if (now - rateMs >= 1000) { rateMs = now; TM171rpyRate = TM171rpyCount; TM171rpyCount = 0; }
+}
+
+// For the web page: the settings as read, decoded
+void tm171SettingJson(Json& j)
+{
+    const uint32_t now = millis();
+    j.obj("set");
+    j.bo("valid", tmSetValid);
+    j.bo("odd", tmSetOdd);
+    j.i("age", tmSetMs ? (long)((now - tmSetMs) / 1000) : -1);
+    j.bo("pending", tmSetReqMs != 0 || tmSetWriteMs != 0);
+    j.i("ackAge", tmSetAckMs ? (long)((now - tmSetAckMs) / 1000) : -1);
+    j.u("noAnswer", tmSetNoAnswer);
+    j.u("rate", TM171rpyRate);
+    if (tmSetMs)
+    {
+        const uint32_t w = tmSetU32(tmSet);
+        j.u("sw", w);
+        j.bo("gyro", TM171_SET_BIT(w, 0)); j.bo("acc", TM171_SET_BIT(w, 1)); j.bo("mag", TM171_SET_BIT(w, 2));
+        j.bo("gyroErr", TM171_SET_BIT(w, 3)); j.bo("selfAdapt", TM171_SET_BIT(w, 4));
+        j.bo("status", TM171_SET_BIT(w, 5)); j.bo("raw", TM171_SET_BIT(w, 6)); j.bo("quat", TM171_SET_BIT(w, 8));
+        j.bo("euler", TM171_SET_BIT(w, 10)); j.bo("rpy", TM171_SET_BIT(w, 11)); j.bo("gravity", TM171_SET_BIT(w, 12));
+        j.bo("uart", TM171_SET_BIT(w, 19)); j.bo("can", TM171_SET_BIT(w, 21));
+        j.u("boot", (w >> 24) & 3);
+        j.u("baud", (unsigned long)tmSetU16(tmSet + 6) * 100UL);
+        j.u("accGain", tmSetU16(tmSet + 10)); j.u("magGain", tmSetU16(tmSet + 12));
+        j.u("inhibit", tmSetU16(tmSet + 14)); j.u("silent", tmSetU32(tmSet + 16));
+    }
+    j.close();
+}
+
 uint8_t  tmCalibState  = TMC_IDLE;
 uint8_t  tmCalibKind   = TMC_KIND_GYRO;   // what the state is about: gyro (RAM) or new install (flash)
 uint32_t tmCalibMs     = 0;        // when the state was entered
@@ -274,7 +424,7 @@ const char* tmCalibName(uint8_t s)      // for the web page
 bool tm171CalibStart(uint8_t kind, const char** why)
 {
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
-    if (tmCalibBusy())        { *why = "a calibration is already running"; return false; }
+    if (tmCalibBusy())        { *why = "a calibration is already in progress"; return false; }
     tmCalibCount++;
     tmCalibKind = kind;
     tmCalibMs   = millis();
@@ -283,13 +433,13 @@ bool tm171CalibStart(uint8_t kind, const char** why)
         const uint8_t c[12] = { 0x04, 0x02, 0x35, 0xAA, 0,0,0,0, 0,0,0,0 };
         tm171Send(23, c, sizeof(c));
         tmCalibState = TMC_RUNNING;                 // the TM171 sends no "started": only the result
-        StatusLog.line("[status] TM171: new install calibration started (about 20 s; keep the tractor still and the power ON)");
+        StatusLog.line("[status] TM171: new install calibration started (about 20 s; keep the tractor parked, do not cut power)");
     }
     else
     {
         tmCalibState = TMC_STARTING;
         tm171CalibCmd(0x03, TM171_CALIB_LIMIT, TM171_CALIB_CONF);
-        StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor still, the engine may run)", (unsigned)TM171_CALIB_S);
+        StatusLog.line("[status] TM171: gyro calibration started (%u s; keep the tractor parked, the engine can stay running)", (unsigned)TM171_CALIB_S);
     }
     return true;
 }
@@ -301,7 +451,7 @@ void tm171CalibStop(const char* why)
     if (!tmCalibBusy()) return;
     if (tmCalibKind == TMC_KIND_INSTALL)
     {
-        StatusLog.line("[status] TM171: new install calibration cannot be stopped (%s) - waiting for the result", why);
+        StatusLog.line("[status] TM171: new install calibration cannot be stopped (%s), waiting for the result", why);
         return;
     }
     tm171CalibCmd(0x04, 0, 0);
@@ -322,12 +472,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (ctrl == 0x01)
         {
             tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: gyro calibration succeeded (kept until the TM171 loses power)");
+            StatusLog.line("[status] TM171: gyro calibration done (kept until the TM171 is powered off)");
         }
         else if (ctrl == 0xFF)
         {
             tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration) - the old values stay");
+            StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration); previous values kept");
         }
     }
     else if (type == 0x14 && tmCalibKind == TMC_KIND_INSTALL && tmCalibBusy())
@@ -335,12 +485,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (ctrl == 0x01)
         {
             tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration saved in the TM171's flash - switch the module off and on");
+            StatusLog.line("[status] TM171: new install calibration saved to flash; power-cycle the module");
         }
         else if (ctrl == 0xFF)
         {
             tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: new install calibration FAILED (the tractor moved?) - switch the module off and on, then try again");
+            StatusLog.line("[status] TM171: new install calibration FAILED (did the tractor move?); power-cycle the module and try again");
         }
     }
 }
@@ -355,7 +505,7 @@ void tm171CalibLoop()
         if (now - tmCalibMs > TM171_INSTALL_MS)
         {
             tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-            StatusLog.line("[status] TM171: no result of the new install calibration - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+            StatusLog.line("[status] TM171: no result from the new install calibration - is Teensy TX5 (pin 20) wired to the TM171 RX?");
         }
         return;
     }
@@ -367,7 +517,7 @@ void tm171CalibLoop()
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
                 tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-                StatusLog.line("[status] TM171: no answer to the calibration command - is the Teensy TX5 (pin 20) wired to the TM171 RXD?");
+                StatusLog.line("[status] TM171: no reply to the calibration command - is Teensy TX5 (pin 20) wired to the TM171 RX?");
             }
             break;
         case TMC_RUNNING:
@@ -381,7 +531,7 @@ void tm171CalibLoop()
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
                 tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
-                StatusLog.line("[status] TM171: no answer after the calibration - result unknown");
+                StatusLog.line("[status] TM171: no reply after the calibration; result unknown");
             }
             break;
         default: break;
