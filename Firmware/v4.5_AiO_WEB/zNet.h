@@ -31,7 +31,7 @@ template struct NetPollTimerAccess<&EthernetClass::_fnet_poll>;
 void netPollFromLoop();             // after Ethernet.begin(): the library's timer stops (zEthernet.ino)
 void netPoll();                     // fnet_poll(), once a millisecond at most (zEthernet.ino)
 void netDelay(uint32_t ms);         // delay() that keeps the network going (zEthernet.ino)
-// the module's subnet (the first three numbers of its IP) from the web page or the XIAO page, as AgIO's
+// the module's subnet (the first three numbers of its IP) from the XIAO page (PGN 144), as AgIO's
 // PGN 201: saved in the EEPROM; the caller restarts the Teensy. An error text, or nullptr (zEthernet.ino)
 const char* netSetSubnet(uint8_t a, uint8_t b, uint8_t c, const char* who);
 
