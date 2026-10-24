@@ -1574,14 +1574,14 @@ FLASHMEM size_t rxCkDumpLine(uint16_t i, char* out, size_t cap)
     for (uint16_t k = first; k < last; k++) len += 4 + ckKeySize(ckDump[k].key);
     if (cap < 40u + 3u * len) return 0;
     size_t n = (size_t)snprintf(out, cap, "CFG-VALGET - 06 8B %02X %02X 01 00 %02X %02X", len & 0xFF, len >> 8, first & 0xFF, first >> 8);
-    static const char HEX[] = "0123456789ABCDEF";
+    static const char HEXD[] = "0123456789ABCDEF";          // (HEX is Print.h's macro)
     for (uint16_t k = first; k < last; k++)
     {
         const uint8_t sz = ckKeySize(ckDump[k].key);
         for (uint8_t b = 0; b < 4 + sz; b++)
         {
             const uint8_t x = b < 4 ? (uint8_t)(ckDump[k].key >> (8 * b)) : (uint8_t)((uint64_t)ckDump[k].v >> (8 * (b - 4)));
-            out[n++] = ' '; out[n++] = HEX[x >> 4]; out[n++] = HEX[x & 15];
+            out[n++] = ' '; out[n++] = HEXD[x >> 4]; out[n++] = HEXD[x & 15];
         }
     }
     out[n++] = '\r'; out[n++] = '\n'; out[n] = '\0';
