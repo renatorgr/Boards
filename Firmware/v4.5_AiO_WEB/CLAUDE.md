@@ -119,6 +119,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | `zWebJson.h` | Small JSON writer |
 | `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
 | `zStatus.ino`, `zStatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
+| `zLeds.ino` | The three two-colour LEDs on the board, with the AiO 26 meanings (link / program, fix quality + RTCM flick, steering state + button flick) |
 | `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200) |
 
 ### Companion modules
@@ -169,7 +170,7 @@ Browser ──► port 80 ──► webLoop() (zWeb.ino)
 | 11 | `autosteerLoop()` (40 Hz inside) |
 | 15 | `machineLoop()` |
 | 13 | `receiverLoop()`, `rxCheckLoop()` |
-| 12 | Ethernet link LEDs |
+| 12 | `ledsUpdate()`: the three board LEDs (zLeds.ino) |
 | 20 | firmware update (zOTA.ino) |
 
 There is no scheduler (AiO 26 has `SimpleScheduler`): every part runs each loop and keeps its own timers.
@@ -273,7 +274,7 @@ The addresses must not move: settings must survive a firmware update.
 | 32 / 34 / 37 | steer switch / work switch / remote |
 | A17 / A10 | current sensor / pressure sensor |
 | 36 | speed pulse output |
-| 5, 6, 9-13 | LEDs (power, Ethernet, GPS red / green, autosteer standby / active, GGA) |
+| 5, 6, 9-13 | LEDs: PWR/ETH red / green, GPS red / green, STEER red / green (meanings in `zLeds.ino`), 13 = Teensy LED, GGA blink |
 
 ## Common Gotchas
 

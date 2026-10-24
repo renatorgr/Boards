@@ -1,6 +1,7 @@
 /* zWeb.ino - the module's web server.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   24 Oct 2026: the STEER LED is driven by zLeds.ino, no longer from the stop command here.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -181,8 +182,6 @@ static void steerSafeOff()
     pwmDrive = 0;
     if (isKeya) disableKeyaSteer();
     motorDrive();
-    digitalWrite(AUTOSTEER_STANDBY_LED, 1);
-    digitalWrite(AUTOSTEER_ACTIVE_LED, 0);
 }
 
 static bool autosteerEngaged()

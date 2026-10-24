@@ -20,6 +20,7 @@
      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
+   AiO_WEB 4.5, 24 Oct 2026: the GPS LED is driven by zLeds.ino (fix quality), no longer from here.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -1115,11 +1116,6 @@ void gnssProcess()
         else                 sendStandard(track, kmh, r, p);
         epochsSent++;
     }
-
-    // LEDs: green = dual heading, red = TM171 heading (single antenna), red blinking = TM171 lost
-    digitalWrite(GPSGREEN_LED, epochDual ? HIGH : LOW);
-    if (!epochTmOk) digitalWrite(GPSRED_LED, blink ? HIGH : LOW);
-    else            digitalWrite(GPSRED_LED, epochDual ? LOW : HIGH);
 
 #if FUSION_DEBUG
     static uint32_t dbgMs = 0;
