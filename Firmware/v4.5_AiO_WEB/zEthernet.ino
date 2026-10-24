@@ -4,7 +4,8 @@
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic) for renatorgr: two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
-   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
+   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino);
+   2026-10-24: the subnet changed from the web page or the XIAO page (netSetSubnet).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -101,4 +102,28 @@ void netDelay(uint32_t ms)
     netPoll();
     delayMicroseconds(100);
   }
+}
+
+// ---------------------------------------------------------------- the module's subnet
+// The module's IP is <subnet>.126 (or .120 without autosteer), the subnet saved in the EEPROM (address 60,
+// with the steer settings; 192.168.5 from new). AgIO and AgOpenWeb change it with PGN 201 (Autosteer.ino);
+// this does the same from the web page (Settings) and from the XIAO page, for a module on a network
+// that is not the program's. Saved here; the caller answers and then restarts the Teensy (the new IP
+// is taken at start-up, EthernetStart). Returns an error text, or nullptr when saved.
+const char* netSetSubnet(uint8_t a, uint8_t b, uint8_t c, const char* who)
+{
+  if (a == 0 || a == 127 || a > 223)                return "invalid subnet (the first number: 1 to 223, not 127)";
+  if (watchdogTimer < WATCHDOG_THRESHOLD)           return "not while autosteer is engaged";
+  if (a == networkAddress.ipOne && b == networkAddress.ipTwo && c == networkAddress.ipThree)
+                                                    return "the module is on that subnet already";
+  const uint8_t last = Eth_myip[3] ? Eth_myip[3] : (Autosteer_running ? 126 : 120);
+  StatusLog.line("[status] subnet %u.%u.%u -> %u.%u.%u from %s: saved, restarting as %u.%u.%u.%u",
+                 networkAddress.ipOne, networkAddress.ipTwo, networkAddress.ipThree, a, b, c, who, a, b, c, last);
+  networkAddress.ipOne = a;
+  networkAddress.ipTwo = b;
+  networkAddress.ipThree = c;
+#ifdef ARDUINO_TEENSY41
+  EEPROM.put(60, networkAddress);
+#endif
+  return nullptr;
 }

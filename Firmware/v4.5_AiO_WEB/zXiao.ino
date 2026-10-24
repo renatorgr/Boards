@@ -44,6 +44,9 @@
 //                   After a hello that follows a silence the last LOG_LINES lines are sent again.
 //   XIAO -> Teensy  PGN 143: the XIAO's own state as a short JSON text (program version, WiFi),
 //                   kept by the Teensy for its web page (XIAO card) and NOT sent to UDP 9999.
+//   XIAO -> Teensy  PGN 144: a command for the Teensy, NOT sent to UDP 9999: data = [1][a][b][c] sets
+//                   the module's subnet to a.b.c (as AgIO's PGN 201; netSetSubnet, zEthernet.ino) and
+//                   restarts the Teensy (2026-10-24: from the XIAO page, for a module on another network).
 //   These go out only when Serial2's transmit buffer has room to spare (XIAO_TX_RESERVE), so the
 //   AgOpenGPS packets for the XIAO always come first.
 //
@@ -70,6 +73,7 @@
 #define XIAO_PGN_STATUS         141     // Teensy -> XIAO: status JSON piece
 #define XIAO_PGN_LOG            142     // Teensy -> XIAO: one log line
 #define XIAO_PGN_INFO           143     // XIAO -> Teensy: XIAO info JSON (not sent to UDP)
+#define XIAO_PGN_CMD            144     // XIAO -> Teensy: a command (not sent to UDP): 1 = subnet a.b.c
 #define XIAO_INFO_MAX           250
 
 static const char XIAO_HELLO[] = "ESP32-hello";
@@ -203,6 +207,20 @@ static void xiaoTakeInfo(const uint8_t* d, uint8_t n)
     xiao.infoRx++;
 }
 
+// a command from the XIAO page (PGN 144): 1 = the module's subnet (the XIAO page is on WiFi, so it is
+// reached whatever network the module is on). Saved; the Teensy restarts to take the new IP.
+static void xiaoTakeCmd(const uint8_t* d, uint8_t n)
+{
+    if (n >= 4 && d[0] == 1)
+    {
+        const char* err = netSetSubnet(d[1], d[2], d[3], "the XIAO page");
+        if (err) { StatusLog.line("[xiao] subnet %u.%u.%u refused: %s", d[1], d[2], d[3], err); return; }
+        SCB_AIRCR = 0x05FA0004;                      // Teensy restart (as PGN 201 does)
+        for (;;) {}
+    }
+    StatusLog.line("[xiao] unknown command from the XIAO: PGN 144, command %u, %u bytes", n ? d[0] : 0, n);
+}
+
 // one frame of the Teensy's own to the XIAO, only with room to spare in the transmit buffer
 static bool xiaoSendOwn(uint8_t pgn, const uint8_t* data, uint8_t len)
 {
@@ -293,6 +311,7 @@ static uint8_t xfScan()
         {
             if (!xiaoDetected)                 xiao.beforeHello++;   // no hello yet (or not for 10 s): not sent
             else if (xf[3] == XIAO_PGN_INFO)   xiaoTakeInfo(xf + 5, xf[4]);   // kept here, not sent to UDP
+            else if (xf[3] == XIAO_PGN_CMD)    xiaoTakeCmd(xf + 5, xf[4]);    // a command: the subnet (not sent to UDP)
             else                               { xiaoSendFrame(xf, need); sent++; }
             xfShift(need);
         }

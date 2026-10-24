@@ -124,7 +124,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Companion modules
 | File | Purpose |
 |------|---------|
-| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143, frames to and from UDP |
+| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144, frames to and from UDP |
 | `zMachine.ino` | Machine module (sprayer Nano, IP .123) on UDP 9999: PGN 160 for the Machine tab (read only) |
 
 ## Architecture Overview
@@ -214,7 +214,8 @@ byte before it (low 8 bits).
 | 203 | Scan reply |
 
 ### XIAO link only (Serial2, never on the network)
-141 status JSON (Teensy → XIAO), 142 log line (Teensy → XIAO), 143 XIAO info (XIAO → Teensy).
+141 status JSON (Teensy → XIAO), 142 log line (Teensy → XIAO), 143 XIAO info (XIAO → Teensy), 144 command
+(XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino).
 
 ### Machine module (UDP 9999 in)
 160 (0xA0) sprayer data from the Nano at .123, see `zMachine.ino` for the 16-byte layout.
@@ -232,6 +233,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/gps` | GET / POST | receiver check and u-blox settings |
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
+| `/api/subnet` | POST | the module's subnet (`subnet=192.168.5`), saved and restart (`netSetSubnet`) |
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
 

@@ -85,6 +85,8 @@ Messages:
 
 Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb). There is no password: anyone on the module's network can open it.
 
+**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand: on this page, Settings → **Module network** (the current IP is shown; type the first three numbers, the module restarts and the page is then at the new IP); or, when the page cannot be reached at all, on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and also shows the module's IP.
+
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
 | Tab | |
@@ -467,8 +469,8 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 
 - XIAO → Teensy: `ESP32-hello` at least every 5 s (present for 10 s after each), AgOpenGPS frames sent on to UDP 9999, and text lines shown as `[xiao] > ...`.
 - Teensy → XIAO, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
-- XIAO → Teensy: PGN 143 (the XIAO's state, for its card).
-- PGN 141-143 never go on the network.
+- XIAO → Teensy: PGN 143 (the XIAO's state, for its card); PGN 144 (a command: 1 = the module's subnet, which the Teensy saves and restarts with).
+- PGN 141-144 never go on the network.
 - Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).
 - At 460800, AgOpenWeb's 100 Hz steering packets use 6-10 % of the link.
 

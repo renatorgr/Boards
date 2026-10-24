@@ -103,7 +103,7 @@ a{color:var(--acc)}
    <dt>Wheel angle (WAS)</dt><dd id="mWas">–</dd><dt>Autosteer</dt><dd id="mAct">–</dd>
    <dt>Ethernet cable</dt><dd id="mLink">–</dd><dt>Program</dt><dd id="mAog">–</dd><dt>RTCM corrections</dt><dd id="mRtcm">–</dd>
    <dt>Firmware</dt><dd id="mFw" class="mono">–</dd></dl>
-  <p class="note">The module's full page opens only over the Ethernet cable: <span class="mono">http://192.168.5.126/</span></p></div>
+  <p class="note">The module's full page opens only over the Ethernet cable, on the module's network: <span class="mono" id="mPage">http://192.168.5.126/</span>. Another network: WiFi tab, «Module network».</p></div>
  <div class="card"><h2><span id="aName">Program</span> → module<span class="age" id="aAge"></span></h2>
   <div class="big" id="aKmh">–</div>
   <dl style="margin-top:6px"><dt>Autosteer requested</dt><dd id="aSt">–</dd><dt>Requested angle</dt><dd id="aAng">–</dd>
@@ -147,6 +147,14 @@ a{color:var(--acc)}
  <p class="note">The XIAO restarts to apply them. If you change the name or the password of the XIAO network, connect the phone to the new network again. Forgot the password? Through the USB port on the panel, in the serial monitor: <span class="mono">wifi-reset</span>.</p>
 </div>
 </form>
+<div class="grid3" style="margin-top:12px">
+<div class="card"><h2>Module network (Ethernet)</h2>
+ <dl><dt>Module IP</dt><dd id="nIp" class="mono">–</dd></dl>
+ <label class="field"><span>Subnet: the first three numbers of the module's IP (the last stays .126, or .120 without autosteer)</span><input type="text" id="subnet" maxlength="11" placeholder="192.168.5" inputmode="decimal"></label>
+ <label class="field"><span>Password of the XIAO network (to confirm)</span><input type="password" id="pwN" maxlength="63"></label>
+ <div class="row"><button class="act" type="button" id="subnetBtn">Change and restart the module</button><span id="subnetMsg" class="note"></span></div>
+ <p class="note">For a module on a network that is not 192.168.5.x: set that network's first three numbers. The Teensy saves it and restarts; its page is then at the new IP, and AgOpenWeb / AgOpenGPS must use the same subnet (they also set it, with PGN 201). Only with autosteer off.</p></div>
+</div>
 </section>
 
 <section id="t-prog" class="hidden">
@@ -205,6 +213,7 @@ function renderModule(t){
  $("aName").textContent=hn||"Program";
  pill("mRtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");
  const fw=s.fw||"–",sp=fw.lastIndexOf(" ");set("mFw",(sp>0?fw.slice(0,sp):fw).replace(/_/g,"_\u200b"));   // "name version": the name has the version already; may break after "_"
+ if(s.ip){set("mPage","http://"+s.ip+"/");set("nIp",s.ip);const si=$("subnet");if(!si.value&&document.activeElement!==si)si.value=s.ip.split(".").slice(0,3).join(".");}   // the module's IP and subnet (WiFi tab)
  renderVer();
 }
 // The XIAO and the Teensy must run the same version (the link changed between versions)
@@ -295,6 +304,19 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
   if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
+ }catch(e){m.textContent="No connection to the XIAO.";m.className="note bad";}});
+// The module's subnet (WiFi tab, "Module network"): POST /api/subnet; the XIAO passes it to the Teensy (PGN 144),
+// which saves it and restarts with the new IP
+$("subnetBtn").addEventListener("click",async()=>{
+ const v=$("subnet").value.trim(),m=$("subnetMsg"),ok=/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(v);
+ if(!ok||ok.slice(1).some(x=>+x>255)){m.textContent="Three numbers, like 192.168.5.";m.className="note bad";return;}
+ const cur=lastTeensy&&lastTeensy.s&&lastTeensy.s.ip?lastTeensy.s.ip:"",last=cur?cur.split(".")[3]:"126";
+ if(cur&&cur.split(".").slice(0,3).join(".")===v){m.textContent="The module is on that subnet already.";m.className="note";return;}
+ if(!confirm("Change the module's subnet to "+v+" and restart it?\n\nThe module will be at "+v+"."+last+"; its page opens at that IP from a device on that network, and AgOpenWeb / AgOpenGPS must use subnet "+v+"."))return;
+ m.textContent="Sending…";m.className="note";
+ try{const j=await getJ("/api/subnet",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"subnet="+encodeURIComponent(v)+"&pw="+encodeURIComponent($("pwN").value)});
+  if(j.ok){m.textContent="Sent. The module saves it and restarts as "+v+"."+last+" (see Messages; the IP above changes when it is back).";m.className="note ok";}
+  else{m.textContent="Error: "+j.error;m.className="note bad";}
  }catch(e){m.textContent="No connection to the XIAO.";m.className="note bad";}});
 // the networks found, one per line, strongest first; a tap chooses one
 function sig(r){return (r>=-60?"strong":r>=-72?"medium":"weak");}

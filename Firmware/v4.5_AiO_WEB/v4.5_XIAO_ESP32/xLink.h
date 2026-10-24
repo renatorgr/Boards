@@ -41,6 +41,7 @@
 #define LINK_PGN_STATUS         141
 #define LINK_PGN_LOG            142
 #define LINK_PGN_INFO           143
+#define LINK_PGN_CMD            144      // XIAO -> Teensy: a command, 1 = the module's subnet a.b.c (2026-10-24)
 
 struct LinkLogLine
 {
@@ -115,6 +116,13 @@ public:
         size_t n = strlen(json);
         if (n > 250) return;
         sendFrame(LINK_SRC_XIAO, LINK_PGN_INFO, (const uint8_t*)json, (uint8_t)n);
+    }
+
+    // The module's subnet (PGN 144, command 1): the Teensy saves it and restarts with the new IP
+    void sendSubnet(uint8_t a, uint8_t b, uint8_t c)
+    {
+        const uint8_t d[4] = {1, a, b, c};
+        sendFrame(LINK_SRC_XIAO, LINK_PGN_CMD, d, 4);
     }
 
     void sendFrame(uint8_t src, uint8_t pgn, const uint8_t* data, uint8_t len)
