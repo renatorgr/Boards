@@ -11,10 +11,14 @@
    2026-10-24: "Read all settings" - every setting of a u-blox receiver read (UBX-CFG-VALGET, all items, RAM and
    Default layers), the ones that differ from the factory defaults given as a u-center configuration file
    (GET /api/rxdump): the way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for (X20P).
+   2026-10-24: the ZED-X20P gets its own settings (X20P.txt in zRxConfig.h, read that way from renatorgr's working
+   X20P): it is checked, compared and set up automatically like an F9P. The page's "Read all settings" button is
+   commented out in zWebPage.h for now; the Teensy side stays.
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
-   UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13.
+   UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13; X20P.txt
+   for HPG 2.11.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -68,7 +72,6 @@
 #define CK_BOOT_MS         5000      // after start-up: the data from the receivers judged after this long,
 #define CK_BOOT_WAIT_MS    15000     //   and a receiver that sends nothing at all searched for after this long
 #define CK_TEENSY_BAUD     460800
-#define CK_HPG             113       // HPG 1.13: the firmware the AgOpenGPS u-blox settings are made for
 #define CK_LINE_MAX        100
 
 uint32_t rxCkBytes[2] = {0, 0};
@@ -78,22 +81,24 @@ static const uint32_t CK_BAUDS[] = {460800, 115200, 38400, 9600, 230400, 921600,
 #define CK_BAUD_N ((uint8_t)(sizeof(CK_BAUDS) / sizeof(CK_BAUDS[0])))
 
 // ---------------------------------------------------------------- what the Teensy needs (u-blox)
-// Roles: R_S Single (alone on Serial7), R_D Dual - Right - Position (Serial7, second F9P on the GPS2
-// port), R_R Dual - Left - RelPos (the second F9P). The expected value is the one in the AgOpenGPS settings.
+// Roles: R_S Single (an F9P alone on Serial7), R_D Dual - Right - Position (Serial7, second F9P on the GPS2
+// port), R_R Dual - Left - RelPos (the second F9P), R_X an X20P alone on Serial7 (X20P.txt). The expected
+// value is the one in the AgOpenGPS settings of that role.
 #define R_S 1
 #define R_D 2
 #define R_R 4
+#define R_X 8
 struct CkEss { const char* id; uint32_t key; uint8_t roles; };
 static const CkEss CK_ESS[] = {
-    {"ubxIn",    0x10730001UL, R_S | R_D | R_R},   // CFG-UART1INPROT-UBX: the Teensy's queries
-    {"rtcmIn",   0x10730004UL, R_S | R_D},         // CFG-UART1INPROT-RTCM3X: the corrections from NTRIP / radio
-    {"ubxOut",   0x10740001UL, R_S | R_D | R_R},   // CFG-UART1OUTPROT-UBX: its answers (and the RELPOSNED)
-    {"nmeaOut",  0x10740002UL, R_S | R_D},         // CFG-UART1OUTPROT-NMEA
-    {"gga",      0x209100BBUL, R_S | R_D},         // CFG-MSGOUT-NMEA_ID_GGA_UART1
-    {"vtg",      0x209100B1UL, R_S | R_D},         // CFG-MSGOUT-NMEA_ID_VTG_UART1
-    {"rate",     0x30210001UL, R_S | R_D | R_R},   // CFG-RATE-MEAS (ms)
-    {"navRate",  0x30210002UL, R_S | R_D | R_R},   // CFG-RATE-NAV
-    {"baud1",    0x40520001UL, R_S | R_D | R_R},   // CFG-UART1-BAUDRATE
+    {"ubxIn",    0x10730001UL, R_S | R_D | R_R | R_X},   // CFG-UART1INPROT-UBX: the Teensy's queries
+    {"rtcmIn",   0x10730004UL, R_S | R_D | R_X},         // CFG-UART1INPROT-RTCM3X: the corrections from NTRIP / radio
+    {"ubxOut",   0x10740001UL, R_S | R_D | R_R | R_X},   // CFG-UART1OUTPROT-UBX: its answers (and the RELPOSNED)
+    {"nmeaOut",  0x10740002UL, R_S | R_D | R_X},         // CFG-UART1OUTPROT-NMEA
+    {"gga",      0x209100BBUL, R_S | R_D | R_X},         // CFG-MSGOUT-NMEA_ID_GGA_UART1
+    {"vtg",      0x209100B1UL, R_S | R_D | R_X},         // CFG-MSGOUT-NMEA_ID_VTG_UART1
+    {"rate",     0x30210001UL, R_S | R_D | R_R | R_X},   // CFG-RATE-MEAS (ms)
+    {"navRate",  0x30210002UL, R_S | R_D | R_R | R_X},   // CFG-RATE-NAV
+    {"baud1",    0x40520001UL, R_S | R_D | R_R | R_X},   // CFG-UART1-BAUDRATE
     {"rtcmOut2", 0x10760004UL, R_D},               // CFG-UART2OUTPROT-RTCM3X: corrections to the second F9P
     {"baud2",    0x40530001UL, R_D | R_R},         // CFG-UART2-BAUDRATE (the same on both F9P)
     {"r1005",    0x209102BFUL, R_D},               // CFG-MSGOUT-RTCM_3X_TYPE..._UART2
@@ -264,7 +269,7 @@ static bool ckMsgHasKey(const uint8_t* d, uint16_t n, uint32_t key)
 // the AgOpenGPS value of a key (false: not in the settings of that role)
 FLASHMEM static bool ckRefValue(uint8_t role, uint32_t key, int64_t& v)
 {
-    if (role > RXCFG_ROLE_RELPOS) return false;
+    if (role >= RXCFG_UBX_N) return false;
     const RxCfgSet& s = RXCFG_UBX[role];
     for (uint8_t m = 0; m < s.count; m++)
     {
@@ -281,13 +286,21 @@ FLASHMEM static bool ckRefValue(uint8_t role, uint32_t key, int64_t& v)
     return false;
 }
 
-static uint8_t ckRoleBit(uint8_t role) { return role == RXCFG_ROLE_SINGLE ? R_S : role == RXCFG_ROLE_DUALPOS ? R_D : R_R; }
+static uint8_t ckRoleBit(uint8_t role)
+{
+    return role == RXCFG_ROLE_SINGLE ? R_S : role == RXCFG_ROLE_DUALPOS ? R_D : role == RXCFG_ROLE_X20P ? R_X : R_R;
+}
 
-// the role of the u-blox receiver on a port
+static const char* ckModel(uint8_t port);
+
+// the role of the u-blox receiver on a port, so which AgOpenGPS settings it gets: a ZED-X20P alone on the GPS
+// port has X20P.txt; an F9P (or anything else) Single.txt, DualPosition.txt with a second F9P, and the second
+// F9P DualRelPos.txt. (An X20P with a second F9P would need a DualPosition file of its own: not made yet.)
 static uint8_t ckUbxRole(uint8_t port)
 {
     if (port == RXCK_GPS2) return RXCFG_ROLE_RELPOS;
-    return dualF9pOn() ? RXCFG_ROLE_DUALPOS : RXCFG_ROLE_SINGLE;
+    if (dualF9pOn()) return RXCFG_ROLE_DUALPOS;
+    return strstr(ckModel(port), "X20P") != nullptr ? RXCFG_ROLE_X20P : RXCFG_ROLE_SINGLE;
 }
 
 static bool ckPortActive(uint8_t port) { return port == RXCK_GPS || dualF9pOn(); }
@@ -310,6 +323,13 @@ static bool ckIsF9p(uint8_t port)
     return strstr(m, "F9P") != nullptr || (port == RXCK_GPS2 && !m[0]);
 }
 
+// the receiver on a port has AgOpenGPS settings in zRxConfig.h to compare with and to load: a ZED-F9P (the
+// three AOGConfigOMatic files) or a ZED-X20P alone on the GPS port (X20P.txt)
+static bool ckHasSet(uint8_t port)
+{
+    return ckIsF9p(port) || ckUbxRole(port) == RXCFG_ROLE_X20P;
+}
+
 // "HPG 1.13" -> 113, 0 = not an HPG firmware
 static int ckHpg(const char* fw)
 {
@@ -319,12 +339,13 @@ static int ckHpg(const char* fw)
     return a * 100 + b;
 }
 
-// the F9P firmware against HPG 1.13: "same", "older", "newer", "" (not known / not an F9P)
+// the receiver's firmware against the one its AgOpenGPS settings are made for (F9P: HPG 1.13, X20P: HPG 2.11):
+// "same", "older", "newer", "" (not known, or a receiver without settings)
 static const char* ckFwState(uint8_t port)
 {
-    if (!ckIsF9p(port)) return "";
-    const int v = ckHpg(ckFw(port));
-    return !v ? "" : v == CK_HPG ? "same" : v < CK_HPG ? "older" : "newer";
+    if (!ckHasSet(port)) return "";
+    const int v = ckHpg(ckFw(port)), want = ckHpg(RXCFG_UBX[ckUbxRole(port)].fw);
+    return !v ? "" : v == want ? "same" : v < want ? "older" : "newer";
 }
 
 static void ckBegin(uint8_t port, uint32_t baud)
@@ -515,7 +536,7 @@ FLASHMEM static void ckStartCheck(uint8_t port, bool full)
     ckOp = CKOP_CHECK;
     ckPort = port;
     ckRole = (port == RXCK_GPS && rxKind == RX_UM982) ? CK_ROLE_UM : ckUbxRole(port);
-    ckFull = full && ckIsF9p(port);
+    ckFull = full && ckHasSet(port);
     ckTries = 0;
     ckWait = 0;
     ckGot = 0;
@@ -624,7 +645,7 @@ FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
             return nullptr;
         }
         if (port == RXCK_GPS && rxKind != RX_UBLOX)   return "the receiver is not identified";
-        if (!ckIsF9p(port))                           return "AOGConfigOMatic has AgOpenGPS settings for the ZED-F9P only";
+        if (!ckHasSet(port))                          return "no AgOpenGPS settings for this receiver (ZED-F9P and ZED-X20P only)";
         ckLoadBegin(port, false);
         return nullptr;
     }
@@ -710,7 +731,7 @@ bool rxCkUbx(uint8_t port, uint8_t cls, uint8_t id, const uint8_t* p, uint16_t l
     {
         // version, layer, position (2), then key + value pairs
         uint16_t answered = 0;
-        const RxCfgMsg* m = (ckStep == 7 && ckRole <= RXCFG_ROLE_RELPOS) ? &RXCFG_UBX[ckRole].msgs[ckMsg] : nullptr;
+        const RxCfgMsg* m = (ckStep == 7 && ckRole < RXCFG_UBX_N) ? &RXCFG_UBX[ckRole].msgs[ckMsg] : nullptr;
         for (uint16_t o = 4; o + 4 <= len; )
         {
             const uint32_t key = (uint32_t)ckLe(p + o, 4);
@@ -780,7 +801,7 @@ FLASHMEM static void ckMissing(uint8_t port, char* out, size_t n)
 {
     const CkPort& k = ck[port];
     out[0] = '\0';
-    if (k.essRole > RXCFG_ROLE_RELPOS) return;
+    if (k.essRole >= RXCFG_UBX_N) return;
     const uint8_t bit = ckRoleBit(k.essRole);
     for (uint8_t e = 0; e < CK_ESS_N; e++)
     {
@@ -814,11 +835,11 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
     if (!ckAutoFree(port)) return false;
     const bool um = port == RXCK_GPS && rxKind == RX_UM982;
     // Found at another baud rate: the port stays at it and the AgOpenGPS settings do the rest (they set 460800).
-    // Just the baud rate, as the page's button does, only when there is nothing to load: not a ZED-F9P nor a
+    // Just the baud rate, as the page's button does, only when there is nothing to load: not a ZED-F9P / X20P nor a
     // UM982 with its port known, or a load that was tried and did not get as far as the baud rate.
     bool loadable;
     if (port == RXCK_GPS) loadable = rxIdState == RXID_WAIT || rxIdState == RXID_ASK ||                      // not identified yet: wait
-                                     (rxKind == RX_UBLOX && ckIsF9p(port)) || (um && (!umHasRead() || umTeensyPort() >= 0));
+                                     (rxKind == RX_UBLOX && ckHasSet(port)) || (um && (!umHasRead() || umTeensyPort() >= 0));
     else                  loadable = k.chkRes == CKR_NONE || strstr(k.model, "F9P") != nullptr;
     if (ckRunBaud[port] && (ckAutoTried[port] & 2) && ckOp == CKOP_NONE) loadable = false;
     if (!(ckAutoTried[port] & 1) && k.scanRes == CKR_FOUND && k.found && k.found != CK_TEENSY_BAUD && !loadable &&
@@ -834,7 +855,7 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
     if ((ckAutoTried[port] & 2) || k.chkRes != CKR_CHECKED || k.health != CKH_OK) return false;
     if (port == RXCK_GPS && !um && rxKind != RX_UBLOX) return false;
     if (um && ckRunBaud[port] && umTeensyPort() < 0) return false;    // at its own speed: the load must know which COM port to switch
-    if (!um && !(k.essMs && k.essRole == ckUbxRole(port) && strstr(ckModel(port), "F9P"))) return false;   // a ZED-F9P, checked
+    if (!um && !(k.essMs && k.essRole == ckUbxRole(port) && ckHasSet(port))) return false;   // a ZED-F9P or ZED-X20P, checked
     if (!ckAutoNeeded(port)) return false;
     ckAutoTried[port] |= 2;
     if (um) ckLoadBeginUm(cfg.umSingle != 0, true);
@@ -851,7 +872,8 @@ FLASHMEM static void ckCheckSay(uint8_t port)
     const char* st = ckFwState(port);
     char fwNote[104] = "";
     if (!strcmp(st, "older") || !strcmp(st, "newer"))
-        snprintf(fwNote, sizeof(fwNote), "; firmware %s, the AgOpenGPS settings are made for HPG 1.13", ckFw(port));
+        snprintf(fwNote, sizeof(fwNote), "; firmware %s, the AgOpenGPS settings (%s) are made for %s", ckFw(port),
+                 RXCFG_UBX[k.essRole].file, RXCFG_UBX[k.essRole].fw);
     if (miss[0]) StatusLog.line("[status] %s receiver check: missing what the Teensy needs: %s%s", ckWho(port), miss, fwNote);
     else         StatusLog.line("[status] %s receiver check: it has what the Teensy needs%s", ckWho(port), fwNote);
     if (ckFull && k.cmpMs && k.cmpRole == k.essRole)
@@ -1043,7 +1065,7 @@ FLASHMEM static void ckOpCheck(uint32_t now)
                 ckEnd();
                 return;
             }
-            ckFull = ckFull && ckIsF9p(ckPort);
+            ckFull = ckFull && ckHasSet(ckPort);
             ckWait = 0;
             ckStep = 2;
             return;
@@ -1487,9 +1509,10 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.str("model", ckModel(port));
     j.str("fw", ckFw(port));
     j.str("fwSt", ckFwState(port));
-    j.bo("f9p", ckIsF9p(port));
+    j.bo("set", !um && ckHasSet(port));                   // it has AgOpenGPS settings to compare with and load (F9P, X20P)
     j.str("role", um ? "" : RXCFG_UBX[role].name);
     j.str("file", um ? "" : RXCFG_UBX[role].file);
+    j.str("setFw", um ? "" : RXCFG_UBX[role].fw);         // the firmware those settings are made for
     j.u("keys", um ? 0 : RXCFG_UBX[role].keys);
     // u-blox, what the Teensy needs: {id, st 0 not read / 1 read / 2 unknown key, v read, want}
     const bool essNow = k.essMs && k.essRole == role;
@@ -1531,7 +1554,7 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.str("baud", ckResName(k.baudRes));
     j.str("chk", ckResName(k.chkRes));
     j.str("load", ckResName(k.loadRes));
-    j.str("loadFile", k.loadRole <= RXCFG_ROLE_RELPOS ? RXCFG_UBX[k.loadRole].file : k.loadRole == CK_LOAD_UMS ? "ConfigUM982S.txt" : "ConfigUM982D.txt");
+    j.str("loadFile", k.loadRole < RXCFG_UBX_N ? RXCFG_UBX[k.loadRole].file : k.loadRole == CK_LOAD_UMS ? "ConfigUM982S.txt" : "ConfigUM982D.txt");
     j.u("loadOk", k.loadOk);
     j.u("loadRam", k.loadRam);
     j.u("loadNak", k.loadNak);
@@ -1632,10 +1655,9 @@ FLASHMEM void rxCkJson(Json& j)
     j.u("dumpRead", ckOp == CKOP_DUMP ? ckDumpRead : 0);  // "Read all settings" running: items read, differing so far
     j.u("dumpN", ckOp == CKOP_DUMP ? ckDumpN : 0);
     j.u("baudTry", ckOp == CKOP_SCAN && ckBaudI < CK_BAUD_N ? CK_BAUDS[ckBaudI] : 0);
-    const bool msgs = (ckOp == CKOP_LOAD && ck[ckPort].loadRole <= RXCFG_ROLE_RELPOS) || (ckOp == CKOP_CHECK && ckFull && ckStep >= 6);
+    const bool msgs = (ckOp == CKOP_LOAD && ck[ckPort].loadRole < RXCFG_UBX_N) || (ckOp == CKOP_CHECK && ckFull && ckStep >= 6);
     j.u("msg", msgs ? ckMsg : 0);
     j.u("msgs", msgs ? RXCFG_UBX[ckRole].count : 0);
-    j.str("fwNeed", "HPG 1.13");
     j.bo("umSingle", cfg.umSingle != 0);                   // UM982 with one antenna (setting; the AgOpenGPS file)
     j.arr("um982d");
     for (uint8_t i = 0; i < RXCFG_UM982D_N; i++) j.item(RXCFG_UM982D[i]);
