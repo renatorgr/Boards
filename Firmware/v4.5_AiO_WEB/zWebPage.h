@@ -404,6 +404,8 @@ const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).to
 // module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
 const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
+// a value with a link after it (the XIAO's page, the module's page at its real IP): url "" = text only
+function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
 function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.createElement("span");s.className="pill "+(cls||"");s.textContent=txt;e.appendChild(s);}
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
@@ -595,9 +597,9 @@ function render(s){
   set("xKB",x.rxKB.toFixed(1)+" / "+x.txKB.toFixed(1)+" kB");
   let xi=null;try{xi=x.info?JSON.parse(x.info):null;}catch(e){}
   if(xi){set("xProg",(xi.v||"?")+(xi.c?" · "+xi.c:"")+(x.infoAgo>15?" ("+ago(x.infoAgo)+")":""));
-   set("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""));
+   setLink("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""),xi.apIp?"http://"+xi.apIp+"/":"");   /* its page, on its own network */
    set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
-   set("xIp",xi.sta&&xi.st==="ok"?xi.ip:"–");}
+   setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");}   /* its page on that network */
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
   // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
   const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
