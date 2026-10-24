@@ -355,7 +355,7 @@ a{color:var(--acc)}
    <label class="opt"><input type="checkbox" id="tsSelfAdapt"><span>Self-Adapt Filter<small>Magnetometer gain: <input type="number" id="tsMagG" min="0.01" max="20" step="0.01"> (the dial next to Self-Adapt; 1.00 recommended)</small></span></label>
    <label class="opt"><input type="checkbox" id="tsStatus"><span>Status output<small>Temperature and signal quality (QoS). Roll-pitch-yaw and UART output are always left on.</small></span></label>
    <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Applies after the module is switched off and on; requires "Save to flash".</span></div>
-   <div class="row"><span>Output data rate</span><input type="number" id="tsRate" min="0" max="1000" step="1"> Hz<span class="note">Use 25 for AgOpenGPS. Currently measured: <span id="tsRateNow">–</span>. The TM171's inhibit time (the shortest gap between two packets) is left as read: <span id="tsInhibit">–</span>.</span></div>
+   <div class="row"><span>Output data rate</span><select id="tsRate"><option value="100">100 Hz</option><option value="50">50 Hz</option><option value="25">25 Hz</option></select><span class="note">25 Hz is the AgOpenGPS forum set-up, 100 Hz what the AiO v6 firmware uses: this firmware takes the newest sample at each GPS fix, so a higher rate only makes that sample fresher. Currently measured: <span id="tsRateNow">–</span>. The TM171's inhibit time (the shortest gap between two packets) is left as read: <span id="tsInhibit">–</span>.</span></div>
    <label class="opt"><input type="checkbox" id="tsSave" checked><span>Save to flash<small>If unchecked, the settings are lost when the TM171 is powered off.</small></span></label>
    <div class="row"><button class="sec" type="button" id="tsRead">Read from TM171</button><button class="sec" type="button" id="tsAog">AgOpenGPS defaults</button><button class="act" type="button" id="tsWrite">Write to TM171</button></div>
    <p class="note" id="tsMsg">–</p>
@@ -731,7 +731,9 @@ async function gpsAct(body,say){
 let tsSeen=null;
 function tsFill(s){$("tsMag").checked=!!s.mag;$("tsGyroErr").checked=!!s.gyroErr;$("tsSelfAdapt").checked=!!s.selfAdapt;$("tsStatus").checked=!!s.status;
  $("tsBoot").value=String(s.boot||0);$("tsAcc").value=(s.accGain/100).toFixed(2);$("tsMagG").value=(s.magGain/100).toFixed(2);
- $("tsRate").value=s.odr||0;}
+ tsRateSet(s.odr||0);}
+// the rate list holds 25, 50 and 100 Hz; a rate read from the TM171 that is not in it is added "as read"
+function tsRateSet(v){const sel=$("tsRate");if(!v){sel.value="25";return;}if(![...sel.options].some(o=>+o.value===v)){const o=document.createElement("option");o.value=v;o.textContent=v+" Hz (as read)";sel.appendChild(o);}sel.value=v;}
 function renderTmSet(s){
  set("tsRateNow",s.rate+" Hz");set("tsInhibit",s.inhibit>=0?s.inhibit+" ms":"–");set("tsBaud",(s.baud?s.baud+" bps":"–")+(s.baudNow&&s.baudNow!==115200?" (Teensy listening at "+s.baudNow+")":""));
  const key=s.age>=0?s.sw+":"+s.accGain+":"+s.magGain+":"+s.odr+":"+(s.age<2?"n":"o"):null;

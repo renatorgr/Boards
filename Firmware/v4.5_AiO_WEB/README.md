@@ -238,8 +238,11 @@ The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS
 On the IMU tab, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested
 its settings at start-up (Setting object 21): magnetometer on/off, GyroErrFilter with the accelerometer gain
 (the dial next to it in ImuAssistant), Self-Adapt filter with the magnetometer gain, status output, boot
-mode and output data rate in Hz (the TM171's inhibit time, the shortest gap between two packets, is shown
-and left as read). **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
+mode and output data rate (a list: 25, 50 or 100 Hz; the TM171's inhibit time, the shortest gap between two
+packets, is shown and left as read). 25 Hz is the AgOpenGPS forum set-up and 100 Hz what the AiO v6 firmware
+uses; this firmware takes the newest TM171 sample at each GPS fix, so a higher rate only makes that sample
+fresher (at most 10 ms old instead of 40 ms). The set-up check accepts the three; a rate read that is not in
+the list is shown "as read". **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
 off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, Auto boot). **Write to TM171**
 sends the form, saved to flash unless you untick it, waits for the TM171's acknowledgement and reads the
 settings back. The measured output rate is shown next to the rate field.
