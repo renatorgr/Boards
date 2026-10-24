@@ -1,10 +1,10 @@
 /* Sprayer_Nano.ino - 5-section sprayer control for AgOpenWeb / AgOpenGPS
-   Version 0.2 (2026-10-22), not yet tested on the sprayer.
+   Version 0.3 (2026-10-24), not yet tested on the sprayer.
 
    Hardware:
      Arduino Nano + ENC28J60 Ethernet shield (CS on D10)
-     Blue 8-relay board with 5 V relays (SRD-05VDC), switches on LOW
-       (for a DEWIN 12 V board with its jumpers on "High", set RELAY_ON to HIGH)
+     Red DEWIN 8-relay board, 12 V relays (SRD-12VDC), yellow jumpers on "High":
+       relay on when the pin is HIGH (for a board that switches on LOW, set RELAY_ON to LOW)
      5 normally closed solenoid valves, 0-10 bar pressure sensor (0.5-4.5 V), YF-S201 flow meter
 
    Network: the Nano is the standard "machine module", IP 192.168.5.123.
@@ -27,7 +27,7 @@
 // ---------------- Settings ----------------
 #define NUM_SECTIONS         5
 const uint8_t relayPin[NUM_SECTIONS] = { 3, 4, 5, 6, 7 };
-#define RELAY_ON             LOW     // blue 5 V board: switches on LOW. DEWIN board on "High": HIGH
+#define RELAY_ON             HIGH    // DEWIN board with jumpers on "High". Board that switches on LOW: LOW
 #define RELAY_OFF            (!RELAY_ON)
 
 #define FLOW_PIN             2
@@ -168,7 +168,7 @@ void setup()
     }
 
     Serial.begin(38400);
-    Serial.println(F("Sprayer_Nano v0.2"));
+    Serial.println(F("Sprayer_Nano v0.3"));
 
     pinMode(FLOW_PIN, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(FLOW_PIN), countPulse, FALLING);
