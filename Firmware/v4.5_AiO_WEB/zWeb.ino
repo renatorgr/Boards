@@ -17,6 +17,7 @@
 //     GET /api/rxdump: the settings read by "Read all settings" as a u-center configuration file
 //   - Machine: the machine module (sprayer Nano, PGN 160 on UDP 9999), only once it has been heard (zMachine.ino)
 //   - Firmware update (zOTA.ino) and restart
+//   - The module's subnet (POST /api/subnet), as AgIO's PGN 201: saved, then a restart
 //   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
 //   corrections, why the Teensy started; the WAS check, the watchdog and the simulator mode in the settings
@@ -709,6 +710,27 @@ static void restartTeensy()
     for (;;) {}
 }
 
+// POST /api/subnet, subnet=192.168.5 (Renato, 2026-10-24): the module's subnet, as AgIO's PGN 201 sets it -
+// for a module on a network that is not 192.168.5.x. Saved (netSetSubnet, zEthernet.ino), answered with
+// the new IP, then the Teensy restarts: this page is at the new IP from then on.
+static void apiSubnetPost(EthernetClient& c, const char* body)
+{
+    char v[24], tail;
+    unsigned a = 0, b = 0, d = 0;
+    if (!formValue(body, "subnet", v, sizeof(v)) || sscanf(v, "%u.%u.%u%c", &a, &b, &d, &tail) != 3 || a > 255 || b > 255 || d > 255)
+    {
+        webSendError(c, 400, "subnet: three numbers, like 192.168.5");
+        return;
+    }
+    const char* err = netSetSubnet((uint8_t)a, (uint8_t)b, (uint8_t)d, "the web page");
+    if (err) { webSendError(c, !strcmp(err, "not while autosteer is engaged") ? 409 : 400, err); return; }
+    char j[64];
+    snprintf(j, sizeof(j), "{\"ok\":true,\"ip\":\"%u.%u.%u.%u\"}", a, b, d, (unsigned)(Eth_myip[3] ? Eth_myip[3] : 126));
+    webSendJson(c, 200, j);
+    c.stop();
+    restartTeensy();
+}
+
 // A refused update is answered only once the browser has sent the whole file (read and dropped here):
 // an answer while it is still sending cuts the connection, and the page could only say "the
 // connection failed" instead of why.
@@ -914,6 +936,7 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/gps"))      apiGpsPost(c, body);
     else if (get  && !strcmp(rq.path, "/api/rxdump"))   apiRxDump(c);
     else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
+    else if (post && !strcmp(rq.path, "/api/subnet"))   apiSubnetPost(c, body);   // AiO_WEB: the module's subnet
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {
         StatusLog.line("[web] restart requested");

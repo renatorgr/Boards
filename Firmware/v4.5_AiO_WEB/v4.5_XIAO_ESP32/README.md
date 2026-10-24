@@ -56,13 +56,14 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 | | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
+| | **Module network**: the module's (Teensy's) Ethernet IP and its subnet. For a module on a network that is not 192.168.5.x: type that network's first three numbers (and the XIAO password); the Teensy saves it and restarts with the new IP. This page is on WiFi, so it works whatever the module's IP is. |
 | **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - Typed once, it is filled in both tabs until the page is closed.
   - The page never shows or stores it.
   - Just viewing the page needs nothing more than being on the network.
-- It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (http://192.168.5.126/). Its events also go to the Teensy log as `[xiao] > ...`.
+- It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (normally http://192.168.5.126/; the module's IP is shown on the Status tab). Its events also go to the Teensy log as `[xiao] > ...`. From the WiFi tab it can set the module's subnet (PGN 144 to the Teensy).
 - **Watchdog**: if the program ever stops for 15 s, the XIAO restarts by itself.
 - The Teensy sends it the program's packets and the module status; the XIAO sends back only its hello, its state and text lines.
 

@@ -23,7 +23,8 @@
 //                  Teensy once a second; what AgOpenGPS / AgOpenWeb sends to the module (speed, angle
 //                  asked for, autosteer, sections, hydraulic lift, tramline); the XIAO itself
 //       Messages   the module's [status] messages, and the XIAO's own events
-//       WiFi       network settings (saved in the XIAO, applied after a restart), network scan
+//       WiFi       network settings (saved in the XIAO, applied after a restart), network scan;
+//                  the module's (Teensy's) Ethernet subnet, for a module on another network (2026-10-24)
 //       Firmware   version, program update over WiFi (.bin from the Arduino IDE), restart
 //     Changes (WiFi, update, restart) ask for the password of the XIAO's own WiFi network.
 //   - tells the Teensy its version and WiFi state (shown in the XIAO card of the Teensy page) and
@@ -576,6 +577,26 @@ static void updateDone()
     }
 }
 
+// POST /api/subnet, subnet=192.168.5 (2026-10-24): the module's Ethernet subnet, sent to the Teensy (PGN 144),
+// which saves it and restarts with the new IP - the way to reach a module that sits on another network than
+// the device, since this page is on WiFi whatever the module's IP is.
+static void apiSubnet()
+{
+    if (!passwordOk()) return;
+    unsigned a = 0, b = 0, c = 0;
+    char tail;
+    const String v = server.arg("subnet");
+    if (sscanf(v.c_str(), "%u.%u.%u%c", &a, &b, &c, &tail) != 3 || a == 0 || a == 127 || a > 223 || b > 255 || c > 255)
+    {
+        sendError(400, "subnet: three numbers, like 192.168.5 (the first 1 to 223, not 127)");
+        return;
+    }
+    if (!teensy.teensyTalking(millis())) { sendError(409, "no data from the module: is the Teensy on and the link working?"); return; }
+    teensy.sendSubnet((uint8_t)a, (uint8_t)b, (uint8_t)c);
+    logEvent("Module subnet %u.%u.%u sent to the Teensy from the page: it saves it and restarts", a, b, c);
+    server.send(200, "application/json", "{\"ok\":true}");
+}
+
 static void apiRestart()
 {
     if (!passwordOk()) return;
@@ -598,6 +619,7 @@ static void webSetup()
     server.on("/api/settings", HTTP_POST, apiSettingsPost);
     server.on("/api/scan", HTTP_GET, apiScan);
     server.on("/api/restart", HTTP_POST, apiRestart);
+    server.on("/api/subnet", HTTP_POST, apiSubnet);
     server.on("/update", HTTP_POST, updateDone, updateUpload);
     server.onNotFound([]() {
         if (captiveRedirect()) return;

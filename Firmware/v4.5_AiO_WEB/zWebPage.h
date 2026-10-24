@@ -10,8 +10,8 @@
 // Dark, or light when the device asks for it; the header button switches and this browser remembers it.
 // Tabs: Status (GNSS, dual heading from the UM982 or a second F9P, IMU, steering with the Keya, the
 // steering settings from the program, connections, RTCM corrections from the program and the radio,
-// sentences sent, the XIAO; warnings at the top), Messages, Settings (with the GPS2 port and the
-// simulator mode), GPS (the
+// sentences sent, the XIAO; warnings at the top), Messages, Settings (with the GPS2 port, the
+// simulator mode and the module's subnet, 2026-10-24), GPS (the
 // receiver's model, zReceiver.ino; the u-blox F9P / X20P settings; the UM982 settings, read with
 // (the AgOpenGPS settings of the F9P are AOGConfigOMatic's, those of the X20P X20P.txt, zRxConfig.h)
 // CONFIG, MASK, UNILOGLIST and MODE and written one command at a time, then SAVECONFIG, with the
@@ -227,6 +227,11 @@ a{color:var(--acc)}
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
+<div class="card" style="margin-top:12px"><h2>Module network (Ethernet)</h2>
+ <dl><dt>Module IP</dt><dd id="netIp" class="mono">–</dd></dl>
+ <div class="opt"><span style="flex:1">Subnet<small>The first three numbers of the module's IP; the last stays .126 (.120 without autosteer). AgOpenWeb / AgOpenGPS set it too when their subnet is changed (PGN 201). For a module on a network that is not 192.168.5.x: set the network's first three numbers here, or on the XIAO's WiFi page.</small></span><input type="text" id="subnet" maxlength="11" placeholder="192.168.5" inputmode="decimal" style="width:9em"></div>
+ <div class="row"><button class="act" type="button" id="subnetBtn">Change and restart the module</button><span id="subnetMsg" class="note"></span></div>
+ <p class="note">Saved in the Teensy (EEPROM); it restarts with the new IP, and this page is then at that IP, on that network. Only with autosteer off.</p></div>
 </section>
 
 <section id="t-gps" class="hidden">
@@ -399,6 +404,8 @@ const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).to
 // module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
 const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
+// a value with a link after it (the XIAO's page, the module's page at its real IP): url "" = text only
+function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
 function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.createElement("span");s.className="pill "+(cls||"");s.textContent=txt;e.appendChild(s);}
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
@@ -590,9 +597,9 @@ function render(s){
   set("xKB",x.rxKB.toFixed(1)+" / "+x.txKB.toFixed(1)+" kB");
   let xi=null;try{xi=x.info?JSON.parse(x.info):null;}catch(e){}
   if(xi){set("xProg",(xi.v||"?")+(xi.c?" · "+xi.c:"")+(x.infoAgo>15?" ("+ago(x.infoAgo)+")":""));
-   set("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""));
+   setLink("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""),xi.apIp?"http://"+xi.apIp+"/":"");   /* its page, on its own network */
    set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
-   set("xIp",xi.sta&&xi.st==="ok"?xi.ip:"–");}
+   setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");}   /* its page on that network */
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
   // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
   const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
@@ -607,6 +614,7 @@ function render(s){
  renderMach(s.mach);
  renderGh();
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
+ set("netIp",s.ip||"–");const si=$("subnet");if(!si.value&&document.activeElement!==si&&s.ip)si.value=s.ip.split(".").slice(0,3).join(".");   /* the module's subnet (Settings) */
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
@@ -1033,6 +1041,18 @@ function fillSettings(s){
  f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;
  selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);lastSet=s;
 }
+// The module's subnet (Settings, "Module network"): POST /api/subnet; the Teensy saves it and restarts with the new IP
+$("subnetBtn").addEventListener("click",async()=>{
+ const v=$("subnet").value.trim(),m=$("subnetMsg"),ok=/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(v);
+ if(!ok||ok.slice(1).some(x=>+x>255)){m.textContent="Three numbers, like 192.168.5.";m.className="note bad";return;}
+ const last=lastS&&lastS.ip?lastS.ip.split(".")[3]:"126",ip=v+"."+last;
+ if(!confirm("Change the module's subnet to "+v+" and restart it?\n\nThe module will be at "+ip+". This page then opens at http://"+ip+"/ from a device on that network; AgOpenWeb / AgOpenGPS must use subnet "+v+" too."))return;
+ m.textContent="Saving…";m.className="note";
+ try{const j=await getJ("/api/subnet",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"subnet="+encodeURIComponent(v)});
+  if(j.ok){m.innerHTML="";m.appendChild(document.createTextNode("Saved. The module is restarting as "+j.ip+": open "));const a=document.createElement("a");a.href="http://"+j.ip+"/";a.textContent="http://"+j.ip+"/";m.appendChild(a);m.appendChild(document.createTextNode(" on that network."));m.className="note ok";}
+  else{m.textContent="Error: "+ptErr(j.error);m.className="note bad";}
+ }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
+});
 async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
 async function postSettings(body){
  const m=$("setMsg");
