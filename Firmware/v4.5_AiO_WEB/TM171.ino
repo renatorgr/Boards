@@ -12,7 +12,10 @@
    application note AN002. Needs Teensy TX5 (pin 20) wired to the TM171 RXD.
    AiO_WEB 4.5, 23 Oct 2026: the "new install" calibration (CalibB, saved in the TM171's flash) as a second button.
    AiO_WEB 4.5, 23 Oct 2026: the TM171's settings (Setting object 21) read and written from the web page
-   (tm171Setting*): magnetometer, filters and gains, outputs, boot mode, silent time, output rate.
+   (tm171Setting*): magnetometer, filters and gains, outputs, boot mode, output data rate.
+   AiO_WEB 4.5, 24 Oct 2026: the layout of the Setting object corrected from a real TM171 (the output data
+   rate is its own field in Hz; the inhibit time and the other words are left as read); the raw bytes in the
+   log and on the page; the "RX not wired" warning only after a second unanswered request.
    AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
    (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
    warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
@@ -61,6 +64,7 @@ uint32_t TM171crcErrors = 0;   // packets dropped for a bad CRC (shown by FUSION
 // AiO_WEB: used by the parser below, defined with the settings code further down
 #define TM171_SET_LEN 20                              // Setting object content, bytes
 static void tm171SettingGot(const uint8_t* p);
+static void tm171SettingHex(char* out);
 uint32_t tmSetAckMs = 0;                              // the TM171 acknowledged our settings write
 uint32_t TM171rpyCount = 0;                           // roll-pitch-yaw packets this second
 
@@ -252,7 +256,7 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 #define TM171_CALIB_S       20     // seconds of data (SYD: anything from milliseconds to half an hour; at least 12 s is a full one)
 #define TM171_CALIB_LIMIT   50     // accepted gyro error, x 0.01 deg/s (5..500): more is discarded by the TM171
 #define TM171_CALIB_CONF    0      // how surely the tractor stands still, x 0.01 % (0 = the TM171 decides)
-#define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?)
+#define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?); the first settings request is sent again once
 // "New install" calibration (CalibB in ImuAssistant, Calibration object type 0x04, key 0xAA35): the TM171
 // takes about 20 s of data with the module still, writes the result to its FLASH and reports success (0x01) or
 // failure (0xFF); no "started" report, no stop command. SYD: keep the power on during those 20 s (a power-off
@@ -260,18 +264,24 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 #define TM171_INSTALL_MS    60000  // no result in this time = no answer
 
 // ---------------------------------------------------------------- settings (Setting object 21, AiO_WEB)
-// 20 bytes: switches u32, reserved u16 (1152), UART baud u16 (x100 bps), CAN baud u16, accelerometer gain
-// u16 (x0.01: the knob by GyroErrFilter in ImuAssistant), magnetometer gain u16 (x0.01: the knob by
-// Self-Adapt), inhibit time u16 (ms between two packets: 40 = 25 Hz), silent time u32 (s after power-on).
+// 20 bytes: switches u32 (0), a word at 4 (not known, left as read), UART baud u16 at 6 (x100 bps: 1152),
+// a word at 8 (CAN baud?, left as read), accelerometer gain u16 at 10 (x0.01: the knob by GyroErrFilter in
+// ImuAssistant), magnetometer gain u16 at 12 (x0.01: the knob by Self-Adapt), inhibit time u16 at 14 (ms, the
+// shortest gap between two packets; left as read), a word at 16 (0, left as read), output data rate u16 at
+// 18 (Hz: 25 for AgOpenGPS). Checked on a real TM171 on 24 Oct 2026 (the AgOpenGPS set-up read as
+// 3B A8 18 00 .. .. 80 04 .. .. 5E 01 64 00 0A 00 00 00 19 00: gains 3.50 / 1.00, inhibit 10 ms, 25 Hz
+// measured = the word at 18). Before that the firmware took 4 for a reserved 1152, 14 for the rate and 16-19
+// for a silent time, which the real TM171 does not have there: the page said "layout not recognised".
 // The switches, bit 0 first (the user guide's C bit fields, little-endian): 0 gyro, 1 accelerometer,
 // 2 magnetometer, 3 GyroErrFilter, 4 magnetometer self-adapt filter, 5 status output, 6 raw data output,
 // 7 reserved 0, 8 quaternion, 9 reserved 0, 10 Euler, 11 roll-pitch-yaw, 12 gravity, 13 reserved 1,
 // 14-16 reserved 2, 17 request acknowledge, 18 save to flash, 19 UART output, 20 reserved, 21 CAN output,
 // 22-23 reserved, 24-25 boot mode (0 auto, 1 static, 2 dynamic), 26-31 unused.
 // The guide does not number the bits, so before writing anything the firmware checks what it read: bit 13
-// = 1, bits 14-16 = 2 and the reserved word = 1152. If that does not hold, the page says so and nothing
-// is written. The firmware always keeps the gyro, the accelerometer, the roll-pitch-yaw output and the
-// UART output on, and the baud rate as read (it talks to the TM171 at 115200).
+// = 1, bits 14-16 = 2 (the real TM171 above: 0x0018A83B) and the baud word at 6 = the rate the Teensy is
+// talking at. If that does not hold, the page says so (with the raw bytes) and nothing is written. The
+// firmware always keeps the gyro, the accelerometer, the roll-pitch-yaw output and the UART output on, the
+// baud rate as read (it talks to the TM171 at 115200), and the words it does not know as read.
 #define TM171_SET_BIT(w, n)  (((w) >> (n)) & 1UL)
 uint8_t  tmSet[TM171_SET_LEN];   // as read from the TM171
 bool     tmSetValid  = false;    // read, and the layout check passed
@@ -317,11 +327,11 @@ bool tm171ScanBaud()
 
 // The AgOpenGPS set-up (the ImuAssistant settings from the AgOpenGPS forum): magnetometer off, GyroErrFilter
 // on with the accelerometer gain 3.50, Self-Adapt on with the magnetometer gain 1.00, roll-pitch-yaw and
-// status output, UART on at 115200, 25 Hz (inhibit 40 ms), silent time 0, Auto boot mode.
+// status output, UART on at 115200, 25 Hz, Auto boot mode.
 #define TM171_AOG_ACC      350
 #define TM171_AOG_MAG      100
-#define TM171_AOG_INHIBIT  40
-static const TmSetForm TM171_AOG_FORM = { false, true, true, true, true, 0, TM171_AOG_ACC, TM171_AOG_MAG, TM171_AOG_INHIBIT, 0, 1152 };
+#define TM171_AOG_ODR      25
+static const TmSetForm TM171_AOG_FORM = { false, true, true, true, true, 0, TM171_AOG_ACC, TM171_AOG_MAG, TM171_AOG_ODR, 1152 };
 
 uint32_t tmFixMs = 0;   // "Fix TM171 setup" pressed (0 = never)
 
@@ -344,8 +354,7 @@ const char* tm171SetupWhy()
     if (tmSetU16(tmSet + 6) != 1152) add("UART not 115200");
     if (tmSetU16(tmSet + 10) != TM171_AOG_ACC) add("accelerometer gain");
     if (tmSetU16(tmSet + 12) != TM171_AOG_MAG) add("magnetometer gain");
-    if (tmSetU16(tmSet + 14) != TM171_AOG_INHIBIT) add("output rate");
-    if (tmSetU32(tmSet + 16) != 0) add("silent time");
+    if (tmSetU16(tmSet + 18) != TM171_AOG_ODR) add("output rate");
     return why;
 }
 
@@ -359,7 +368,7 @@ bool tm171FixSetup(const char** why)
 }
 
 // No reply ever to a settings request: the TM171's RX pin is not wired to Teensy TX5 (the web page explains)
-bool tm171NoWire() { return tmSetNoAnswer > 0 && tmSetMs == 0; }
+bool tm171NoWire() { return tmSetNoAnswer > 1 && tmSetMs == 0; }   // (two requests unanswered: the first is sent again once)
 
 // Ask the TM171 for its Setting object (Request object 12)
 void tm171SettingRead()
@@ -373,16 +382,27 @@ static void tm171SettingGot(const uint8_t* p)
 {
     memcpy(tmSet, p, TM171_SET_LEN);
     const uint32_t w = tmSetU32(tmSet);
-    const bool layoutOk = TM171_SET_BIT(w, 13) == 1 && ((w >> 14) & 7UL) == 2 && tmSetU16(tmSet + 4) == 1152;
+    const bool layoutOk = TM171_SET_BIT(w, 13) == 1 && ((w >> 14) & 7UL) == 2 && tmSetU16(tmSet + 6) == tm171Baud / 100;
     const bool first = tmSetMs == 0;
     tmSetMs = millis() | 1;
     tmSetReqMs = 0;
     tmSetValid = layoutOk;
     tmSetOdd   = !layoutOk;
     if (first || !layoutOk)
-        StatusLog.line("[status] TM171: settings read (switches 0x%08lX, UART %u00 bps, inhibit %u ms)%s", (unsigned long)w,
-                       (unsigned)tmSetU16(tmSet + 6), (unsigned)tmSetU16(tmSet + 14),
+    {
+        char raw[3 * TM171_SET_LEN + 1];
+        tm171SettingHex(raw);
+        StatusLog.line("[status] TM171: settings read (switches 0x%08lX, UART %u00 bps, inhibit %u ms, %u Hz; bytes %s)%s", (unsigned long)w,
+                       (unsigned)tmSetU16(tmSet + 6), (unsigned)tmSetU16(tmSet + 14), (unsigned)tmSetU16(tmSet + 18), raw,
                        layoutOk ? "" : " - LAYOUT NOT RECOGNISED, writing from the page is disabled");
+    }
+}
+
+// the 20 bytes as read, "3B A8 18 00 ..." (for the log and the page: the next unknown layout shows itself)
+static void tm171SettingHex(char* out)
+{
+    for (uint8_t i = 0; i < TM171_SET_LEN; i++) snprintf(out + 3 * i, 4, "%02X ", tmSet[i]);
+    out[3 * TM171_SET_LEN - 1] = '\0';
 }
 
 // The web page's form. Returns false with the reason.
@@ -391,7 +411,7 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
     if (!tmSetValid)          { *why = tmSetOdd ? "settings layout not recognised; writing is disabled" : "read the settings from the TM171 first"; return false; }
     if (f.accGain < 1 || f.accGain > 2000 || f.magGain < 1 || f.magGain > 2000) { *why = "gain out of range (0.01 - 20.00)"; return false; }
-    if (f.inhibit > 65530 || f.silent > 65 || f.boot > 2) { *why = "value out of range"; return false; }
+    if (f.odr > 1000 || f.boot > 2) { *why = "value out of range"; return false; }
     uint8_t s[TM171_SET_LEN];
     memcpy(s, tmSet, TM171_SET_LEN);
     uint32_t w = tmSetU32(s);
@@ -410,15 +430,14 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     if (f.baud100) tmSetPut16(s + 6, f.baud100);     // 0 = keep the baud rate as read
     tmSetPut16(s + 10, f.accGain);
     tmSetPut16(s + 12, f.magGain);
-    tmSetPut16(s + 14, f.inhibit);
-    tmSetPut32(s + 16, f.silent);
+    tmSetPut16(s + 18, f.odr);                       // the words at 4, 8, 14 (inhibit time) and 16 stay as read
     tm171Send(21, s, TM171_SET_LEN);
     SerialImu->flush();                              // sent before Serial5 may change its baud rate
     tmSetAckMs = 0;
     tmSetWriteMs = millis() | 1;
     if (f.baud100 && (uint32_t)f.baud100 * 100UL != tm171Baud) { tmBaudNew = (uint32_t)f.baud100 * 100UL; tmBaudSwitchMs = tmSetWriteMs; }
-    StatusLog.line("[status] TM171: settings written (switches 0x%08lX, gains %u/%u, inhibit %u ms, silent %lu s%s)", (unsigned long)w,
-                   (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.inhibit, (unsigned long)f.silent, f.save ? ", saved to flash" : ", this session only");
+    StatusLog.line("[status] TM171: settings written (switches 0x%08lX, gains %u/%u, %u Hz%s)", (unsigned long)w,
+                   (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.odr, f.save ? ", saved to flash" : ", this session only");
     return true;
 }
 
@@ -460,7 +479,8 @@ void tm171SettingLoop()
     if (tmSetReqMs && now - tmSetReqMs > TM171_ANSWER_MS)
     {
         tmSetReqMs = 0;
-        if (tmSetNoAnswer++ == 0 && !tmSetMs)
+        if (tmSetNoAnswer++ == 0 && !tmSetMs) { tm171SettingRead(); return; }   // once more: the first answer came late on a real TM171
+        if (tmSetNoAnswer == 2 && !tmSetMs)
         {
             StatusLog.println("[status] TM171: no reply - its RX pin is not wired to Teensy TX5 (pin 20). Roll, pitch and yaw work; calibration and settings from the page do not");
             hwMessage("TM171 RX not wired to Teensy TX5: calibration and setup from the page unavailable", 10, true);
@@ -497,7 +517,11 @@ void tm171SettingJson(Json& j)
         j.u("boot", (w >> 24) & 3);
         j.u("baud", (unsigned long)tmSetU16(tmSet + 6) * 100UL);
         j.u("accGain", tmSetU16(tmSet + 10)); j.u("magGain", tmSetU16(tmSet + 12));
-        j.u("inhibit", tmSetU16(tmSet + 14)); j.u("silent", tmSetU32(tmSet + 16));
+        j.u("inhibit", tmSetU16(tmSet + 14)); j.u("odr", tmSetU16(tmSet + 18));
+        j.u("w4", tmSetU16(tmSet + 4)); j.u("w8", tmSetU16(tmSet + 8)); j.u("w16", tmSetU16(tmSet + 16));
+        char raw[3 * TM171_SET_LEN + 1];
+        tm171SettingHex(raw);
+        j.str("raw", raw);
     }
     j.close();
 }

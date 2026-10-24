@@ -355,8 +355,7 @@ a{color:var(--acc)}
    <label class="opt"><input type="checkbox" id="tsSelfAdapt"><span>Self-Adapt Filter<small>Magnetometer gain: <input type="number" id="tsMagG" min="0.01" max="20" step="0.01"> (the dial next to Self-Adapt; 1.00 recommended)</small></span></label>
    <label class="opt"><input type="checkbox" id="tsStatus"><span>Status output<small>Temperature and signal quality (QoS). Roll-pitch-yaw and UART output are always left on.</small></span></label>
    <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Applies after the module is switched off and on; requires "Save to flash".</span></div>
-   <div class="row"><span>Output data rate</span><input type="number" id="tsRate" min="0" max="1000" step="1"> Hz<span class="note">Use 25 for AgOpenGPS (stored as a 40 ms inhibit time). 0 = maximum rate. Currently measured: <span id="tsRateNow">–</span></span></div>
-   <div class="row"><span>Power-on silent time (s)</span><input type="number" id="tsSilent" min="0" max="65" step="1"></div>
+   <div class="row"><span>Output data rate</span><input type="number" id="tsRate" min="0" max="1000" step="1"> Hz<span class="note">Use 25 for AgOpenGPS. Currently measured: <span id="tsRateNow">–</span>. The TM171's inhibit time (the shortest gap between two packets) is left as read: <span id="tsInhibit">–</span>.</span></div>
    <label class="opt"><input type="checkbox" id="tsSave" checked><span>Save to flash<small>If unchecked, the settings are lost when the TM171 is powered off.</small></span></label>
    <div class="row"><button class="sec" type="button" id="tsRead">Read from TM171</button><button class="sec" type="button" id="tsAog">AgOpenGPS defaults</button><button class="act" type="button" id="tsWrite">Write to TM171</button></div>
    <p class="note" id="tsMsg">–</p>
@@ -732,26 +731,26 @@ async function gpsAct(body,say){
 let tsSeen=null;
 function tsFill(s){$("tsMag").checked=!!s.mag;$("tsGyroErr").checked=!!s.gyroErr;$("tsSelfAdapt").checked=!!s.selfAdapt;$("tsStatus").checked=!!s.status;
  $("tsBoot").value=String(s.boot||0);$("tsAcc").value=(s.accGain/100).toFixed(2);$("tsMagG").value=(s.magGain/100).toFixed(2);
- $("tsRate").value=s.inhibit>0?Math.round(1000/s.inhibit):0;$("tsSilent").value=s.silent||0;}
+ $("tsRate").value=s.odr||0;}
 function renderTmSet(s){
- set("tsRateNow",s.rate+" Hz");set("tsBaud",(s.baud?s.baud+" bps":"–")+(s.baudNow&&s.baudNow!==115200?" (Teensy listening at "+s.baudNow+")":""));
- const key=s.age>=0?s.sw+":"+s.accGain+":"+s.magGain+":"+s.inhibit+":"+s.silent+":"+(s.age<2?"n":"o"):null;
+ set("tsRateNow",s.rate+" Hz");set("tsInhibit",s.inhibit>=0?s.inhibit+" ms":"–");set("tsBaud",(s.baud?s.baud+" bps":"–")+(s.baudNow&&s.baudNow!==115200?" (Teensy listening at "+s.baudNow+")":""));
+ const key=s.age>=0?s.sw+":"+s.accGain+":"+s.magGain+":"+s.odr+":"+(s.age<2?"n":"o"):null;
  if(s.age>=0&&key!==tsSeen&&(tsSeen===null||s.age<2)){tsSeen=key;tsFill(s);}
  let m="",cls="";
  if(s.pending)m="waiting for the TM171…";
- else if(s.odd){m="Settings received, but the layout is not recognised (switch word 0x"+(s.sw>>>0).toString(16)+"). Writing is disabled; use ImuAssistant instead.";cls="bad";}
+ else if(s.odd){m="Settings received, but the layout is not recognised (switch word 0x"+(s.sw>>>0).toString(16)+", bytes "+(s.raw||"?")+"). Writing is disabled; use ImuAssistant instead, and send these bytes to the firmware's author.";cls="bad";}
  else if(s.age<0){m=s.noAnswer?"No reply from the TM171 (is the TX5 wire connected?)":"not read yet";cls=s.noAnswer?"warn":"";}
  else{m="Read "+(s.age<90?s.age+" s":Math.round(s.age/60)+" min")+" ago"+(s.ackAge>=0?". Last write acknowledged by the TM171 "+(s.ackAge<90?s.ackAge+" s":Math.round(s.ackAge/60)+" min")+" ago":"");cls=s.ackAge>=0&&s.ackAge<30?"ok":"";}
  if(!$("tsMsg").dataset.err)set("tsMsg",m,cls);
  $("tsWrite").disabled=!s.valid||s.pending;$("tsAog").disabled=!s.valid;$("tsRead").disabled=!!s.pending;
  for(const e of $("tmSetDet").querySelectorAll("input,select"))e.disabled=!s.valid;}   /* nothing read: nothing to choose from */
 $("tsRead").addEventListener("click",()=>{tsSeen=null;delete $("tsMsg").dataset.err;tmCalPost("setread");});
-$("tsAog").addEventListener("click",()=>{tsFill({mag:0,gyroErr:1,selfAdapt:1,status:1,boot:0,accGain:350,magGain:100,inhibit:40,silent:0});set("tsMsg","AgOpenGPS defaults loaded into the form (magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, 25 Hz, silent time 0, Auto boot). Click \"Write to TM171\" to apply.","warn");$("tsMsg").dataset.err="1";});
+$("tsAog").addEventListener("click",()=>{tsFill({mag:0,gyroErr:1,selfAdapt:1,status:1,boot:0,accGain:350,magGain:100,odr:25});set("tsMsg","AgOpenGPS defaults loaded into the form (magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, 25 Hz, Auto boot). Click \"Write to TM171\" to apply.","warn");$("tsMsg").dataset.err="1";});
 $("tsWrite").addEventListener("click",async()=>{
  if(!confirm("Write these settings to the TM171"+($("tsSave").checked?" and save them to its flash memory":"")+"?"))return;
  const n=id=>Math.round(parseFloat($(id).value)||0),rate=n("tsRate");
  const b="act=setwrite&mag="+(+$("tsMag").checked)+"&gyroErr="+(+$("tsGyroErr").checked)+"&selfAdapt="+(+$("tsSelfAdapt").checked)+"&status="+(+$("tsStatus").checked)+"&save="+(+$("tsSave").checked)
-  +"&boot="+$("tsBoot").value+"&accGain="+Math.round(parseFloat($("tsAcc").value)*100)+"&magGain="+Math.round(parseFloat($("tsMagG").value)*100)+"&inhibit="+(rate>0?Math.round(1000/rate):0)+"&silent="+n("tsSilent");
+  +"&boot="+$("tsBoot").value+"&accGain="+Math.round(parseFloat($("tsAcc").value)*100)+"&magGain="+Math.round(parseFloat($("tsMagG").value)*100)+"&odr="+rate;
  delete $("tsMsg").dataset.err;tsSeen=null;
  try{const j=await getJ("/api/imu",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});
   if(!j.ok){set("tsMsg","Error"+": "+ptErr(j.error),"bad");$("tsMsg").dataset.err="1";}else set("tsMsg","Sent. Reading back…","");}
@@ -764,7 +763,7 @@ $("tmCalBtn").addEventListener("click",()=>{
  if(!busy&&!confirm("Calibrate the TM171 gyro?\nKeep the tractor parked for 20 s (the engine can stay running). Autosteer must be off."))return;
  tmCalPost(busy?"calibstop":"calib");});
 $("tmFixBtn").addEventListener("click",()=>{
- if(!confirm("Write the AgOpenGPS setup to the TM171?\nUART 115200, magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status output, 25 Hz, silent time 0, Auto boot. Saved to the TM171's flash. Autosteer must be off."))return;
+ if(!confirm("Write the AgOpenGPS setup to the TM171?\nUART 115200, magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status output, 25 Hz, Auto boot. Saved to the TM171's flash. Autosteer must be off."))return;
  tmCalPost("fixsetup");});
 $("tmInstBtn").addEventListener("click",()=>{
  if(!confirm("Run the TM171 new install calibration?\nKeep the tractor parked for about 20 s and do NOT cut power while it runs (SYD warns this can damage the TM171). It cannot be stopped once started. The result is saved to flash; switch the whole module off and on afterwards."))return;
