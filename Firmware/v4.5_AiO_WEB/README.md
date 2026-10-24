@@ -124,6 +124,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 
 Web page → Firmware → choose the `.hex` → Install.
 
+- Once chosen, the page reads the file in the browser and shows what is inside, next to its name: the version and the build date and time (the `[boot] … built …` line the firmware prints at start-up), "the firmware running now" when it is the same build as the module's, a warning when it is not a Teensy 4.1 firmware, not an AiO_WEB one, or has no update page inside. Nothing is sent until Install.
 - Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h). On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
 - The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`, or `AOG-UM982-TM171-WEB-OTA-1` as the firmware before 22 Oct 2026 called it), reading back every sector. A new firmware carries both names for now, so a module still on an older firmware accepts it from the web page. **If anything fails, the running firmware stays** and the page says why.
 - Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).

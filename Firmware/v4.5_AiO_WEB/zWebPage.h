@@ -17,7 +17,8 @@
 // console below; only the options that matter to AgOpenWeb / AgOpenGPS, and the KSXT; the other
 // NMEA sentences / messages are only named when the receiver sends them; the receiver check, zRxCheck.ino:
 // data at 460800, baud rate search, what the Teensy needs, the AgOpenGPS settings loaded) and Firmware (start reason, watchdog, a newer version on GitHub - renatorgr/Boards,
-// folder Firmware - installed through the same update as a file, zOTA.ino; the module itself never
+// folder Firmware - installed through the same update as a file, zOTA.ino; a chosen .hex shows its version
+// and build date and time before it is sent; the module itself never
 // goes to the internet), and a report for an analysis (every answer of the module in one .json file).
 #ifndef ZWEBPAGE_H
 #define ZWEBPAGE_H
@@ -370,6 +371,7 @@ a{color:var(--acc)}
  <p class="note">The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.</p></div>
 <div class="card"><h2>Update firmware</h2>
  <div class="row"><label class="act">Choose .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">no file</span></div>
+ <p id="hexInfo" class="note hidden"></p>
  <label class="opt"><input type="checkbox" id="force"><span>Other firmware<small>Installs it even without this update page inside (the next update will then have to be by USB).</small></span></label>
  <div class="row"><button class="act" id="install" disabled>Install</button></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
@@ -1056,11 +1058,35 @@ $("umCmd").addEventListener("keydown",e=>{if(e.key==="Enter")umSend();});
 // ---- firmware
 function ptErr(e){return String(e||"");}
 function fwMsg(t,c){const m=$("fwMsg");m.textContent=t;m.className="note "+(c||"");}
-$("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];$("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");});
+// What is inside a chosen .hex (Renato, 2026-10-24): the data records of the Intel HEX file put together, then the
+// "[boot] vX.Y_AiO_WEB, built Mmm dd yyyy hh:mm:ss" line the firmware prints at start-up gives the version and the
+// build date and time; "fw_teensy41" says it is a Teensy 4.1 firmware and the family marker (zOTA.ino) that it has
+// this update page inside. Read in this browser, nothing is sent. hexBuild: the result for the chosen file (null: none).
+let hexBuild=null;
+function hexRead(text){
+ let s="";
+ for(const ln of text.split("\n")){if(ln.charCodeAt(0)!==58||ln.substr(7,2)!=="00")continue;const n=parseInt(ln.substr(1,2),16);let o="";for(let i=0;i<n;i++)o+=String.fromCharCode(parseInt(ln.substr(9+2*i,2),16));s+=o;}
+ const m=/\[boot\] (v[\w.]+_AiO_WEB), built ([A-Z][a-z]{2} [ \d]\d \d{4} \d\d:\d\d:\d\d)/.exec(s);
+ return {fw:m?m[1]:"",built:m?m[2].replace("  "," "):"",t41:s.includes("fw_teensy41"),marker:s.includes("AiO-WEB-OTA-1")||s.includes("AOG-UM982-TM171-WEB-OTA-1")};
+}
+$("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];hexBuild=null;
+ $("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");
+ const inf=$("hexInfo");inf.classList.toggle("hidden",!f);if(!f)return;
+ inf.textContent="Reading the file…";inf.className="note";
+ const r=new FileReader();
+ r.onload=()=>{const b=hexBuild=hexRead(r.result);let t,c="";
+  if(!b.t41){t="Not a Teensy 4.1 firmware (no fw_teensy41 inside): the Teensy refuses it.";c="bad";}
+  else if(!b.fw){t="No AiO_WEB build data inside: another firmware. It needs «Other firmware» to install"+(b.marker?".":", and it has no update page: the next update would be by USB.");c="warn";}
+  else{const same=!!lastS&&lastS.built===b.built;t=b.fw+", built "+b.built+(same?" (the firmware running now)":"")+(b.marker?"":"; no update page inside: needs «Other firmware»");c=same?"":"ok";}
+  inf.textContent=t;inf.className="note "+c;};
+ r.onerror=()=>{inf.textContent="The file could not be read.";inf.className="note bad";};
+ r.readAsText(f);
+});
 $("install").addEventListener("click",()=>{
  const f=$("hexFile").files[0];if(!f||busy)return;
  if(!f.name.toLowerCase().endsWith(".hex")){fwMsg("Choose a .hex file.","bad");return;}
- if(!confirm(("Install "+f.name+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ const b=hexBuild&&hexBuild.fw?" ("+hexBuild.fw+", built "+hexBuild.built+")":"";
+ if(!confirm(("Install "+f.name+b+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  sendHex(f,$("force").checked,0);
 });
