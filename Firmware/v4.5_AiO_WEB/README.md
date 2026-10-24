@@ -238,17 +238,20 @@ The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS
 On the IMU tab, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested
 its settings at start-up (Setting object 21): magnetometer on/off, GyroErrFilter with the accelerometer gain
 (the dial next to it in ImuAssistant), Self-Adapt filter with the magnetometer gain, status output, boot
-mode, output data rate (stored in the TM171 as an inhibit time: 25 Hz = 40 ms) and power-on silent time.
-**AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer off, GyroErrFilter
-3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, silent time 0, Auto boot). **Write to TM171**
+mode and output data rate in Hz (the TM171's inhibit time, the shortest gap between two packets, is shown
+and left as read). **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
+off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, Auto boot). **Write to TM171**
 sends the form, saved to flash unless you untick it, waits for the TM171's acknowledgement and reads the
 settings back. The measured output rate is shown next to the rate field.
 
 Deliberately out of reach: the gyro, the accelerometer, the roll-pitch-yaw output and the UART output are
 always left on, and the UART baud rate is never changed (the Teensy would lose contact with the TM171; use
 ImuAssistant over the TM171's USB-C port for that). SYD's guide does not number the bits of the settings
-word, so before writing anything the firmware checks the reserved bits of the word it read; if they do not
-match, the page reports "layout not recognised" and refuses to write. All of this needs the TX5 wire.
+word, so before writing anything the firmware checks the reserved bits of the word it read and the baud rate
+word; if they do not match, the page reports "layout not recognised" with the raw bytes and refuses to write.
+The layout was confirmed on a real TM171 on 24 Oct 2026 (the first guess took the rate for an inhibit time and
+showed a "silent time" that does not exist; the words the firmware does not know are left as read). All of
+this needs the TX5 wire.
 
 ### TM171 set-up check
 

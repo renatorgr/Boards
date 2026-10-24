@@ -54,8 +54,7 @@ struct TmSetForm
     bool     mag, gyroErr, selfAdapt, status, save;
     uint8_t  boot;            // 0 auto, 1 static, 2 dynamic
     uint16_t accGain, magGain; // x 0.01
-    uint16_t inhibit;         // ms between packets
-    uint32_t silent;          // s after power-on
+    uint16_t odr;             // output data rate, Hz (25 for AgOpenGPS)
     uint16_t baud100;         // UART baud rate / 100 (1152 = 115200); 0 = keep as read
 };
 extern uint32_t tm171Baud;
