@@ -244,8 +244,10 @@ a{color:var(--acc)}
  <details id="ck0Cmd" class="hidden"><summary class="note">AgOpenGPS commands (✓ already in the receiver)</summary><div id="ck0CmdList" class="mono" style="margin-top:6px"></div></details>
  <div class="row"><select id="ck0Um" class="hidden"><option value="d">UM982 with two antennas</option><option value="s">UM982 with one antenna</option></select></div>
  <p id="ck0UmNote" class="note hidden">One antenna: Status leaves the dual-antenna heading out. Kept in the Teensy's settings.</p>
- <div class="row"><button class="act hidden" type="button" id="ck0Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load">Load the AgOpenGPS settings</button></div>
+ <div class="row"><button class="act hidden" type="button" id="ck0Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load">Load the AgOpenGPS settings</button><button class="sec hidden" type="button" id="ck0Dump">Read all settings</button></div>
  <p id="ck0Msg" class="note"></p>
+ <div class="hidden" id="ck0DumpRow"><div class="row"><button class="act" type="button" id="ck0Dl">Download</button></div>
+  <p class="note">Every setting of the receiver, read from its RAM and compared with the factory defaults: the ones that differ, as a u-center configuration file (the form of the AOGConfigOMatic files). Put into the firmware (zRxConfig.h), it becomes the AgOpenGPS file of a receiver AOGConfigOMatic has none for, such as the X20P.</p></div>
  <p class="note">Baud rate checked at start-up (460800). AgOpenGPS settings: AOGConfigOMatic (lansalot), for F9P firmware HPG 1.13. Change only with autosteer off.</p></div>
 <div class="card hidden" id="ck1"><h2>Second F9P check</h2>
  <dl><dt>Data at 460800 baud</dt><dd id="ck1Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck1Hz">–</dd><dt>Receiver</dt><dd id="ck1Model">–</dd><dt>Firmware</dt><dd id="ck1Fw">–</dd><dt>What the Teensy needs</dt><dd id="ck1Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck1Ago">–</dd></dl>
@@ -253,8 +255,10 @@ a{color:var(--acc)}
  <p id="ck1Warn" class="note bad hidden"></p>
  <div id="ck1Vals" class="hidden"><p class="note">Values read</p><div id="ck1Bad" class="mono warn" style="margin-top:4px"></div>
   <details id="ck1Det"><summary class="note" id="ck1OkSum">–</summary><div id="ck1List" class="mono" style="margin-top:6px"></div></details></div>
- <div class="row"><button class="act hidden" type="button" id="ck1Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load">Load the AgOpenGPS settings</button></div>
+ <div class="row"><button class="act hidden" type="button" id="ck1Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load">Load the AgOpenGPS settings</button><button class="sec hidden" type="button" id="ck1Dump">Read all settings</button></div>
  <p id="ck1Msg" class="note"></p>
+ <div class="hidden" id="ck1DumpRow"><div class="row"><button class="act" type="button" id="ck1Dl">Download</button></div>
+  <p class="note">Every setting of the receiver, read from its RAM and compared with the factory defaults: the ones that differ, as a u-center configuration file (the form of the AOGConfigOMatic files).</p></div>
  <p class="note">The second F9P (GPS2 port) sends the RELPOSNED to the Teensy at 460800 baud. Its AgOpenGPS settings are those of DualRelPos.txt.</p></div>
 <form id="fu" class="hidden">
 <div class="card"><h2>Position</h2>
@@ -881,6 +885,7 @@ function ckMsgText(c,p,port,um){
   if(c.op==="scan")return [("Finding the baud rate: "+c.baudTry+" baud…"),""];
   if(c.op==="baud")return ["Changing the receiver's baud rate…",""];
   if(c.op==="load")return [c.msgs?("Loading: message "+(c.msg+1)+" of "+c.msgs+"…"):"Loading the commands into the UM982…",""];
+  if(c.op==="dump")return [("Reading all the settings: "+c.dumpRead+" read, "+c.dumpN+" differ from the factory defaults…"),""];
   return [c.msgs?("Comparing with the AgOpenGPS settings: "+(c.msg+1)+" of "+c.msgs+"…"):"Checking…",""];}
  const out=[];let cls="";
  const kn={ublox:"u-blox",unicore:"Unicore",nmea:"NMEA"}[p.foundKind]||"";
@@ -895,8 +900,12 @@ function ckMsgText(c,p,port,um){
  if(p.load==="loaded"){out.push(("AgOpenGPS settings loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken"+(p.loadRam?", "+p.loadRam+" in RAM and BBR only":"")+"."));cls="ok";}
  if(p.load==="load-part"){out.push(("AgOpenGPS settings partly loaded ("+p.loadFile+"): "+ok+" of "+tot+" "+w+" taken, "+p.loadNak+" refused, "+p.loadNone+" not answered"+(um&&p.loadNak+p.loadNone===0?", SAVECONFIG not confirmed":"")+"."));cls="warn";}
  if(p.load==="load-fail"){out.push(("The AgOpenGPS settings were not loaded ("+p.loadFile+"): the receiver did not take them."));cls="bad";}
- if([p.scan,p.baud,p.chk,p.load].includes("stopped")){out.push("Stopped: the program (AgIO) took the receiver, or the GPS2 port changed.");cls="warn";}
+ if(p.dump==="dumped"){out.push(("All settings read: "+p.dumpN+" of "+p.dumpRead+" differ from the factory defaults")+(p.dumpFull?" (more than the Teensy keeps: the file is incomplete).":"."));cls=p.dumpFull?"warn":"ok";}
+ if(p.dump==="dump-fail"){out.push("The settings could not all be read: the receiver refuses the all-items key of UBX-CFG-VALGET.");cls="bad";}
+ if(p.dump==="noanswer"){out.push("The receiver did not answer the read of all its settings (UBX output off on UART1?).");cls="bad";}
+ if([p.scan,p.baud,p.chk,p.load,p.dump].includes("stopped")){out.push("Stopped: the program (AgIO) took the receiver, or the GPS2 port changed.");cls="warn";}
  return [out.join(" "),cls];}
+function ckDumpName(p){return ((p.model||"").replace(/^ZED-/,"")||"receiver")+".txt";}
 function renderCk(j){
  const c=j.ck;if(!c)return;
  const ublox=j.kind==="ublox",um=j.kind==="um982";
@@ -949,6 +958,8 @@ function renderCk(j){
   $(id+"Baud").classList.toggle("hidden",!(p.scan==="found"&&p.found!==460800));$(id+"Baud").disabled=busy;
   $(id+"Load").classList.toggle("hidden",!(canLoad&&((miss&&miss.length)||differs)));
   $(id+"Load").disabled=busy||p.health==="junk";
+  $(id+"Dump").classList.toggle("hidden",!ub);$(id+"Dump").disabled=busy||p.health==="junk";   /* "Read all settings": u-blox only */
+  $(id+"DumpRow").classList.toggle("hidden",p.dump!=="dumped");$(id+"Dl").textContent="Download "+ckDumpName(p);
   const m=ckLocal[port]&&Date.now()-ckLocalAt[port]<5000?ckLocal[port]:ckMsgText(c,p,port,port===0&&um);set(id+"Msg",m[0],m[1]);
  }
 }
@@ -971,7 +982,17 @@ for(const port of [0,1]){
   if(uni)q+="\n\n"+"Unicore: CONFIG COM1, COM2 and COM3 460800, then SAVECONFIG.";
   if(confirm(q+"\n\n"+"Only with autosteer off: the GPS stops for a few seconds."))ckAct(port,"baud");});
  $("ck"+port+"Load").addEventListener("click",()=>ckLoad(port));
+ $("ck"+port+"Dump").addEventListener("click",()=>ckAct(port,"dump"));
+ $("ck"+port+"Dl").addEventListener("click",()=>ckDownload(port));
 }
+// the file of "Read all settings" (GET /api/rxdump), downloaded by this browser as <model>.txt
+async function ckDownload(port){
+ const p=gpsJ&&gpsJ.ck&&gpsJ.ck.ports[port];if(!p)return;
+ try{const r=await fetch("/api/rxdump",{cache:"no-store"});if(!r.ok){ckSay(port,"Error"+": HTTP "+r.status,"bad");return;}
+  const t=await r.text(),name=ckDumpName(p);
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/plain"}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+  ckSay(port,"Downloaded: "+name,"ok");}catch(e){ckSay(port,"No connection to the module.","bad");}}
 let ckUmAt=0;
 $("ck0Um").addEventListener("change",async()=>{     /* UM982 antennas: a setting (Settings block), also the AgOpenGPS file */
  ckUmAt=Date.now();if(gpsJ)renderCk(gpsJ);

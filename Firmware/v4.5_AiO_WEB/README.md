@@ -154,7 +154,8 @@ What goes to the program does not depend on this: a receiver that sends HPR is t
 - **What the Teensy needs**: u-blox keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`); UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800. The wrong values first, in orange; the right ones in a collapsed list.
 - **Compare with AOGConfigOMatic** (F9P: every key of the file; UM982: which commands it already has) and **Load the AgOpenGPS settings** (F9P: each line as one `UBX-CFG-VALSET` to RAM, BBR and flash; UM982: one command at a time, then `SAVECONFIG`).
 - **Firmware**: the AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**).
-- The X20P has no AgOpenGPS file; what the Teensy needs is still checked.
+- The X20P has no AgOpenGPS file; what the Teensy needs is still checked. **Read all settings** on a working X20P gives the file to add (below).
+- **Read all settings** (u-blox): every setting of the receiver, read from its RAM layer with `UBX-CFG-VALGET` (the all-items key, 64 items per answer) and compared with its Default layer; the ones that differ from the factory defaults are kept (up to 512; `CFG-SEC-*` left out) and downloaded as a u-center configuration file named after the model (`X20P.txt`): a comment line, then `CFG-VALGET - 06 8B …` lines of up to 64 key + value pairs, the form of the AOGConfigOMatic files that `zRxConfig.h` is made from. The way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for. Reading does not change the receiver and is allowed with autosteer on.
 - One operation at a time, only with autosteer off. AgIO's GPS tool (`!AOGR1`) stops it.
 
 ### u-blox settings (GPS tab)
