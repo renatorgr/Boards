@@ -1,6 +1,7 @@
 /* zStatus.ino - [status] messages and which program talks to the module.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   24 Oct 2026: statusProgramTalking / statusRtcmLastMs for the LEDs (zLeds.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -60,6 +61,11 @@ void statusNoteRtcm(const uint8_t* d, uint16_t len)
 }
 
 // called from loop() with the bytes from the radio (they go on to the receiver)
+// For the LEDs (zLeds.ino, which comes before this file in the sketch): a program is talking to the
+// module; when the last RTCM byte arrived (NTRIP or radio; 0 = never)
+bool statusProgramTalking(uint32_t now) { return aogLastMs != 0 && now - aogLastMs < STATUS_SILENCE_MS; }
+uint32_t statusRtcmLastMs() { return ntripRtcm.lastMs > radioRtcm.lastMs ? ntripRtcm.lastMs : radioRtcm.lastMs; }
+
 void statusNoteRadio(const uint8_t* d, uint16_t len)
 {
     radioRtcm.feed(d, len, millis());

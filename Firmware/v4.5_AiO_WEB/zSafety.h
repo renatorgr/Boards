@@ -1,6 +1,7 @@
 /* zSafety.h - shared names for the autosteer safety code (zSafety.ino).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   24 Oct 2026: wasOut declared for zLeds.ino.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -59,6 +60,7 @@ bool  wasVoltsOk();
 bool  keyaCheck();                    // KeyaCANBUS.ino
 extern bool keyaBlock;                 // KeyaCANBUS.ino: autosteer blocked by a lost Keya heartbeat
 extern bool keyaLost;                  // KeyaCANBUS.ino: no Keya heartbeat now (zWeb.ino)
+extern bool wasOut;                    // zSafety.ino: WAS voltage out of range now (zLeds.ino)
 void  steerKick(uint8_t cause, int value);
 void  steerNote254();
 void  steerNote252();

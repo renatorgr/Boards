@@ -18,6 +18,7 @@
    (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
    AiO_WEB 4.5, 23 Oct 2026 (Claude (Anthropic) for renatorgr): with "Button" as the steer switch, the
    program's on-screen autosteer button turns autosteer on and off too, like the physical button.
+   AiO_WEB 4.5, 24 Oct 2026: the STEER LED is driven by zLeds.ino (this file only reports the button press).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -289,9 +290,6 @@ void autosteerSetup()
 	if (Autosteer_running)
 	{
 		StatusLog.line("[boot] Autosteer: ADS1115 (WAS) found, waiting for the program");
-		// Autosteer Led goes Red if ADS1115 is found
-		digitalWrite(AUTOSTEER_ACTIVE_LED, 0);
-		digitalWrite(AUTOSTEER_STANDBY_LED, 1);
 	}
 	else
 	{
@@ -337,6 +335,7 @@ void autosteerLoop()
 			reading = digitalRead(STEERSW_PIN);
 			if (reading == LOW && previous == HIGH)
 			{
+				ledSteerPressed();                  // a flick on the STEER LED (zLeds.ino)
 				if (currentState == 1)
 				{
 					currentState = 0;
@@ -602,10 +601,6 @@ void autosteerLoop()
 			keyaIntendToSteer = true;
 			calcSteeringPID();  //do the pid
 			motorDrive();       //out to motors the pwm value
-			// Autosteer Led goes GREEN if autosteering
-
-			digitalWrite(AUTOSTEER_ACTIVE_LED, 1);
-			digitalWrite(AUTOSTEER_STANDBY_LED, 0);
 		}
 		else
 		{
@@ -632,9 +627,6 @@ void autosteerLoop()
 			keyaIntendToSteer = false;  // Keya: motorDrive() sends it the disable command
 			motorDrive(); //out to motors the pwm value
 			pulseCount = 0;
-			// Autosteer Led goes back to RED when autosteering is stopped
-			digitalWrite(AUTOSTEER_STANDBY_LED, 1);
-			digitalWrite(AUTOSTEER_ACTIVE_LED, 0);
 		}
 		steerOnNote(steerOn);              // on -> off: why (zSafety.ino)
 	} //end of timed loop

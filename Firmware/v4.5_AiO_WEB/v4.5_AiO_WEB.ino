@@ -19,6 +19,7 @@
      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
+   AiO_WEB 4.5, 24 Oct 2026: the board LEDs are driven from one place, zLeds.ino (ledsUpdate in loop).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -78,10 +79,10 @@ const int32_t baudRTK = 115200;         // XBee LR
 #define GGAReceivedLED 13
 #define Power_on_LED 5
 #define Ethernet_Active_LED 6
-#define GPSRED_LED 9                    // Red   (ON = single antenna / TM171 heading, blinking = TM171 lost)
-#define GPSGREEN_LED 10                 // Green (ON = UM982 dual heading good)
-#define AUTOSTEER_STANDBY_LED 11
-#define AUTOSTEER_ACTIVE_LED 12
+#define GPSRED_LED 9                    // the three two-colour LEDs: red and green pin each; meanings in zLeds.ino
+#define GPSGREEN_LED 10
+#define AUTOSTEER_STANDBY_LED 11        // (red)
+#define AUTOSTEER_ACTIVE_LED 12         // (green)
 uint32_t gpsReadyTime = 0;
 /*****************************************************************/
 
@@ -410,13 +411,6 @@ void loop()
         }
     }
 
-    // GGA timeout - turn off GPS LEDs after 10 sec with no fix
-    if ((systick_millis_count - gpsReadyTime) > 10000)
-    {
-        digitalWrite(GPSRED_LED,   LOW);
-        digitalWrite(GPSGREEN_LED, LOW);
-    }
-
     // IMU (TM171 / BNO085) - roll at all times, heading when single antenna
     loopStep = 6;
     imuProcess();
@@ -453,14 +447,5 @@ void loop()
     rxCheckLoop();                                // the receiver check: data, baud rate, settings (zRxCheck.ino)
 
     loopStep = 12;
-    if (Ethernet.linkStatus() == LinkOFF)
-    {
-        digitalWrite(Power_on_LED,        1);
-        digitalWrite(Ethernet_Active_LED, 0);
-    }
-    if (Ethernet.linkStatus() == LinkON)
-    {
-        digitalWrite(Power_on_LED,        0);
-        digitalWrite(Ethernet_Active_LED, 1);
-    }
+    ledsUpdate();                                 // the three LEDs on the board (zLeds.ino)
 }

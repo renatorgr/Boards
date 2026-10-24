@@ -6,6 +6,7 @@
    the kickout values in %, the loop time for the report).
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb
    reads the same way ("AiO Board Msgs").
+   24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -282,7 +283,7 @@ const char* stepName(uint8_t s)
         case 9:  return "status";
         case 10: return "web page";
         case 11: return "steering";
-        case 12: return "Ethernet link";
+        case 12: return "LEDs";
         case 13: return "GPS receiver";
         case 14: return "Ethernet stack";
         case 15: return "machine module";

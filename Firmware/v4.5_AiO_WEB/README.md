@@ -436,7 +436,19 @@ On the USB serial monitor and the Messages tab:
 - `[web]`: what is done from the page (settings, commands, updates, restarts).
 - `[xiao]`: the XIAO's hello, silence, first PGN, bad frames, its text lines.
 
-LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
+## LEDs
+
+The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide as far as red and green allow
+(both on = orange; the AiO 26 blue pulse is a short dark flick here). The IMU state has no LED: see the IMU
+card on the page and the message on the program's screen.
+
+| LED | Red | Orange | Green | Flick |
+|---|---|---|---|---|
+| PWR/ETH | no Ethernet link | link, but no program talking (5 s without UDP) | AgOpenWeb or AgOpenGPS talking | |
+| GPS | GGA without a fix | fix, not RTK fixed (GPS, DGPS, RTK float) | RTK fixed | corrections arriving (NTRIP or radio): once a second |
+| STEER | fault: no ADS1115 (WAS), WAS voltage out of range, Keya heartbeat lost | ready, autosteer off | autosteer on | steer button or switch used |
+
+The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 13) blinks with every GGA.
 
 ## Files
 
@@ -454,6 +466,7 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 | `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop |
 | `zRtcm.h` | RTCM counter |
 | `zStatus.ino`, `zStatusLog.h` | messages |
+| `zLeds.ino` | the three board LEDs |
 | `zSettings.ino` / `.h` | settings (EEPROM) |
 | `zWeb.ino`, `zWebPage.h`, `zWebJson.h` | web server and page |
 | `zOTA.ino`, `FlashTxx.*` | firmware update |
