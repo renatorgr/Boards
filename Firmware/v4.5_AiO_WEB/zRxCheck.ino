@@ -9,6 +9,9 @@
    2026-10-24: in one go - a receiver found at another baud rate keeps the port at that speed, is identified
    and checked there, and the AgOpenGPS settings (which set 460800) are loaded at that speed; the port
    switches when the baud rate message goes out. The baud-only change is kept for a receiver with nothing to load.
+   2026-10-24: "Read all settings" - every setting of a u-blox receiver read (UBX-CFG-VALGET, all items, RAM and
+   Default layers), the ones that differ from the factory defaults given as a u-center configuration file
+   (GET /api/rxdump): the way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for (X20P).
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
@@ -106,9 +109,9 @@ static const CkEss CK_ESS[] = {
 #define CK_ESS_N ((uint8_t)(sizeof(CK_ESS) / sizeof(CK_ESS[0])))
 
 enum CkHealth : uint8_t { CKH_WAIT = 0, CKH_NONE, CKH_OK, CKH_JUNK };
-enum CkOp     : uint8_t { CKOP_NONE = 0, CKOP_SCAN, CKOP_BAUD, CKOP_CHECK, CKOP_LOAD };
+enum CkOp     : uint8_t { CKOP_NONE = 0, CKOP_SCAN, CKOP_BAUD, CKOP_CHECK, CKOP_LOAD, CKOP_DUMP };
 enum CkRes    : uint8_t { CKR_NONE = 0, CKR_FOUND, CKR_NOTFOUND, CKR_BAUD_OK, CKR_BAUD_FAIL, CKR_CHECKED, CKR_NOANSWER,
-                          CKR_LOADED, CKR_LOAD_PART, CKR_LOAD_FAIL, CKR_STOPPED };
+                          CKR_LOADED, CKR_LOAD_PART, CKR_LOAD_FAIL, CKR_STOPPED, CKR_DUMPED, CKR_DUMP_FAIL };
 enum CkKind   : uint8_t { CKK_UNKNOWN = 0, CKK_UBLOX, CKK_UNICORE, CKK_NMEA };
 enum CkBoot   : uint8_t { CKB_WAIT = 0, CKB_OK, CKB_SCAN, CKB_OFF };   // the start-up check of a port
 #define CK_ROLE_UM   255                   // the UM982 (its settings are read by zReceiver.ino)
@@ -157,6 +160,26 @@ static uint8_t  ckAutoTried[2] = {0, 0};    // per port: bit 0 set to 460800 tri
 static uint8_t  ckAutoOp = 0;               // the running operation is automatic: CKOP_BAUD or CKOP_LOAD, else 0
 static uint8_t  ckAutoDid[2] = {0, 0};      // per port: the last automatic operation that ended: CKOP_BAUD, CKOP_LOAD, 0 none
 static uint32_t ckRunBaud[2] = {0, 0};      // per port: the port runs at the receiver's own baud rate while it is set up (0 = 460800)
+
+// "Read all settings" (Renato, 2026-10-24): every setting of a u-blox receiver, read from its RAM layer with
+// UBX-CFG-VALGET and the all-items key (64 items per answer, the position moving on) and compared with the
+// Default layer; the ones that differ are kept for a u-center style configuration file (GET /api/rxdump) -
+// the way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for, such as a working X20P.
+#define CK_DUMP_MAX        512           // settings kept (key + value)
+#define CK_DUMP_PAGE       64            // items in one UBX-CFG-VALGET answer
+#define CK_DUMP_GET_MS     2000          // time for a 64-item answer (772 bytes: 0.8 s at 9600 baud)
+#define CK_KEY_ALL         0x1FFFFFFFUL  // UBX-CFG-VALGET: all items (group 0xFFF, item 0xFFFF, as ubxtool sends it)
+#define CK_KEY_ALL_2       0x0FFFFFFFUL  // the same with the size bits 0 (tried when the first is refused)
+struct CkItem { uint32_t key; int64_t v; };
+static CkItem   ckDump[CK_DUMP_MAX];
+static uint16_t ckDumpN = 0, ckDumpRead = 0, ckDumpPos = 0;
+static uint8_t  ckDumpPort = 0, ckDumpRes = CKR_NONE;
+static uint32_t ckDumpMs = 0, ckDumpKey = CK_KEY_ALL;
+static bool     ckDumpFull = false;      // more differences than CK_DUMP_MAX: the file is incomplete
+static char     ckDumpModel[24] = "", ckDumpFw[40] = "";
+static CkItem   ckPage[CK_DUMP_PAGE];    // the page being compared: the values in use (RAM)
+static uint8_t  ckPageN = 0;
+static uint8_t  ckPageSt[CK_DUMP_PAGE];  // per item: 0 default not seen yet, 1 the same as the default, 2 differs
 
 // UM982: the AgOpenGPS CONFIG commands found in the receiver's CONFIG list (bit per command)
 static uint32_t ckUmSeen[2] = {0, 0};      // [0] ConfigUM982D.txt, [1] ConfigUM982S.txt
@@ -508,6 +531,18 @@ static void ckStartScan(uint8_t port)
     k.found = 0; k.foundKind = CKK_UNKNOWN; k.scanRes = CKR_NONE; k.baudRes = CKR_NONE;
 }
 
+// "Read all settings" starts on a port (a u-blox receiver)
+FLASHMEM static void ckDumpBegin(uint8_t port)
+{
+    ckOp = CKOP_DUMP; ckPort = port; ckStep = 0; ckTries = 0; ckWait = 0; ckGot = 0;
+    ckDumpPort = port;
+    ckDumpN = ckDumpRead = ckDumpPos = 0;
+    ckDumpRes = CKR_NONE; ckDumpMs = 0;
+    ckDumpKey = CK_KEY_ALL; ckDumpFull = false; ckPageN = 0;
+    ckCopy(ckDumpModel, sizeof(ckDumpModel), ckModel(port), sizeof(ckDumpModel));
+    ckCopy(ckDumpFw, sizeof(ckDumpFw), ckFw(port), sizeof(ckDumpFw));
+}
+
 // Start-up: valid data at 460800 from the receivers? If not, their baud rate is searched for (once: the
 // receivers are not unplugged with the board on). A port not in use then is not checked.
 static void ckBoot(uint32_t now)
@@ -539,7 +574,7 @@ static void ckBoot(uint32_t now)
 FLASHMEM static void ckLoadBegin(uint8_t port, bool automatic);
 FLASHMEM static void ckLoadBeginUm(bool single, bool automatic);
 
-// The web page's buttons (zWeb.ino, POST /api/gps act=ckcheck / ckscan / ckbaud / ckload).
+// The web page's buttons (zWeb.ino, POST /api/gps act=ckcheck / ckscan / ckbaud / ckload / ckdump).
 // um (load on a UM982): 0 two antennas (ConfigUM982D.txt), 1 one antenna (ConfigUM982S.txt)
 FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
 {
@@ -573,6 +608,13 @@ FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
         ckAutoOp = 0;
         k.baudRes = CKR_NONE;
         StatusLog.line("[web] %s: setting the receiver from %lu to 460800 baud", ckWho(port), (unsigned long)k.found);
+        return nullptr;
+    }
+    if (!strcmp(what, "dump"))
+    {
+        if (port == RXCK_GPS && rxKind != RX_UBLOX)   return "a u-blox receiver only (UBX-CFG-VALGET)";
+        ckDumpBegin(port);
+        StatusLog.line("[web] %s: reading all the receiver's settings (UBX-CFG-VALGET, RAM and Default layers)", ckWho(port));
         return nullptr;
     }
     if (!strcmp(what, "load"))
@@ -644,6 +686,27 @@ bool rxCkUbx(uint8_t port, uint8_t cls, uint8_t id, const uint8_t* p, uint16_t l
         if (ckWait == 1 && p[1] == 0x8B) { if (id == 0x00) ckGot = 2; return true; }   // NAK: a key the receiver does not know
         return false;
     }
+    if (cls == 0x06 && id == 0x8B && ckWait == 1 && len >= 4 && ckOp == CKOP_DUMP)
+    {
+        // "Read all settings": a page of the RAM layer is kept (ckStep 1); the Default layer's values are
+        // compared with it (ckStep 2: the same page; ckStep 4: the items whose default was not in that page)
+        for (uint16_t o = 4; o + 4 <= len; )
+        {
+            const uint32_t key = (uint32_t)ckLe(p + o, 4);
+            const uint8_t sz = ckKeySize(key);
+            if (o + 4 + sz > len) break;
+            const int64_t v = ckLe(p + o + 4, sz);
+            o += 4 + sz;
+            if (ckStep == 1)
+            {
+                if (ckPageN < CK_DUMP_PAGE) { ckPage[ckPageN].key = key; ckPage[ckPageN].v = v; ckPageSt[ckPageN] = 0; ckPageN++; }
+            }
+            else
+                for (uint8_t i = 0; i < ckPageN; i++) if (ckPage[i].key == key) { ckPageSt[i] = ckPage[i].v == v ? 1 : 2; break; }
+        }
+        ckGot = 1;
+        return true;
+    }
     if (cls == 0x06 && id == 0x8B && ckWait == 1 && len >= 4)
     {
         // version, layer, position (2), then key + value pairs
@@ -707,6 +770,8 @@ static const char* ckResName(uint8_t r)
         case CKR_LOAD_PART: return "load-part";
         case CKR_LOAD_FAIL: return "load-fail";
         case CKR_STOPPED:   return "stopped";
+        case CKR_DUMPED:    return "dumped";
+        case CKR_DUMP_FAIL: return "dump-fail";
         default:            return "";
     }
 }
@@ -931,17 +996,19 @@ FLASHMEM static void ckOpBaud(uint32_t now)
 }
 
 // a UBX-CFG-VALGET of n keys (the RAM layer)
-FLASHMEM static bool ckValget(const uint32_t* keys, uint8_t n)
+FLASHMEM static bool ckValgetAt(const uint32_t* keys, uint8_t n, uint8_t layer, uint16_t pos)
 {
     uint8_t q[4 + 64 * 4];
     if (n > 64) n = 64;
-    q[0] = 0; q[1] = 0; q[2] = 0; q[3] = 0;                // version 0, RAM layer, position 0
+    q[0] = 0; q[1] = layer; q[2] = (uint8_t)pos; q[3] = (uint8_t)(pos >> 8);   // version 0, layer (0 RAM, 7 Default), items skipped
     for (uint8_t i = 0; i < n; i++) for (uint8_t b = 0; b < 4; b++) q[4 + i * 4 + b] = (uint8_t)(keys[i] >> (8 * b));
     if (!ckSendUbx(ckPort, 0x06, 0x8B, q, (uint16_t)(4 + n * 4))) return false;
     ckWait = 1;
     ckGot = 0;
     return true;
 }
+
+FLASHMEM static bool ckValget(const uint32_t* keys, uint8_t n) { return ckValgetAt(keys, n, 0, 0); }
 
 FLASHMEM static void ckOpCheck(uint32_t now)
 {
@@ -1059,6 +1126,90 @@ FLASHMEM static void ckOpCheck(uint32_t now)
             ckTries = 0;
             ckMsg++;
             ckStep = 6;
+            return;
+    }
+}
+
+FLASHMEM static void ckDumpEnd(uint8_t res, const char* why)
+{
+    ckDumpRes = res;
+    ckDumpMs = ckStamp(millis());
+    if (res == CKR_DUMPED)
+        StatusLog.line("[status] %s: all settings read: %u of %u differ from the factory defaults%s", ckWho(ckPort), ckDumpN, ckDumpRead,
+                       ckDumpFull ? " (more than the Teensy keeps: the file is incomplete)" : "");
+    else
+        StatusLog.line("[status] %s: the settings were not all read (%s)", ckWho(ckPort), why);
+    ckEnd();
+}
+
+// "Read all settings": page by page (64 items), the RAM layer (the values in use) then the Default layer
+// (the factory values) at the same position; the items that differ are kept. A default not in the Default
+// page (another order, a key without one) is asked for by key; still unanswered, the item is kept.
+FLASHMEM static void ckOpDump(uint32_t now)
+{
+    switch (ckStep)
+    {
+        case 0:                                            // a page of the RAM layer
+            if (!ckValgetAt(&ckDumpKey, 1, 0, ckDumpPos)) return;
+            ckPageN = 0;
+            ckStep = 1;
+            return;
+        case 1:
+            if (!ckGot && !ckTimedOut(now, CK_DUMP_GET_MS)) return;
+            ckWait = 0;
+            if (ckGot == 2)                                // the all-items key refused: its other spelling, else give up
+            {
+                if (ckDumpKey == CK_KEY_ALL) { ckDumpKey = CK_KEY_ALL_2; ckStep = 0; return; }
+                ckDumpEnd(CKR_DUMP_FAIL, "the receiver refuses the all-items key of UBX-CFG-VALGET");
+                return;
+            }
+            if (!ckGot)
+            {
+                if (++ckTries < 3) { ckStep = 0; return; }
+                ckDumpEnd(CKR_NOANSWER, "no answer to UBX-CFG-VALGET");
+                return;
+            }
+            ckTries = 0;
+            if (!ckPageN) { ckDumpEnd(CKR_DUMPED, nullptr); return; }     // past the last item
+            if (!ckValgetAt(&ckDumpKey, 1, 7, ckDumpPos)) return;        // the same page of the Default layer
+            ckStep = 2;
+            return;
+        case 2:
+            if (!ckGot && !ckTimedOut(now, CK_DUMP_GET_MS)) return;
+            ckWait = 0;
+            if (!ckGot && ++ckTries < 3) { ckValgetAt(&ckDumpKey, 1, 7, ckDumpPos); return; }
+            ckTries = 0;
+            ckStep = 3;
+            return;
+        case 3:                                            // the items whose default was not in that page: by key
+        {
+            uint32_t keys[CK_DUMP_PAGE];
+            uint8_t n = 0;
+            for (uint8_t i = 0; i < ckPageN; i++) if (!ckPageSt[i]) keys[n++] = ckPage[i].key;
+            if (!n || ckTries >= 2) { ckStep = 5; return; }               // (after two tries they count as different)
+            if (!ckValgetAt(keys, n, 7, 0)) return;
+            ckTries++;
+            ckStep = 4;
+            return;
+        }
+        case 4:
+            if (!ckGot && !ckTimedOut(now, CK_DUMP_GET_MS)) return;
+            ckWait = 0;
+            ckStep = ckGot == 2 ? 5 : 3;                   // NAK: a key without a default stays as it is (kept)
+            return;
+        default:                                           // 5: the differences kept, the next page
+            for (uint8_t i = 0; i < ckPageN; i++)
+            {
+                if (ckPageSt[i] == 1) continue;
+                if (((ckPage[i].key >> 16) & 0xFF) == 0xF6) continue;    // CFG-SEC-*: never put in a file
+                if (ckDumpN >= CK_DUMP_MAX) { ckDumpFull = true; break; }
+                ckDump[ckDumpN++] = ckPage[i];
+            }
+            ckDumpRead += ckPageN;
+            ckDumpPos += ckPageN;
+            ckTries = 0;
+            if (ckPageN < CK_DUMP_PAGE) { ckDumpEnd(CKR_DUMPED, nullptr); return; }
+            ckStep = 0;
             return;
     }
 }
@@ -1184,6 +1335,7 @@ FLASHMEM static void ckStop(const char* why)
     if (ckOp == CKOP_BAUD) k.baudRes = CKR_STOPPED;
     if (ckOp == CKOP_CHECK) k.chkRes = CKR_STOPPED;
     if (ckOp == CKOP_LOAD) { k.loadRes = CKR_STOPPED; k.loadMs = ckStamp(millis()); }
+    if (ckOp == CKOP_DUMP) { ckDumpRes = CKR_STOPPED; ckDumpMs = ckStamp(millis()); }
     StatusLog.line("[status] %s: receiver check stopped (%s)", ckWho(ckPort), why);
     ckEnd();
     ckChain = ckRefreshForm = false;
@@ -1312,6 +1464,7 @@ void rxCheckLoop()
         case CKOP_BAUD:  ckOpBaud(now);  break;
         case CKOP_CHECK: ckOpCheck(now); break;
         case CKOP_LOAD:  ckOpLoad(now);  break;
+        case CKOP_DUMP:  ckOpDump(now);  break;
         default: break;
     }
 }
@@ -1386,7 +1539,53 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.u("loadNone", k.loadNone);
     j.u("loadTotal", k.loadTotal);
     j.i("loadAgo", k.loadMs ? (long)((now - k.loadMs) / 1000) : -1);
+    // "Read all settings": its result belongs to the port it was read from
+    const bool dumped = ckDumpMs && ckDumpPort == port;
+    j.str("dump", dumped ? ckResName(ckDumpRes) : "");
+    j.u("dumpN", dumped ? ckDumpN : 0);
+    j.u("dumpRead", dumped ? ckDumpRead : 0);
+    j.bo("dumpFull", dumped && ckDumpFull);
+    j.i("dumpAgo", dumped ? (long)((now - ckDumpMs) / 1000) : -1);
     j.close();
+}
+
+// GET /api/rxdump (zWeb.ino): the settings "Read all settings" found different from the factory defaults, as a
+// u-center configuration file: a comment line, then "CFG-VALGET - 06 8B <length> 01 00 <position> <key + value
+// bytes>" lines of up to 64 items - the form of the AOGConfigOMatic files that zRxConfig.h is made from.
+bool rxCkDumpReady() { return ckDumpRes == CKR_DUMPED && ckOp != CKOP_DUMP; }
+
+// line i into out, with its line end; 0 = no such line
+FLASHMEM size_t rxCkDumpLine(uint16_t i, char* out, size_t cap)
+{
+    if (!rxCkDumpReady() || cap < 64) return 0;
+    if (i == 0)
+    {
+        const int n = snprintf(out, cap, "# %s %s: %u of %u settings differ from the factory defaults (RAM layer against the Default layer), "
+                               "read by AiO_WEB %s from the %s port%s\r\n",
+                               ckDumpModel[0] ? ckDumpModel : "u-blox receiver", ckDumpFw[0] ? ckDumpFw : "(firmware not read)",
+                               ckDumpN, ckDumpRead, FW_VERSION, ckDumpPort == RXCK_GPS ? "GPS" : "GPS2",
+                               ckDumpFull ? " - INCOMPLETE: more differ than the Teensy keeps" : "");
+        return n > 0 && (size_t)n < cap ? (size_t)n : 0;
+    }
+    const uint16_t first = (uint16_t)((i - 1) * CK_DUMP_PAGE);
+    if (first >= ckDumpN) return 0;
+    const uint16_t last = ckDumpN - first < CK_DUMP_PAGE ? ckDumpN : first + CK_DUMP_PAGE;
+    uint16_t len = 4;
+    for (uint16_t k = first; k < last; k++) len += 4 + ckKeySize(ckDump[k].key);
+    if (cap < 40u + 3u * len) return 0;
+    size_t n = (size_t)snprintf(out, cap, "CFG-VALGET - 06 8B %02X %02X 01 00 %02X %02X", len & 0xFF, len >> 8, first & 0xFF, first >> 8);
+    static const char HEX[] = "0123456789ABCDEF";
+    for (uint16_t k = first; k < last; k++)
+    {
+        const uint8_t sz = ckKeySize(ckDump[k].key);
+        for (uint8_t b = 0; b < 4 + sz; b++)
+        {
+            const uint8_t x = b < 4 ? (uint8_t)(ckDump[k].key >> (8 * b)) : (uint8_t)((uint64_t)ckDump[k].v >> (8 * (b - 4)));
+            out[n++] = ' '; out[n++] = HEX[x >> 4]; out[n++] = HEX[x & 15];
+        }
+    }
+    out[n++] = '\r'; out[n++] = '\n'; out[n] = '\0';
+    return n;
 }
 
 // GET /api/status (zWeb.ino): what the Status tab says about the second F9P in the dual-antenna card -
@@ -1428,8 +1627,11 @@ FLASHMEM void rxCkStatusJson(Json& j, uint8_t port)
 FLASHMEM void rxCkJson(Json& j)
 {
     j.obj("ck");
-    j.str("op", ckOp == CKOP_SCAN ? "scan" : ckOp == CKOP_BAUD ? "baud" : ckOp == CKOP_CHECK ? "check" : ckOp == CKOP_LOAD ? "load" : ckChain ? "check" : "");
+    j.str("op", ckOp == CKOP_SCAN ? "scan" : ckOp == CKOP_BAUD ? "baud" : ckOp == CKOP_CHECK ? "check" : ckOp == CKOP_LOAD ? "load" :
+                ckOp == CKOP_DUMP ? "dump" : ckChain ? "check" : "");
     j.i("port", ckPort);
+    j.u("dumpRead", ckOp == CKOP_DUMP ? ckDumpRead : 0);  // "Read all settings" running: items read, differing so far
+    j.u("dumpN", ckOp == CKOP_DUMP ? ckDumpN : 0);
     j.u("baudTry", ckOp == CKOP_SCAN && ckBaudI < CK_BAUD_N ? CK_BAUDS[ckBaudI] : 0);
     const bool msgs = (ckOp == CKOP_LOAD && ck[ckPort].loadRole <= RXCFG_ROLE_RELPOS) || (ckOp == CKOP_CHECK && ckFull && ckStep >= 6);
     j.u("msg", msgs ? ckMsg : 0);

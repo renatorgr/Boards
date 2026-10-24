@@ -14,7 +14,8 @@
 //   - Settings (zSettings.ino), saved in the EEPROM
 //   - GPS (was "UM982"): the receiver's model (zReceiver.ino); UM982: console, commands to the
 //     receiver and its replies; u-blox F9P / X20P: its settings, read and written with UBX
-//     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload
+//     the receiver check (zRxCheck.ino): POST /api/gps act=ckcheck / ckscan / ckbaud / ckload / ckdump,
+//     GET /api/rxdump: the settings read by "Read all settings" as a u-center configuration file
 //   - Machine: the machine module (sprayer Nano, PGN 160 on UDP 9999), only once it has been heard (zMachine.ino)
 //   - Firmware update (zOTA.ino) and restart
 //   - the report (GET /api/diag + the other answers, put together by the page): Firmware tab
@@ -629,6 +630,20 @@ static void apiGpsGet(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
+// GET /api/rxdump: the settings "Read all settings" found different from the factory defaults, as a u-center
+// configuration file (the form of the AOGConfigOMatic files; zRxCheck.ino). Line by line: it can be longer than webBuf.
+static void apiRxDump(EthernetClient& c)
+{
+    if (!rxCkDumpReady()) { webSend(c, 404, "text/plain", "No settings read yet", 20); return; }
+    size_t total = 0;
+    for (uint16_t i = 0;; i++) { const size_t n = rxCkDumpLine(i, webBuf, sizeof(webBuf)); if (!n) break; total += n; }
+    char h[160];
+    const int hn = snprintf(h, sizeof(h), "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: %u\r\n"
+                            "Cache-Control: no-store\r\nConnection: close\r\n\r\n", (unsigned)total);
+    if (!webWrite(c, h, hn)) return;
+    for (uint16_t i = 0;; i++) { const size_t n = rxCkDumpLine(i, webBuf, sizeof(webBuf)); if (!n || !webWrite(c, webBuf, n)) break; }
+}
+
 static void apiGpsPost(EthernetClient& c, const char* body)
 {
     char act[16], v[16];
@@ -641,7 +656,7 @@ static void apiGpsPost(EthernetClient& c, const char* body)
         const uint8_t port = formValue(body, "port", v, sizeof(v)) && !strcmp(v, "1") ? RXCK_GPS2 : RXCK_GPS;
         const uint8_t um = formValue(body, "um", v, sizeof(v)) && !strcmp(v, "s") ? 1 : 0;
         // the search, the speed change and the load stop the GPS data for a while
-        if (strcmp(act, "ckcheck") && autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+        if (strcmp(act, "ckcheck") && strcmp(act, "ckdump") && autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
         err = rxCkStart(act + 2, port, um);
         if (err) { webSendError(c, !strcmp(err, "busy") ? 409 : 400, err); return; }
         webSendJson(c, 200, "{\"ok\":true}");
@@ -898,6 +913,7 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/um982"))    apiUm982Post(c, body);
     else if (get  && !strcmp(rq.path, "/api/gps"))      apiGpsGet(c);
     else if (post && !strcmp(rq.path, "/api/gps"))      apiGpsPost(c, body);
+    else if (get  && !strcmp(rq.path, "/api/rxdump"))   apiRxDump(c);
     else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {

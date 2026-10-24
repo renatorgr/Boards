@@ -37,6 +37,8 @@ const char* rxCkHealthName(uint8_t port);   // "ok", "junk", "none", "wait"
 const char* rxCkStart(const char* what, uint8_t port, uint8_t um);   // the page's buttons: nullptr = started, else the error
 void rxCkJson(Json& j);              // GET /api/gps: "ck"
 void rxCkStatusJson(Json& j, uint8_t port);   // GET /api/status: a short summary of a port for the Status tab ("ck2")
+bool rxCkDumpReady();                // "Read all settings" done: GET /api/rxdump has a file
+size_t rxCkDumpLine(uint16_t i, char* out, size_t cap);   // line i of that file (u-center form), 0 = no more lines
 void rxCheckLoop();                  // from loop()
 
 // from zDualF9P.ino
