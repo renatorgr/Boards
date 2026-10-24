@@ -3,7 +3,7 @@
 Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** (6.8.6) over Ethernet. It also measures boom pressure and flow.
 
-Version 0.2: compiles (about 10.7 kB of 30 kB), not yet tested on the sprayer.
+Version 0.3: compiles (about 10.7 kB of 30 kB), not yet tested on the sprayer.
 
 ## How it works
 
@@ -31,11 +31,11 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
 | Part | Notes |
 |---|---|
 | Arduino Nano + ENC28J60 Ethernet shield | CS on D10 |
-| Blue 8-relay board, SRD-05VDC (5 V relays) | Switches on LOW. Optocoupler inputs |
+| Red DEWIN 8-relay board, SRD-12VDC (12 V relays) | Optocoupler inputs, yellow jumpers on **High** |
 | 5 × solenoid valve FPD-270A | 12 V, 0.3 A, NC, 0.2–8 bar, G1/2 |
 | Pressure sensor 0–10 bar | 0.5–4.5 V output, powered at 5 V |
 | YF-S201 flow meter | 5 V, about 450 pulses per litre, 1–30 L/min |
-| LM2596 step-down converter | **Set to 5.0 V with a multimeter before connecting anything** |
+| LM2596 step-down converter (for the Nano) | **Set to 5.0 V with a multimeter before connecting anything** |
 
 ## Pins
 
@@ -49,11 +49,13 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
 
 ## Power and wiring
 
-- **Relay coils (JD-VCC):** 5 V from the LM2596. **Never 12 V**: the relays are
-  5 V and will overheat and burn. Remove the VCC–JD-VCC jumper.
-- **Relay board VCC** (next to IN1–IN8): 5 V from the Nano (optocouplers only).
+- **Relay board DC+ / DC−:** 12 V from the battery through a 1 A fuse
+  (5 relays on draw about 150 mA). This is a separate feed, not through the master switch.
+- **Nano GND → relay board DC−** (common ground), Nano D3–D7 → IN1–IN5.
+- **Yellow jumpers** of channels 1–5 on **High**: when the Nano is off or
+  starting up, the relays stay off and the valves closed.
 - **Nano:** USB is fine for testing. On the tractor, feed the Nano's 5V pin from
-  the LM2596 as well, so a loose USB cable can't drop the sections.
+  an LM2596 set to 5.0 V, so a loose USB cable can't drop the sections.
 - **Valves:** 12 V from the battery, 5 A fuse → master switch → relay COM.
   Relay NO → valve +. Valve − → GND. 1N4007 diode across each valve (stripe to +).
 - **Sensors:** red = 5 V, black = GND, signal to A0 / D2. Never power the YF-S201
@@ -66,7 +68,7 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
 
 | Setting | Default | Change it when |
 |---|---|---|
-| `RELAY_ON` | `LOW` | The relays switch on with HIGH (e.g. DEWIN board with jumpers on "High") |
+| `RELAY_ON` | `HIGH` | The relay board switches on LOW (jumpers on "Low", or a blue JD-VCC board) |
 | `PULSES_PER_LITRE` | `450.0` | After calibrating the flow meter (see below) |
 | `PRESSURE_MAX_BAR` | `10.0` | A sensor with another range is fitted |
 | `USE_MASTER_SWITCH` | `0` | The master switch is wired to A6 through a 10 k / 4.7 k divider |
@@ -83,7 +85,7 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
 
 1. Only the Nano, shield and relay board, valves disconnected.
 2. With the program closed, the relay LEDs must be **off**. If they are all on,
-   the board switches on HIGH: set `RELAY_ON` to `HIGH`.
+   check the yellow jumpers are on "High" (or set `RELAY_ON` to `LOW`).
 3. The Serial Monitor prints one line per second:
    `Master ON | Sections 0 | 0.0 bar | 0.0 L/min | 0.0 L`
 4. Connect the Ethernet cable to the router and open AgOpenWeb (or AgOpenGPS + AgIO).
