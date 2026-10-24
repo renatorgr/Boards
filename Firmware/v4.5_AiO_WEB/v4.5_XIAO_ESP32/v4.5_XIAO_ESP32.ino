@@ -1,6 +1,5 @@
 /* v4.5_XIAO_ESP32.ino - WiFi, web server, settings, update, setup and loop.
-   Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware
-   AiO_WEB (renatorgr).
+   Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware AiO_WEB.
    Written 2026 by Claude (Anthropic) for renatorgr.
    Link to the Teensy: same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO
    New Dawn"

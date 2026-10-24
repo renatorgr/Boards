@@ -1,6 +1,5 @@
 /* v4.5_AiO_WEB.ino - setup and loop (main file).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Based on the code of:
      - the AgOpenGPS project: AiO v4 Teensy firmware (AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025:
        dual F9P RELPOSNED, Keya CAN, WAS map), on which the others are based

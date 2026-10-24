@@ -1,6 +1,5 @@
 /* zReceiver.ino - which GPS receiver is on Serial7, and the u-blox and UM982 settings from the web page.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    The u-blox messages and configuration keys are those of the u-blox ZED-F9P / ZED-X20P
    interface descriptions (UBX-MON-VER, UBX-CFG-VALGET, UBX-CFG-VALSET, UBX-ACK); the Unicore

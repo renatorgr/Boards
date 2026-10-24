@@ -1,9 +1,8 @@
 /* zUdpNtrip.ino - RTCM corrections from the program (UDP 2233) to the receiver.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
-   Changes 2026 by Claude (Anthropic): datagrams read in pieces of the buffer size, [status] count;
+   Changes 2026 by Claude (Anthropic) for renatorgr: datagrams read in pieces of the buffer size, [status] count;
    the RTCM messages counted (zRtcm.h, zStatus.ino); not written while the receiver check searches or
    changes the receiver's baud rate (zRxCheck.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.

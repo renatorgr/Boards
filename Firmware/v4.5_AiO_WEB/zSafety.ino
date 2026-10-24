@@ -1,7 +1,6 @@
 /* zSafety.ino - autosteer safety: WAS check, why autosteer went off, messages on the program's
    screen (PGN 221), hardware watchdog, why the Teensy started.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr (AiO_WEB: the angle and speed causes,
    wasVoltsOk, the crash hook and the longer crash line, the simulator mode on the program's screen,
    the kickout values in %, the loop time for the report).

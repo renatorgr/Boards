@@ -1,8 +1,7 @@
 /* zRxCheck.ino - receiver check (web page, GPS tab): is the data from the receiver valid at 460800
    baud, what baud rate the receiver is really set to, does it have the settings the Teensy needs, and the
    AgOpenGPS settings of AOGConfigOMatic, loaded with one button.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-23 (Claude for renatorgr): both receivers are set up automatically (baud rate, then the AgOpenGPS
    settings when one lacks what the Teensy needs), and the Status tab gets a summary of it (rxCkStatusJson).

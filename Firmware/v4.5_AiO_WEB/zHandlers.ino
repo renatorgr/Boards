@@ -1,6 +1,5 @@
 /* zHandlers.ino - receiver sentences, epochs, TM171 heading, output to AgOpenWeb / AgOpenGPS.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Started from the zHandlers.ino of chriskinal's AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982,
    Copyright 2024 chriskinal, GPL v3),
    itself from the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project).

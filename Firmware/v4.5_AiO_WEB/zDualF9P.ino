@@ -1,6 +1,5 @@
 /* zDualF9P.ino - the second F9P of a dual F9P (moving base), on the GPS2 port (Serial2).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    The RELPOSNED decoding (heading + 90 deg, baseline, roll from the down component, the flags that
    must be set) is that of the AgOpenGPS AiO v4 Teensy firmware (zRelPos.ino of
    AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project, GPL v3); the UBX-NAV-RELPOSNED

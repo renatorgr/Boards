@@ -1,6 +1,5 @@
 /* zRxConfig.h - the AgOpenGPS receiver settings of AOGConfigOMatic, for the receiver check (zRxCheck.ino).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Made 2026 by Claude (Anthropic) for renatorgr, with a script, from the files of AOGConfigOMatic by
    lansalot (github.com/lansalot/AOGConfigOMatic, commit cd8800f, GNU GPL v3): Single.txt,
    DualPosition.txt and DualRelPos.txt (u-center configuration files of a ZED-F9P with firmware HPG 1.13;

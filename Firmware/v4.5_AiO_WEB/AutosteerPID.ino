@@ -1,6 +1,5 @@
 /* AutosteerPID.ino - steering PID and output (Cytron, IBT2, Danfoss, Keya).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in
    Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Change by Claude (Anthropic) 2026 for renatorgr (v4.5_AiO_WEB): the Keya gets its speed and

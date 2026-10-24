@@ -1,6 +1,5 @@
 /* zOTA.ino - firmware update from the web page.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    Uses FlasherX by Joe Pasquariello (FlashTxx.c / FlashTxx.h, public domain) for the flash.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.

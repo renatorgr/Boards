@@ -1,9 +1,8 @@
 /* zADS1115.h - ADS1115 (WAS) on I2C.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    ADS1115-Lite by Terry Myers (github.com/terryjmyers/ADS1115-Lite), adapted from the Adafruit
    ADS1015/ADS1115 library, as used in the AgOpenGPS AiO firmware. Original header kept below.
-   Unchanged except for this header (Claude (Anthropic) 2026).
+   Unchanged except for this header (Claude (Anthropic) 2026, for renatorgr).
    Licence: same as the originals (see their headers); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 /*
