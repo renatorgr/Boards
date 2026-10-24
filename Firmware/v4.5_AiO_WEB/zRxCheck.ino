@@ -6,6 +6,9 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-23 (Claude for renatorgr): both receivers are set up automatically (baud rate, then the AgOpenGPS
    settings when one lacks what the Teensy needs), and the Status tab gets a summary of it (rxCkStatusJson).
+   2026-10-24: in one go - a receiver found at another baud rate keeps the port at that speed, is identified
+   and checked there, and the AgOpenGPS settings (which set 460800) are loaded at that speed; the port
+   switches when the baud rate message goes out. The baud-only change is kept for a receiver with nothing to load.
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
@@ -153,6 +156,7 @@ static uint8_t  ckBootScan = 0;             // ports (bit 0 Serial7, bit 1 Seria
 static uint8_t  ckAutoTried[2] = {0, 0};    // per port: bit 0 set to 460800 tried, bit 1 the AgOpenGPS settings loaded (tried)
 static uint8_t  ckAutoOp = 0;               // the running operation is automatic: CKOP_BAUD or CKOP_LOAD, else 0
 static uint8_t  ckAutoDid[2] = {0, 0};      // per port: the last automatic operation that ended: CKOP_BAUD, CKOP_LOAD, 0 none
+static uint32_t ckRunBaud[2] = {0, 0};      // per port: the port runs at the receiver's own baud rate while it is set up (0 = 460800)
 
 // UM982: the AgOpenGPS CONFIG commands found in the receiver's CONFIG list (bit per command)
 static uint32_t ckUmSeen[2] = {0, 0};      // [0] ConfigUM982D.txt, [1] ConfigUM982S.txt
@@ -220,6 +224,18 @@ static int64_t ckLe(const uint8_t* p, uint8_t n)
 static uint8_t ckKeySize(uint32_t key)
 {
     switch ((key >> 28) & 7) { case 1: case 2: return 1; case 3: return 2; case 4: return 4; default: return 8; }
+}
+
+// a key is in the message (key + value pairs)
+static bool ckMsgHasKey(const RxCfgMsg& m, uint32_t key)
+{
+    for (uint16_t r = 0; r + 4 <= m.n; )
+    {
+        const uint32_t k = (uint32_t)m.d[r] | ((uint32_t)m.d[r + 1] << 8) | ((uint32_t)m.d[r + 2] << 16) | ((uint32_t)m.d[r + 3] << 24);
+        if (k == key) return true;
+        r += 4 + ckKeySize(k);
+    }
+    return false;
 }
 
 // the AgOpenGPS value of a key (false: not in the settings of that role)
@@ -290,7 +306,7 @@ static const char* ckFwState(uint8_t port)
 
 static void ckBegin(uint8_t port, uint32_t baud)
 {
-    if (port == RXCK_GPS) SerialGPS->begin(baud);
+    if (port == RXCK_GPS) { SerialGPS->begin(baud); rxGpsBaud = baud; }
     else Serial2.begin(baud);
 }
 
@@ -731,7 +747,16 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
 {
     CkPort& k = ck[port];
     if (!ckAutoFree(port)) return false;
-    if (!(ckAutoTried[port] & 1) && k.scanRes == CKR_FOUND && k.found && k.found != CK_TEENSY_BAUD &&
+    const bool um = port == RXCK_GPS && rxKind == RX_UM982;
+    // Found at another baud rate: the port stays at it and the AgOpenGPS settings do the rest (they set 460800).
+    // Just the baud rate, as the page's button does, only when there is nothing to load: not a ZED-F9P nor a
+    // UM982 with its port known, or a load that was tried and did not get as far as the baud rate.
+    bool loadable;
+    if (port == RXCK_GPS) loadable = rxIdState == RXID_WAIT || rxIdState == RXID_ASK ||                      // not identified yet: wait
+                                     (rxKind == RX_UBLOX && ckIsF9p(port)) || (um && (!umHasRead() || umTeensyPort() >= 0));
+    else                  loadable = k.chkRes == CKR_NONE || strstr(k.model, "F9P") != nullptr;
+    if (ckRunBaud[port] && (ckAutoTried[port] & 2) && ckOp == CKOP_NONE) loadable = false;
+    if (!(ckAutoTried[port] & 1) && k.scanRes == CKR_FOUND && k.found && k.found != CK_TEENSY_BAUD && !loadable &&
         (port == RXCK_GPS ? k.foundKind != CKK_UNKNOWN : k.foundKind == CKK_UBLOX))
     {
         ckAutoTried[port] |= 1;
@@ -742,8 +767,8 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
         return true;
     }
     if ((ckAutoTried[port] & 2) || k.chkRes != CKR_CHECKED || k.health != CKH_OK) return false;
-    const bool um = port == RXCK_GPS && rxKind == RX_UM982;
     if (port == RXCK_GPS && !um && rxKind != RX_UBLOX) return false;
+    if (um && ckRunBaud[port] && umTeensyPort() < 0) return false;    // at its own speed: the load must know which COM port to switch
     if (!um && !(k.essMs && k.essRole == ckUbxRole(port) && strstr(ckModel(port), "F9P"))) return false;   // a ZED-F9P, checked
     if (!ckAutoNeeded(port)) return false;
     ckAutoTried[port] |= 2;
@@ -773,7 +798,18 @@ FLASHMEM static void ckCheckSay(uint8_t port)
 static void ckPortBack(uint8_t port)
 {
     ckBegin(port, CK_TEENSY_BAUD);
+    ckRunBaud[port] = 0;
     if (port == RXCK_GPS2) dualF9pRestart();
+}
+
+// The receiver was found at another baud rate: the port stays at it, so the receiver is identified, checked
+// and gets the AgOpenGPS settings in one go (they set it to 460800; the load switches the port then). Only
+// a receiver with nothing to load (an X20P, an unknown one) gets just its baud rate changed (ckAutoStart).
+static void ckStayAt(uint8_t port, uint32_t baud)
+{
+    ckBegin(port, baud);
+    ckRunBaud[port] = baud;
+    if (port == RXCK_GPS) receiverIdentifyAgain();         // zReceiver.ino asks VERSIONA / UBX-MON-VER at this speed
 }
 
 FLASHMEM static void ckOpScan(uint32_t now)
@@ -801,11 +837,14 @@ FLASHMEM static void ckOpScan(uint32_t now)
     else if (t < CK_LISTEN_MS || (cvGood >= CK_GOOD_FOUND && t < 600)) return;
     else if (++ckBaudI < CK_BAUD_N) { ckStep = 0; return; }
     else k.scanRes = CKR_NOTFOUND;
-    ckPortBack(ckPort);
+    const bool stay = k.scanRes == CKR_FOUND && k.found != CK_TEENSY_BAUD && (ckPort == RXCK_GPS ? k.foundKind != CKK_NMEA : k.foundKind == CKK_UBLOX);
+    if (stay) ckStayAt(ckPort, k.found);
+    else      ckPortBack(ckPort);
     if (k.scanRes == CKR_FOUND)
         StatusLog.line("[status] %s: the receiver answers at %lu baud (%s)%s", ckWho(ckPort), (unsigned long)k.found,
                        k.foundKind == CKK_UBLOX ? "u-blox" : k.foundKind == CKK_UNICORE ? "Unicore" : "NMEA",
-                       k.found == CK_TEENSY_BAUD ? "" : " - the Teensy needs 460800");
+                       k.found == CK_TEENSY_BAUD ? "" : stay ? " - the Teensy stays at that speed, identifies it and loads the AgOpenGPS settings (they set 460800)"
+                                                             : " - the Teensy needs 460800");
     else
         StatusLog.line("[status] %s: no valid data at any baud rate (9600 to 921600): nothing connected, a silent receiver, or the wiring", ckWho(ckPort));
     ckEnd();
@@ -1049,6 +1088,12 @@ FLASHMEM static void ckOpLoad(uint32_t now)
         k.loadMs = ckStamp(now);
         k.essRole = CK_ROLE_UM;                            // read again after the write (zReceiver.ino)
         k.essMs = ckStamp(now);
+        if (ckRunBaud[RXCK_GPS] && rxGpsBaud == CK_TEENSY_BAUD)   // the commands set the port to 460800 (zReceiver.ino switched Serial7)
+        {
+            ckRunBaud[RXCK_GPS] = 0;
+            k.scanRes = CKR_NONE;
+            k.found = 0;
+        }
         ckEnd();
         return;
     }
@@ -1079,8 +1124,26 @@ FLASHMEM static void ckOpLoad(uint32_t now)
         q[0] = 0; q[1] = ckLayers; q[2] = 0; q[3] = 0;
         memcpy(q + 4, m.d, m.n);
         if (!ckSendUbx(ckPort, 0x06, 0x8A, q, (uint16_t)(m.n + 4))) return;
-        ckWait = 2;
+        // the port runs at the receiver's own speed (found by the search): the message with CFG-UART1-BAUDRATE
+        // switches the receiver to 460800 as it takes it, and its ACK comes at the new speed - not waited for
+        ckWait = (ckRunBaud[ckPort] && ckMsgHasKey(m, 0x40520001UL)) ? 4 : 2;
         ckGot = 0;
+        return;
+    }
+    if (ckWait == 4)
+    {
+        if (!ckTimedOut(now, 400)) return;
+        ckBegin(ckPort, CK_TEENSY_BAUD);
+        ckRunBaud[ckPort] = 0;
+        if (ckPort == RXCK_GPS2) dualF9pRestart();
+        StatusLog.line("[status] %s: the AgOpenGPS settings set the receiver to 460800 baud: %s at 460800 now (was %lu)", ckWho(ckPort),
+                       ckPort == RXCK_GPS ? "Serial7" : "Serial2", (unsigned long)k.found);
+        k.loadOk++;
+        k.scanRes = CKR_NONE;                              // (the page's "set to 460800" button goes)
+        k.found = 0;
+        ckWait = 0;
+        ckMsg++;
+        ckLayers = 7;
         return;
     }
     if (!ckGot && !ckTimedOut(now, CK_SET_MS)) return;
@@ -1267,6 +1330,7 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.arr("hz");                                           // x 10: port 0 GGA, VTG, HPR; port 1 RELPOSNED, NMEA sentences
     for (uint8_t t = 0; t < (port == RXCK_GPS ? 3 : 2); t++) { char v[8]; snprintf(v, sizeof(v), "%u", k.hz[t]); j.sep(); j.raw(v); }
     j.closeArr();
+    j.u("at", ckRunBaud[port] ? ckRunBaud[port] : CK_TEENSY_BAUD);   // the speed the port runs at (the receiver's own while it is set up)
     j.str("model", ckModel(port));
     j.str("fw", ckFw(port));
     j.str("fwSt", ckFwState(port));
@@ -1347,6 +1411,7 @@ FLASHMEM void rxCkStatusJson(Json& j, uint8_t port)
     j.bo("noAnswer", k.chkRes == CKR_NOANSWER);
     j.bo("checked", checked);
     j.str("miss", miss);                                   // what the Teensy needs and the receiver lacks: "gga, vtg"
+    j.u("at", ckRunBaud[port] ? ckRunBaud[port] : CK_TEENSY_BAUD);
     const bool here = ckOp != CKOP_NONE && ckPort == port;
     j.str("op", !here ? "" : ckOp == CKOP_SCAN ? "scan" : ckOp == CKOP_BAUD ? "baud" : ckOp == CKOP_CHECK ? "check" : "load");
     j.bo("auto", here && ckAutoOp != 0);                   // ... started by the Teensy itself

@@ -22,6 +22,7 @@
 #define RXCK_GPS2   1                // Serial2: the second F9P of a dual F9P (GPS2 port set to it)
 #define RX_TX_MAX   704              // largest message to a receiver (an AgOpenGPS UBX-CFG-VALSET: 664 bytes)
 
+extern uint32_t rxGpsBaud;           // Serial7's baud rate now (zReceiver.ino; 460800, or the receiver's own while it is being set up)
 extern uint32_t rxCkBytes[2];        // bytes from each port (counted by their readers)
 extern uint32_t rxCkGood[2];         // whole sentences / UBX frames with a valid checksum from each port
 

@@ -413,7 +413,7 @@ function ckMissText(c){return c.um?c.miss:c.miss.split(",").map(x=>ckName(x.trim
 function ckSetup(c){
  const by=c.auto?"the Teensy is ":"";
  if(c.op==="baud")return [by+"setting it to 460800 baud…",""];
- if(c.op==="load")return [by+"loading the AgOpenGPS settings…",""];
+ if(c.op==="load")return [by+"loading the AgOpenGPS settings…"+(c.at&&c.at!==460800?" (at "+c.at+" baud; they set 460800)":""),""];
  if(c.op==="scan")return ["finding its baud rate…",""];
  if(c.op==="check")return ["checking…",""];
  if(c.noAnswer)return ["no answer to the check"+(c.um?"":" (UBX output off on its UART1?)"),"bad"];
@@ -426,7 +426,8 @@ function ckAlerts(c,who,al){
  if(!c)return;
  const miss=c.miss?ckMissText(c):"";
  if(c.op==="baud"&&c.auto)al.push(who+" answered at another baud rate: the Teensy is setting it to 460800 baud and saving that in the receiver.");
- else if(c.op==="load"&&c.auto)al.push(who+" lacks settings the Teensy needs ("+miss+"): the Teensy is loading the AgOpenGPS settings ("+c.file+") into it. The GPS can drop out for a few seconds.");
+ else if(c.op==="load"&&c.auto)al.push(who+" lacks settings the Teensy needs ("+miss+"): the Teensy is loading the AgOpenGPS settings ("+c.file+") into it"+(c.at&&c.at!==460800?", at "+c.at+" baud; they set it to 460800":"")+". The GPS can drop out for a few seconds.");
+ else if(c.at&&c.at!==460800&&!c.op)al.push(who+" answers at "+c.at+" baud: the port stays at that speed while the Teensy identifies it and loads the AgOpenGPS settings (they set 460800).");
  else if(c.load==="load-fail"&&c.autoDid==="load")al.push("The Teensy tried to load the AgOpenGPS settings ("+c.file+") into "+who.replace(/^The /,"the ")+" and it did not take them. See the GPS tab.");
  else if(c.checked&&c.miss)al.push(c.autoDid==="load"?"The Teensy loaded the AgOpenGPS settings into "+who.replace(/^The /,"the ")+" ("+c.loadOk+" of "+c.loadTotal+" taken), but it still lacks: "+miss+". See the GPS tab.":who+" is not set up for AgOpenGPS (missing: "+miss+"). The Teensy loads the AgOpenGPS settings ("+c.file+") into it as soon as autosteer is off; or see the GPS tab.");}
 
@@ -864,7 +865,7 @@ const hz10=x=>(x/10).toFixed(x%10?1:0)+" Hz";   /* (no line break before "Hz") 
 function ckSay(port,t,c){ckLocal[port]=[t,c];ckLocalAt[port]=Date.now();set("ck"+port+"Msg",t,c);}
 function ckHealth(id,p){
  if(!p.on||p.health==="wait"){set(id,"–");return;}
- if(p.health==="ok")pill(id,"valid"+" · "+(p.good+" in 5 s"),"ok");
+ if(p.health==="ok")pill(id,"valid"+" · "+(p.good+" in 5 s")+(p.at&&p.at!==460800?" (at "+p.at+" baud for now)":""),"ok");
  else if(p.health==="junk")pill(id,"wrong baud rate","bad");
  else pill(id,"nothing arriving","warn");}
 // the UM982 (zReceiver.ino's read): GGA, VTG and HPR at 10 Hz on the Teensy's port, that port at 460800
@@ -885,7 +886,7 @@ function ckMsgText(c,p,port,um){
  const kn={ublox:"u-blox",unicore:"Unicore",nmea:"NMEA"}[p.foundKind]||"";
  const boot=p.boot==="scan"&&p.baud!=="baud-ok"?"At start-up: ":"";
  if(p.scan==="found"){out.push(boot+("the receiver answers at "+p.found+" baud ("+kn+")."));
-  if(p.found!==460800){out.push("The Teensy needs 460800: press «Set to 460800 and save».");cls="warn";}}
+  if(p.found!==460800){out.push(p.at===p.found?"The port stays at that speed for now: the AgOpenGPS settings, once loaded, set 460800. Or press «Set to 460800 and save».":"The Teensy needs 460800: press «Set to 460800 and save».");cls="warn";}}
  if(p.scan==="notfound"){out.push(boot+"no baud rate gave valid data: nothing connected, a silent receiver, or TX / RX swapped.");cls="bad";}
  if(p.baud==="baud-ok"){out.push("The receiver is at 460800 baud now.");cls="ok";}
  if(p.baud==="baud-fail"){out.push(("No valid data at 460800 after the change: is the receiver still at "+p.found+" baud?"));cls="bad";}
