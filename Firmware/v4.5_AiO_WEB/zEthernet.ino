@@ -5,7 +5,8 @@
    Changes 2026 by Claude (Anthropic) for renatorgr: two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
    the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino);
-   2026-10-24: the subnet changed from the web page or the XIAO page (netSetSubnet).
+   2026-10-24: the subnet changed from the XIAO page (netSetSubnet; the card on the module's own page was
+   taken out again the same day: a mistake there would leave the page unreachable).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -107,8 +108,8 @@ void netDelay(uint32_t ms)
 // ---------------------------------------------------------------- the module's subnet
 // The module's IP is <subnet>.126 (or .120 without autosteer), the subnet saved in the EEPROM (address 60,
 // with the steer settings; 192.168.5 from new). AgIO and AgOpenWeb change it with PGN 201 (Autosteer.ino);
-// this does the same from the web page (Settings) and from the XIAO page, for a module on a network
-// that is not the program's. Saved here; the caller answers and then restarts the Teensy (the new IP
+// this does the same from the XIAO page (PGN 144, zXiao.ino), which is on WiFi and so is reached whatever
+// the module's IP is. Not from the module's own page: a mistake there would leave it unreachable. Saved here; the caller answers and then restarts the Teensy (the new IP
 // is taken at start-up, EthernetStart). Returns an error text, or nullptr when saved.
 const char* netSetSubnet(uint8_t a, uint8_t b, uint8_t c, const char* who)
 {

@@ -233,7 +233,6 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/gps` | GET / POST | receiver check and u-blox settings |
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
-| `/api/subnet` | POST | the module's subnet (`subnet=192.168.5`), saved and restart (`netSetSubnet`) |
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
 
