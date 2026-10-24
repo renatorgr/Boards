@@ -85,7 +85,7 @@ Messages:
 
 Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb). There is no password: anyone on the module's network can open it.
 
-**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand: on this page, Settings → **Module network** (the current IP is shown; type the first three numbers, the module restarts and the page is then at the new IP); or, when the page cannot be reached at all, on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and also shows the module's IP.
+**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
