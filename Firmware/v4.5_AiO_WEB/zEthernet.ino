@@ -1,9 +1,8 @@
 /* zEthernet.ino - Ethernet start-up and the module's IP address.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    From the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in chriskinal's AOG_Teensy_UM982
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
-   Changes 2026 by Claude (Anthropic): two messages; the network stack polled from loop()
+   Changes 2026 by Claude (Anthropic) for renatorgr: two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
    the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.

@@ -1,6 +1,5 @@
 /* zImu.ino - which IMU is there (TM171 or BNO085), and the BNO085.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr. The BNO085 is read as in the AgOpenGPS
    AiO v4 Teensy firmware (AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project):
    first in RVC mode on Serial5 (BNO_RVC.cpp, frame format of the Adafruit BNO08x RVC library), then

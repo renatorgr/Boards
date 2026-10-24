@@ -1,6 +1,5 @@
 /* xPage.h - the XIAO web page (English).
-   Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware
-   AiO_WEB (renatorgr).
+   Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware AiO_WEB.
    Written 2026 by Claude (Anthropic) for renatorgr.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later

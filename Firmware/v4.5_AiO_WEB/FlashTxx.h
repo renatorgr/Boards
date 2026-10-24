@@ -1,9 +1,8 @@
 /* FlashTxx.h - flash erase / write for the update over the network.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from the code of Niels A. Moseley and
    Frank Boesing (public domain, notes kept below).
-   Change 2026 by Claude (Anthropic): FLASH_RESERVE for the Teensy 4.1 (see below).
+   Change 2026 by Claude (Anthropic) for renatorgr: FLASH_RESERVE for the Teensy 4.1 (see below).
    Licence: public domain (FlasherX); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 //******************************************************************************

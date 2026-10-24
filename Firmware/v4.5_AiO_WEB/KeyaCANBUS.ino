@@ -1,6 +1,5 @@
 /* KeyaCANBUS.ino - Keya motor on the CAN bus (Teensy CAN3).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    From the AgOpenGPS AiO v4 Teensy firmware (zCANBUS.ino of
    AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025, AgOpenGPS project, GPL v3): the commands and
    their responses, the heartbeat (motor position, speed, current, faults), the motor slip used as the

@@ -1,6 +1,5 @@
 /* zXiao.ino - link to the XIAO ESP32 on the GPS2 socket (Serial2).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same link protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
    (AgOpenGPS-Official, GPL v3), at the same speed, 460800 baud.

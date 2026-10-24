@@ -1,10 +1,9 @@
 /* Autosteer.ino - steering: settings and data from the program (UDP), WAS, switch, motor.
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Based on the code of the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project), as in
    Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1). Its
    original header is kept below.
-   Small changes 2026 by Claude (Anthropic): whole UDP packet read (copied to the XIAO), [status] notes,
+   Small changes 2026 by Claude (Anthropic) for renatorgr: whole UDP packet read (copied to the XIAO), [status] notes,
    the program told apart by its hello, IMU hello for the TM171 only, BNO08x code taken out;
    WAS voltage check, autosteer off at once when switched off, why it went off, sensor value
    for the web page (see zSafety.ino); wheel angle sent as 0 on the bench (WAS check off, WAS

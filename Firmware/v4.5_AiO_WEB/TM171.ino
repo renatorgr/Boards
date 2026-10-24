@@ -1,10 +1,9 @@
 /* TM171.ino - reads the TM171 IMU (Serial5).
-   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards
-   (renatorgr).
+   Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Based on the TM171.ino of Balázs Gunics' fork of the AgOpenGPS boards
    (github.com/gunicsba/agopengps_boards, firmware V4.1),
    which is based on the work of Paulius a.k.a. babtai (original line kept below).
-   Changes 2026 by Claude (Anthropic): Serial5, bad CRC packets and over-long frames counted instead of printed; the port type
+   Changes 2026 by Claude (Anthropic) for renatorgr: Serial5, bad CRC packets and over-long frames counted instead of printed; the port type
    TeensySerial (so it compiles with Teensyduino 1.58 and 1.59 or newer); one byte at a
    time (TM171byte), so zImu.ino can listen for a TM171 and a BNO085 on Serial5 at the same time; two compiler
    warnings removed (same code).
