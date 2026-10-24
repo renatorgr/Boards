@@ -253,6 +253,12 @@ The layout was confirmed on a real TM171 on 24 Oct 2026 (the first guess took th
 showed a "silent time" that does not exist; the words the firmware does not know are left as read). All of
 this needs the TX5 wire.
 
+Commands are addressed to the TM171's own node ID, taken from the frames it sends (the `[status]` line
+"settings read from ID N"). A real TM171 answered requests sent "to everyone" (ID 0) but ignored every
+settings write sent that way (24 Oct 2026). To see what happens on the wire, the log gets the write frame
+byte by byte ("frame sent"), every acknowledge the TM171 sends, and the first frame of each type the firmware
+does not handle.
+
 ### TM171 set-up check
 
 If nothing answers at 115200 at start-up, the firmware looks for the TM171 at its other baud rates

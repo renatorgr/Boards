@@ -18,6 +18,9 @@
    log and on the page; the "RX not wired" warning only after a second unanswered request.
    AiO_WEB 4.5, 24 Oct 2026: a settings request was timed out at once when its timer was set a millisecond
    after the loop's "now" (unsigned wrap): a false "no reply" line at every start-up (tmElapsed).
+   AiO_WEB 4.5, 24 Oct 2026: the real TM171 ignored every settings write sent "to everyone" (TO_ID 0) although
+   it answers requests sent that way: commands now go to the TM171's own ID, taken from the frames it sends
+   (tm171Id). The frame of a write, every acknowledge and the first frame of an unknown type go to the log.
    AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
    (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
    warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
@@ -81,6 +84,10 @@ void TM171setup() {
 }
 
 uint32_t TM171goodPackets = 0;   // packets with a good CRC (zImu.ino: a TM171 is there)
+uint16_t tm171Id = 0;                  // the TM171's node ID (FROM_ID of its frames; 0 = none received yet)
+static uint8_t tmSeenType[16];         // frame types seen that the firmware does not handle (logged once)
+static uint8_t tmTxLast[3 + 4 + 64 + 2];   // the last frame sent, for the log
+static uint8_t tmTxLen = 0;
 
 // one byte from Serial5. True when it completed a packet with a good CRC.
 bool TM171byte(uint8_t temp)
@@ -146,6 +153,8 @@ bool TM171byte(uint8_t temp)
         TM171lastData = 0;
         TM171DataSeen = true;
         uint8_t functionCode = ImuData[3]; // Function ID (documented at 4th byte)
+        // AiO_WEB: the sender's ID (FROM_ID, bits 10-20 of the information word), to address commands to it
+        tm171Id = (uint16_t)((((uint32_t)ImuData[4] << 8) | ((uint32_t)ImuData[5] << 16)) >> 10) & 0x7FF;
         switch (functionCode)
         {
         case 35: //RPY Output
@@ -183,8 +192,10 @@ bool TM171byte(uint8_t temp)
           if (packetLength == 4 + TM171_SET_LEN) tm171SettingGot(ImuData + 7);
         break;
 
-        case 13: // Acknowledge (AiO_WEB: byte 0 = the object acknowledged)
+        case 13: // Acknowledge (AiO_WEB: byte 0 = the object acknowledged; the whole frame goes to the log,
+                 // the TM171 has not sent one yet and its content is not known for sure)
           if (ImuData[7] == 21) tmSetAckMs = millis() | 1;
+          tm171LogFrame("acknowledge", ImuData, ImuData[2] + 5);
         break;
 
         case 22: // Status Output
@@ -200,6 +211,13 @@ bool TM171byte(uint8_t temp)
         break;
         
         default:
+          // AiO_WEB: the first frame of each type the firmware does not handle goes to the log (an answer to
+          // a settings write that is not an acknowledge would show up here)
+          if (functionCode < 128 && !(tmSeenType[functionCode >> 3] & (1 << (functionCode & 7))))
+          {
+              tmSeenType[functionCode >> 3] |= (1 << (functionCode & 7));
+              tm171LogFrame("frame of a type not handled", ImuData, ImuData[2] + 5);
+          }
 #ifdef TM171DEBUG
           Serial.print("[tm171] unhandled packet type 0x");
           Serial.println(functionCode, HEX);
@@ -233,21 +251,41 @@ void TM171process() {
 // ---------------------------------------------------------------- commands to the TM171 (AiO_WEB)
 // EasyProtocol frame (TransducerM user guide): AA 55, length (4 + content), payload information (32 bits
 // little-endian: CMD 7 bits, 3 reserved, FROM_ID 11 bits, TO_ID 11 bits), content, Modbus CRC16 of the
-// length and payload (little-endian). The host is ID 2; TO_ID 0 reaches every module.
+// length and payload (little-endian). The host is ID 2. TO_ID is the TM171's own ID, read from the frames
+// it sends (tm171Id; SYD's examples address the module by its node ID): a real TM171 answered requests sent
+// to everyone (TO_ID 0) but ignored every settings write sent that way (24 Oct 2026). Until a frame has been
+// received the commands go to everyone.
 // Only works with the Teensy TX5 (pin 20) wired to the TM171 RXD: the board joins the TM171 TXD to RX5
 // (jumper SJ1), the other direction may need a wire.
 static uint16_t MODBUS_CRC16_v3(const unsigned char* buf, unsigned int len);   // below
 static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 {
     if (n > 64) return;
-    uint8_t f[3 + 4 + 64 + 2];
+    uint8_t* f = tmTxLast;
     f[0] = 0xAA; f[1] = 0x55; f[2] = (uint8_t)(4 + n);
-    const uint32_t info = (uint32_t)(cmd & 0x7F) | (2UL << 10);     // from the host (2) to everyone (0)
+    const uint32_t info = (uint32_t)(cmd & 0x7F) | (2UL << 10) | ((uint32_t)tm171Id << 21);   // from the host (2) to the TM171
     f[3] = (uint8_t)info; f[4] = (uint8_t)(info >> 8); f[5] = (uint8_t)(info >> 16); f[6] = (uint8_t)(info >> 24);
     memcpy(f + 7, content, n);
     const uint16_t crc = MODBUS_CRC16_v3(f, 3 + 4 + n);              // (it skips the 2 head bytes itself)
     f[7 + n] = (uint8_t)crc; f[8 + n] = (uint8_t)(crc >> 8);
-    SerialImu->write(f, 9 + n);
+    tmTxLen = 9 + n;
+    SerialImu->write(f, tmTxLen);
+}
+
+// bytes as "AA 55 18 ..." (for the log and the page); out holds 3 * n bytes
+static void tm171Hex(const uint8_t* p, uint8_t n, char* out)
+{
+    for (uint8_t i = 0; i < n; i++) snprintf(out + 3 * i, 4, "%02X ", p[i]);
+    out[n ? 3 * n - 1 : 0] = '\0';
+}
+
+// a whole frame to the log: "[status] TM171: <what> (bytes AA 55 ...)"; frames longer than 48 bytes are cut
+static void tm171LogFrame(const char* what, const uint8_t* frame, uint8_t n)
+{
+    char hex[3 * 48 + 1];
+    if (n > 48) n = 48;
+    tm171Hex(frame, n, hex);
+    StatusLog.line("[status] TM171: %s (bytes %s)", what, hex);
 }
 
 // Gyro bias calibration ("run-time static / forced calibration", Calibration object 23, type 0x05, key
@@ -399,18 +437,14 @@ static void tm171SettingGot(const uint8_t* p)
     {
         char raw[3 * TM171_SET_LEN + 1];
         tm171SettingHex(raw);
-        StatusLog.line("[status] TM171: settings read (switches 0x%08lX, UART %u00 bps, inhibit %u ms, %u Hz; bytes %s)%s", (unsigned long)w,
+        StatusLog.line("[status] TM171: settings read from ID %u (switches 0x%08lX, UART %u00 bps, inhibit %u ms, %u Hz; bytes %s)%s", (unsigned)tm171Id, (unsigned long)w,
                        (unsigned)tmSetU16(tmSet + 6), (unsigned)tmSetU16(tmSet + 14), (unsigned)tmSetU16(tmSet + 18), raw,
                        layoutOk ? "" : " - LAYOUT NOT RECOGNISED, writing from the page is disabled");
     }
 }
 
 // the 20 bytes as read, "3B A8 18 00 ..." (for the log and the page: the next unknown layout shows itself)
-static void tm171SettingHex(char* out)
-{
-    for (uint8_t i = 0; i < TM171_SET_LEN; i++) snprintf(out + 3 * i, 4, "%02X ", tmSet[i]);
-    out[3 * TM171_SET_LEN - 1] = '\0';
-}
+static void tm171SettingHex(char* out) { tm171Hex(tmSet, TM171_SET_LEN, out); }
 
 // The web page's form. Returns false with the reason.
 bool tm171SettingWrite(const TmSetForm& f, const char** why)
@@ -443,8 +477,9 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     tmSetAckMs = 0;
     tmSetWriteMs = millis() | 1;
     if (f.baud100 && (uint32_t)f.baud100 * 100UL != tm171Baud) { tmBaudNew = (uint32_t)f.baud100 * 100UL; tmBaudSwitchMs = tmSetWriteMs; }
-    StatusLog.line("[status] TM171: settings written (switches 0x%08lX, gains %u/%u, %u Hz%s)", (unsigned long)w,
+    StatusLog.line("[status] TM171: settings written to ID %u (switches 0x%08lX, gains %u/%u, %u Hz%s)", (unsigned)tm171Id, (unsigned long)w,
                    (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.odr, f.save ? ", saved to flash" : ", this session only");
+    tm171LogFrame("frame sent", tmTxLast, tmTxLen);     // what went out, byte by byte (the TM171 ignored earlier forms)
     return true;
 }
 
@@ -456,7 +491,7 @@ void tm171SettingLoop()
     static bool asked = false;
     const uint32_t now = millis();
     if (!firstMs) { firstMs = now | 1; rateMs = now; }
-    if (!asked && now - firstMs > 2000) { asked = true; tm171SettingRead(); }
+    if (!asked && tmElapsed(now, firstMs, 2000)) { asked = true; tm171SettingRead(); }
     if (tmBaudSwitchMs && tmElapsed(now, tmBaudSwitchMs, 300))
     {
         tmBaudSwitchMs = 0;
@@ -509,6 +544,7 @@ void tm171SettingJson(Json& j)
     j.u("noAnswer", tmSetNoAnswer);
     j.u("rate", TM171rpyRate);
     j.u("baudNow", tm171Baud);
+    j.u("id", tm171Id);
     j.bo("noWire", tm171NoWire());
     j.str("setupWhy", tm171SetupWhy());
     j.i("fixAgo", tmFixMs ? (long)((now - tmFixMs) / 1000) : -1);
