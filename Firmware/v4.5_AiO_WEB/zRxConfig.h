@@ -5,13 +5,16 @@
    DualPosition.txt and DualRelPos.txt (u-center configuration files of a ZED-F9P with firmware HPG 1.13;
    the F9P configuration by Jaap van den Handel), ConfigUM982D.txt and ConfigUM982S.txt. Not changed,
    only converted to this form.
+   2026-10-24: the ZED-X20P settings added (X20P.txt, read from renatorgr's working X20P with "Read all settings").
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // zRxConfig.h
 // u-blox: each CFG-VALGET line of a u-center file is one message here, its key + value pairs (the
 // 4-byte header of the answer left out); zRxCheck.ino sends each one as a UBX-CFG-VALSET (as
-// AOGConfigOMatic does) and compares the receiver's values with them (UBX-CFG-VALGET).
+// AOGConfigOMatic does) and compares the receiver's values with them (UBX-CFG-VALGET). The ZED-F9P has
+// AOGConfigOMatic's three files (Single, Dual - Right - Position, Dual - Left - RelPos); the ZED-X20P has
+// X20P.txt, read from a working one (one antenna).
 // UM982: the commands of the file, one per line, without "Version" and SAVECONFIG (zReceiver.ino sends
 // SAVECONFIG at the end); the log commands without their port ("GPGGA 0.1" instead of "GPGGA COM1 0.1"),
 // so they act on the port that is wired to the Teensy.
@@ -1076,11 +1079,36 @@ static const RxCfgMsg RXCFG_RELPOS[] = {
     {RXCFG_RELPOS_18, 652, 60},
 };
 // DualRelPos.txt: 19 messages, 1212 keys, firmware HPG 1.13
-enum RxCfgRole : uint8_t { RXCFG_ROLE_SINGLE = 0, RXCFG_ROLE_DUALPOS, RXCFG_ROLE_RELPOS };
-static const RxCfgSet RXCFG_UBX[3] = {
+// X20P.txt (file X20P.txt, next to this one): the settings of a working ZED-X20P, firmware HPG 2.11, read on
+// 2026-10-24 by renatorgr with this firmware's "Read all settings" (zRxCheck.ino): the 25 settings that differ
+// from the factory defaults (UART1 at 460800 baud, 10 Hz, high-precision NMEA, the RMC, GLL, GSA and GSV
+// sentences off, I2C off), as one message. Message 1 is not in the file: the keys the Teensy needs that the
+// file leaves at their factory values (UBX and RTCM3 in, UBX and NMEA out, GGA and VTG on UART1 every fix,
+// navigation rate 1), so the check and the automatic set-up cover them too.
+static const uint8_t RXCFG_X20P_0[] PROGMEM = {
+    0x03, 0x00, 0x51, 0x10, 0x00, 0x06, 0x00, 0x93, 0x10, 0x01, 0xAB, 0x00, 0x91, 0x20, 0x00, 0xAC, 0x00, 0x91, 0x20, 0x00, 0xAD, 0x00, 0x91, 0x20,
+    0x00, 0xAE, 0x00, 0x91, 0x20, 0x00, 0xAF, 0x00, 0x91, 0x20, 0x00, 0xBA, 0x00, 0x91, 0x20, 0x00, 0xBC, 0x00, 0x91, 0x20, 0x00, 0xBE, 0x00, 0x91,
+    0x20, 0x00, 0xBF, 0x00, 0x91, 0x20, 0x00, 0xC0, 0x00, 0x91, 0x20, 0x00, 0xC1, 0x00, 0x91, 0x20, 0x00, 0xC3, 0x00, 0x91, 0x20, 0x00, 0xC4, 0x00,
+    0x91, 0x20, 0x00, 0xC5, 0x00, 0x91, 0x20, 0x00, 0xC6, 0x00, 0x91, 0x20, 0x00, 0xC8, 0x00, 0x91, 0x20, 0x00, 0xC9, 0x00, 0x91, 0x20, 0x00, 0xCA,
+    0x00, 0x91, 0x20, 0x00, 0xCB, 0x00, 0x91, 0x20, 0x00, 0xCC, 0x00, 0x91, 0x20, 0x00, 0xCD, 0x00, 0x91, 0x20, 0x00, 0x01, 0x00, 0x21, 0x30, 0x64,
+    0x00, 0x01, 0x00, 0x52, 0x40, 0x00, 0x08, 0x07, 0x00,
+};
+static const uint8_t RXCFG_X20P_1[] PROGMEM = {
+    0x01, 0x00, 0x73, 0x10, 0x01, 0x04, 0x00, 0x73, 0x10, 0x01, 0x01, 0x00, 0x74, 0x10, 0x01, 0x02, 0x00, 0x74, 0x10, 0x01, 0xBB, 0x00, 0x91, 0x20,
+    0x01, 0xB1, 0x00, 0x91, 0x20, 0x01, 0x02, 0x00, 0x21, 0x30, 0x01, 0x00,
+};
+static const RxCfgMsg RXCFG_X20P[] = {
+    {RXCFG_X20P_0, 129, 25},
+    {RXCFG_X20P_1, 36, 7},
+};
+// X20P.txt: 2 messages, 32 keys, firmware HPG 2.11
+enum RxCfgRole : uint8_t { RXCFG_ROLE_SINGLE = 0, RXCFG_ROLE_DUALPOS, RXCFG_ROLE_RELPOS, RXCFG_ROLE_X20P };
+#define RXCFG_UBX_N 4                // the u-blox sets (a role below RXCFG_UBX_N has one)
+static const RxCfgSet RXCFG_UBX[RXCFG_UBX_N] = {
     {"Single", "Single.txt", "HPG 1.13", RXCFG_SINGLE, 19, 1212},
     {"Dual - Right - Position", "DualPosition.txt", "HPG 1.13", RXCFG_DUALPOS, 19, 1212},
     {"Dual - Left - RelPos", "DualRelPos.txt", "HPG 1.13", RXCFG_RELPOS, 19, 1212},
+    {"X20P", "X20P.txt", "HPG 2.11", RXCFG_X20P, 2, 32},
 };
 // ConfigUM982D.txt: 27 commands, then SAVECONFIG
 static const char* const RXCFG_UM982D[] = {
