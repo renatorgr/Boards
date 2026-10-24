@@ -783,7 +783,7 @@ static void apiImuPost(EthernetClient& c, const char* body)
         auto num  = [&](const char* n, long dflt) { return formValue(body, n, v, sizeof(v)) ? atol(v) : dflt; };
         f.mag = flag("mag"); f.gyroErr = flag("gyroErr"); f.selfAdapt = flag("selfAdapt"); f.status = flag("status"); f.save = flag("save");
         const long boot = num("boot", 0), acc = num("accGain", 210), mg = num("magGain", 100), odr = num("odr", 25);
-        if (boot < 0 || boot > 2 || acc < 0 || acc > 65535 || mg < 0 || mg > 65535 || odr < 0 || odr > 1000)
+        if (boot < 0 || boot > 2 || acc < 0 || acc > 65535 || mg < 0 || mg > 65535 || odr < 0 || odr > 65535)
         { webSendError(c, 400, "value out of range"); return; }
         f.boot = (uint8_t)boot; f.accGain = (uint16_t)acc; f.magGain = (uint16_t)mg; f.odr = (uint16_t)odr;
         f.baud100 = 0;                                   // the baud rate is not changed from the form

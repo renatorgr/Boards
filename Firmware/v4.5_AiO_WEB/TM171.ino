@@ -21,6 +21,8 @@
    AiO_WEB 4.5, 24 Oct 2026: the real TM171 ignored every settings write sent "to everyone" (TO_ID 0) although
    it answers requests sent that way: commands now go to the TM171's own ID, taken from the frames it sends
    (tm171Id). The frame of a write, every acknowledge and the first frame of an unknown type go to the log.
+   AiO_WEB 4.5, 24 Oct 2026: the output data rate is chosen from a list (25, 50, 100 Hz); the set-up check
+   accepts the three (the AiO v6 firmware runs its IMU at 100 Hz).
    AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
    (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
    warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
@@ -371,6 +373,10 @@ bool tm171ScanBaud()
 #define TM171_AOG_ACC      350
 #define TM171_AOG_MAG      100
 #define TM171_AOG_ODR      25
+// the rates the page offers: 25 Hz (the forum set-up), 50, 100 Hz (the AiO v6 firmware). The firmware takes
+// the newest sample at each GPS fix, so a higher rate only makes that sample fresher (10 ms old at most
+// instead of 40 ms); below 25 Hz the sample gets stale. SYD's manual lists 800, 400, 200, 100, 50, 25, 10, 5, 1.
+static bool tm171OdrOk(uint16_t hz) { return hz == 25 || hz == 50 || hz == 100; }
 static const TmSetForm TM171_AOG_FORM = { false, true, true, true, true, 0, TM171_AOG_ACC, TM171_AOG_MAG, TM171_AOG_ODR, 1152 };
 
 uint32_t tmFixMs = 0;   // "Fix TM171 setup" pressed (0 = never)
@@ -394,7 +400,7 @@ const char* tm171SetupWhy()
     if (tmSetU16(tmSet + 6) != 1152) add("UART not 115200");
     if (tmSetU16(tmSet + 10) != TM171_AOG_ACC) add("accelerometer gain");
     if (tmSetU16(tmSet + 12) != TM171_AOG_MAG) add("magnetometer gain");
-    if (tmSetU16(tmSet + 18) != TM171_AOG_ODR) add("output rate");
+    if (!tm171OdrOk(tmSetU16(tmSet + 18))) add("output rate");
     return why;
 }
 
@@ -452,7 +458,8 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     if (imuType != IMU_TM171) { *why = "no TM171 found"; return false; }
     if (!tmSetValid)          { *why = tmSetOdd ? "settings layout not recognised; writing is disabled" : "read the settings from the TM171 first"; return false; }
     if (f.accGain < 1 || f.accGain > 2000 || f.magGain < 1 || f.magGain > 2000) { *why = "gain out of range (0.01 - 20.00)"; return false; }
-    if (f.odr > 1000 || f.boot > 2) { *why = "value out of range"; return false; }
+    if (!tm171OdrOk(f.odr))         { *why = "output data rate: 25, 50 or 100 Hz"; return false; }
+    if (f.boot > 2)                   { *why = "value out of range"; return false; }
     uint8_t s[TM171_SET_LEN];
     memcpy(s, tmSet, TM171_SET_LEN);
     uint32_t w = tmSetU32(s);
