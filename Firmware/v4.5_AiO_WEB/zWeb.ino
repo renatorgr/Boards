@@ -272,6 +272,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     if (full) { j.str("rxKind", rxKindName()); j.str("rxFw", rxFw); }
     if (full) { j.str("ckH", rxCkHealthName(RXCK_GPS)); j.str("ck2H", rxCkHealthName(RXCK_GPS2)); }   // the data at 460800 (zRxCheck.ino)
     if (full) j.bo("single", rxSingleAntenna());          // one antenna: the page leaves the dual heading card out
+    if (full) rxCkStatusJson(j, RXCK_GPS);                // the receiver check's summary (zRxCheck.ino): "ck"
 
     j.u("crcErr", nmeaCrcErrors);
     j.close();

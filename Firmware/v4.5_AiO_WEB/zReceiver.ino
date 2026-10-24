@@ -66,6 +66,8 @@ static bool     rxSilentSeen  = true;    // silent for RXID_SILENT_MS since the 
 // ---------------------------------------------------------------- to the receiver
 // One message waits here until the corrections are between two RTCM messages (or 300 ms).
 static uint8_t  rxTxBuf[RX_TX_MAX];
+uint32_t        rxGpsBaud  = 460800;     // Serial7's baud rate now (zRxCheck.ino sets it while it sets the receiver up)
+static bool     umBaudSwitch = false;    // the CONFIG COMx 460800 for the Teensy's port went out: Serial7 follows (no answer awaited)
 static uint16_t rxTxLen    = 0;
 static uint32_t rxTxSince  = 0;
 static uint32_t rxTxSentMs = 0;
@@ -920,6 +922,19 @@ static void umOpLoop(uint32_t now)
     // write: the commands one at a time, then SAVECONFIG, then read back
     if (umSt == UMS_CMD)
     {
+        if (umAsked && umBaudSwitch)
+        {
+            // the receiver is being set up at its own baud rate (zRxCheck.ino): the command that sets the
+            // Teensy's port to 460800 just went out; its answer comes at the new speed, so Serial7 follows
+            if (rxTxLen || now - rxTxSentMs < 400) return;
+            SerialGPS->begin(UM_TEENSY_BAUD);
+            rxGpsBaud = UM_TEENSY_BAUD;
+            umBaudSwitch = false;
+            umOkN++;
+            umCmdI++;
+            umAsked = false;
+            StatusLog.line("[status] GPS receiver: %s sent, Serial7 at 460800 baud now", umCmd[umCmdI - 1]);
+        }
         if (umAsked)
         {
             if (!umGot && now - rxTxSentMs < UM_ANSWER_MS) return;
@@ -934,7 +949,16 @@ static void umOpLoop(uint32_t now)
             umCmdI++;
             umAsked = false;
         }
-        if (umCmdI < umCmdN) { umSend(umCmd[umCmdI]); return; }
+        if (umCmdI < umCmdN)
+        {
+            if (umSend(umCmd[umCmdI]) && rxGpsBaud != UM_TEENSY_BAUD && umPort >= 0)
+            {
+                char mine[24];
+                snprintf(mine, sizeof(mine), "CONFIG COM%d %lu", umPort + 1, (unsigned long)UM_TEENSY_BAUD);
+                umBaudSwitch = !strcmp(umCmd[umCmdI], mine);
+            }
+            return;
+        }
         if (!umOkN)
         {
             StatusLog.line("[status] GPS receiver: UM982 settings NOT written (%s)", umNoAnsN == umCmdN ? "no answer" : "all commands refused");
@@ -1174,6 +1198,28 @@ static const char* umResName(uint8_t r)
         case UMRES_WRITE_NONE:   return "write-none";
         default:                 return "";
     }
+}
+
+// the UM982 port wired to the Teensy, from the last read: 0..2 = COM1..COM3, -1 not known
+int umTeensyPort() { return umPort; }
+
+// the UM982's settings have been read (CONFIG, MASK, UNILOGLIST, MODE) since the receiver was identified
+bool umHasRead() { return umReadMs != 0; }
+
+// What the Teensy needs from the UM982 and its last read says it lacks (Status page, the automatic set-up
+// of zRxCheck.ino): GGA, VTG and HPR (two antennas) at 10 Hz on the port wired to the Teensy, at 460800.
+// out: "GGA at 10 Hz, port at 460800"; true when something is missing. Nothing read yet: false, "".
+bool umTeensyMissing(char* out, size_t n)
+{
+    out[0] = '\0';
+    if (!umReadMs) return false;
+    static const uint8_t ITEM[3] = {UM_GGA, UM_VTG, UM_HPR};
+    static const char* const NAME[3] = {"GGA at 10 Hz", "VTG at 10 Hz", "HPR at 10 Hz"};
+    for (uint8_t i = 0; i < (rxSingleAntenna() ? 2 : 3); i++)
+        if (!umHave[ITEM[i]] || umVal[ITEM[i]] != 100) snprintf(out + strlen(out), n - strlen(out), "%s%s", out[0] ? ", " : "", NAME[i]);
+    if (umPort >= 0 && umBaud[umPort] && umBaud[umPort] != UM_TEENSY_BAUD)
+        snprintf(out + strlen(out), n - strlen(out), "%s%s", out[0] ? ", " : "", "port at 460800");
+    return out[0] != '\0';
 }
 
 static void umJson(Json& j)

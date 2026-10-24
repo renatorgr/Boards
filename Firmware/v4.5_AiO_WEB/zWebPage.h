@@ -123,7 +123,9 @@ a{color:var(--acc)}
    <dt>Satellites</dt><dd id="sats">–</dd><dt>HDOP</dt><dd id="hdop">–</dd>
    <dt>Correction age</dt><dd id="age">–</dd><dt>Speed</dt><dd id="kmh">–</dd>
    <dt>Latitude</dt><dd id="lat" class="nw">–</dd><dt>Longitude</dt><dd id="lon" class="nw">–</dd><dt>Altitude</dt><dd id="alt" class="nw">–</dd><dt>Checksum errors</dt><dd id="crc">–</dd><dt>Receiver</dt><dd id="rxModel">–</dd>
-  </dl></div>
+   <dt id="g1SetT" class="hidden">Setup</dt><dd id="g1Set" class="hidden">–</dd>
+  </dl>
+  <p class="note hidden" id="g1Go">Receiver check and settings: <a href="#" data-go="gps">GPS tab</a></p></div>
  <div class="card" id="dualCard"><h2>Dual-antenna heading</h2>
   <div class="big" id="dualHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd>
@@ -166,6 +168,7 @@ a{color:var(--acc)}
    <dt>Packets to the XIAO</dt><dd id="xTo">–</dd><dt>PGNs from the XIAO</dt><dd id="xFrom">–</dd><dt>Last PGN from the XIAO</dt><dd id="xLast">–</dd>
    <dt>Checksum errors</dt><dd id="xCrc">–</dd><dt>Lost</dt><dd id="xDrop">–</dd><dt>Received / sent</dt><dd id="xKB" class="nw">–</dd>
    <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd></dl>
+  <p class="note hidden" id="xNote"></p>
   </div>
 </div>
 </section>
@@ -403,6 +406,31 @@ try{const t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.do
 $("theme").addEventListener("click",()=>{const t=themeNow()==="light"?"dark":"light";document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}themeShow();});
 themeShow();
 
+// what the Teensy needs from a receiver (the receiver check's summary in /api/status, zRxCheck.ino): "gga, vtg" as
+// key ids for a u-blox, plain text for the UM982
+function ckMissText(c){return c.um?c.miss:c.miss.split(",").map(x=>ckName(x.trim())).join(", ");}
+// the Setup row of the GNSS and dual-antenna cards: [text, class]
+function ckSetup(c){
+ const by=c.auto?"the Teensy is ":"";
+ if(c.op==="baud")return [by+"setting it to 460800 baud…",""];
+ if(c.op==="load")return [by+"loading the AgOpenGPS settings…"+(c.at&&c.at!==460800?" (at "+c.at+" baud; they set 460800)":""),""];
+ if(c.op==="scan")return ["finding its baud rate…",""];
+ if(c.op==="check")return ["checking…",""];
+ if(c.noAnswer)return ["no answer to the check"+(c.um?"":" (UBX output off on its UART1?)"),"bad"];
+ if(c.load==="load-fail")return ["the AgOpenGPS settings were not taken"+(c.autoDid==="load"?" (the Teensy tried)":""),"bad"];
+ if(!c.checked)return [c.health==="ok"?"checking…":"not checked yet",""];
+ if(c.miss)return ["missing: "+ckMissText(c),"bad"];
+ return ["all good"+(c.autoDid==="load"&&(c.load==="loaded"||c.load==="load-part")?" · AgOpenGPS settings loaded by the Teensy "+ago(c.loadAgo):""),"ok"];}
+// the warnings at the top of Status for a receiver being set up, or not set up: who = "The GPS receiver" / "The second F9P"
+function ckAlerts(c,who,al){
+ if(!c)return;
+ const miss=c.miss?ckMissText(c):"";
+ if(c.op==="baud"&&c.auto)al.push(who+" answered at another baud rate: the Teensy is setting it to 460800 baud and saving that in the receiver.");
+ else if(c.op==="load"&&c.auto)al.push(who+" lacks settings the Teensy needs ("+miss+"): the Teensy is loading the AgOpenGPS settings ("+c.file+") into it"+(c.at&&c.at!==460800?", at "+c.at+" baud; they set it to 460800":"")+". The GPS can drop out for a few seconds.");
+ else if(c.at&&c.at!==460800&&!c.op)al.push(who+" answers at "+c.at+" baud: the port stays at that speed while the Teensy identifies it and loads the AgOpenGPS settings (they set 460800).");
+ else if(c.load==="load-fail"&&c.autoDid==="load")al.push("The Teensy tried to load the AgOpenGPS settings ("+c.file+") into "+who.replace(/^The /,"the ")+" and it did not take them. See the GPS tab.");
+ else if(c.checked&&c.miss)al.push(c.autoDid==="load"?"The Teensy loaded the AgOpenGPS settings into "+who.replace(/^The /,"the ")+" ("+c.loadOk+" of "+c.loadTotal+" taken), but it still lacks: "+miss+". See the GPS tab.":who+" is not set up for AgOpenGPS (missing: "+miss+"). The Teensy loads the AgOpenGPS settings ("+c.file+") into it as soon as autosteer is off; or see the GPS tab.");}
+
 function render(s){
  lastS=s;lastUp=s.up;
  $("hdr").textContent=(s.fw.lastIndexOf(" ")>0?s.fw.slice(0,s.fw.lastIndexOf(" ")):s.fw)+" · "+s.ip;
@@ -436,17 +464,11 @@ function render(s){
   else if(c2.health==="junk"){t=c2.found&&c2.found!==460800?"wrong baud rate (it answers at "+c2.found+" baud)":"wrong baud rate (nothing valid at 460800)";cls="bad";}
   else if(c2.health==="none"){t=c2.notFound?"nothing arriving (no baud rate gave data)":"nothing arriving";cls="warn";}
   set("f2",t,cls);
-  let u="–",ucls="";
-  const by=c2.auto?"the Teensy is ":"";
-  if(c2.op==="baud")u=by+"setting it to 460800 baud…";
-  else if(c2.op==="load")u=by+"loading the AgOpenGPS settings…";
-  else if(c2.op==="check"||c2.op==="scan")u=c2.op==="scan"?"finding its baud rate…":"checking…";
-  else if(c2.noAnswer){u="no answer to the check (UBX output off on its UART1?)";ucls="bad";}
-  else if(c2.load==="load-fail"){u="the AgOpenGPS settings were not taken"+(c2.autoDid==="load"?" (the Teensy tried)":"");ucls="bad";}
-  else if(!c2.checked)u=c2.health==="ok"?"checking…":"not checked yet";
-  else if(c2.miss){u="missing: "+c2.miss.split(",").map(x=>ckName(x.trim())).join(", ");ucls="bad";}
-  else{u="all good"+(c2.autoDid==="load"&&(c2.load==="loaded"||c2.load==="load-part")?" · AgOpenGPS settings loaded by the Teensy "+ago(c2.loadAgo):"");ucls="ok";}
-  set("f2Set",u,ucls);}
+  const u=ckSetup(c2);set("f2Set",u[0],u[1]);}
+ // the GPS receiver's own Setup row (its check's summary), once it is identified as a u-blox or a UM982
+ const c1=g.ck&&(g.rxKind==="ublox"||g.rxKind==="um982")?g.ck:null;
+ for(const id of ["g1SetT","g1Set","g1Go"])$(id).classList.toggle("hidden",!c1);
+ if(c1){const u=ckSetup(c1);set("g1Set",u[0],u[1]);}
  const t=s.tm;
  set("tmHdg",t.ok?fmt(t.out,2,"°"):"–",t.ok?"":"bad");
  pill("tmState",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");
@@ -520,17 +542,14 @@ function render(s){
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
  if(g.ckH==="junk")al.push("The GPS receiver is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Receiver check.");
  if(g.ck2H==="junk")al.push("The second F9P is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Second F9P check.");
+ if(g.ck&&(g.rxKind==="ublox"||g.rxKind==="um982"))ckAlerts(g.ck,"The GPS receiver",al);
  const f2a=s.dual&&s.dual.f9p2,c2a=s.dual&&s.dual.ck2;
  if(f2a&&f2a.on&&c2a){
   if(c2a.health==="none"&&s.up>20)al.push("Nothing arrives from the second F9P on the GPS2 port. Check its power and its wiring to Serial2 (Teensy pins 7 / 8). See GPS, Second F9P check.");
-  const missT=c2a.miss?c2a.miss.split(",").map(x=>ckName(x.trim())).join(", "):"";
-  if(c2a.op==="baud"&&c2a.auto)al.push("The second F9P answered at another baud rate: the Teensy is setting it to 460800 baud and saving that in the F9P.");
-  else if(c2a.op==="load"&&c2a.auto)al.push("The second F9P lacks settings the Teensy needs ("+missT+"): the Teensy is loading the AgOpenGPS settings (DualRelPos.txt) into it. The dual heading comes once they are in.");
-  else if(c2a.checked&&c2a.miss)al.push(c2a.autoDid==="load"?"The Teensy loaded the AgOpenGPS settings into the second F9P ("+c2a.loadOk+" of "+c2a.loadTotal+" messages taken), but it still lacks: "+missT+". See GPS, Second F9P check.":"The second F9P is not set up for AgOpenGPS (missing: "+missT+"). The Teensy loads the AgOpenGPS settings into it as soon as autosteer is off; or see GPS, Second F9P check, Load the AgOpenGPS settings.");}
+  ckAlerts(c2a,"The second F9P",al);}
  if(f2a&&!f2a.on&&f2a.seen)al.push("A GNSS receiver is sending data on the GPS2 port, but the port is set to "+(f2a.port==="off"?"off":"the XIAO ESP32")+". For a dual F9P, set GPS2 port to «second F9P» in Settings.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.setupWhy)al.push("TM171 not set up for AgOpenGPS ("+s.tm.set.setupWhy+"). See the IMU tab, Fix TM171 setup.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.noWire)al.push("TM171 RX pin not wired to Teensy TX5 (pin 20): roll, pitch and yaw still work, but gyro calibration, new install calibration, settings and Fix TM171 setup are unavailable. Solder one wire from Teensy pin 20 to the TM171 RX pin (see the IMU tab).");
- $("alert").textContent=al.join("\n");$("alert").classList.toggle("hidden",!al.length);
  const n=s.net;
  pill("link",n.link?"connected":"unplugged",n.link?"ok":"bad");
  const hn=n.host==="AgOpenWeb"||n.host==="AgOpenGPS"?n.host:"";
@@ -564,7 +583,16 @@ function render(s){
    set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
    set("xIp",xi.sta&&xi.st==="ok"?xi.ip:"–");}
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
+  // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
+  const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
+  let xn="",xnc="";
+  if(x.port===0&&x.on&&xi&&xi.v&&xi.v!==tv){xn="The XIAO runs program "+xi.v+"; this firmware expects "+tv+". Update it on the XIAO's own page (its WiFi network, Firmware, Install from GitHub), or over USB-C with v"+tv+"_XIAO_ESP32C3_USB.bin / S3_USB.bin: ";xnc="warn";
+   al.push("The XIAO runs program "+xi.v+", this firmware expects "+tv+": update it (see the XIAO card).");}
+  else if(x.port===0&&x.on&&!x.det&&!x.hellos&&s.up>20){xn="No hello from the XIAO. A new XIAO has to be programmed first, over USB-C: v"+tv+"_XIAO_ESP32C3_USB.bin or v"+tv+"_XIAO_ESP32S3_USB.bin at address 0x0 (the README there says how). Already programmed: check its power and the wires XIAO D6 → Teensy RX2, D7 ← TX2: ";xnc="warn";}
+  const xe=$("xNote");xe.textContent=xn;xe.className="note "+xnc+(xn?"":" hidden");
+  if(xn){const a=document.createElement("a");a.href=bins;a.target="_blank";a.rel="noopener";a.textContent="the files on GitHub";xe.appendChild(a);xe.appendChild(document.createTextNode("."));}
  }
+ $("alert").textContent=al.join("\n");$("alert").classList.toggle("hidden",!al.length);   /* (after the XIAO card: its version warning) */
  renderMach(s.mach);
  renderGh();
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
@@ -837,7 +865,7 @@ const hz10=x=>(x/10).toFixed(x%10?1:0)+" Hz";   /* (no line break before "Hz") 
 function ckSay(port,t,c){ckLocal[port]=[t,c];ckLocalAt[port]=Date.now();set("ck"+port+"Msg",t,c);}
 function ckHealth(id,p){
  if(!p.on||p.health==="wait"){set(id,"–");return;}
- if(p.health==="ok")pill(id,"valid"+" · "+(p.good+" in 5 s"),"ok");
+ if(p.health==="ok")pill(id,"valid"+" · "+(p.good+" in 5 s")+(p.at&&p.at!==460800?" (at "+p.at+" baud for now)":""),"ok");
  else if(p.health==="junk")pill(id,"wrong baud rate","bad");
  else pill(id,"nothing arriving","warn");}
 // the UM982 (zReceiver.ino's read): GGA, VTG and HPR at 10 Hz on the Teensy's port, that port at 460800
@@ -858,7 +886,7 @@ function ckMsgText(c,p,port,um){
  const kn={ublox:"u-blox",unicore:"Unicore",nmea:"NMEA"}[p.foundKind]||"";
  const boot=p.boot==="scan"&&p.baud!=="baud-ok"?"At start-up: ":"";
  if(p.scan==="found"){out.push(boot+("the receiver answers at "+p.found+" baud ("+kn+")."));
-  if(p.found!==460800){out.push("The Teensy needs 460800: press «Set to 460800 and save».");cls="warn";}}
+  if(p.found!==460800){out.push(p.at===p.found?"The port stays at that speed for now: the AgOpenGPS settings, once loaded, set 460800. Or press «Set to 460800 and save».":"The Teensy needs 460800: press «Set to 460800 and save».");cls="warn";}}
  if(p.scan==="notfound"){out.push(boot+"no baud rate gave valid data: nothing connected, a silent receiver, or TX / RX swapped.");cls="bad";}
  if(p.baud==="baud-ok"){out.push("The receiver is at 460800 baud now.");cls="ok";}
  if(p.baud==="baud-fail"){out.push(("No valid data at 460800 after the change: is the receiver still at "+p.found+" baud?"));cls="bad";}
