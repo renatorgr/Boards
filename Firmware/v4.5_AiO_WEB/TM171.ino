@@ -16,6 +16,8 @@
    AiO_WEB 4.5, 24 Oct 2026: the layout of the Setting object corrected from a real TM171 (the output data
    rate is its own field in Hz; the inhibit time and the other words are left as read); the raw bytes in the
    log and on the page; the "RX not wired" warning only after a second unanswered request.
+   AiO_WEB 4.5, 24 Oct 2026: a settings request was timed out at once when its timer was set a millisecond
+   after the loop's "now" (unsigned wrap): a false "no reply" line at every start-up (tmElapsed).
    AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
    (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
    warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
@@ -256,7 +258,7 @@ static void tm171Send(uint8_t cmd, const uint8_t* content, uint8_t n)
 #define TM171_CALIB_S       20     // seconds of data (SYD: anything from milliseconds to half an hour; at least 12 s is a full one)
 #define TM171_CALIB_LIMIT   50     // accepted gyro error, x 0.01 deg/s (5..500): more is discarded by the TM171
 #define TM171_CALIB_CONF    0      // how surely the tractor stands still, x 0.01 % (0 = the TM171 decides)
-#define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?); the first settings request is sent again once
+#define TM171_ANSWER_MS     3000   // no report in this time = no answer (the TX5 wire?); the first settings request is sent again once (tmElapsed)
 // "New install" calibration (CalibB in ImuAssistant, Calibration object type 0x04, key 0xAA35): the TM171
 // takes about 20 s of data with the module still, writes the result to its FLASH and reports success (0x01) or
 // failure (0xFF); no "started" report, no stop command. SYD: keep the power on during those 20 s (a power-off
@@ -370,6 +372,11 @@ bool tm171FixSetup(const char** why)
 // No reply ever to a settings request: the TM171's RX pin is not wired to Teensy TX5 (the web page explains)
 bool tm171NoWire() { return tmSetNoAnswer > 1 && tmSetMs == 0; }   // (two requests unanswered: the first is sent again once)
 
+// A timer set with millis() | 1 can be one millisecond ahead of the loop's "now" (the request is sent in the
+// same loop pass, or by the web server between two passes): a plain unsigned "now - timer" then wraps to
+// four billion and the timer looks expired at once. Signed, it is -1: not expired.
+static bool tmElapsed(uint32_t now, uint32_t since, uint32_t ms) { return (int32_t)(now - since) > (int32_t)ms; }
+
 // Ask the TM171 for its Setting object (Request object 12)
 void tm171SettingRead()
 {
@@ -450,7 +457,7 @@ void tm171SettingLoop()
     const uint32_t now = millis();
     if (!firstMs) { firstMs = now | 1; rateMs = now; }
     if (!asked && now - firstMs > 2000) { asked = true; tm171SettingRead(); }
-    if (tmBaudSwitchMs && now - tmBaudSwitchMs > 300)
+    if (tmBaudSwitchMs && tmElapsed(now, tmBaudSwitchMs, 300))
     {
         tmBaudSwitchMs = 0;
         tm171Baud = tmBaudNew;
@@ -459,7 +466,7 @@ void tm171SettingLoop()
         parseState = WAIT_HEADER_1;
         StatusLog.line("[status] TM171: Serial5 now at %lu baud", (unsigned long)tm171Baud);
     }
-    if (tmSetWriteMs && now - tmSetWriteMs > 500) { tmSetWriteMs = 0; tm171SettingRead(); }
+    if (tmSetWriteMs && tmElapsed(now, tmSetWriteMs, 500)) { tmSetWriteMs = 0; tm171SettingRead(); }
     // Set-up warning on the program's screen (PGN 221): once a minute while something differs
     static uint32_t warnMs = 0;
     static bool warned = false;
@@ -476,10 +483,10 @@ void tm171SettingLoop()
         warned = false;
         StatusLog.println("[status] TM171: set up for AgOpenGPS");
     }
-    if (tmSetReqMs && now - tmSetReqMs > TM171_ANSWER_MS)
+    if (tmSetReqMs && tmElapsed(now, tmSetReqMs, TM171_ANSWER_MS))
     {
         tmSetReqMs = 0;
-        if (tmSetNoAnswer++ == 0 && !tmSetMs) { tm171SettingRead(); return; }   // once more: the first answer came late on a real TM171
+        if (tmSetNoAnswer++ == 0 && !tmSetMs) { tm171SettingRead(); return; }   // once more before "not wired" is concluded
         if (tmSetNoAnswer == 2 && !tmSetMs)
         {
             StatusLog.println("[status] TM171: no reply - its RX pin is not wired to Teensy TX5 (pin 20). Roll, pitch and yaw work; calibration and settings from the page do not");
