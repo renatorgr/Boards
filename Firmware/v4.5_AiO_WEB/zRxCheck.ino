@@ -226,12 +226,13 @@ static uint8_t ckKeySize(uint32_t key)
     switch ((key >> 28) & 7) { case 1: case 2: return 1; case 3: return 2; case 4: return 4; default: return 8; }
 }
 
-// a key is in the message (key + value pairs)
-static bool ckMsgHasKey(const RxCfgMsg& m, uint32_t key)
+// a key is in a message's key + value pairs (d, n bytes). Plain pointer and length, not the RxCfgMsg: the
+// Arduino IDE puts the prototypes of all .ino functions at the top of the main .ino, where zRxConfig.h is not known
+static bool ckMsgHasKey(const uint8_t* d, uint16_t n, uint32_t key)
 {
-    for (uint16_t r = 0; r + 4 <= m.n; )
+    for (uint16_t r = 0; r + 4 <= n; )
     {
-        const uint32_t k = (uint32_t)m.d[r] | ((uint32_t)m.d[r + 1] << 8) | ((uint32_t)m.d[r + 2] << 16) | ((uint32_t)m.d[r + 3] << 24);
+        const uint32_t k = (uint32_t)d[r] | ((uint32_t)d[r + 1] << 8) | ((uint32_t)d[r + 2] << 16) | ((uint32_t)d[r + 3] << 24);
         if (k == key) return true;
         r += 4 + ckKeySize(k);
     }
@@ -1126,7 +1127,7 @@ FLASHMEM static void ckOpLoad(uint32_t now)
         if (!ckSendUbx(ckPort, 0x06, 0x8A, q, (uint16_t)(m.n + 4))) return;
         // the port runs at the receiver's own speed (found by the search): the message with CFG-UART1-BAUDRATE
         // switches the receiver to 460800 as it takes it, and its ACK comes at the new speed - not waited for
-        ckWait = (ckRunBaud[ckPort] && ckMsgHasKey(m, 0x40520001UL)) ? 4 : 2;
+        ckWait = (ckRunBaud[ckPort] && ckMsgHasKey(m.d, m.n, 0x40520001UL)) ? 4 : 2;
         ckGot = 0;
         return;
     }
