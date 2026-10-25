@@ -1,34 +1,39 @@
-# LED bezel for the AiO v4.5 boards
+# LED comb for the AiO v4.5 boards
 
-A small 3D-printed hood that separates the three 5 mm LEDs on the front of the AiO v4.5 Micro and Standard (PWR/ETH, GPS/RTK, AS-ACT). On the board the LEDs sit 6.6 mm apart, so only 1.6 mm separates one dome from the next, and on the panel the colours blend: an orange LED next to a red one is hard to tell apart. The hood gives each LED its own tube and a name.
+A small 3D-printed comb that keeps the light of the three front LEDs of the AiO v4.5 Micro and Standard (PWR/ETH, GPS/RTK, AS-ACT) apart. On the board the LEDs stand upright at the edge, 6.6 mm apart, so only 1.6 mm separates one dome from the next. In an enclosure with light windows on the front panel (the RayCorp case, for one) the light reaches each window from the side of the domes and spreads to the windows next to it: an orange LED beside a red one cannot be told apart. The comb slides down over the three LEDs and gives each one a cell that is closed on the top, the back and both sides, open only towards the panel, with the dividers reaching the panel.
 
 | File | What |
 |---|---|
 | `led_bezel.scad` | The model, in [OpenSCAD](https://openscad.org/). Every size is a number at the top of the file. |
 | `led_bezel.stl` | The model ready to slice and print, as the `.scad` is set. |
-| `led_bezel.png` | What it looks like. |
+| `led_bezel.png`, `led_bezel_front.png` | What it looks like, from the panel side and from below. |
 
-![LED bezel](led_bezel.png)
+![LED comb, from the panel side](led_bezel.png)
+
+![LED comb, from below](led_bezel_front.png)
 
 ## Sizes as set
 
-- Three holes of 5.4 mm, 6.6 mm apart (the pitch of the LEDs on both boards, from the pick-and-place files of the [official AiO v4.5](https://github.com/AgOpenGPS-Official/Boards/tree/main/TeensyModules)).
-- Tubes 7 mm deep, walls 1.6 mm at the ends, 1.2 mm between the holes (what the pitch leaves).
-- A 1.2 mm back plate 2 mm wider than the tubes, to glue to the panel.
-- A 4 mm strip under the holes with the names `PWR`, `GPS`, `STR` in raised letters.
+- Three cells of 5.4 mm, 6.6 mm apart (the pitch of the LEDs on both boards, from the pick-and-place files of the [official AiO v4.5](https://github.com/AgOpenGPS-Official/Boards/tree/main/TeensyModules)), 10 mm deep under a 1 mm roof.
+- A 6.2 mm counterbore, 1.5 mm high, at the bottom of each cell for the LED's base flange.
+- Dividers 1.2 mm thick (what the pitch leaves), back wall 1.2 mm, end wall 1.6 mm at the PWR end and 0.8 mm at the AS-ACT end: on the Micro the RJ45 shield is only about 1 mm from the last LED.
+- The front face 5.5 mm from the LED centres: the board edge is 3.05 mm from the centres on the Micro (3.3 mm on the Standard), so the dividers reach 2.5 mm past the edge, towards the panel.
 
-Overall about 24 x 14 mm, 8 mm deep.
+Overall about 24 x 9.5 x 11 mm.
+
+## Before printing: one measurement
+
+Measure the gap between the board edge and the inside of the front panel, and set `front` so that the dividers just touch the panel (`front` = 3.05 + gap on the Micro). Dividers that stop short of the panel let the light leak across again; dividers that are too long keep the comb from sitting on the board, so a bit short beats a bit long. Everything else should fit as it is.
 
 ## Printing and fitting
 
-- Print in **black or another opaque** filament, tubes facing up, no supports. Opaque matters: the walls are there to stop one LED lighting the next.
-- A 0.4 mm nozzle prints the letters; if they come out blurred, set `text_h` to 2.2 and `lip` to 5 (the names then nearly touch), or set `lip` to 0 for no names.
-- If the LED domes stick out of the panel 4 mm or more, the hood slides over them. If they do not, glue the back plate to the panel around the holes (the holes line up with the domes).
-- A 5 mm dome should enter a 5.4 mm hole; a tight print takes `hole = 5.6`.
+- Print in **black or another opaque** filament, roof down on the bed, no supports. Opaque matters: the walls are there to stop one LED lighting the next window.
+- Slide the comb down over the three LEDs, open side towards the panel, until it rests on the LED flanges. A tight print takes `hole = 5.6`.
+- If it touches the RJ45, set `end_wall_right` to 0.5 or sand that end.
 
 ## Without a printer
 
-A short piece of black heat-shrink tube (6.4 mm, about 5 mm long) over each dome does the same job: shrink it lightly so it stays, and the light of each LED only comes out of its own end.
+Wrap each dome with a strip of black insulating tape, about 8 mm wide, around the back and both sides, leaving only the side that faces the panel uncovered. Each LED then lights only its own window. A strip of black card folded into a comb between the LEDs and the panel does the same.
 
 ## Licence
 
