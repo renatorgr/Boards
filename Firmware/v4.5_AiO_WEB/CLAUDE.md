@@ -239,6 +239,12 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 
 The page never makes the loop wait for a browser for more than 3 s. Large replies are written in pieces.
 
+**Simulator** (`Firmware/simulator`, published at https://renatorgr.github.io/Boards/ by
+`.github/workflows/simulator.yml`): the page above and the XIAO page with a pretend module answering these
+endpoints (`sim-common.js`, `sim-xiao.js`). A field added to or renamed in a JSON reply here (or in the
+XIAO's `apiState` / `apiTeensy` / `apiLog`) must be added to the simulator too, or the page shows a dash
+there; the Action only checks that the pages open without errors. Its README says how to run it locally.
+
 ## Configuration and EEPROM
 
 | Address | Content | Written by |

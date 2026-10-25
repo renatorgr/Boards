@@ -1,0 +1,102 @@
+# Web page simulator: build, check, publish.
+# On every change to the firmware, builds the simulator of the module's web pages (Firmware/simulator:
+# the real pages from zWebPage.h and xPage.h with a pretend module behind them), opens it in a browser as
+# a check, and on main publishes it on GitHub Pages at https://renatorgr.github.io/Boards/.
+# GitHub Pages must be switched on once by hand: repository Settings → Pages → Source "GitHub Actions".
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Web page simulator
+
+on:
+  pull_request:
+    paths:
+      - 'Firmware/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '.github/workflows/simulator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Firmware/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '.github/workflows/simulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# one publication at a time, and the one under way finishes
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  PLAYWRIGHT: '1.63.0'   # the browser driver of the check; its Chromium comes with it
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the simulator
+        run: python3 Firmware/simulator/build.py _site
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the browser for the check
+        run: |
+          npm install --no-save --no-package-lock "playwright@$PLAYWRIGHT"
+          npx playwright install --with-deps chromium
+
+      - name: Open the pages in a browser
+        run: node Firmware/simulator/smoke-test.js _site shots
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshots
+          path: shots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Summary
+        run: |
+          {
+            echo "### Simulator built and checked"
+            echo
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "The pages open without errors. Published only once merged into main."
+            else
+              echo "The pages open without errors; the **deploy** job publishes them at https://renatorgr.github.io/Boards/."
+            fi
+            echo
+            echo "Screenshots of every tab: **Artifacts** on this page."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pack the site for Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # to publish
+      id-token: write   # Pages checks that the publication comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish on GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        # fails with "Get Pages site failed" until Pages is switched on: Settings → Pages → Source "GitHub Actions"
