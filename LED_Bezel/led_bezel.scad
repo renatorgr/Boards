@@ -24,10 +24,10 @@ roof           = 1;      // closed top, this thick (0 = open top)
 back_wall      = 1.2;    // wall behind the LEDs (towards the inside of the board)
 end_wall_left  = 1.6;    // wall at the PWR end
 end_wall_right = 0.8;    // wall at the AS-ACT end (the RJ45 is only 1 mm away on the Micro)
-front          = 5.5;    // from the LED centres to the front face, towards the panel (mm): the board edge
-                         // is 3.05 mm from the centres on the Micro, so 5.5 reaches 2.5 mm past the edge.
-                         // Measure the gap between the board edge and the panel and set this so the
-                         // dividers just touch the panel.
+front          = 3.0;    // from the LED centres to the front face, towards the panel (mm). The board edge
+                         // is 3.05 mm from the centres on the Micro (3.3 on the Standard); in the RayCorp
+                         // case the board edge touches the panel, so 3.0 puts the front face at the edge,
+                         // against the panel. With a gap between the board edge and the panel, add it here.
 n              = 3;
 $fn = 48;
 

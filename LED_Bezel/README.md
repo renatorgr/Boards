@@ -17,13 +17,13 @@ A small 3D-printed comb that keeps the light of the three front LEDs of the AiO 
 - Three cells of 5.4 mm, 6.6 mm apart (the pitch of the LEDs on both boards, from the pick-and-place files of the [official AiO v4.5](https://github.com/AgOpenGPS-Official/Boards/tree/main/TeensyModules)), 10 mm deep under a 1 mm roof.
 - A 6.2 mm counterbore, 1.5 mm high, at the bottom of each cell for the LED's base flange.
 - Dividers 1.2 mm thick (what the pitch leaves), back wall 1.2 mm, end wall 1.6 mm at the PWR end and 0.8 mm at the AS-ACT end: on the Micro the RJ45 shield is only about 1 mm from the last LED.
-- The front face 5.5 mm from the LED centres: the board edge is 3.05 mm from the centres on the Micro (3.3 mm on the Standard), so the dividers reach 2.5 mm past the edge, towards the panel.
+- The front face 3.0 mm from the LED centres, that is at the board edge (3.05 mm from the centres on the Micro, 3.3 mm on the Standard). In the RayCorp case the board edge touches the front panel, so the dividers end against the panel.
 
-Overall about 24 x 9.5 x 11 mm.
+Overall about 24 x 7 x 11 mm.
 
-## Before printing: one measurement
+## Before printing: check one thing
 
-Measure the gap between the board edge and the inside of the front panel, and set `front` so that the dividers just touch the panel (`front` = 3.05 + gap on the Micro). Dividers that stop short of the panel let the light leak across again; dividers that are too long keep the comb from sitting on the board, so a bit short beats a bit long. Everything else should fit as it is.
+If there is a gap between the board edge and the inside of the front panel in your case, add it to `front` so that the dividers just touch the panel. Dividers that stop short of the panel let the light leak across again; dividers that are too long keep the comb from sitting on the board, so a bit short beats a bit long. Everything else should fit as it is.
 
 ## Printing and fitting
 
