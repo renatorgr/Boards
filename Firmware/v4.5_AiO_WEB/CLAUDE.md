@@ -126,7 +126,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | File | Purpose |
 |------|---------|
 | `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144, frames to and from UDP |
-| `zMachine.ino` | Machine module (sprayer Nano, IP .123) on UDP 9999: PGN 160 for the Machine tab (read only) |
+| `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5 or sprayer Nano) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160 for the Machine tab (read only) |
 
 ## Architecture Overview
 
@@ -219,7 +219,7 @@ byte before it (low 8 bits).
 (XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino).
 
 ### Machine module (UDP 9999 in)
-160 (0xA0) sprayer data from the Nano at .123, see `zMachine.ino` for the 16-byte layout.
+123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only), 160 (0xA0) sprayer data from the Nano at .123, see `zMachine.ino` for the 16-byte layout.
 
 ## Web Interface
 
