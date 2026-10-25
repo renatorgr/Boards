@@ -36,6 +36,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► 5 solenoid valves (NC)
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
   with a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the
   tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`.
+  Without the board, the page can be tried in the
+  [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
 ## Hardware
 
