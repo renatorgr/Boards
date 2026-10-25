@@ -14,6 +14,7 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin) | The XIAO program, compiled and ready to install. |
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
+| [`LED_Bezel`](LED_Bezel) | A small 3D-printed hood (OpenSCAD and STL) that separates the three front LEDs of the AiO v4.5, with their names. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | Arduino Nano firmware for a 5-section sprayer. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS, and reports boom pressure and flow. |
 
 Each folder has its own README with the details.
