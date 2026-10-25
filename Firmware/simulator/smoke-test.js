@@ -60,6 +60,8 @@ async function teensy(browser, port, q, name) {
   if (t !== "status") await shot(pg, name + "-" + t);
  }
  await expect(pg, what, "#log", /\[boot\]/);
+ const sprayer = !/mach=(aog|0)/.test(q);     // the sprayer module chosen: the Machine tab links to its page
+ if ((await pg.locator("#simSprayerLink a").count() > 0) !== sprayer) fail.push(what + ": the link to the sprayer page " + (sprayer ? "is missing" : "shows without the sprayer module"));
  return pg;
 }
 

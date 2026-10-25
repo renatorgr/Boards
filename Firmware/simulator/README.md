@@ -13,7 +13,7 @@ A strip at the top of each page chooses the set-up:
 | Steering | Cytron, IBT2, Danfoss, Keya motor |
 | Program | AgOpenWeb, AgOpenGPS |
 | XIAO | on the GPS2 port or not (a dual F9P takes that port, so no XIAO then) |
-| Machine module | the sprayer module (ESP32 or Nano: hello reply, PGN 237 and PGN 160 with the readings), the official AgOpenGPS Machine_UDP_v5 (hello reply only), or none |
+| Machine module | the sprayer module (ESP32 or Nano: hello reply, PGN 237 and PGN 160 with the readings; the Machine tab then links to the sprayer module's page), the official AgOpenGPS Machine_UDP_v5 (hello reply only), or none |
 | Tractor | driving with autosteer on, or parked |
 | XIAO chip | ESP32-C3 or ESP32-S3 (XIAO page only) |
 | Wi-Fi | sprayer page only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet |
