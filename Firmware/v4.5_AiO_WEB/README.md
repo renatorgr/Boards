@@ -18,7 +18,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
 | **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
-| **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. |
+| **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. The in-between state alternates red and green, readable through a panel window. |
 | **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5 or the sprayer Nano, its sections, and the sprayer's pressure and flow. |
 
 The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single antenna) or a second F9P on the GPS2 port; **IMU** TM171 or BNO085; **steering** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN; **optional** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time).
@@ -27,7 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
-| 25 Oct 2026 | Machine tab: the official AgOpenGPS Machine_UDP_v5 is recognised too (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from the module's hello reply, up to 16; the Sprayer card only once PGN 160 arrives. |
+| 25 Oct 2026 | Machine tab: the official AgOpenGPS Machine_UDP_v5 is recognised too (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from the module's hello reply, up to 16; the Sprayer card only once PGN 160 arrives. LEDs: the in-between (orange) state is shown as red and green in turn, because orange looks like red through a diffused panel window. |
 | 24 Oct 2026 | LEDs with the AiO 26 meanings. TM171 settings: output rate from a list (25, 50, 100 Hz), the Setting layout as a real TM171 sends it, commands addressed to the TM171's own ID (writes sent "to everyone" were ignored), frames in the log. ZED-X20P settings file for the receiver check. Receiver set up in one go at the baud rate it is found at. The module's subnet changed from the XIAO page. The Firmware card shows the build inside a chosen `.hex`. |
 | 23 Oct 2026 | IMU tab: TM171 gyro calibration, new-install calibration, set-up check with **Fix TM171 setup**, settings read and written (needs the TX5 wire). Second F9P identified, checked and set up automatically; both receivers set up automatically. |
 | 22 Oct 2026 | Update marker renamed `AiO-WEB-OTA-1` (the old name is still accepted). Machine tab: sections as coloured squares. |
@@ -415,10 +415,12 @@ On the USB serial monitor and the Messages tab:
 ## LEDs
 
 The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide as far as red and green allow
-(both on = orange; the AiO 26 blue pulse is a short dark flick here). The IMU state has no LED: see the IMU
-card on the page and the message on the program's screen.
+(both on = orange; the AiO 26 blue pulse is a short dark flick here). Orange is hard to tell from red through
+the diffused light window of an enclosure panel, so the in-between (orange) state is shown as red and green in
+turn, changing twice a second (`LED_MID_MS` in `zLeds.ino`; 0 gives steady orange). The IMU state has no
+LED: see the IMU card on the page and the message on the program's screen.
 
-| LED | Red | Orange | Green | Flick |
+| LED | Red | Orange (shown as red and green in turn) | Green | Flick |
 |---|---|---|---|---|
 | PWR/ETH | no Ethernet link | link, but no program talking (5 s without UDP) | AgOpenWeb or AgOpenGPS talking | |
 | GPS | GGA without a fix | fix, not RTK fixed (GPS, DGPS, RTK float) | RTK fixed | corrections arriving (NTRIP or radio): once a second |
