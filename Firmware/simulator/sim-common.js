@@ -32,9 +32,10 @@ const CHOICES = {
  motor: {label: "Steering", dflt: "cytron", options: [["cytron", "Cytron"], ["ibt2", "IBT2"], ["danfoss", "Danfoss"], ["keya", "Keya motor"]]},
  prog:  {label: "Program", dflt: "aow", options: [["aow", "AgOpenWeb"], ["aog", "AgOpenGPS"]]},
  xiao:  {label: "XIAO", check: true, dflt: "1"},
- mach:  {label: "Machine module", dflt: "nano", options: [["nano", "sprayer Nano"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
+ mach:  {label: "Machine module", dflt: "nano", options: [["nano", "sprayer module (ESP32 / Nano)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
+ wifi:  {label: "Wi-Fi", dflt: "sta", options: [["sta", "on the tractor network"], ["lost", "tractor network lost"], ["ap", "tractor network not set"]]},
 };
 const opt = {};
 for (const [k, c] of Object.entries(CHOICES)) {
@@ -59,6 +60,8 @@ const wrap360 = h => ((h % 360) + 360) % 360;
 const r2 = (v, d) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
 const wob = (t, a, f) => a * Math.sin(t * f) * Math.cos(t * f * 0.37 + 1.1);   // a slow wobble, the same for the same t
 const OFFLINE = {};
+const NOZZLES = [4, 2, 4, 2, 4];                                           // per section of the 8 m boom
+const nozzles = bits => NOZZLES.reduce((a, n, i) => a + ((bits >> i) & 1) * n, 0);
 function form(body) {
  const p = new URLSearchParams(typeof body === "string" ? body : ""), o = {};
  for (const [k, v] of p) o[k] = v;
@@ -87,7 +90,7 @@ function hook(route) {
   let body = init && init.body !== undefined ? init.body : "";
   if (body instanceof URLSearchParams) body = body.toString();
   await sleep(20 + Math.random() * 40);
-  const r = route(method, path, u.searchParams, body);
+  const r = await route(method, path, u.searchParams, body);
   if (r === OFFLINE) throw new TypeError("Failed to fetch");
   if (r === null) return new Response("Not found", {status: 404});
   const text = r.text !== undefined ? r.text : JSON.stringify(r.json);
@@ -555,20 +558,24 @@ function Module(key) {
   if (dualNow) return [nmea("PAOGI," + common + (d.ok ? hdgStr : outH.toFixed(2)) + "," + roll.toFixed(2) + "," + pitch.toFixed(2) + ",0")];
   return [nmea("PANDA," + common + (imuOk ? String(Math.round(outH * 10) % 3600) : "65535") + "," + Math.round(roll * 10) + "," + Math.round(pitch * 10) + ",0")];
  }
- // the machine module (zMachine.ino machineJson): the sprayer Nano (hello reply and PGN 160: 5 sections, 4 2 4 2 4 nozzles,
- // pressure and flow) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160).
- // The sections are on while the tractor sprays a pass; the module lags the program's command by 0.6 s.
- function machine(t, tr, engaged) {
+ // the sprayer at time t: the sections the program asks for (PGN 254 / 239: on while the tractor sprays a pass), the ones
+ // open a moment later (sec: the module lags 0.6 s), 5 sections with 4 2 4 2 4 nozzles, the boom pressure and flow, the litres
+ // since the module started. Shared with the sprayer module's own page (sim-sprayer.js).
+ function sprayer(t, tr, engaged) {
   const cmdAt = x => { const q = tractor(x, parked); return engaged && q.straight && q.r > 1 && q.r < PASS - 1 ? 31 : 0; };
-  const cmd = cmdAt(t), sec = cmdAt(t - 0.6), hellos = Math.floor(t - 5.5);
-  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (h.nano ? 2 : 6), bad: 0, lastPgn: h.nano ? 160 : 237, cmd: cmd,
-   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sec, secFrom160: h.nano, sprayAgo: -1};
-  if (!h.nano) return j;
-  const on = sec ? [4, 2, 4, 2, 4].reduce((a, n, i) => a + ((sec >> i) & 1) * n, 0) : 0;
-  const bar = sec ? 3.0 + wob(t, 0.08, 0.7) : engaged ? 3.3 : 0.1, lmin = on * 0.8 * Math.sqrt(bar / 3);
+  const cmd = cmdAt(t), sec = cmdAt(t - 0.6);
+  const bar = sec ? 3.0 + wob(t, 0.08, 0.7) : engaged ? 3.3 : 0.1, lmin = nozzles(sec) * 0.8 * Math.sqrt(bar / 3);
   const passes = tr.moving ? Math.floor(tr.s / (PASS + TURN)) : 0, spray = tr.moving ? clamp(tr.r - 1.6, 0, PASS - 2) : 0;
-  const total = (passes * (PASS - 2) + spray) * 12.8 / 60;
-  return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(bar, 2), lmin: r2(lmin, 2), total: r2(total, 1), main: engaged});
+  return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * 12.8 / 60, main: engaged};
+ }
+ // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
+ // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160)
+ function machine(t, tr, engaged) {
+  const sp = sprayer(t, tr, engaged), hellos = Math.floor(t - 5.5);
+  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (h.nano ? 7 : 6), bad: 0, lastPgn: h.nano ? 160 : 237, cmd: sp.cmd,
+   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secFrom160: h.nano, sprayAgo: -1};
+  if (!h.nano) return j;
+  return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
  }
 
  // ---- /api/gps (zReceiver.ino receiverJson, zRxCheck.ino rxCkJson)
@@ -774,16 +781,17 @@ function Module(key) {
    save(key, st);
   }, 1200);
  }
+ function sprayerAt(tt) { const t = tt === undefined ? Math.max(0, T()) : tt; return sprayer(t, tractor(t, parked), autosteerOn(t)); }
  function setSubnet(net) { line("[status] subnet " + st.net + " -> " + net + " from the XIAO: saved, restarting as " + net + ".126"); st.net = net; restart(4000); }
 
  return {
   st: st, T: T, line: line, progress: progress, save: () => save(key, st), offline: () => T() < 0,
   status: status, log: log, settingsJson: settingsJson, settingsPost: settingsPost, gps: gps, gpsPost: gpsPost, umPost: umPost, umGet: umGet,
   imuPost: imuPost, diag: diag, ota: ota, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
-  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => { const t = Math.max(0, T()); return machine(t, tractor(t, parked), autosteerOn(t)).cmd; },
+  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd, sprayerAt: sprayerAt,
  };
 }
 
 return {opt: opt, CHOICES: CHOICES, BUILD: BUILD, VERSION: VERSION, RUNNING: RUNNING, hook: hook, hookXhr: hookXhr, bar: bar, Module: Module, OFFLINE: OFFLINE,
- form: form, ok: ok, err: err, load: load, save: save, forget: forget, wob: wob, r2: r2, sleep: sleep};
+ form: form, ok: ok, err: err, load: load, save: save, forget: forget, wob: wob, r2: r2, sleep: sleep, nozzles: nozzles};
 })();

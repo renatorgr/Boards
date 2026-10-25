@@ -6,10 +6,11 @@
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
 //
-// Serves the site under /Boards/ as GitHub Pages does, opens the Teensy page with each receiver and the XIAO
-// page, waits for the pretend module, clicks every tab and fails on a script error in the page or a tab that
-// shows nothing. GitHub itself is not asked (the version check then says "no answer"). Also installs the
-// firmware's own .hex on a parked module, end to end.
+// Serves the site under /Boards/ as GitHub Pages does, opens the Teensy page with each receiver, the XIAO
+// page and the sprayer module's page, waits for the pretend module, clicks every tab and fails on a script
+// error in the page or a tab that shows nothing. GitHub itself is not asked (the version check then says
+// "no answer"). Also installs the firmware's own .hex on a parked module, end to end, and saves the sprayer's
+// calibration (its password prompt is answered).
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
 const {chromium} = require("playwright");
@@ -114,6 +115,39 @@ async function teensy(browser, port, q, name) {
    if (t === "wifi") { await pg.click("#scan"); await pg.waitForTimeout(3500); await expect(pg, what, "#scanMsg", /networks/); }
    await shot(pg, "xiao-" + t);
   }
+  await pg.close();
+ }
+ // the sprayer module's page: spraying a pass, then the calibration saved and the total set to 0 (the password asked in a prompt)
+ {
+  const what = "Sprayer page";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
+  pg.on("dialog", d => d.accept("agopengps"));
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#sub", /as 192\.168\.5\.123 · program talking/);
+  if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
+  await expect(pg, what, "#bar", /^\d+\.\dbar$/);
+  await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
+  if ((await pg.locator("#secs span.on").count()) !== 5) fail.push(what + ": expected 5 sections open while spraying");
+  await shot(pg, "sprayer-status");
+  await pg.getByRole("button", {name: "Save", exact: true}).click(); await pg.waitForTimeout(800);
+  await expect(pg, what, "#msgCalib", /done/);
+  await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
+  await expect(pg, what, "#msgTotal", /done/);
+  await expect(pg, what, "#total", /^0\.\dL$/);
+  await expect(pg, what, "#log", /calibration saved: 450\.0 pulses\/L.*\n.*total set to 0 from the page/);
+  await pg.close();
+ }
+ // the sprayer module that lost the tractor network: sections closed, the program's request still outlined
+ {
+  const what = "Sprayer page, network lost";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?wifi=lost", what);
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#sub", /not on the tractor network · program silent/);
+  await expect(pg, what, "#link", /silent, sections closed/);
+  await expect(pg, what, "#log", /lost the tractor network 'Farm WiFi'/);
+  if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
+  if ((await pg.locator("#secs span.req").count()) !== 5) fail.push(what + ": expected 5 sections asked for but closed");
+  await shot(pg, "sprayer-lost");
   await pg.close();
  }
  await browser.close();

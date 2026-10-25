@@ -12,7 +12,7 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) | Teensy 4.1 firmware for the AiO v4.5 Micro and Standard. Handles the GPS (UM982, F9P, X20P or dual F9P), the IMU (TM171 or BNO085) and autosteer (Cytron, IBT2, Danfoss or Keya). Has its own web page for status, settings and firmware updates over the network. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32) | Program for a Seeed XIAO ESP32C3 or ESP32S3 on the GPS2 port. The XIAO runs its own Wi-Fi network, so you can check the module from your phone without the tablet. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin) | The XIAO program, compiled and ready to install. |
-| [`Firmware/simulator`](Firmware/simulator) | The web pages of the Teensy and the XIAO with a pretend module behind them, to try online without a module: **[renatorgr.github.io/Boards](https://renatorgr.github.io/Boards/)**. Rebuilt from the code on every change. |
+| [`Firmware/simulator`](Firmware/simulator) | The web pages of the Teensy, the XIAO and the ESP32 sprayer module with pretend boards behind them, to try online without a board: **[renatorgr.github.io/Boards](https://renatorgr.github.io/Boards/)**. Rebuilt from the code on every change. |
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`LED_Bezel`](LED_Bezel) | A small 3D-printed comb (OpenSCAD and STL) that slides over the three front LEDs of the AiO v4.5 so each one lights only its own window on the panel. |
@@ -44,7 +44,7 @@ Each folder has its own README with the details.
 
 ### Sprayer
 
-Wiring, the first upload, the Wi-Fi setup and a bench test are in the [`Sprayer_ESP32` README](Sprayer/Sprayer_ESP32). The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb). The older Nano version is in [`Sprayer_Nano`](Sprayer/Sprayer_Nano).
+Wiring, the first upload, the Wi-Fi setup and a bench test are in the [`Sprayer_ESP32` README](Sprayer/Sprayer_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/sprayer/). The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb). The older Nano version is in [`Sprayer_Nano`](Sprayer/Sprayer_Nano).
 
 ## Building from source
 
