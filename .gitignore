@@ -1,0 +1,3 @@
+# the web page simulator built locally (python3 Firmware/simulator/build.py) and the browser of its check
+_site/
+node_modules/

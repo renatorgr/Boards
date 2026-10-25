@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- index.html - the start page of the web page simulator (build.py fills in the {{...}}).
+     Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
+     Written 2026 by Claude (Anthropic) for renatorgr.
+     Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>AiO v4.5 page simulator</title>
+<style>
+/* the module page's colours: dark, or light when the device asks for it */
+:root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21}
+@media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 16px 40px}
+h1{font-size:26px;margin:0 0 6px;font-weight:700}
+.lead{color:var(--mute);margin:0 0 22px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.card h2{font-size:18px;margin:0}
+.card p{margin:0;color:var(--mute);font-size:14.5px;flex:1}
+a.go{align-self:flex-start;background:var(--acc);color:var(--accInk);border-radius:8px;padding:9px 18px;font-weight:650;text-decoration:none;margin-top:4px}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:26px 0 8px}
+ul{margin:0;padding-left:20px}
+li{margin:3px 0}
+a{color:var(--acc)}
+.note{background:color-mix(in srgb,var(--warn) 14%,var(--card));border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:22px;font-size:14.5px}
+footer{color:var(--mute);font-size:13.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+code{background:var(--soft);border-radius:4px;padding:0 4px}
+</style>
+</head>
+<body>
+<main>
+<h1>AiO v4.5 web page simulator</h1>
+<p class="lead">Try the web pages of the AiO v4.5 autosteer module without a module. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on.</p>
+<div class="grid">
+ <div class="card"><h2>Teensy module page</h2>
+  <p>What the module shows at <code>http://192.168.5.126/</code> on the tractor's network: GNSS, IMU, steering, messages, settings, the GPS receiver, the machine module and the firmware update.</p>
+  <a class="go" href="teensy/">Open</a></div>
+ <div class="card"><h2>XIAO Wi-Fi page</h2>
+  <p>What the XIAO ESP32 on the GPS2 port shows on its own Wi-Fi network, at <code>http://192.168.4.1/</code>, made for a phone. Its password here is <code>agopengps</code>.</p>
+  <a class="go" href="xiao/">Open</a></div>
+</div>
+<h3>Some set-ups to start from</h3>
+<ul>
+ <li><a href="teensy/">UM982 with two antennas, TM171, Cytron valve, AgOpenWeb</a></li>
+ <li><a href="teensy/?gps=f9p&amp;imu=bno&amp;motor=keya&amp;prog=aog">F9P, BNO085, Keya motor, AgOpenGPS</a></li>
+ <li><a href="teensy/?gps=dualf9p&amp;imu=rvc&amp;motor=ibt2&amp;prog=aog">Dual F9P, BNO085 in RVC mode, IBT2 motor, AgOpenGPS</a></li>
+ <li><a href="teensy/?gps=x20p&amp;xiao=0&amp;mach=0&amp;park=1">X20P and TM171, no XIAO, no machine module, tractor parked</a></li>
+ <li><a href="teensy/?mach=aog">UM982 and TM171 with the official AgOpenGPS machine module (Machine_UDP_v5)</a></li>
+</ul>
+<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO and the machine module in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
+<footer>Pages of firmware {{FOLDER}} (version {{VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3.</footer>
+</main>
+</body>
+</html>

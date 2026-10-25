@@ -63,6 +63,8 @@ Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number f
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
+**Without a module:** the [simulator](https://renatorgr.github.io/Boards/) shows this page and the XIAO's with a pretend module behind them (any GPS, IMU, steering and program; tractor driving or parked), rebuilt from the code on every change. See [`Firmware/simulator`](../simulator).
+
 | Tab | |
 |---|---|
 | **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate). GNSS, dual heading (not with one antenna), IMU, steering, the steering settings from the program, network and corrections, the XIAO. |
@@ -473,7 +475,7 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 - Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).
 - At 460800, AgOpenWeb's 100 Hz steering packets use 6-10 % of the link.
 
-The XIAO program (`v4.5_XIAO_ESP32`) has its own WiFi network and page: module status and messages, what the program sends to the module, WiFi settings, update over WiFi. See its README.
+The XIAO program (`v4.5_XIAO_ESP32`) has its own WiFi network and page: module status and messages, what the program sends to the module, WiFi settings, update over WiFi. See its README, or try the page in the [simulator](https://renatorgr.github.io/Boards/xiao/).
 
 ## Credits and licence
 
