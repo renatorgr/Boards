@@ -1,6 +1,8 @@
 /* zWebPage.h - the module's web page (English).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   25 Oct 2026: Machine tab for any standard machine module (official Machine_UDP_v5 or sprayer Nano): sections from
+   the hello reply, Sprayer card only with PGN 160, up to 16 sections.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -179,15 +181,16 @@ a{color:var(--acc)}
  <div class="card"><h2>Machine module</h2>
   <div class="big" id="mState">–</div>
   <dl style="margin-top:6px"><dt>IP</dt><dd id="mIp" class="nw">–</dd><dt>Last packet</dt><dd id="mAgo" class="nw">–</dd>
-   <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd></dl>
-  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it. Only to look at: nothing here changes the module or the steering.</p></div>
- <div class="card"><h2>Sprayer (PGN 160)</h2>
+   <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd>
+   <dt>Hello replies</dt><dd id="mHello" class="nw">–</dd><dt>Sections from</dt><dd id="mSecFrom" class="nw">–</dd></dl>
+  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254) and what the module reports, in its hello reply or in the sprayer PGN 160</p>
+  <div class="msecs" id="mSec"></div>
+  <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
+  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer Nano, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
+ <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
   <div class="big" id="mBar">–</div>
   <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the Nano started</dt><dd id="mTotal">–</dd>
-   <dt>Main switch</dt><dd id="mMain">–</dd><dt>Last PGN 160</dt><dd id="mSprayAgo" class="nw">–</dd></dl>
-  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254) and what the Nano has open</p>
-  <div class="msecs" id="mSec"></div>
-  <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div></div>
+   <dt>Main switch</dt><dd id="mMain">–</dd><dt>Last PGN 160</dt><dd id="mSprayAgo" class="nw">–</dd></dl></div>
 </div>
 </section>
 
@@ -612,27 +615,30 @@ function render(s){
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
 
-// The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays
+// The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays.
+// Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160) or the sprayer Nano.
 function renderMach(m){
  if(!m)return;
  $("navMach").classList.remove("hidden");
  set("mState",m.here?"sending":"silent",m.here?"ok":"bad");
  set("mIp",m.ip);set("mAgo",ago(m.ago),m.here?"":"warn");
  set("mPkts",String(m.pkts));set("mBad",String(m.bad),m.bad?"warn":"");set("mPgn",m.lastPgn<0?"–":String(m.lastPgn));
- const box=$("mSec");
- if(m.sprayAgo<0){set("mBar","no PGN 160 yet");for(const id of["mFlow","mTotal","mMain","mSprayAgo"])set(id,"–");machSecs(box,m.cmd,0,false);return;}
+ set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN+(m.helloNoCrc?" · without checksum, as the official module sends it":""));
+ const have=m.secAgo>=0&&m.secAgo<5;
+ set("mSecFrom",m.secAgo<0?"nothing yet":(m.secFrom160?"PGN 160":"hello reply")+", "+ago(m.secAgo),have?"":"warn");
+ const box=$("mSec");machSecs(box,m.cmd,m.sec,have);box.classList.toggle("old",m.secAgo>=0&&!have);
+ $("mSprayCard").classList.toggle("hidden",m.sprayAgo<0);
+ if(m.sprayAgo<0)return;
  const old=m.sprayAgo>=5;
  set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
  set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");
- machSecs(box,m.cmd,m.sec,!old);
- box.classList.toggle("old",old);
 }
-// One numbered square per section (5, or up to 8 when the program or the Nano uses more), coloured as
-// AgOpenWeb colours its section buttons: green open, red closed, orange asked on but still closed,
-// cyan asked off but still open. No Nano data yet: grey.
+// One numbered square per section (5, or up to 16 when the program or the module uses more, 8 per row),
+// coloured as AgOpenWeb colours its section buttons: green open, red closed, orange asked on but still
+// closed, cyan asked off but still open. No word from the module yet: grey.
 function machSecs(box,cmd,sec,have){
- let n=5;for(let k=5;k<8;k++)if(((cmd|sec)>>k)&1)n=k+1;
- if(box.childElementCount!==n){box.textContent="";box.style.setProperty("--n",n);
+ let n=5;for(let k=5;k<16;k++)if(((cmd|sec)>>k)&1)n=k+1;
+ if(box.childElementCount!==n){box.textContent="";box.style.setProperty("--n",Math.min(n,8));
   for(let k=1;k<=n;k++){const e=document.createElement("span");e.textContent=k;box.appendChild(e);}}
  for(let k=0;k<n;k++){const a=(cmd>>k)&1,o=(sec>>k)&1,e=box.children[k];
   e.className=!have?"":a&&o?"s-on":!a&&!o?"s-off":a?"s-goingon":"s-goingoff";

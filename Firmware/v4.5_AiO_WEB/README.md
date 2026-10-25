@@ -19,7 +19,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
 | **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
 | **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. |
-| **Machine module** | none | a Machine tab with the sprayer module's pressure, flow and sections (UDP 9999). |
+| **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5 or the sprayer Nano, its sections, and the sprayer's pressure and flow. |
 
 The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single antenna) or a second F9P on the GPS2 port; **IMU** TM171 or BNO085; **steering** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN; **optional** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time).
 
@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 25 Oct 2026 | Machine tab: the official AgOpenGPS Machine_UDP_v5 is recognised too (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from the module's hello reply, up to 16; the Sprayer card only once PGN 160 arrives. |
 | 24 Oct 2026 | LEDs with the AiO 26 meanings. TM171 settings: output rate from a list (25, 50, 100 Hz), the Setting layout as a real TM171 sends it, commands addressed to the TM171's own ID (writes sent "to everyone" were ignored), frames in the log. ZED-X20P settings file for the receiver check. Receiver set up in one go at the baud rate it is found at. The module's subnet changed from the XIAO page. The Firmware card shows the build inside a chosen `.hex`. |
 | 23 Oct 2026 | IMU tab: TM171 gyro calibration, new-install calibration, set-up check with **Fix TM171 setup**, settings read and written (needs the TX5 wire). Second F9P identified, checked and set up automatically; both receivers set up automatically. |
 | 22 Oct 2026 | Update marker renamed `AiO-WEB-OTA-1` (the old name is still accepted). Machine tab: sections as coloured squares. |
@@ -69,7 +70,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 | **Settings** | The settings below. |
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
-| **Machine** | Only once the machine module (IP .123, e.g. the sprayer Nano) has been heard on UDP 9999. Its IP, last packet, checksum errors; the sprayer PGN 160: pressure, flow, total litres, main switch, and one square per section in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254) but still closed on the Nano, cyan asked off but still open. Only to look at. |
+| **Machine** | Only once a machine module (IP .123: the official Machine_UDP_v5, the sprayer Nano, or anything that talks like them) has been heard on UDP 9999. Its IP, last packet, checksum errors, hello replies, and one square per section (up to 16) in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254) but still closed on the module, cyan asked off but still open. The module's side comes from its hello reply, or from the sprayer PGN 160. The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed. The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives. Only to look at. |
 | **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, GPS, UM982 console, build, free RAM, longest loop time, web errors); send it when something goes wrong. |
 
 The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
