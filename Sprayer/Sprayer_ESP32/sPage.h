@@ -102,7 +102,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <dt>Signal</dt><dd id="rssi">–</dd>
 <dt>Program subnet</dt><dd id="subnet">–</dd>
 </dl>
-<p class="note">The program looks for the machine module at &lt;subnet&gt;.123 on the tractor network. The subnet comes from the program (PGN 201).</p>
+<p class="note">The program looks for the machine module at &lt;subnet&gt;.123 on the tractor network. The subnet comes from the program (PGN 201), or is set below.</p>
 </div>
 
 <div class="card"><h2>Wi-Fi settings</h2>
@@ -112,6 +112,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <div class="field"><span>Tractor network name</span><input type="text" id="staSsid" maxlength="32"></div>
 <div class="field"><span>Tractor network password</span><input type="password" id="staPass" maxlength="63"></div>
 <div class="field"><span>Module name (http://name.local/)</span><input type="text" id="host" maxlength="24"></div>
+<div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network (the module becomes .123)</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5"></div>
 <div class="row"><button class="act" onclick="saveWifi()">Save and restart</button></div>
 <div class="msg" id="msgWifi"></div>
 </div>
@@ -177,7 +178,7 @@ async function refresh(){
 }
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
-  $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;
+  $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;$('subnetIn').value=d.subnet;
   $('staPass').placeholder=d.staPassSet?'(saved, leave empty to keep it)':'';
   $('ppl').value=d.ppl;$('pmax').value=d.pmax;$('pdiv').value=d.pdiv;
 }
@@ -190,7 +191,7 @@ async function post(url,fields,msgId){
     if(d.ok)settingsLoaded=false;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
-function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value},'msgWifi')}
+function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim()},'msgWifi')}
 function saveCalib(){post('/api/calib',{ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
 async function update(){
   const f=$('bin').files[0];if(!f)return;const p=pw();if(p===null)return;

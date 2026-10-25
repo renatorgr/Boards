@@ -10,7 +10,7 @@
 // where the program looks for the machine module. Changes on the page need the own network's password.
 //
 // GET  /              the page                       GET  /api/status    everything the page shows
-// GET  /api/settings  Wi-Fi + calibration            POST /api/wifi      Wi-Fi settings, then restart
+// GET  /api/settings  Wi-Fi + calibration            POST /api/wifi      Wi-Fi settings + subnet, then restart
 // POST /api/calib     calibration                    POST /api/total     total litres back to 0
 // POST /api/restart                                  POST /api/update    a new program (.bin), then restart
 // GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
@@ -162,8 +162,23 @@ static void apiSettingsGet()
     String j = "{\"apSsid\":" + jsonStr(cfg.apSsid) + ",\"staOn\":" + String(cfg.staOn ? "true" : "false");
     j += ",\"staSsid\":" + jsonStr(cfg.staSsid) + ",\"staPassSet\":" + String(cfg.staPass.length() ? "true" : "false");
     j += ",\"host\":" + jsonStr(cfg.host) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1);
+    j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"";
     j += ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
     sendJson(j);
+}
+
+// "192.168.1" -> the three numbers; false when it is not three numbers 0-255
+static bool parseSubnet(const String& text, uint8_t out[3])
+{
+    int part = 0, value = -1;
+    for (size_t i = 0; i <= text.length(); i++)
+    {
+        const char c = i < text.length() ? text[i] : '.';
+        if (c >= '0' && c <= '9') { value = (value < 0 ? 0 : value * 10) + (c - '0'); if (value > 255) return false; }
+        else if (c == '.') { if (value < 0 || part == 3) return false; out[part++] = value; value = -1; }
+        else return false;
+    }
+    return part == 3;
 }
 
 static void apiWifiPost()
@@ -183,6 +198,7 @@ static void apiWifiPost()
     if (staPass.length() || s.staSsid != cfg.staSsid) s.staPass = staPass;
     s.host = server.arg("host");
     if (!printable(s.host, 1, 24)) { sendError(400, "name: 1 to 24 characters"); return; }
+    if (!parseSubnet(server.arg("subnet"), s.subnet)) { sendError(400, "subnet: three numbers, like 192.168.1"); return; }
     cfg = s;
     settingsSave();
     logEvent("Wi-Fi settings saved from the page, restarting");

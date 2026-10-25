@@ -4,7 +4,7 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.4 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): compiles, not yet
+Version 0.5 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -20,7 +20,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► 5 solenoid valves (NC)
 ```
 
 - The ESP32 is the standard AgOpenGPS **machine module**, IP `<subnet>.123` on the
-  tractor's Wi-Fi network (192.168.5.123 until the program says otherwise).
+  tractor's Wi-Fi network (192.168.5.123 until the program, or the page, says otherwise).
 - It speaks the same messages as the official `Machine_UDP_v5` module: sections
   (PGN 239 / 229), machine config (238: relay polarity, lift times), pin functions
   (236: what each relay does), subnet (201), hello (200 → 123) and scan (202 → 203).
@@ -94,7 +94,7 @@ pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.4` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.5` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -105,11 +105,17 @@ pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
 2. **Wi-Fi settings**: tick *Join the tractor network*, enter the name and password of
    the router the tablet uses, *Save and restart*. The header then shows
    `on <network> as 192.168.5.123`.
-3. Open AgOpenWeb. The machine module shows up at 192.168.5.123, and the page's dot
+3. **Program subnet**: the module and the tablet must be on the same subnet, which is
+   the first three numbers of the tablet's IP on that network (Wi-Fi settings on the
+   tablet; a Starlink router gives 192.168.1.x, for example). If it is not 192.168.5,
+   type it in *Program subnet* on the page, *Save and restart*: the header then shows
+   `as 192.168.1.123`. In AgOpenWeb set the module subnet to the same three numbers.
+   AgOpenWeb can also send its subnet to the module (PGN 201) once it sees it.
+4. Open AgOpenWeb. The machine module shows up at `<subnet>.123`, and the page's dot
    turns green (*program talking*).
-4. In AgOpenWeb's machine settings, leave **"relay active high" unticked** for this
+5. In AgOpenWeb's machine settings, leave **"relay active high" unticked** for this
    board. The page shows *Output polarity: normal*. If it says *inverted*, untick it.
-5. In AgOpenWeb's pin config, relays 1–5 are sections 1–5 by default. Relays 6–8 are
+6. In AgOpenWeb's pin config, relays 1–5 are sections 1–5 by default. Relays 6–8 are
    free (hydraulic lift, tramline).
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
