@@ -10,25 +10,41 @@
 // the top, the back and the sides, open only towards the panel, and the dividers reach the panel.
 // Print it in black (opaque) filament.
 //
-// Measurements from the AiO v4.5 pick-and-place files (AgOpenGPS-Official/Boards): LED pitch 6.6 mm,
-// LED DY-339URUYGW/SN (5 mm dome, 5.8 mm flange), LED centres 3.05 mm (Micro) / 3.3 mm (Standard) from
-// the board edge; on the Micro the RJ45 shield is about 1 mm from the AS-ACT LED and the fuse holder about
-// 1.5 mm from the PWR/ETH LED, so both end walls are thin. Change the numbers below
-// to fit your board and panel.
+// Holding it in place (added 25 Oct 2026, the first version sat loose): the cells are a little wider than
+// the domes, because hand-soldered LEDs never stand exactly on their centres, and three small ribs in each
+// cell grip the dome. Two pegs under the back wall go into two free plated holes of the board: the near
+// pads of the through-hole resistors R32 and R36 (1.0 mm), which stay empty because the board is built
+// with the SMD resistors R29 and R39 instead. Without the pegs, a foot behind the back wall takes a piece
+// of double-sided tape or a drop of glue.
+//
+// Measurements from the AiO v4.5 Micro files (AgOpenGPS-Official/Boards): LED pitch 6.6 mm, LED
+// DY-339URUYGW/SN (5 mm dome, 5.8 mm flange), LED centres 3.05 mm from the board edge, the two free holes
+// 7.17 mm from the edge, 0.63 mm past the AS-ACT LED and 0.76 mm past the PWR/ETH LED along the row; the
+// RJ45 shield is about 1 mm from the AS-ACT LED and the fuse holder about 1.5 mm from the PWR/ETH LED, so
+// both end walls are thin. The Standard has its LEDs 3.3 mm from the edge and other holes behind them:
+// check before using the pegs there. Change the numbers below to fit your board and panel.
 
 pitch          = 6.6;    // centre to centre of the LEDs (mm)
-hole           = 5.4;    // cell diameter for a 5 mm dome; 5.6 if the print comes out tight
+hole           = 5.6;    // cell diameter, 0.3 mm around a 5 mm dome; the ribs bring the grip down to 5.1 mm
+rib            = 0.25;   // how far the three grip ribs stand into each cell (0 = no ribs)
 flange_d       = 6.2;    // counterbore at the bottom for the LED's base flange (5.8 mm)
 flange_h       = 1.5;    // height of that counterbore
 led_h          = 10;     // top of the domes above the board (mm): the cells are this deep
 roof           = 1;      // closed top, this thick (0 = open top)
-back_wall      = 1.2;    // wall behind the LEDs (towards the inside of the board)
-end_wall_left  = 0.8;    // wall at the PWR/ETH end (the fuse holder is about 1.5 mm away on the Micro)
-end_wall_right = 0.8;    // wall at the AS-ACT end (the RJ45 shield is about 1 mm away on the Micro)
+back_wall      = 2.2;    // wall behind the LEDs (towards the inside of the board); the pegs sit in it
+end_wall_left  = 0.8;    // wall at the PWR/ETH end (the fuse holder is about 1.5 mm from the dome on the Micro)
+end_wall_right = 0.7;    // wall at the AS-ACT end (the RJ45 shield is about 1 mm from the dome on the Micro)
 front          = 3.0;    // from the LED centres to the front face, towards the panel (mm). The board edge
-                         // is 3.05 mm from the centres on the Micro (3.3 on the Standard); in the RayCorp
-                         // case the board edge touches the panel, so 3.0 puts the front face at the edge,
-                         // against the panel. With a gap between the board edge and the panel, add it here.
+                         // is 3.05 mm from the centres on the Micro; in the RayCorp case the board edge
+                         // touches the panel, so 3.0 puts the front face at the edge, against the panel.
+                         // With a gap between the board edge and the panel, add it here.
+pegs           = true;   // two pegs into the free holes of R32 and R36 (AiO v4.5 Micro); false = none
+peg_d          = 0.9;    // peg diameter for the 1.0 mm holes (0.8 if they will not go in)
+peg_h          = 1.4;    // peg length under the bottom face (the board is 1.6 mm thick)
+peg_x          = 7.17;   // the holes, from the board edge (board X in the drill file)
+peg_y          = [-0.63, 13.97];  // along the row, from the AS-ACT LED centre towards PWR/ETH
+foot           = 0;      // a plate this wide behind the back wall, for tape or glue (0 = none;
+                         // 2.5 at most on the Micro, the resistors start 10.8 mm from the edge)
 n              = 3;
 $fn = 48;
 
@@ -36,12 +52,16 @@ width  = (n - 1) * pitch + hole + end_wall_left + end_wall_right;
 depth  = front + hole / 2 + back_wall;          // along the LED-to-panel direction
 height = led_h + roof;
 cx     = front;                                  // LED centre line, from the front face
+y0     = end_wall_right + hole / 2;              // centre of the AS-ACT cell
 
-module body() { cube([depth, width, height]); }
+module body() {
+    cube([depth, width, height]);
+    if (foot > 0) translate([depth, 0, 0]) cube([foot, width, 1.2]);
+}
 
 module cells() {
     for (i = [0 : n - 1]) {
-        y = end_wall_right + hole / 2 + i * pitch;
+        y = y0 + i * pitch;
         // the round cell around the dome, from the bottom up to the roof
         translate([cx, y, -1]) cylinder(d = hole, h = led_h + 1);
         // the counterbore for the base flange
@@ -51,4 +71,25 @@ module cells() {
     }
 }
 
+// three ribs per cell: one at the back, one on each side wall level with the dome's centre
+module ribs() {
+    if (rib > 0) for (i = [0 : n - 1]) {
+        y = y0 + i * pitch;
+        z0 = flange_h + 0.5;
+        translate([cx + hole / 2 - rib, y - 0.75, z0]) cube([rib + 0.2, 1.5, led_h - z0]);
+        translate([cx - 0.75, y - hole / 2 - 0.1, z0]) cube([1.5, rib + 0.1, led_h - z0]);
+        translate([cx - 0.75, y + hole / 2 - rib, z0]) cube([1.5, rib + 0.1, led_h - z0]);
+    }
+}
+
+module peg_pins() {
+    if (pegs) for (py = peg_y)
+        translate([peg_x - 3.05 + cx, y0 + py, -peg_h]) {
+            cylinder(d = peg_d, h = peg_h + 0.1);
+            translate([0, 0, -0.3]) cylinder(d1 = peg_d * 0.5, d2 = peg_d, h = 0.31);   // a tip to find the hole
+        }
+}
+
 difference() { body(); cells(); }
+ribs();
+peg_pins();
