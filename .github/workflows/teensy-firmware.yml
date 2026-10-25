@@ -16,6 +16,7 @@ on:
       - '!Firmware/**/*.png'
       - '!Firmware/**/*.hex'
       - '!Firmware/**/*.bin'
+      - '!Firmware/simulator/**'
       - '.github/workflows/teensy-firmware.yml'
   push:
     branches: [main]
@@ -25,6 +26,7 @@ on:
       - '!Firmware/**/*.png'
       - '!Firmware/**/*.hex'
       - '!Firmware/**/*.bin'
+      - '!Firmware/simulator/**'
       - '.github/workflows/teensy-firmware.yml'
   workflow_dispatch:
 

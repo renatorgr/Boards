@@ -13,6 +13,7 @@ text to paste into GitHub as a raw markdown code block.
 | `Firmware/v4.5_AiO_WEB/` | Teensy 4.1 firmware (Arduino IDE sketch): GNSS, IMU, autosteer, web page, OTA | its `CLAUDE.md` and `README.md` |
 | `Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/` | XIAO ESP32C3 / S3 program for the GPS2 port (own WiFi page) | its `README.md` |
 | `Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin/` | the XIAO program compiled | its `README.md` |
+| `Firmware/simulator/` | the web pages with a pretend module, published on GitHub Pages by an Action | its `README.md` |
 | `AiO_Micro45_XIAO_C3/`, `AiO_Std45_XIAO_C3/` | KiCad adapter boards XIAO → GPS2 socket, with JLCPCB files | their `README.md` |
 
 ## Rules for every change

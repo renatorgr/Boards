@@ -12,6 +12,7 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) | Teensy 4.1 firmware for the AiO v4.5 Micro and Standard. Handles the GPS (UM982, F9P, X20P or dual F9P), the IMU (TM171 or BNO085) and autosteer (Cytron, IBT2, Danfoss or Keya). Has its own web page for status, settings and firmware updates over the network. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32) | Program for a Seeed XIAO ESP32C3 or ESP32S3 on the GPS2 port. The XIAO runs its own Wi-Fi network, so you can check the module from your phone without the tablet. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin) | The XIAO program, compiled and ready to install. |
+| [`Firmware/simulator`](Firmware/simulator) | The web pages of the Teensy and the XIAO with a pretend module behind them, to try online without a module: **[renatorgr.github.io/Boards](https://renatorgr.github.io/Boards/)**. Rebuilt from the code on every change. |
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | Arduino Nano firmware for a 5-section sprayer. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS, and reports boom pressure and flow. |
@@ -30,7 +31,7 @@ Each folder has its own README with the details.
 ### Teensy firmware
 
 1. **First install:** connect the Teensy over USB, open the `.hex` file from [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) in Teensy Loader, then press the button on the Teensy.
-2. **Web page:** open `http://192.168.5.126/` in a browser on the same network. The third number follows the subnet set in AgOpenWeb; it can also be changed from the XIAO's WiFi page (WiFi tab → Module network).
+2. **Web page:** open `http://192.168.5.126/` in a browser on the same network. The third number follows the subnet set in AgOpenWeb; it can also be changed from the XIAO's WiFi page (WiFi tab → Module network). To see the page before you have a module: the [simulator](https://renatorgr.github.io/Boards/).
 3. **Updates:** on the web page, go to **Firmware** and choose a new `.hex` file, or click **Install from GitHub**. The page checks this repository for new versions.
 
 ### XIAO
