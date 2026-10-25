@@ -26,7 +26,7 @@ Each folder has its own README with the details.
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards:** designed and checked in KiCad, but not built or tested yet.
-- **Sprayer ESP32 v0.4:** compiles, not tested on the sprayer yet. The Nano version (v0.3) is kept as it was.
+- **Sprayer ESP32 v0.5:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. The Nano version (v0.3) is kept as it was.
 
 ## Getting started
 

@@ -6,7 +6,8 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.4 (2026-10-25), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.5 (2026-10-25), not yet tested on the sprayer.
+//   v0.5: the program subnet can also be set on the page (for routers that are not 192.168.5.x).
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
 // The ESP32 is the standard AgOpenGPS "machine module" on the tractor's Wi-Fi network, IP <subnet>.123,
@@ -24,7 +25,8 @@
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
 //   - the page shows pressure, flow, L applied, sections asked for and open, the link to the program,
-//       and has the Wi-Fi settings, the sensor calibration, a program update (.bin) and a restart.
+//       and has the Wi-Fi settings and program subnet, the sensor calibration, a program update (.bin)
+//       and a restart.
 //   - IO0 button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
 //   - serial monitor (115200): "status", "wifi-reset", "total-reset", "restart".
 //
@@ -43,7 +45,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.4"
+#define FW_VERSION          "0.5"
 
 // ---------------------------------------------------------------- pins (ESP32_Relay_X8 board)
 const uint8_t RELAY_PIN[8] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8, on when HIGH (checked 2026-10-25)
