@@ -12,7 +12,8 @@
 //
 // Measurements from the AiO v4.5 pick-and-place files (AgOpenGPS-Official/Boards): LED pitch 6.6 mm,
 // LED DY-339URUYGW/SN (5 mm dome, 5.8 mm flange), LED centres 3.05 mm (Micro) / 3.3 mm (Standard) from
-// the board edge; on the Micro the RJ45 shield is about 1 mm from the last LED. Change the numbers below
+// the board edge; on the Micro the RJ45 shield is about 1 mm from the AS-ACT LED and the fuse holder about
+// 1.5 mm from the PWR/ETH LED, so both end walls are thin. Change the numbers below
 // to fit your board and panel.
 
 pitch          = 6.6;    // centre to centre of the LEDs (mm)
@@ -22,8 +23,8 @@ flange_h       = 1.5;    // height of that counterbore
 led_h          = 10;     // top of the domes above the board (mm): the cells are this deep
 roof           = 1;      // closed top, this thick (0 = open top)
 back_wall      = 1.2;    // wall behind the LEDs (towards the inside of the board)
-end_wall_left  = 1.6;    // wall at the PWR end
-end_wall_right = 0.8;    // wall at the AS-ACT end (the RJ45 is only 1 mm away on the Micro)
+end_wall_left  = 0.8;    // wall at the PWR/ETH end (the fuse holder is about 1.5 mm away on the Micro)
+end_wall_right = 0.8;    // wall at the AS-ACT end (the RJ45 shield is about 1 mm away on the Micro)
 front          = 3.0;    // from the LED centres to the front face, towards the panel (mm). The board edge
                          // is 3.05 mm from the centres on the Micro (3.3 on the Standard); in the RayCorp
                          // case the board edge touches the panel, so 3.0 puts the front face at the edge,

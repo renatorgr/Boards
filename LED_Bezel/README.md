@@ -16,10 +16,10 @@ A small 3D-printed comb that keeps the light of the three front LEDs of the AiO 
 
 - Three cells of 5.4 mm, 6.6 mm apart (the pitch of the LEDs on both boards, from the pick-and-place files of the [official AiO v4.5](https://github.com/AgOpenGPS-Official/Boards/tree/main/TeensyModules)), 10 mm deep under a 1 mm roof.
 - A 6.2 mm counterbore, 1.5 mm high, at the bottom of each cell for the LED's base flange.
-- Dividers 1.2 mm thick (what the pitch leaves), back wall 1.2 mm, end wall 1.6 mm at the PWR end and 0.8 mm at the AS-ACT end: on the Micro the RJ45 shield is only about 1 mm from the last LED.
+- Dividers 1.2 mm thick (what the pitch leaves), back wall 1.2 mm, end walls 0.8 mm: on the Micro the RJ45 shield is about 1 mm from the AS-ACT LED and the fuse holder about 1.5 mm from the PWR/ETH LED.
 - The front face 3.0 mm from the LED centres, that is at the board edge (3.05 mm from the centres on the Micro, 3.3 mm on the Standard). In the RayCorp case the board edge touches the front panel, so the dividers end against the panel.
 
-Overall about 24 x 7 x 11 mm.
+Overall about 20 x 7 x 11 mm.
 
 ## Before printing: check one thing
 
@@ -29,7 +29,7 @@ If there is a gap between the board edge and the inside of the front panel in yo
 
 - Print in **black or another opaque** filament, roof down on the bed, no supports. Opaque matters: the walls are there to stop one LED lighting the next window.
 - Slide the comb down over the three LEDs, open side towards the panel, until it rests on the LED flanges. A tight print takes `hole = 5.6`.
-- If it touches the RJ45, set `end_wall_right` to 0.5 or sand that end.
+- If it touches the RJ45 or the fuse holder, set `end_wall_right` or `end_wall_left` to 0.5, or sand that end.
 
 ## Without a printer
 
