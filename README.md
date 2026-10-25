@@ -16,7 +16,8 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`LED_Bezel`](LED_Bezel) | A small 3D-printed comb (OpenSCAD and STL) that slides over the three front LEDs of the AiO v4.5 so each one lights only its own window on the panel. |
-| [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | Arduino Nano firmware for a 5-section sprayer. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS, and reports boom pressure and flow. |
+| [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 8-relay board that runs a 5-section sprayer over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
+| [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
 
 Each folder has its own README with the details.
 
@@ -25,7 +26,7 @@ Each folder has its own README with the details.
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards:** designed and checked in KiCad, but not built or tested yet.
-- **Sprayer Nano v0.2:** compiles, not tested on the sprayer yet.
+- **Sprayer ESP32 v0.4:** compiles, not tested on the sprayer yet. The Nano version (v0.3) is kept as it was.
 
 ## Getting started
 
@@ -41,9 +42,9 @@ Each folder has its own README with the details.
 2. Join the `XIAO-xxxx` Wi-Fi network (password `agopengps`) and open `http://192.168.4.1/`.
 3. **Updates:** over Wi-Fi from the XIAO page.
 
-### Sprayer Nano
+### Sprayer
 
-Wiring, settings and a bench test are in the [`Sprayer_Nano` README](Sprayer/Sprayer_Nano). The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb).
+Wiring, the first upload, the Wi-Fi setup and a bench test are in the [`Sprayer_ESP32` README](Sprayer/Sprayer_ESP32). The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb). The older Nano version is in [`Sprayer_Nano`](Sprayer/Sprayer_Nano).
 
 ## Building from source
 

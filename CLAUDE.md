@@ -20,8 +20,9 @@ text to paste into GitHub as a raw markdown code block.
 
 - Code, comments, web pages and READMEs in **English**.
 - Keep each file's header: purpose, credits, what changed and by whom, GPL v3 / SPDX line.
-- The firmware **cannot be compiled in Claude's cloud sessions** (pjrc.com, arduino.cc and the PlatformIO
-  registry are blocked). Say so in the pull request; Renato compiles before merging.
+- The Teensy firmware **cannot be compiled in Claude's cloud sessions** (pjrc.com, arduino.cc and the PlatformIO
+  registry are blocked). Say so in the pull request; Renato compiles before merging. The ESP32 programs
+  (`Sprayer/Sprayer_ESP32`) can: arduino-cli with the esp32 core fetched from GitHub.
 - Do not rename `Firmware/vX.Y_AiO_WEB/` folders or the files in them: the module's web page and the XIAO
   page find new versions on GitHub by those names (see the firmware `CLAUDE.md`, "Common Gotchas").
 - The firmware steers a tractor: safety code (WAS check, cut-offs, Keya heartbeat, watchdog) must keep working.
