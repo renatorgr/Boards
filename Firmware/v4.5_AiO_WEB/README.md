@@ -1,66 +1,39 @@
 # v4.5_AiO_WEB
 
-Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire the Teensy the same way), for AgOpenWeb and AgOpenGPS.
+Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire the Teensy the same way), for AgOpenWeb and AgOpenGPS. It is the official AgOpenGPS AiO v4 Teensy firmware (`AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025`) with the additions below.
 
-One firmware covers everything the board accepts:
+> **Not tried on a tractor yet:** the dual F9P, the Keya motor, steering with a BNO085. Check them on the bench first.
 
-- **GPS:** UM982 (dual antenna), u-blox F9P / X20P (single antenna), or dual F9P (a second F9P on the GPS2 port).
-- **IMU:** TM171 or BNO085.
-- **Steering:** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on the CAN bus.
-- **Optional:** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port, with its own WiFi page. The GPS2 port takes the XIAO or the second F9P, one at a time.
-- **Web page on the module:** status, messages, settings, GPS receiver, firmware update over the network.
+## What it adds to the official AiO v4 firmware
 
-The **standard sentence set** works with AgOpenWeb.
-The **classic output** works with any AgOpenWeb and with AgOpenGPS.
+| | Official AiO v4 | v4.5_AiO_WEB |
+|---|---|---|
+| **Web page on the module** | none | `http://192.168.5.126/`: status, messages, settings, GPS, IMU, Machine and Firmware tabs; refreshes once a second, never holds the Teensy up. |
+| **Firmware update** | over USB | from the page: a `.hex` file, or straight from GitHub. The running firmware stays if anything fails. |
+| **GPS receiver** | set up with AOGConfigOMatic on a PC | the Teensy finds the receiver's baud rate, identifies it (F9P, X20P, UM982, a second F9P), checks what it needs and loads the AgOpenGPS settings itself; u-blox and UM982 settings and a UM982 console on the page. |
+| **IMU** | BNO085 | TM171 or BNO085 (RVC or I2C), found at start-up. TM171: gyro and new-install calibration, set-up check with one-click fix, and its settings, all from the page. |
+| **Output to the program** | `$PAOGI` / `$PANDA` | the same, plus the standard sentence set AgOpenWeb reads (`GGA`, `VTG`, `THS`, `HPR`), chosen automatically from the program's hello. |
+| **Autosteer safety** | kickouts | WAS voltage check (broken wire = autosteer blocked), Keya heartbeat lost = autosteer off, outputs off at once on a crash or a watchdog restart, and the reason autosteer went off on the program's screen. |
+| **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, current kickout delay. The wheelbase comes from AgOpenWeb. |
+| **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
+| **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
+| **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
+| **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. |
+| **Machine module** | none | a Machine tab with the sprayer module's pressure, flow and sections (UDP 9999). |
 
-Not tried on a tractor yet: the dual F9P, the Keya motor, steering with a BNO085. Check them on the bench first.
+The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single antenna) or a second F9P on the GPS2 port; **IMU** TM171 or BNO085; **steering** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN; **optional** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time).
 
-## Version 4.5 (20 Oct 2026)
+## Changelog
 
-From the AgOpenGPS AiO v4 firmware (27.04.2025):
+| Date | Change |
+|---|---|
+| 24 Oct 2026 | LEDs with the AiO 26 meanings. TM171 settings: output rate from a list (25, 50, 100 Hz), the Setting layout as a real TM171 sends it, commands addressed to the TM171's own ID (writes sent "to everyone" were ignored), frames in the log. ZED-X20P settings file for the receiver check. Receiver set up in one go at the baud rate it is found at. The module's subnet changed from the XIAO page. The Firmware card shows the build inside a chosen `.hex`. |
+| 23 Oct 2026 | IMU tab: TM171 gyro calibration, new-install calibration, set-up check with **Fix TM171 setup**, settings read and written (needs the TX5 wire). Second F9P identified, checked and set up automatically; both receivers set up automatically. |
+| 22 Oct 2026 | Update marker renamed `AiO-WEB-OTA-1` (the old name is still accepted). Machine tab: sections as coloured squares. |
+| 21 Oct 2026 | Compiled on GitHub for every change. Machine tab (sprayer PGN 160). Wheelbase from AgOpenWeb (PGN 247). |
+| 20 Oct 2026 | **Version 4.5.** From the AiO v4 firmware of 27.04.2025: dual F9P, the Keya code, the cuts beyond ±50° and 25 km/h, the WAS map, Danfoss and IBT2. From the AiO 26 firmware: Keya heartbeat timeout, soft start, steering speeds and current kickout delay as settings. The network-stack crash fixed, outputs off on a crash, Teensyduino 1.58 start-up fix. Receiver check with the AgOpenGPS settings. Pages in English with a light mode, simulator mode, diagnostic report, cleaner messages. |
 
-- **Dual F9P**: the second F9P's UBX-NAV-RELPOSNED gives the dual-antenna heading, sent exactly like the UM982's; only with an RTK fixed solution between the antennas. The GPS2 port (a web page setting) takes the second F9P, the XIAO, or nothing.
-- Autosteer cut beyond ±50° of wheel angle or above 25 km/h; no steering below 0.2 km/h; a WAS map for a non-linear WAS; Danfoss valve and IBT2 driver; without an IMU, the roll of the two antennas in `$PAOGI`.
-- The Keya motor code.
-
-From the AgOpenGPS AiO 26 firmware (not tried on a tractor yet):
-
-- **Keya not responding**: no heartbeat for 0.5 s (CAN cable, plug, motor power) turns autosteer off and blocks it until the heartbeat is back (with a steer switch: and the switch seen off). Shown on the program's screen and the web page.
-- **Settings > Steering** on the web page: minimum speed (was fixed at 0.2 km/h), maximum speed (was fixed at 25 km/h), **soft start** (off by default) and the **current kickout delay** (default 0.5 s: a short current peak no longer switches autosteer off).
-- The web page settings block is now version 2; the settings saved by an earlier build are kept.
-
-Safety and stability:
-
-- **Crash fixed**: the network stack is now run from the loop (a Teensy built with Teensyduino 1.57.3 crashed at `0x0001D542` when a browser opened the page). See "Network stack".
-- On a crash the autosteer outputs go off at once, and the crash line says more (see "Why the Teensy started").
-- The web page no longer holds up the loop for up to 130 ms: 8 KB network buffers, and a 2048-byte buffer for the receiver (was 512).
-- BNO085 on I2C: up to 3 tries at start-up (after a software restart it was sometimes missed).
-- **Teensyduino 1.58 and newer**: the Teensy no longer crashes before it starts. The ADS1115 code started Wire1 before the Wire library had set it up (from 1.58 the Wire objects are set up at start-up, after the sketch's own); `autosteerSetup()` starts it now.
-
-GPS receiver:
-
-- **Receiver check** (GPS tab): finds the receiver's baud rate at start-up and sets it to 460800; checks what the Teensy needs; compares with and loads the AgOpenGPS settings: AOGConfigOMatic's for the F9P, dual F9P and UM982, `X20P.txt` (read from a working ZED-X20P) for the X20P.
-- An F9P without firmware HPG 1.13 is shown in red, with links to download it. An X20P without HPG 2.11 (the firmware `X20P.txt` was read from) is shown in orange.
-- UM982: KSXT at 10 Hz; `CONFIG HEADING TRACTOR` is not counted (one heading mode at a time), so the whole `ConfigUM982D.txt` shows 26 of 26.
-- IMU heading and the GPS course: the first alignment needs 2.5 s of straight driving above 3 km/h over 5 m (a receiver standing still without RTK no longer aligns the IMU to its noise). After that, the firmware corrects the IMU heading with the course only in the `$PAOGI` of a dual-antenna receiver; AgOpenWeb, and AgOpenGPS with `$PANDA`, do it themselves.
-
-Firmware update:
-
-- No longer refused on the bench: the receiver's speed counts only with RTK, and the speed is not checked in simulator mode or with a wheel angle a tractor does not give. A refusal now shows its reason on the page.
-
-Web pages (the module's and the XIAO's):
-
-- English only, with a light mode.
-- They reload by themselves when the Teensy (or the XIAO) restarts.
-- **Simulator** mode (Settings, Operating mode card).
-- **Diagnostic report** (Firmware tab).
-- Pressure / current value, Keya slip and kickout limit in %, as the program shows them.
-- Fewer repeated rows, a simpler GPS tab, no dual heading card with one antenna, **Restart Teensy**.
-
-Messages:
-
-- One `[boot]` line per fact at start-up; no repeated or contradictory lines (dual heading, simulator mode).
-- `the receiver sends` only when the sentence types change; `read on time again` after 30 s on time.
+Older changes are in the git history and at the top of each file.
 
 ## Compiling and first install
 
@@ -238,8 +211,11 @@ The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS
 On the IMU tab, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested
 its settings at start-up (Setting object 21): magnetometer on/off, GyroErrFilter with the accelerometer gain
 (the dial next to it in ImuAssistant), Self-Adapt filter with the magnetometer gain, status output, boot
-mode and output data rate in Hz (the TM171's inhibit time, the shortest gap between two packets, is shown
-and left as read). **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
+mode and output data rate (a list: 25, 50 or 100 Hz; the TM171's inhibit time, the shortest gap between two
+packets, is shown and left as read). 25 Hz is the AgOpenGPS forum set-up and 100 Hz what the AiO v6 firmware
+uses; this firmware takes the newest TM171 sample at each GPS fix, so a higher rate only makes that sample
+fresher (at most 10 ms old instead of 40 ms). The set-up check accepts the three; a rate read that is not in
+the list is shown "as read". **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
 off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, Auto boot). **Write to TM171**
 sends the form, saved to flash unless you untick it, waits for the TM171's acknowledgement and reads the
 settings back. The measured output rate is shown next to the rate field.
@@ -252,6 +228,12 @@ word; if they do not match, the page reports "layout not recognised" with the ra
 The layout was confirmed on a real TM171 on 24 Oct 2026 (the first guess took the rate for an inhibit time and
 showed a "silent time" that does not exist; the words the firmware does not know are left as read). All of
 this needs the TX5 wire.
+
+Commands are addressed to the TM171's own node ID, taken from the frames it sends (the `[status]` line
+"settings read from ID N"). A real TM171 answered requests sent "to everyone" (ID 0) but ignored every
+settings write sent that way (24 Oct 2026). To see what happens on the wire, the log gets the write frame
+byte by byte ("frame sent"), every acknowledge the TM171 sends, and the first frame of each type the firmware
+does not handle.
 
 ### TM171 set-up check
 
@@ -427,7 +409,19 @@ On the USB serial monitor and the Messages tab:
 - `[web]`: what is done from the page (settings, commands, updates, restarts).
 - `[xiao]`: the XIAO's hello, silence, first PGN, bad frames, its text lines.
 
-LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
+## LEDs
+
+The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide as far as red and green allow
+(both on = orange; the AiO 26 blue pulse is a short dark flick here). The IMU state has no LED: see the IMU
+card on the page and the message on the program's screen.
+
+| LED | Red | Orange | Green | Flick |
+|---|---|---|---|---|
+| PWR/ETH | no Ethernet link | link, but no program talking (5 s without UDP) | AgOpenWeb or AgOpenGPS talking | |
+| GPS | GGA without a fix | fix, not RTK fixed (GPS, DGPS, RTK float) | RTK fixed | corrections arriving (NTRIP or radio): once a second |
+| STEER | fault: no ADS1115 (WAS), WAS voltage out of range, Keya heartbeat lost | ready, autosteer off | autosteer on | steer button or switch used |
+
+The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 13) blinks with every GGA.
 
 ## Files
 
@@ -445,6 +439,7 @@ LEDs: green = dual heading, red = IMU heading, red blinking = IMU lost.
 | `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop |
 | `zRtcm.h` | RTCM counter |
 | `zStatus.ino`, `zStatusLog.h` | messages |
+| `zLeds.ino` | the three board LEDs |
 | `zSettings.ino` / `.h` | settings (EEPROM) |
 | `zWeb.ino`, `zWebPage.h`, `zWebJson.h` | web server and page |
 | `zOTA.ino`, `FlashTxx.*` | firmware update |
