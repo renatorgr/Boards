@@ -10,6 +10,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>AiO v4.5 page simulator</title>
+{{COUNTER}}
 <style>
 /* the module page's colours: dark, or light when the device asks for it */
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21}
@@ -58,7 +59,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <li><a href="sprayer/?wifi=lost">Sprayer module that lost the tractor network: sections closed, the program's request outlined</a></li>
 </ul>
 <p class="note">Change the receiver, the IMU, the steering, the program, the XIAO and the machine module in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
-<footer>Pages of firmware {{FOLDER}} (version {{VERSION}}) and Sprayer_ESP32 (version {{SPRAYER_VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3.</footer>
+<footer>Pages of firmware {{FOLDER}} (version {{VERSION}}) and Sprayer_ESP32 (version {{SPRAYER_VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3. Visits are counted with <a href="https://www.goatcounter.com/">GoatCounter</a>: no cookies, nothing that says who you are, only which page and when.</footer>
 </main>
 </body>
 </html>

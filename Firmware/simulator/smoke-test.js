@@ -9,7 +9,7 @@
 // Serves the site under /Boards/ as GitHub Pages does, opens the Teensy page with each receiver, the XIAO
 // page and the sprayer module's page, waits for the pretend module, clicks every tab and fails on a script
 // error in the page or a tab that shows nothing. GitHub itself is not asked (the version check then says
-// "no answer"). Also installs the firmware's own .hex on a parked module, end to end, and saves the sprayer's
+// "no answer"), nor is the visit counter. Also installs the firmware's own .hex on a parked module, end to end, and saves the sprayer's
 // calibration (its password prompt is answered).
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
@@ -33,7 +33,7 @@ async function page(browser, url, what) {
  const pg = await browser.newPage({viewport: {width: 1000, height: 1100}});
  pg.on("pageerror", e => fail.push(what + ": " + e));
  pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) fail.push(what + ": console " + m.text()); });
- await pg.route(/^https:\/\/(api\.github\.com|github\.com|raw\.githubusercontent\.com)\//, r => r.abort());
+ await pg.route(/^https:\/\/(api\.github\.com|github\.com|raw\.githubusercontent\.com|gc\.zgo\.at)\//, r => r.abort());   // GitHub and the visit counter are not asked
  await pg.goto(url);
  return pg;
 }

@@ -17,6 +17,8 @@
 #   xiao/index.html     the XIAO page
 #   sprayer/index.html  the sprayer module's page
 #   sim-*.js            the simulator
+# Every page of the site carries the visit counter below (GoatCounter: no cookies, nothing personal kept, the
+# path without the choices). The counter is only here, in the simulator: the firmware's own pages have none.
 
 import datetime
 import json
@@ -97,6 +99,10 @@ def commit():
     return sha
 
 
+COUNTER = ('<script>window.goatcounter={path:function(){return location.pathname}};</script>\n'
+           '<script data-goatcounter="https://renatorgr.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>\n')
+
+
 def inject(html, scripts, what):
     """The simulator scripts right after <head>, before the page's own script; "Simulator" in the title."""
     if html.count("<head>") != 1 or html.count("<title>") != 1:
@@ -134,7 +140,7 @@ def main():
         shutil.rmtree(out)
     os.makedirs(out)
     for name, (path, var, script) in pages.items():
-        html = inject(raw_string(path, var), head + '<script src="../sim-common.js"></script>\n<script src="../%s"></script>\n' % script,
+        html = inject(raw_string(path, var), head + '<script src="../sim-common.js"></script>\n<script src="../%s"></script>\n' % script + COUNTER,
                       os.path.relpath(path, ROOT))
         os.makedirs(os.path.join(out, name))
         with open(os.path.join(out, name, "index.html"), "w", encoding="utf-8") as f:
@@ -143,6 +149,7 @@ def main():
         shutil.copy(os.path.join(HERE, js), out)
     start = read(os.path.join(HERE, "index.html"))
     for k, v in {"VERSION": version, "FOLDER": folder, "SPRAYER_VERSION": sprayer["version"], "BUILT": now.strftime("%d %b %Y, %H:%M UTC"),
+                 "COUNTER": COUNTER.rstrip("\n"),
                  "COMMIT": sha[:7] or "local",
                  "COMMIT_URL": "https://github.com/%s/commit/%s" % (REPO, sha) if sha else "https://github.com/" + REPO}.items():
         start = start.replace("{{" + k + "}}", v)

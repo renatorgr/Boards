@@ -26,6 +26,8 @@ The choices are in the page address (`teensy/?gps=f9p&imu=bno&motor=keya&prog=ao
 
 `build.py` cuts the pages out of the newest `Firmware/vX.Y_AiO_WEB` folder and out of `Sprayer/Sprayer_ESP32` exactly as the firmware serves them and puts the simulator scripts in their `<head>`. The scripts answer the page's `/api/...` requests (and the firmware upload) instead of the module, so the page's own JavaScript is not changed: what you see is the page as it is in the firmware. The GitHub Action `.github/workflows/simulator.yml` runs on every change under `Firmware/` or `Sprayer/Sprayer_ESP32/`, opens every tab in a browser as a check (`smoke-test.js`), and publishes the result on GitHub Pages when the change reaches `main`. A pull request only builds and checks: the simulator shows the merged firmware.
 
+The pages of the site count their visits with [GoatCounter](https://www.goatcounter.com/) (the tag is `COUNTER` in `build.py`): no cookies, nothing that says who the visitor is, only the page (without the choices) and the time. The counter is in the simulator only; the firmware's own pages on the module have none.
+
 | File | What it does |
 |---|---|
 | `build.py` | builds the site: `python3 Firmware/simulator/build.py [folder]` (default `_site`) |
