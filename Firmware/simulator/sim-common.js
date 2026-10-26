@@ -581,11 +581,14 @@ function Module(key) {
   return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * nozzles(ALL_SECTIONS) * 0.8 / 60, main: engaged};
  }
  // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
- // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160)
+ // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160);
+ // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop
+ let machTop = 0;
  function machine(t, tr, engaged) {
-  const sp = sprayer(t, tr, engaged), hellos = Math.floor(t - 5.5);
+  const sp = sprayer(t, tr, engaged), hellos = Math.floor(t - 5.5), used = sp.cmd | sp.sec;
+  for (let k = 16; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
   const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (h.nano ? 7 : 6), bad: 0, lastPgn: h.nano ? 160 : 237, cmd: sp.cmd,
-   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secFrom160: h.nano, sprayAgo: -1};
+   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secN: machTop, secFrom160: h.nano, sprayAgo: -1};
   if (!h.nano) return j;
   return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
  }

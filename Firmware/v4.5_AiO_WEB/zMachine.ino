@@ -4,6 +4,8 @@
    25 Oct 2026: any standard machine module is recognised, the official AgOpenGPS Machine_UDP_v5 included
    (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from
    the hello reply when there is no sprayer PGN 160.
+   26 Oct 2026: sections 9-16 of the sprayer PGN 160 (byte 15, Sprayer_ESP32 v0.7); the highest section
+   seen since the start is kept, so the page keeps all its squares while every section is off.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -23,8 +25,9 @@
 //     levels, so the sections read reversed.
 //   - the sprayer module "Sprayer_Nano" (same hardware). Hello reply with a right checksum, and PGN 160.
 //
-// Sprayer PGN 160 (0xA0), once a second, 16 bytes:
+// Sprayer PGN 160 (0xA0), once a second, 16 bytes (17 with sections 9-16):
 //   80 81 7B A0 0A | pressure (cbar, 2) | flow (cL/min, 2) | total (dL, 4) | main switch (1) | sections (1) | CRC
+//   80 81 7B A0 0B | ... the same ... | sections 1-8 (1) | sections 9-16 (1) | CRC   (Sprayer_ESP32 v0.7)
 //   (little-endian; CRC = sum of the bytes from the 3rd to the one before the CRC, as in AgOpenGPS)
 
 #define MACH_SRC          0x7B   // the machine module's source byte (IP .123)
@@ -46,6 +49,7 @@ static struct
     bool     helloNoCrc;         // the hello reply came without a checksum (the official module)
     uint32_t secMs;              // last word on the sections, from the hello reply or PGN 160 (0: never)
     uint16_t sections;           // bit 0 = section 1, as the module reports them
+    uint8_t  secTop;             // the highest section asked for or reported since the start (0: none yet)
 
     uint32_t sprayMs, sprayN;    // last sprayer PGN 160 (0: never), how many
     uint16_t pressCbar, flowCLmin;
@@ -101,12 +105,17 @@ void machineLoop()
             mach.flowCLmin = (uint16_t)(d[7] | d[8] << 8);
             mach.totalDl   = (uint32_t)d[9] | (uint32_t)d[10] << 8 | (uint32_t)d[11] << 16 | (uint32_t)d[12] << 24;
             mach.mainOn    = d[13] != 0;
-            mach.sections  = d[14];
+            mach.sections  = d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14];
             mach.secMs     = mach.lastMs;
             mach.sprayMs   = mach.lastMs;
             mach.sprayN++;
         }
     }
+
+    // the highest section used since the start: the page keeps that many squares while all are off
+    const uint16_t used = (uint16_t)(relay | relayHi << 8) | mach.sections;
+    for (uint8_t k = 16; k > mach.secTop; k--)
+        if (used >> (k - 1) & 1) { mach.secTop = k; break; }
 
     const bool here = mach.lastMs != 0 && now - mach.lastMs < MACH_SILENCE_MS;
     if (here != mach.here)
@@ -139,6 +148,7 @@ void machineJson(Json& j, uint32_t now)
     j.bo("helloNoCrc", mach.helloNoCrc);
     j.i("secAgo", mach.secMs ? (long)((now - mach.secMs) / 1000) : -1);
     j.u("sec", mach.sections);
+    j.u("secN", mach.secTop);
     j.bo("secFrom160", mach.secMs != 0 && mach.secMs == mach.sprayMs);
     j.i("sprayAgo", mach.sprayMs ? (long)((now - mach.sprayMs) / 1000) : -1);
     if (mach.sprayMs)

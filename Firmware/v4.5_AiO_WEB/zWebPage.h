@@ -6,7 +6,8 @@
    26 Oct 2026: the buttons the module refuses while autosteer is on (or the tractor moves) are greyed out then,
    with a line at the top of the tab saying why. Machine card fits a phone screen: the Hello replies row wraps,
    the checksum wording is a note under the list. The GPS2 port is automatic or off (Settings), and says what it found,
-   in one short line.
+   in one short line. The section squares stay as many as the highest section used since the module started (they
+   fell back to 5 when every section was off).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -653,18 +654,19 @@ function renderMach(m){
  set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN);$("mNoCrc").classList.toggle("hidden",!m.helloNoCrc);
  const have=m.secAgo>=0&&m.secAgo<5;
  set("mSecFrom",m.secAgo<0?"nothing yet":(m.secFrom160?"PGN 160":"hello reply")+", "+ago(m.secAgo),have?"":"warn");
- const box=$("mSec");machSecs(box,m.cmd,m.sec,have);box.classList.toggle("old",m.secAgo>=0&&!have);
+ const box=$("mSec");machSecs(box,m.cmd,m.sec,have,m.secN);box.classList.toggle("old",m.secAgo>=0&&!have);
  $("mSprayCard").classList.toggle("hidden",m.sprayAgo<0);
  if(m.sprayAgo<0)return;
  const old=m.sprayAgo>=5;
  set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
  set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");
 }
-// One numbered square per section (5, or up to 16 when the program or the module uses more, 8 per row),
+// One numbered square per section (5, or up to 16 when the program or the module uses more, 8 per row; as
+// many as the highest section used since the Teensy started, secN, so they do not shrink when all are off),
 // coloured as AgOpenWeb colours its section buttons: green open, red closed, orange asked on but still
 // closed, cyan asked off but still open. No word from the module yet: grey.
-function machSecs(box,cmd,sec,have){
- let n=5;for(let k=5;k<16;k++)if(((cmd|sec)>>k)&1)n=k+1;
+function machSecs(box,cmd,sec,have,top){
+ let n=Math.max(5,top||0);for(let k=n;k<16;k++)if(((cmd|sec)>>k)&1)n=k+1;
  if(box.childElementCount!==n){box.textContent="";box.style.setProperty("--n",Math.min(n,8));
   for(let k=1;k<=n;k++){const e=document.createElement("span");e.textContent=k;box.appendChild(e);}}
  for(let k=0;k<n;k++){const a=(cmd>>k)&1,o=(sec>>k)&1,e=box.children[k];
