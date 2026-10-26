@@ -4,7 +4,7 @@
    25 Oct 2026: Machine tab for any standard machine module (official Machine_UDP_v5 or sprayer Nano): sections from
    the hello reply, Sprayer card only with PGN 160, up to 16 sections.
    26 Oct 2026: the buttons the module refuses while autosteer is on (or the tractor moves) are greyed out then,
-   with a line at the top of the tab saying why.
+   with a line at the top of the tab saying why. The GPS2 port is automatic or off (Settings), and says what it found.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -219,7 +219,9 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Yaw direction<small>Automatic: learned in turns, from the antenna heading or, without it, from the GPS course.</small></span><select name="tm171YawSign"><option value="0">automatic</option><option value="1">+1</option><option value="-1">−1</option></select></div>
 </div>
 <div class="card"><h2>GPS2 port (Serial2)</h2>
- <div class="opt"><span style="flex:1">On the GPS2 port<small>One thing at a time, at 460800. XIAO ESP32: when the XIAO says «ESP32-hello», the AgOpenWeb packets (UDP 8888) go on to it and its PGNs go to AgOpenWeb (UDP 9999), as in firmware v26. Second F9P: dual F9P, as in the AiO firmware; the second F9P sends UBX-NAV-RELPOSNED on its UART1 and gives the dual-antenna heading. Off: the Teensy ignores the port.</small></span><select name="xiaoOff"><option value="0">XIAO ESP32</option><option value="2">second F9P</option><option value="1">off</option></select></div>
+ <div class="opt"><span style="flex:1">On the GPS2 port<small>Automatic: the Teensy finds out what is plugged in, at every start. A XIAO ESP32 is recognised by its «ESP32-hello»: the AgOpenWeb packets (UDP 8888) then go on to it and its PGNs go to AgOpenWeb (UDP 9999), as in firmware v26. A second F9P (dual F9P, as in the AiO firmware) is recognised by its UBX or NMEA data, or searched for at start-up when it sends at another baud rate; it gives the dual-antenna heading with UBX-NAV-RELPOSNED on its UART1. The port only changes hands with autosteer off. Off: the Teensy ignores the port.</small></span><select name="xiaoOff"><option value="0">automatic</option><option value="1">off</option></select></div>
+ <p class="note">Found now: <span id="gps2Now">–</span></p>
+</div>
 </div>
 <div class="card"><h2>Autosteer safety</h2>
  <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°.</small></span></label>
@@ -568,7 +570,9 @@ function render(s){
  if(f2a&&f2a.on&&c2a){
   if(c2a.health==="none"&&s.up>20)al.push("Nothing arrives from the second F9P on the GPS2 port. Check its power and its wiring to Serial2 (Teensy pins 7 / 8). See GPS, Second F9P check.");
   ckAlerts(c2a,"The second F9P",al);}
- if(f2a&&!f2a.on&&f2a.seen)al.push("A GNSS receiver is sending data on the GPS2 port, but the port is set to "+(f2a.port==="off"?"off":"the XIAO ESP32")+". For a dual F9P, set GPS2 port to «second F9P» in Settings.");
+ if(f2a&&!f2a.on&&f2a.seen)al.push(f2a.port==="off"?"A GNSS receiver is sending data on the GPS2 port, but the port is off. For a dual F9P, set GPS2 port to «automatic» in Settings."
+  :f2a.port==="XIAO"?"Valid GNSS data on the GPS2 port while a XIAO says hello there: one thing at a time on the port."
+  :"A GNSS receiver is sending data on the GPS2 port: it becomes the second F9P once autosteer is off.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.setupWhy)al.push("TM171 not set up for AgOpenGPS ("+s.tm.set.setupWhy+"). See the IMU tab, Fix TM171 setup.");
  if(s.tm&&s.tm.type==="TM171"&&s.tm.set&&s.tm.set.noWire)al.push("TM171 RX pin not wired to Teensy TX5 (pin 20): roll, pitch and yaw still work, but gyro calibration, new install calibration, settings and Fix TM171 setup are unavailable. Solder one wire from Teensy pin 20 to the TM171 RX pin (see the IMU tab).");
  const n=s.net;
@@ -591,8 +595,9 @@ function render(s){
  $("sent").textContent=s.out.lines.length?s.out.lines.join("\n"):"–";
  const x=s.xiao;
  if(x){
-  const xs=x.port===2?["GPS2 port set to the second F9P",""]:x.port===1?["GPS2 port off",""]:!x.on?["bridge off",""]:x.det?["connected","ok"]:x.hellos?["no hello","bad"]:["not detected","warn"];
+  const xs=x.port===2?["GPS2 port: second F9P",""]:x.port===1?["GPS2 port off",""]:!x.on?["bridge off",""]:x.det?["connected","ok"]:x.hellos?["no hello","bad"]:["not detected",""];
   set("xState",xs[0],xs[1]);
+  set("gps2Now",x.port===1?"nothing (the port is off)":x.port===2?"a second F9P":x.det?"a XIAO ESP32":"nothing yet (no XIAO hello, no GNSS data)");
   $("xiaoCard").classList.toggle("dim",x.port===2||x.port===1);   /* the port has the second F9P, or is off: the card is greyed */
   set("xHello",x.helloAgo<0?"never":ago(x.helloAgo));
   set("xTo",String(x.to));set("xFrom",String(x.from));set("xLast",x.lastPgn<0?"–":String(x.lastPgn));
@@ -609,7 +614,7 @@ function render(s){
   let xn="",xnc="";
   if(x.port===0&&x.on&&xi&&xi.v&&xi.v!==tv){xn="The XIAO runs program "+xi.v+"; this firmware expects "+tv+". Update it on the XIAO's own page (its WiFi network, Firmware, Install from GitHub), or over USB-C with v"+tv+"_XIAO_ESP32C3_USB.bin / S3_USB.bin: ";xnc="warn";
    al.push("The XIAO runs program "+xi.v+", this firmware expects "+tv+": update it (see the XIAO card).");}
-  else if(x.port===0&&x.on&&!x.det&&!x.hellos&&s.up>20){xn="No hello from the XIAO. A new XIAO has to be programmed first, over USB-C: v"+tv+"_XIAO_ESP32C3_USB.bin or v"+tv+"_XIAO_ESP32S3_USB.bin at address 0x0 (the README there says how). Already programmed: check its power and the wires XIAO D6 → Teensy RX2, D7 ← TX2: ";xnc="warn";}
+  else if(x.port===0&&x.on&&!x.det&&!x.hellos&&s.up>20){xn="Nothing found on the GPS2 port (no XIAO hello, no GNSS data). A new XIAO has to be programmed first, over USB-C: v"+tv+"_XIAO_ESP32C3_USB.bin or v"+tv+"_XIAO_ESP32S3_USB.bin at address 0x0 (the README there says how). Already programmed: check its power and the wires XIAO D6 → Teensy RX2, D7 ← TX2: ";xnc="";}
   const xe=$("xNote");xe.textContent=xn;xe.className="note "+xnc+(xn?"":" hidden");
   if(xn){const a=document.createElement("a");a.href=bins;a.target="_blank";a.rel="noopener";a.textContent="the files on GitHub";xe.appendChild(a);xe.appendChild(document.createTextNode("."));}
  }

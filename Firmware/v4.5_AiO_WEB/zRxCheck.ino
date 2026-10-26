@@ -14,6 +14,8 @@
    2026-10-24: the ZED-X20P gets its own settings (X20P.txt in zRxConfig.h, read that way from renatorgr's working
    X20P): it is checked, compared and set up automatically like an F9P. The page's "Read all settings" button is
    commented out in zWebPage.h for now; the Teensy side stays.
+   2026-10-26: the GPS2 port is automatic (zDualF9P.ino): its start-up judgement and baud rate search tell it
+   whether a receiver is there.
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
@@ -23,7 +25,7 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // zRxCheck.ino
-// Two ports: the GPS receiver (Serial7) and, with the GPS2 port set to it, the second F9P of a dual F9P
+// Two ports: the GPS receiver (Serial7) and, when the GPS2 port is its, the second F9P of a dual F9P
 // (Serial2, the "Dual - Left - RelPos" one).
 //   - Data at 460800, judged every 5 s: bytes, and whole sentences / UBX frames with a valid checksum.
 //     Bytes with nothing valid in them for 10 s: the receiver is at another baud rate (or its settings
@@ -579,6 +581,7 @@ static void ckBoot(uint32_t now)
     {
         CkPort& k = ck[p];
         if (k.boot != CKB_WAIT) continue;
+        if (p == RXCK_GPS2) gps2AutoBoot();      // automatic GPS2 port: junk and no XIAO = a receiver to search for? (zDualF9P.ino)
         if (!ckPortActive(p)) { k.boot = CKB_OFF; continue; }
         if (p == RXCK_GPS && passThroughGPS) continue;
         const uint32_t b = rxCkBytes[p] - ckBootB0[p], g = rxCkGood[p] - ckBootG0[p];
@@ -599,7 +602,7 @@ FLASHMEM static void ckLoadBeginUm(bool single, bool automatic);
 FLASHMEM const char* rxCkStart(const char* what, uint8_t port, uint8_t um)
 {
     if (port > 1)                                     return "invalid port";
-    if (port == RXCK_GPS2 && !dualF9pOn())            return "the GPS2 port is not set to a second F9P";
+    if (port == RXCK_GPS2 && !dualF9pOn())            return "no second F9P on the GPS2 port";
     if (ckOp != CKOP_NONE || ckChain)                 return "busy";
     if (port == RXCK_GPS && passThroughGPS)           return "the program's GPS tool has the receiver";
     if (port == RXCK_GPS && (ubxOp != UBXOP_NONE || umOp != UMOP_NONE)) return "busy";     // the GPS tab reads or writes
@@ -934,7 +937,9 @@ FLASHMEM static void ckOpScan(uint32_t now)
                                                              : " - the Teensy needs 460800");
     else
         StatusLog.line("[status] %s: no valid data at any baud rate (9600 to 921600): nothing connected, a silent receiver, or the wiring", ckWho(ckPort));
+    const uint8_t port = ckPort;
     ckEnd();
+    if (port == RXCK_GPS2) gps2AutoScanDone(k.scanRes == CKR_FOUND && k.foundKind == CKK_UBLOX);   // (zDualF9P.ino)
 }
 
 FLASHMEM static void ckOpBaud(uint32_t now)
@@ -1441,7 +1446,7 @@ void rxCheckLoop()
         if (strcmp(id, ident)) { if (ident[0] && !rxCkBusy(RXCK_GPS)) ckForget(RXCK_GPS); ckCopy(ident, sizeof(ident), id, sizeof(id)); }
     }
     if (ckOp != CKOP_NONE && ckPort == RXCK_GPS && passThroughGPS) ckStop("the program's GPS tool took the receiver");
-    if (ckOp != CKOP_NONE && ckPort == RXCK_GPS2 && !dualF9pOn()) ckStop("the GPS2 port is no longer set to the second F9P");
+    if (ckOp != CKOP_NONE && ckPort == RXCK_GPS2 && !dualF9pOn()) ckStop("the GPS2 port is no longer the second F9P's");
     if (ckOp == CKOP_NONE)
     {
         // the start-up check found no valid data: the baud rate is searched for (the GPS tab's work waits)

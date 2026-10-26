@@ -231,7 +231,7 @@ function Module(key) {
  const h = {rx: opt.gps, imu: {tm171: "TM171", bno: "BNO085", rvc: "BNO085", none: ""}[opt.imu],
   imuPort: {tm171: "Serial5", bno: "I2C 0x4A", rvc: "Serial5 (RVC)", none: ""}[opt.imu],
   host: opt.prog === "aog" ? "AgOpenGPS" : "AgOpenWeb", motor: {cytron: "Cytron", ibt2: "IBT2", danfoss: "Danfoss", keya: "Keya"}[opt.motor],
-  gps2: opt.gps === "dualf9p" ? 2 : opt.xiao === "1" ? 0 : 1, xiao: opt.xiao === "1", mach: opt.mach !== "0", nano: opt.mach === "nano"};
+  gps2: 0, xiao: opt.xiao === "1", mach: opt.mach !== "0", nano: opt.mach === "nano"};
  const rx = RX[h.rx], parked = opt.park === "1";
  const fresh = () => ({
   t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5",
@@ -258,9 +258,11 @@ function Module(key) {
  const cfg = st.cfg;
  const isTm = h.imu === "TM171", hasImu = !!h.imu;
  const keya = h.motor === "Keya";
- // the second F9P is on the GPS2 port (dual F9P) only when that is set; a XIAO is there otherwise
+ // the second F9P is on the GPS2 port (dual F9P), a XIAO otherwise; the GPS2 port is automatic (finds it) or off
  const f9p2Here = () => rx.dual === "f9p";
- const dualRx = () => rx.dual === "um982" ? !cfg.umSingle : rx.dual === "f9p" && cfg.xiaoOff === 2;
+ const f9pOn = () => f9p2Here() && cfg.xiaoOff !== 1;
+ const gps2Name = () => cfg.xiaoOff === 1 ? "off" : f9pOn() ? "auto: F9P" : h.xiao ? "auto: XIAO" : "auto";
+ const dualRx = () => rx.dual === "um982" ? !cfg.umSingle : f9pOn();
  const hostName = h.host;
  const ip = () => st.net + ".126";
  const fwName = () => st.fwOver ? st.fwOver.fw : FW_NAME;
@@ -294,7 +296,7 @@ function Module(key) {
  function timeline() {
   const L = [], dual = dualRx(), um = rx.kind === "um982";
   const out = cfg.outputMode === 2 ? "automatic (by the program's hello; classic until then)" : cfg.outputMode === 1 ? "classic $PAOGI/$PANDA" : "standard set";
-  const gps2 = cfg.xiaoOff === 2 ? "F9P" : cfg.xiaoOff === 1 ? "off" : "XIAO";
+  const gps2 = cfg.xiaoOff === 1 ? "off" : "auto";
   L.push([0.3, "[boot] " + fwName() + ", built " + built() + " with Teensyduino 1.58"]);
   L.push([0.3, st.boot === "restart" ? "[boot] Start: restart by software (web page, firmware update, or the program's subnet change)" : "[boot] Start: power on (or the Teensy's button, or a USB upload)"]);
   L.push([0.4, "[boot] Settings from the EEPROM: output " + out + ", GPS2 port " + gps2]);
@@ -316,8 +318,9 @@ function Module(key) {
   const p0 = latLon(0, 0);
   L.push([5.0, "[status] GPS: first position " + p0[0].toFixed(7) + ", " + p0[1].toFixed(7) + ", altitude " + FIELD.alt.toFixed(2) + " m"]);
   L.push([5.0, "[status] GPS: VTG arriving, speed from the receiver"]);
-  if (h.xiao && cfg.xiaoOff === 0) L.push([5.2, "[xiao] XIAO said hello on Serial2: AgOpenWeb packets (UDP 8888) now go to it, its PGNs go to UDP 9999"]);
-  if (rx.dual === "f9p" && cfg.xiaoOff === 2) L.push([5.4, "[status] Second F9P (GPS2 port): RELPOSNED arriving, baseline 121.4 cm"]);
+  if (h.xiao && cfg.xiaoOff !== 1) L.push([5.2, "[xiao] XIAO said hello on Serial2: AgOpenWeb packets (UDP 8888) now go to it, its PGNs go to UDP 9999"]);
+  if (f9pOn()) L.push([1.6, "[status] GPS2 port: second F9P (dual F9P) - a GNSS receiver sends valid data on it"]);
+  if (f9pOn()) L.push([5.4, "[status] Second F9P (GPS2 port): RELPOSNED arriving, baseline 121.4 cm"]);
   if (h.mach) L.push([5.5, "[machine] machine module " + st.net + ".123 heard on UDP 9999 (web page: Machine tab)"]);
   const classic = cfg.outputMode === 1 || (cfg.outputMode === 2 && hostName === "AgOpenGPS");
   L.push([6.2, cfg.outputMode === 2 ? "[status] Program: " + hostName + " (" + (hostName === "AgOpenGPS" ? "AgIO hello" : "hello") + " from " + st.net + ".10). Automatic mode: " +
@@ -417,9 +420,9 @@ function Module(key) {
 
  // ---- the receiver check's summary for a port (zRxCheck.ino ckPortJson / rxCkStatusJson)
  function ckRole(p) { return p === 0 ? rx.role : 2; }
- function ckPortOn(p) { return p === 0 || cfg.xiaoOff === 2; }
+ function ckPortOn(p) { return p === 0 || f9pOn(); }
  function ckHealth(p) {
-  if (p === 1 && cfg.xiaoOff !== 2) return "wait";
+  if (p === 1 && !f9pOn()) return "wait";
   if (p === 1 && !f9p2Here()) return "none";          // GPS2 set to a second F9P, but a XIAO is there
   return T() < 3 ? "wait" : "ok";
  }
@@ -490,11 +493,11 @@ function Module(key) {
    else j.dual.raw = "";
   }
   j.dual.late = 0;
-  j.dual.src = rx.dual === "f9p" && cfg.xiaoOff === 2 ? "f9p" : rx.dual === "um982" ? "um982" : "";
+  j.dual.src = f9pOn() ? "f9p" : rx.dual === "um982" ? "um982" : "";
   if (full) {
-   const on = cfg.xiaoOff === 2, here = on && f9p2Here() && t > 5;
+   const on = f9pOn() && t > 1.6, here = on && t > 5;
    j.dual.f9p2 = {on: on, ago: here ? 0 : -1, frames: here ? Math.floor((t - 5) * 10) : 0, bad: 0, bytes: here ? Math.floor((t - 5) * 720) : 0, nmea: 0, nmeaAgo: -1,
-    port: cfg.xiaoOff === 2 ? "F9P" : cfg.xiaoOff === 1 ? "off" : "XIAO", seen: !on && f9p2Here() && t > 5,
+    port: cfg.xiaoOff === 1 ? "off" : on ? "F9P" : h.xiao && t > 5.2 ? "XIAO" : "auto", seen: cfg.xiaoOff === 1 && f9p2Here() && t > 5,
     heading: here ? r2(wrap360(tr.hdg + 90), 2) : 0, baseline: here ? 121.4 : 0, roll: here ? r2(roll, 2) : 0, carr: here ? (d.ok ? 2 : 1) : 0, flags: here ? (d.ok ? 0x13F : 0x0BF) : 0};
    j.dual.ck2 = ckStatus(1, t);
   }
@@ -524,8 +527,8 @@ function Module(key) {
    aogSrc: !classic ? "" : dualNow ? "Dual" : "Fix", classicSrc: classic && dualNow ? (d.ok ? 1 : imuOk ? 2 : 4) : 0,
    epochs: epochs, sim: sim, simHeld: sim, held: held};
   if (full) j.out.lines = gga && !sim ? sentences(t, f, tr, d, hdgStr, lat, lon, alt, roll, pitch, outH, imuOk, classic, dualNow) : [];
-  const xHere = h.xiao && cfg.xiaoOff === 0 && t > 5.2, xt = Math.max(0, t - 5.2);
-  j.xiao = {on: cfg.xiaoOff === 0, port: cfg.xiaoOff, det: xHere, helloAgo: xHere ? up % 2 : -1, hellos: xHere ? Math.floor(xt / 2) + 1 : 0,
+  const xHere = h.xiao && cfg.xiaoOff !== 1 && t > 5.2, xt = Math.max(0, t - 5.2);
+  j.xiao = {on: cfg.xiaoOff !== 1 && !f9pOn(), port: cfg.xiaoOff === 1 ? 1 : f9pOn() ? 2 : 0, det: xHere, helloAgo: xHere ? up % 2 : -1, hellos: xHere ? Math.floor(xt / 2) + 1 : 0,
    to: xHere ? Math.floor(xt * 13) : 0, from: xHere ? Math.floor(xt / 5) + 3 : 0, lastPgn: xHere ? 143 : -1, crcErr: 0, cut: 0, drop: 0,
    rxKB: r2(xHere ? xt * 0.05 : 0, 1), txKB: r2(xHere ? xt * 1.9 : 0, 1), text: 0};
   if (full) j.xiao.info = xHere ? JSON.stringify(xiaoInfo(up)) : "";
@@ -605,7 +608,7 @@ function Module(key) {
    if (a !== "ckcheck" && a !== "ckdump" && steering()) return err(409, ENGAGED);
    if (st.ck.op) return err(409, "busy");
    if (!["check", "scan", "baud", "load"].includes(what)) return err(400, "unknown action");
-   if (port === 1 && cfg.xiaoOff !== 2) return err(400, "the GPS2 port is not set to a second F9P");
+   if (port === 1 && !f9pOn()) return err(400, "no second F9P on the GPS2 port");
    const um = port === 0 && rx.kind === "um982", set = um ? null : UBX_SETS[ckRole(port)];
    const n = what === "load" ? (um ? (b.um === "s" ? UM982S.length : UM982D.length) : set.count) : what === "check" ? (um ? 1 : set.count) : 1;
    const dur = {check: um ? 2 : 4, scan: 4.5, baud: 2.5, load: um ? n * 0.25 : n * 0.35}[what];
@@ -698,7 +701,7 @@ function Module(key) {
 
  // ---- /api/settings (zWeb.ino apiSettingsGet / apiSettingsPost)
  const FIELDS = [["outputMode", 0, 2], ["classicNoDual", 0, 1], ["hprAcceptFloat", 0, 1], ["epochWaitMs", 20, 100], ["tm171SwapRollPitch", 0, 1],
-  ["tm171YawSign", -1, 1], ["xiaoOff", 0, 2], ["wasCheckOff", 0, 1], ["wdtOff", 0, 1], ["umSingle", 0, 1], ["simMode", 0, 1],
+  ["tm171YawSign", -1, 1], ["xiaoOff", 0, 1], ["wasCheckOff", 0, 1], ["wdtOff", 0, 1], ["umSingle", 0, 1], ["simMode", 0, 1],
   ["steerMinKmhX10", 1, 30], ["steerMaxKmh", 5, 40], ["softStartX10ms", 0, 100], ["currentKickX10ms", 0, 200]];
  const DEFAULTS = {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: 0,
   wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50};
@@ -721,7 +724,7 @@ function Module(key) {
   const outT = cfg.outputMode === 2 ? "automatic" + (hostName === "AgOpenGPS" ? " (now classic)" : " (now standard, AgOpenWeb)") : cfg.outputMode === 1 ? "classic ($PAOGI with UM982, $PANDA with F9P / X20P)" : "standard";
   line("[web] settings saved: output " + outT + ", float heading " + (cfg.hprAcceptFloat ? "yes" : "no") + ", epoch wait " + cfg.epochWaitMs + " ms, IMU roll/pitch swap " +
    (cfg.tm171SwapRollPitch ? "yes" : "no") + ", yaw " + (cfg.tm171YawSign === 0 ? "auto" : cfg.tm171YawSign > 0 ? "+1" : "-1") + ", GPS2 port " +
-   (cfg.xiaoOff === 2 ? "F9P" : cfg.xiaoOff === 1 ? "off" : "XIAO") + ", WAS check " + (cfg.wasCheckOff ? "OFF" : "on") + ", watchdog " + (cfg.wdtOff ? "off" : "on"));
+   gps2Name() + ", WAS check " + (cfg.wasCheckOff ? "OFF" : "on") + ", watchdog " + (cfg.wdtOff ? "off" : "on"));
   if (cfg.umSingle !== was.umSingle) line(cfg.umSingle ? "[web] UM982 with one antenna: no dual-antenna heading on the page, AgOpenGPS settings ConfigUM982S.txt" : "[web] UM982 with two antennas: AgOpenGPS settings ConfigUM982D.txt");
   if (cfg.simMode !== was.simMode) line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program" : "[web] Simulator mode off: the GPS goes to the program again");
   if (["steerMinKmhX10", "steerMaxKmh", "softStartX10ms", "currentKickX10ms"].some(n => cfg[n] !== was[n]))

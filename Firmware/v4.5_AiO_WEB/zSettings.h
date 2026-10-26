@@ -1,6 +1,7 @@
 /* zSettings.h - the settings block saved in the EEPROM.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -18,9 +19,9 @@
                                         //    taken over with their defaults, settingsLoad)
 
 // The GPS2 port (cfg.xiaoOff)
-#define GPS2_XIAO 0
+#define GPS2_AUTO 0     // automatic: the XIAO's or the second F9P's, found while running (zDualF9P.ino); "XIAO" before 26 Oct 2026
 #define GPS2_OFF  1
-#define GPS2_F9P  2
+#define GPS2_F9P  2     // "second F9P", chosen by hand before 26 Oct 2026: loaded as automatic (settingsLoad)
 
 enum OutputMode : uint8_t
 {
@@ -50,9 +51,9 @@ struct WebSettings
     uint8_t  epochWaitMs;         // max wait after a GGA for its VTG / HPR (20..100 ms)
     uint8_t  tm171SwapRollPitch;  // 1 = TM171 rotated 90 deg on the board
     int8_t   tm171YawSign;        // 0 = learn from the dual heading, +1 / -1 = forced
-    uint8_t  xiaoOff;             // the GPS2 port (Serial2): GPS2_XIAO (0, default) = XIAO bridge on (zXiao.ino);
-                                  //     GPS2_OFF (1) = XIAO ignored; AiO_WEB: GPS2_F9P (2) = second F9P of a
-                                  //     dual F9P (zDualF9P.ino). Values 0 / 1 saved by earlier builds stay valid
+    uint8_t  xiaoOff;             // the GPS2 port (Serial2): GPS2_AUTO (0, default) = the XIAO's or the second F9P's,
+                                  //     whichever is found (zDualF9P.ino, zXiao.ino); GPS2_OFF (1) = ignored.
+                                  //     GPS2_F9P (2), saved by builds before 26 Oct 2026, is loaded as automatic
     uint8_t  autoSet;             // 1 = the automatic output mode was offered once (an older block: 0, see
                                   //       settingsLoad); was reserved[0] = 0
     uint8_t  wasCheckOff;         // 1 = WAS voltage check off (bench without a WAS). 0 = on (default; was

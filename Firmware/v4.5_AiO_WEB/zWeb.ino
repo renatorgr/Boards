@@ -3,7 +3,8 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    24 Oct 2026: the STEER LED is driven by zLeds.ino, no longer from the stop command here.
    26 Oct 2026: /api/status says whether the tractor is moving (steer.moving), so the page greys out the
-   buttons this file would refuse.
+   buttons this file would refuse. The GPS2 port setting is automatic or off (zDualF9P.ino); /api/status
+   says what automatic found.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -417,8 +418,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.close();
 
     j.obj("xiao");
-    j.bo("on", cfg.xiaoOff == 0);
-    j.i("port", cfg.xiaoOff);                 // AiO_WEB: GPS2 port 0 XIAO, 1 off, 2 second F9P
+    j.bo("on", gps2XiaoOn());
+    j.i("port", cfg.xiaoOff == GPS2_OFF ? 1 : dualF9pOn() ? 2 : 0);   // AiO_WEB: GPS2 port 0 automatic (the XIAO's once it says hello), 1 off, 2 the second F9P's
     j.bo("det", xiaoDetected);
     j.i("helloAgo", xiao.hellos ? (long)((now - xiaoLastHelloMs) / 1000) : -1);
     j.u("hellos", xiao.hellos);
@@ -515,7 +516,7 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
             {"epochWaitMs",        20, 100, &s.epochWaitMs,       false},
             {"tm171SwapRollPitch", 0, 1,   &s.tm171SwapRollPitch, false},
             {"tm171YawSign",       -1, 1,  &s.tm171YawSign,       true},
-            {"xiaoOff",            0, 2,   &s.xiaoOff,            false},   // GPS2 port: XIAO / off / second F9P
+            {"xiaoOff",            0, 1,   &s.xiaoOff,            false},   // GPS2 port: automatic / off
             {"wasCheckOff",        0, 1,   &s.wasCheckOff,        false},
             {"wdtOff",             0, 1,   &s.wdtOff,             false},
             {"umSingle",           0, 1,   &s.umSingle,           false},   // UM982 antennas (GPS tab, receiver check)

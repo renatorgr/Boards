@@ -102,7 +102,7 @@ The headers have 6.1 mm mating pins and a 2.5 mm insulator, like the ones on the
 
 ## Firmware
 
-- Teensy: firmware `v4.5_AiO_WEB`, Serial2 (pins 7 RX2 and 8 TX2) at **460800**. On its web page, Settings → "GPS2 port" must be on XIAO ESP32 (the default).
+- Teensy: firmware `v4.5_AiO_WEB`, Serial2 (pins 7 RX2 and 8 TX2) at **460800**. On its web page, Settings → "GPS2 port" must be on automatic (the default): the Teensy finds the XIAO by its hello.
 - XIAO: the program `v4.5_XIAO_ESP32` that comes in the firmware zip (already compiled in `v4.5_XIAO_ESP32_bin`, for the C3 and the S3). It uses UART1 on D7 (RX) and D6 (TX) at 460800 and empties the receive FIFO at 64 bytes (`setRxFIFOFull(64)`).
 - When it starts, the ESP32 writes a few boot lines at 115200 on D6: the Teensy receives garbage for half a second, and the firmware ignores it.
 - The official firmware v26 (Firmware_Teensy_AiO-New-Dawn) uses this same link (Serial2) for its ESP32, also at 460800. See `docs/ESP32_BRIDGE_INTERFACE.md` in that repository.

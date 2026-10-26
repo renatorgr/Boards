@@ -43,7 +43,9 @@ void rxCheckLoop();                  // from loop()
 // from zDualF9P.ino
 extern uint32_t dualF9pFrames;
 extern uint32_t dualF9pNmea;         // NMEA sentences with a valid checksum from the second F9P (not set up yet: it sends NMEA, no RELPOSNED)
-bool dualF9pOn();                    // the GPS2 port is set to the second F9P
+bool dualF9pOn();                    // the GPS2 port is the second F9P's (automatic: found on it)
+void gps2AutoBoot();                 // just before the start-up judgement of the GPS2 port: maybe a receiver at another baud rate
+void gps2AutoScanDone(bool ublox);   // the baud rate search on the GPS2 port ended (a u-blox receiver found, or not)
 void dualF9pRestart();               // Serial2 back at 460800 after a baud rate search / change, the frame reader reset
 
 #endif

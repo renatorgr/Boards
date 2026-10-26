@@ -27,7 +27,7 @@
 // AiO_WEB 4.5: one firmware for what the AiO v4.5 boards accept, with the parts of the AgOpenGPS AiO v4
 // firmware: the dual F9P (second F9P on the GPS2 port, zDualF9P.ino), the autosteer
 // cut-off beyond the WAS map or above 25 km/h, and the WAS map (Autosteer.ino).
-// The GPS2 port is used by the second F9P or the XIAO, as chosen on the web page (Settings).
+// The GPS2 port is used by the second F9P or the XIAO, found by itself (zDualF9P.ino; Settings: automatic or off).
 //
 //   GPS / heading: UM982 dual antenna (GGA + VTG + HPR on Serial7), or
 //                  dual F9P: first F9P on Serial7 (GGA + VTG), second F9P on Serial2 (RELPOSNED), or
@@ -44,7 +44,7 @@
 //   Steering     : Cytron (hydraulic valve), IBT2, Danfoss (as set in the program), or a Keya CAN
 //                  motor (found by its heartbeat)
 //   RTK link     : XBee radio on Serial3, NTRIP from the program (UDP 2233)
-//   GPS2 port    : second F9P or XIAO ESP32C3 / ESP32S3, both at 460800, chosen on the web page
+//   GPS2 port    : second F9P or XIAO ESP32C3 / ESP32S3, both at 460800, found by itself
 //
 // Connections:
 //   Serial7 RX (pin 28) <- receiver TX  (GGA, VTG, HPR)

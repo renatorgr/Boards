@@ -27,7 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
-| 26 Oct 2026 | Web page: the buttons the module refuses while autosteer is on or the tractor is moving (receiver settings, TM171 calibration and setup, firmware install) are greyed out then, with a line at the top of the tab saying why. |
+| 26 Oct 2026 | Web page: the buttons the module refuses while autosteer is on or the tractor is moving (receiver settings, TM171 calibration and setup, firmware install) are greyed out then, with a line at the top of the tab saying why. GPS2 port automatic: the Teensy finds a XIAO (its hello) or a second F9P (its UBX or NMEA data, or a search for its baud rate at start-up) by itself, at every start; the setting is now automatic or off. |
 | 25 Oct 2026 | Machine tab: the official AgOpenGPS Machine_UDP_v5 is recognised too (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from the module's hello reply, up to 16; the Sprayer card only once PGN 160 arrives. LEDs: the in-between (orange) state is shown as red and green in turn, because orange looks like red through a diffused panel window. |
 | 24 Oct 2026 | LEDs with the AiO 26 meanings. TM171 settings: output rate from a list (25, 50, 100 Hz), the Setting layout as a real TM171 sends it, commands addressed to the TM171's own ID (writes sent "to everyone" were ignored), frames in the log. ZED-X20P settings file for the receiver check. Receiver set up in one go at the baud rate it is found at. The module's subnet changed from the XIAO page. The Firmware card shows the build inside a chosen `.hex`. |
 | 23 Oct 2026 | IMU tab: TM171 gyro calibration, new-install calibration, set-up check with **Fix TM171 setup**, settings read and written (needs the TX5 wire). Second F9P identified, checked and set up automatically; both receivers set up automatically. |
@@ -92,7 +92,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Maximum wait for the VTG and heading after the GGA | 60 ms | 20-100 ms. |
 | Swap roll and pitch (IMU) | no | IMU turned 90° on the board. |
 | Yaw direction (IMU) | automatic | Learned in turns, or set to +1 / −1. Once you know it, set it: the IMU heading is then usable from start-up. |
-| GPS2 port | XIAO ESP32 | XIAO ESP32, second F9P, or off; 460800 baud. |
+| GPS2 port | automatic | automatic or off; 460800 baud. Automatic: a XIAO ESP32 (its hello) or a second F9P (its UBX or NMEA data) is found at every start, only with autosteer off; Settings shows what was found. A "second F9P" saved by an earlier build loads as automatic. |
 | Check the WAS sensor | on | Off only on a bench without a WAS (see "WAS check"). Asks first. |
 | Watchdog | on | Off from the next start. |
 | UM982 antennas | two | Set on the GPS tab. One: no dual heading card, `ConfigUM982S.txt`; two: `ConfigUM982D.txt`. |
@@ -259,7 +259,7 @@ wire is needed; without it the page can only warn.
 - **First F9P** (GPS1, Serial7, 460800): GGA + VTG at 10 Hz, and its corrections to the second F9P over UART2.
 - **Second F9P** (GPS2, Serial2, pins 7 / 8, 460800): **UBX-NAV-RELPOSNED** every epoch.
 - The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
-- Web page: Settings → **GPS2 port: second F9P**.
+- Web page: Settings → **GPS2 port: automatic** (the default). The second F9P is found by itself at every start: its valid UBX or NMEA data, or, when only bytes with nothing valid arrive at 460800 and no XIAO says hello, a search for its baud rate at start-up (a new F9P sends at 38400); no u-blox receiver found there, the port goes back to listening. A XIAO's hello gives the port back to the XIAO. The port only changes hands with autosteer off.
 - **Status tab**, dual-antenna heading card: the second F9P's model and firmware, its data at 460800 (valid,
   wrong baud rate, nothing arriving) and its **Setup** (all good, or what the Teensy needs and it lacks),
   with a link to the GPS tab. A warning at the top of Status when nothing arrives from it, when it is at the
@@ -270,8 +270,8 @@ wire is needed; without it the page can only warn.
 - **Set up automatically**, like the first receiver (see the receiver check): found at another baud rate the
   port stays there and `DualRelPos.txt` is loaded in one go (it sets 460800); lacking what the Teensy needs
   it gets `DualRelPos.txt` loaded, then is checked again.
-- A GNSS receiver on the GPS2 port while the port is set to the XIAO or off (valid NMEA or UBX arriving):
-  Status says to set **GPS2 port** to the second F9P.
+- A GNSS receiver on the GPS2 port while the port is off (valid NMEA or UBX arriving): Status says to set
+  **GPS2 port** to automatic. While autosteer is on, Status says it becomes the second F9P once autosteer is off.
 
 The heading is `relPosHeading` **+ 90°** (antennas left and right, as in the AiO firmware), used only with RTK fixed between the antennas. The roll of the antennas goes into `$PAOGI` when there is no IMU. From there everything is as with the UM982.
 
@@ -463,7 +463,7 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 
 - **AiO v4.5 Micro:** in the GPS2 socket (U11), through the adapter board or the 3D-printed holder: pin 1 = 3V3, pin 2 = Teensy RX2 ← XIAO D6, pin 3 = Teensy TX2 → XIAO D7, pins 10 / 11 = GND.
 - **AiO v4.5 Standard:** header P8 (pin 1 = RX2 ← D6, pin 2 = TX2 → D7), 3.3 V and GND from another header.
-- Web page: Settings → GPS2 port: XIAO ESP32 (the default).
+- Web page: Settings → GPS2 port: automatic (the default): the XIAO is found by its hello.
 - The XIAO card on Status says when the XIAO runs another program version than this firmware (update it on
   the XIAO's page, or over USB-C), and, when no hello ever came, that a new XIAO has to be programmed first
   (`v4.5_XIAO_ESP32C3_USB.bin` / `S3_USB.bin`, see `v4.5_XIAO_ESP32_bin/README.md`), with a link to the files.
