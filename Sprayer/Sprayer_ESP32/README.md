@@ -4,7 +4,7 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.5 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.6 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -13,7 +13,7 @@ tested on the sprayer.
 Tablet (AgOpenWeb / AgOpenGPS)
    │  Wi-Fi (the tractor's router), UDP
    ▼
-ESP32_Relay_X8 board ──► 8 relays ──► 5 solenoid valves (NC)
+ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 5 on this boom
    ▲
    ├── pressure sensor (GPIO 34) + flow meter (GPIO 35)
    └── own Wi-Fi network "Sprayer-xxxx" + web page (phone)
@@ -44,7 +44,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► 5 solenoid valves (NC)
 | Part | Notes |
 |---|---|
 | ESP32_Relay_X8 board (303E32DC810) | ESP32-WROOM-32E, 8 × SRD-05VDC relays (10 A), LM2596 on board, **5–30 V DC in** |
-| 5 × solenoid valve FPD-270A | 12 V, 0.3 A, NC, 0.2–8 bar, G1/2 |
+| 5 × solenoid valve FPD-270A (up to 8, one per relay) | 12 V, 0.3 A, NC, 0.2–8 bar, G1/2 |
 | Pressure sensor 0–10 bar | 0.5–4.5 V output, powered at 5 V |
 | YF-S201 flow meter | 5 V, about 450 pulses per litre, 1–30 L/min |
 | USB-serial adapter (CH340 or FTDI), 3.3 V | Only for the first upload; later updates go over Wi-Fi |
@@ -96,7 +96,7 @@ pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.5` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.6` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -117,8 +117,13 @@ pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
    turns green (*program talking*).
 5. In AgOpenWeb's machine settings, leave **"relay active high" unticked** for this
    board. The page shows *Output polarity: normal*. If it says *inverted*, untick it.
-6. In AgOpenWeb's pin config, relays 1–5 are sections 1–5 by default. Relays 6–8 are
-   free (hydraulic lift, tramline).
+6. **Sections.** On the module, relays 1–8 are sections 1–8 by default, so the board is
+   ready for an 8-section boom. But AgOpenWeb sends its own pin config to the module at
+   start and on profile load, and its default is pins 1–6 = sections 1–6, pins 7–8 =
+   none. So in AgOpenWeb set *Tool → sections* to the number of sections on the boom
+   (5 now), and for more than 6 sections set *Machine → Pin config* pins 7 and 8 to
+   *Section 7* and *Section 8*. A relay that is not a section can be the hydraulic lift
+   or the tramline instead. The page's *Relays* card shows what each relay does.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
 page *Install a new program* and choose the `.bin`.
