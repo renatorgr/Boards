@@ -5,6 +5,8 @@
    (AgOpenGPS-Official, GPL v3), at the same speed, 460800 baud.
    2026-10-23 (Claude for renatorgr): every byte from Serial2 also goes to the GPS2 sniffer (zDualF9P.ino),
    which notices a GNSS receiver on the port while it is set to the XIAO or off.
+   2026-10-26 (Claude for renatorgr): the GPS2 port is automatic (zDualF9P.ino): the bridge is on while the
+   port is not the second F9P's.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -111,9 +113,9 @@ static uint32_t xcrcLogMs   = 0;
 static uint32_t xcrcLogged  = 0;
 static bool     xFirstFrame = true;    // log the first good frame after each hello / detection
 
-static inline bool xiaoOn() { return cfg.xiaoOff == 0; }
+static inline bool xiaoOn() { return gps2XiaoOn(); }
 
-// AiO_WEB: the GPS2 port (Serial2) is the XIAO's, nobody's or the second F9P's (cfg.xiaoOff,
+// AiO_WEB: the GPS2 port (Serial2) is the XIAO's or the second F9P's, found by itself, or off (cfg.xiaoOff,
 // zDualF9P.ino); gps2Begin() starts it (460800 for both)
 void xiaoSetup()
 {
@@ -137,7 +139,7 @@ static void xiaoHello()
         if (xiaoOn())
             StatusLog.line("[xiao] XIAO said hello on Serial2: AgOpenWeb packets (UDP 8888) now go to it, its PGNs go to UDP 9999");
         else
-            StatusLog.line("[xiao] XIAO said hello on Serial2, but the XIAO bridge is off in the settings: ignored");
+            StatusLog.line("[xiao] XIAO said hello on Serial2, but the GPS2 port is off in the settings: ignored");
     }
 }
 
@@ -357,7 +359,7 @@ static uint8_t xiaoByte(uint8_t b)
 void xiaoProcess()
 {
     const uint32_t now = millis();
-    if (dualF9pOn())                           // AiO_WEB: the GPS2 port has the second F9P (zDualF9P.ino)
+    if (dualF9pOn())                           // AiO_WEB: the GPS2 port is the second F9P's (zDualF9P.ino)
     {
         if (xiaoDetected) xiaoDetected = false;
         xfLen = 0;

@@ -3,7 +3,7 @@
 Program for a Seeed **XIAO ESP32C3** or **XIAO ESP32S3** on the GPS2 port of the **AiO v4.5 boards**.
 
 - It goes with the Teensy firmware **v4.5_AiO_WEB**: the two must have the same version number.
-- On the Teensy's web page, Settings → **GPS2 port** must be **XIAO ESP32** (the default). The same port takes the second F9P of a dual F9P, so it is one or the other.
+- On the Teensy's web page, Settings → **GPS2 port** must be **automatic** (the default): the Teensy finds the XIAO by its hello. The same port takes the second F9P of a dual F9P, so it is one or the other.
 - The XIAO creates its own WiFi network with a page for a phone: you can see what the module is doing in the cab or next to the tractor, without the tablet or a network cable.
 - It only monitors: it does not change anything in the module or in AgOpenWeb / AgOpenGPS.
 

@@ -10,13 +10,24 @@
    fresh F9P (NMEA out of the box, no RELPOSNED yet) is recognised, checked and can take the AgOpenGPS
    settings; a GNSS receiver on the GPS2 port while the port is set to the XIAO or off is noticed
    (valid NMEA or UBX on it) and the Status page says to change the setting.
+   2026-10-26 (Claude for renatorgr): the GPS2 port is automatic: the second F9P is taken
+   when valid UBX or NMEA arrives on the port, or on trial at start-up when only junk arrives at 460800
+   (a receiver at another baud rate: the receiver check searches for it); a XIAO hello gives the port back
+   to the XIAO. Decided again at each start, and only with autosteer off. The setting keeps "off".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // zDualF9P.ino
-// The GPS2 port (Teensy Serial2, pins 7 / 8) has one use at a time, chosen on the web page
-// (Settings, cfg.xiaoOff): the XIAO ESP32 (zXiao.ino), nothing, or the second F9P of a dual F9P
-// (here), both at 460800 baud.
+// The GPS2 port (Teensy Serial2, pins 7 / 8) has one use at a time, both at 460800 baud: the XIAO ESP32
+// (zXiao.ino) or the second F9P of a dual F9P (here). Settings, cfg.xiaoOff: automatic (the default) or off.
+// Automatic: the port listens as the XIAO's (its bridge starts at the XIAO's hello) and the bytes go through
+// the GPS2 sniffer below. It becomes the second F9P's when
+//   - valid UBX frames or NMEA sentences arrive (GPS2_SNIFF_N of them) and no XIAO says hello, or
+//   - at start-up (the receiver check's start-up judgement, zRxCheck.ino), bytes arrive at 460800 with nothing
+//     valid in them and no XIAO hello: on trial, so the receiver check searches for the receiver's baud rate
+//     (a new F9P sends at 38400); no u-blox receiver found there: back to listening.
+// It goes back to listening when a XIAO says hello on it. Each change only with autosteer off, never saved:
+// decided again at each start.
 //
 // Dual F9P, as in the AgOpenGPS AiO v4 firmware: the main F9P (Serial7) sends GGA + VTG; it is the
 // moving base and sends its RTCM corrections straight to the second F9P (F9P to F9P on the board).
@@ -68,12 +79,22 @@ static uint8_t  sSt = 0, sCkA = 0, sCkB = 0;
 static uint16_t sLen = 0, sPos = 0;
 static uint32_t dLastMs = 0;
 
-bool dualF9pOn() { return cfg.xiaoOff == GPS2_F9P; }
+#define GPS2_JUNK_BYTES   64              // bytes at start-up with nothing valid in them: a receiver at another baud rate?
+static const char GPS2_HELLO[] = "ESP32-hello";   // the XIAO's hello (XIAO_HELLO, zXiao.ino)
+extern bool xiaoDetected;                 // zXiao.ino: a XIAO said hello in the last XIAO_HELLO_TIMEOUT_MS
+static bool     gps2F9p   = false;        // automatic: the second F9P is on the port (decided while running)
+static uint8_t  gps2Trial = 0;            // start-up trial: 0 not judged yet, 1 searching for a receiver, 2 done
+static uint8_t  gps2HelloPos = 0;         // the XIAO's hello, looked for in the second F9P's bytes
+static uint32_t gps2SniffBytes = 0;       // bytes on the port while it is not the second F9P's
+
+bool dualF9pOn()  { return cfg.xiaoOff == GPS2_AUTO && gps2F9p; }
+bool gps2XiaoOn() { return cfg.xiaoOff == GPS2_AUTO && !gps2F9p; }    // the XIAO bridge (it waits for the hello)
+static bool gps2Steering() { return watchdogTimer < WATCHDOG_THRESHOLD; }   // autosteer engaged (as zWeb.ino)
 
 // Short: it goes into the [boot] and [web] settings lines, which are at most LOG_LINE_LEN - 1 characters
 const char* gps2Name()
 {
-    return cfg.xiaoOff == GPS2_F9P ? "F9P" : cfg.xiaoOff == GPS2_OFF ? "off" : "XIAO";
+    return cfg.xiaoOff == GPS2_OFF ? "off" : gps2F9p ? "auto: F9P" : xiaoDetected ? "auto: XIAO" : "auto";
 }
 
 // Serial2 at the speed of what is on the GPS2 port (at start-up, and when the setting changes; 460800
@@ -89,6 +110,39 @@ void gps2Begin()
     sSt = 0;
     gps2SniffGood = 0;
     gps2SniffMs = 0;
+    gps2SniffBytes = 0;
+}
+
+// Automatic: the port to the second F9P (true) or back to listening for a XIAO or a receiver (false)
+static void gps2Take(bool f9p, const char* why)
+{
+    if (f9p == gps2F9p) return;
+    gps2F9p = f9p;
+    gps2HelloPos = 0;
+    StatusLog.line("[status] GPS2 port: %s - %s", f9p ? "second F9P (dual F9P)" : "listening for a XIAO or a second F9P", why);
+    gps2Begin();                   // (the sniffer and the frame reader from the start)
+    xiaoSettingsChanged();         // (the XIAO reader from the start, zXiao.ino)
+}
+
+// Called by the receiver check just before it judges the GPS2 port at start-up (ckBoot, zRxCheck.ino): bytes
+// with nothing valid in them and no XIAO hello = maybe a receiver at another baud rate. The port goes to the
+// second F9P on trial, so that judgement searches for its baud rate. Once per start-up.
+void gps2AutoBoot()
+{
+    if (gps2Trial) return;
+    gps2Trial = 2;
+    if (cfg.xiaoOff != GPS2_AUTO || gps2F9p || xiaoDetected || gps2SniffGood || gps2SniffBytes < GPS2_JUNK_BYTES || gps2Steering()) return;
+    gps2Trial = 1;
+    gps2Take(true, "bytes at 460800 with nothing valid in them, no XIAO hello: searching for a receiver");
+}
+
+// Called by the receiver check when its baud rate search on the GPS2 port ends (zRxCheck.ino). After the
+// start-up trial: a u-blox receiver found keeps the port; nothing (or not u-blox) gives it back to listening.
+void gps2AutoScanDone(bool ublox)
+{
+    if (gps2Trial != 1) return;
+    gps2Trial = 2;
+    if (!ublox) gps2Take(false, "no u-blox receiver found at any baud rate");
 }
 
 // One byte of an NMEA sentence: true when a whole sentence with a valid checksum has just ended.
@@ -113,14 +167,20 @@ static void gps2SniffHit()
 {
     gps2SniffGood++;
     gps2SniffMs = millis() | 1;
-    if (gps2SniffGood == GPS2_SNIFF_N)
-        StatusLog.line("[status] GPS2 port: a GNSS receiver is sending valid data on it, but the port is set to %s - "
-                       "for a dual F9P set Settings, GPS2 port, to the second F9P", gps2Name());
+    if (gps2SniffGood != GPS2_SNIFF_N) return;
+    if (cfg.xiaoOff == GPS2_OFF)
+        StatusLog.line("[status] GPS2 port: a GNSS receiver is sending valid data on it, but the port is off in the settings - "
+                       "for a dual F9P set Settings, GPS2 port, to automatic");
+    else if (xiaoDetected)
+        StatusLog.line("[status] GPS2 port: valid GNSS data on it while a XIAO says hello there - ignored (one thing at a time on the port)");
+    else if (gps2Steering())
+        StatusLog.line("[status] GPS2 port: a GNSS receiver is sending valid data on it - taken as the second F9P once autosteer is off");
 }
 
-// Called by zXiao.ino for every byte from Serial2 while the port is not set to the second F9P
+// Called by zXiao.ino for every byte from Serial2 while the port is not the second F9P's
 void gps2SniffByte(uint8_t b)
 {
+    gps2SniffBytes++;
     if (dualNmeaByte(b)) gps2SniffHit();
     switch (sSt)                                         // a UBX frame, checked without keeping it
     {
@@ -137,7 +197,8 @@ void gps2SniffByte(uint8_t b)
     }
 }
 
-// A GNSS receiver seen on the GPS2 port while the port is set to the XIAO or off (web page, Status)
+// A GNSS receiver seen on the GPS2 port while it is not the second F9P's: the port off, a XIAO on it, or
+// autosteer on (the change waits) (web page, Status)
 bool gps2ReceiverSeen()
 {
     return !dualF9pOn() && gps2SniffGood >= GPS2_SNIFF_N && gps2SniffMs && millis() - gps2SniffMs < GPS2_SNIFF_MS;
@@ -199,9 +260,12 @@ static void relPosNed(const uint8_t* p, uint16_t len)
 
 static inline void dCk(uint8_t b) { dCkA += b; dCkB += dCkA; }
 
-// Called from loop(): the bytes of the second F9P (only with the GPS2 port set to it)
+// Called from loop(): the bytes of the second F9P (only while the GPS2 port is its)
 void dualF9pProcess()
 {
+    // automatic: a GNSS receiver seen on the port (the sniffer, fed by zXiao.ino), no XIAO, autosteer off
+    if (cfg.xiaoOff == GPS2_AUTO && !gps2F9p && !xiaoDetected && gps2ReceiverSeen() && !gps2Steering())
+        gps2Take(true, "a GNSS receiver sends valid data on it");
     gps2Begin();
     if (!dualF9pOn() || rxCkOwns(RXCK_GPS2)) return;     // (the receiver check is searching for its baud rate)
     const uint32_t now = millis();
@@ -213,6 +277,16 @@ void dualF9pProcess()
         dualF9pBytes++;
         rxCkBytes[RXCK_GPS2]++;
         dLastMs = now;
+        // a XIAO on the port after all (it says hello in plain ASCII): back to listening, autosteer off
+        if (b == (uint8_t)GPS2_HELLO[gps2HelloPos])
+        {
+            if (++gps2HelloPos == sizeof(GPS2_HELLO) - 1)
+            {
+                gps2HelloPos = 0;
+                if (!gps2Steering()) { gps2Take(false, "a XIAO says hello on it"); return; }
+            }
+        }
+        else gps2HelloPos = (b == (uint8_t)GPS2_HELLO[0]) ? 1 : 0;
         // NMEA between the UBX frames: a fresh F9P, not set up as the second F9P yet, sends GGA and the rest
         // instead of the RELPOSNED. Valid sentences count as valid data, so the receiver check can identify
         // it, check it and load the AgOpenGPS settings (zRxCheck.ino refuses all that on "nothing valid").
@@ -263,8 +337,8 @@ void dualF9pJson(Json& j)
     j.u("bytes", dualF9pBytes);
     j.u("nmea", dualF9pNmea);                              // NMEA sentences: the F9P is not set up as the second F9P
     j.i("nmeaAgo", dualF9pNmeaMs ? (long)((now - dualF9pNmeaMs) / 1000) : -1);
-    j.str("port", gps2Name());                             // "F9P", "XIAO", "off" (the setting)
-    j.bo("seen", gps2ReceiverSeen());                      // a receiver on the port while it is set to the XIAO or off
+    j.str("port", cfg.xiaoOff == GPS2_OFF ? "off" : gps2F9p ? "F9P" : xiaoDetected ? "XIAO" : "auto");   // the setting, or what automatic found
+    j.bo("seen", gps2ReceiverSeen());                      // a receiver on the port while it is not the second F9P's
     j.num("heading", dualF9pHeading, 2);
     j.num("baseline", dualF9pBaseline, 1);
     j.num("roll", dualF9pRoll, 2);

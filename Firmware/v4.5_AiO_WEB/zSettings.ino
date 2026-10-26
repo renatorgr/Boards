@@ -1,6 +1,7 @@
 /* zSettings.ino - settings from the web page, kept in the EEPROM.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -29,7 +30,7 @@ static void settingsDefaults(WebSettings& s)
     s.epochWaitMs        = EPOCH_WAIT_MS;
     s.tm171SwapRollPitch = TM171_SWAP_ROLL_PITCH;
     s.tm171YawSign       = TM171_YAW_SIGN;
-    s.xiaoOff            = 0;         // XIAO bridge on: it does nothing until a XIAO says hello
+    s.xiaoOff            = GPS2_AUTO; // automatic: the XIAO's or the second F9P's, whichever is found (zDualF9P.ino)
     s.autoSet            = 1;
     s.wasCheckOff        = 0;         // WAS check on
     s.wdtOff             = 0;         // hardware watchdog on
@@ -79,7 +80,7 @@ static void settingsSanitize(WebSettings& s)
     if (s.epochWaitMs < 20 || s.epochWaitMs > 100)                   s.epochWaitMs = d.epochWaitMs;
     if (s.tm171SwapRollPitch > 1)                                    s.tm171SwapRollPitch = d.tm171SwapRollPitch;
     if (s.tm171YawSign != 0 && s.tm171YawSign != 1 && s.tm171YawSign != -1) s.tm171YawSign = d.tm171YawSign;
-    if (s.xiaoOff > GPS2_F9P)                                        s.xiaoOff = d.xiaoOff;
+    if (s.xiaoOff != GPS2_OFF)                                       s.xiaoOff = GPS2_AUTO;   // (GPS2_F9P: found by itself now)
     if (s.autoSet > 1)                                               s.autoSet = 1;
     if (s.wasCheckOff > 1)                                           s.wasCheckOff = d.wasCheckOff;
     if (s.wdtOff > 1)                                                s.wdtOff = d.wdtOff;
