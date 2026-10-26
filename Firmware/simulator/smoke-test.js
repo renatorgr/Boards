@@ -60,6 +60,10 @@ async function teensy(browser, port, q, name) {
   if (t !== "status") await shot(pg, name + "-" + t);
  }
  await expect(pg, what, "#log", /\[boot\]/);
+ if (!/mach=0|park=1/.test(q)) {       // the seed drill's 16 rows, or the sprayer's 5 sections (parked: nothing asked yet, the tab draws 5)
+  const n = /impl=sprayer/.test(q) ? 5 : 16;
+  if ((await pg.locator("#mSec span").count()) !== n) fail.push(what + ": the Machine tab does not show " + n + " sections");
+ }
  const sprayer = !/mach=(aog|0)/.test(q);     // the sprayer module chosen: the Machine tab links to its page
  if ((await pg.locator("#simSprayerLink a").count() > 0) !== sprayer) fail.push(what + ": the link to the sprayer page " + (sprayer ? "is missing" : "shows without the sprayer module"));
  return pg;
@@ -75,7 +79,7 @@ async function teensy(browser, port, q, name) {
  await shot(start, "start");
  await start.close();
  for (const [q, name] of [["", "um982"], ["?gps=x20p&xiao=0&mach=0", "x20p"], ["?gps=f9p&imu=bno&motor=keya&prog=aog&mach=aog", "f9p"],
-  ["?gps=dualf9p&imu=rvc&motor=ibt2&prog=aog", "dualf9p"], ["?imu=none&motor=danfoss", "noimu"]]) {
+  ["?gps=dualf9p&imu=rvc&motor=ibt2&prog=aog", "dualf9p"], ["?imu=none&motor=danfoss&impl=sprayer", "noimu"]]) {
   const pg = await teensy(browser, port, q, name);
   await pg.close();
  }
@@ -119,7 +123,8 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
- // the sprayer module's page: spraying a pass, then the calibration saved and the total set to 0 (the password asked in a prompt)
+ // the sprayer module's page with the seed drill: sowing a pass with the 16 relays, then the calibration saved and the total set
+ // to 0 (the password asked in a prompt)
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
@@ -129,7 +134,9 @@ async function teensy(browser, port, q, name) {
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
   await expect(pg, what, "#bar", /^\d+\.\dbar$/);
   await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
-  if ((await pg.locator("#secs span.on").count()) !== 5) fail.push(what + ": expected 5 sections open while spraying");
+  if ((await pg.locator("#secs span.on, #secs2 span.on").count()) !== 16) fail.push(what + ": expected 16 rows open while sowing");
+  if ((await pg.locator("#relays span.on").count()) !== 16) fail.push(what + ": expected 16 relays on while sowing");
+  await expect(pg, what, "#relayNote", /^16 relays, 16 of them sections/);
   await shot(pg, "sprayer-status");
   await pg.getByRole("button", {name: "Save", exact: true}).click(); await pg.waitForTimeout(800);
   await expect(pg, what, "#msgCalib", /done/);
@@ -139,7 +146,20 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#log", /calibration saved: 450\.0 pulses\/L.*\n.*total set to 0 from the page/);
   await pg.close();
  }
- // the sprayer module that lost the tractor network: sections closed, the program's request still outlined
+ // the same page with the sprayer: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow
+ {
+  const what = "Sprayer page, sprayer";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?impl=sprayer", what);
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#sub", /program talking/);
+  if ((await pg.locator("#secs span.on, #secs2 span.on").count()) !== 5) fail.push(what + ": expected 5 sections open while spraying");
+  if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
+  await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
+  await expect(pg, what, "#bar", /^[23]\.\dbar$/);
+  await shot(pg, "sprayer-sprayer");
+  await pg.close();
+ }
+ // the sprayer module that lost the tractor network: rows closed, the program's request still outlined
  {
   const what = "Sprayer page, network lost";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?wifi=lost", what);
@@ -148,7 +168,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#link", /silent, sections closed/);
   await expect(pg, what, "#log", /lost the tractor network 'Farm WiFi'/);
   if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
-  if ((await pg.locator("#secs span.req").count()) !== 5) fail.push(what + ": expected 5 sections asked for but closed");
+  if ((await pg.locator("#secs span.req, #secs2 span.req").count()) !== 16) fail.push(what + ": expected 16 rows asked for but closed");
   await shot(pg, "sprayer-lost");
   await pg.close();
  }

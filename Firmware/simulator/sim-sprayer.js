@@ -6,7 +6,9 @@
 */
 // The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiCalibPost, apiTotalPost,
 // apiRestartPost, the program update on /api/update). The sections the program asks for and the sprayer's
-// readings come from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows.
+// readings come from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the seed
+// drill's 16 rows on a separate ESP32 with 16 relays (no pressure or flow sensor), or the sprayer's 5 sections on
+// the ESP32_Relay_X8 board.
 // The own-network password is the module's default, agopengps.
 "use strict";
 (function () {
@@ -14,11 +16,12 @@ const S = window.AioSim, KEY = "aiosim.sprayer", MKEY = "aiosim.sprayer.module",
 const B = S.BUILD.sprayer || {}, FW = B.name || "Sprayer_ESP32", VER = B.version || "0.5";
 const NAME = "00007C4EA4CF12B3", AP = "Sprayer-4E7C";      // from the ESP32's factory MAC, as zSettings.ino makes them
 const NET = S.opt.wifi, LOST_AT = 24;                       // sta: on the tractor network; lost: was, until LOST_AT s; ap: not set
+const IMPL = S.IMPL, X8 = !!IMPL.nozzles, RELAYS = X8 ? 8 : 16;   // the sprayer: the X8 board (8 relays on HIGH); the seed drill: a dev module with two relay modules (16, on LOW)
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: NET !== "ap", sta: NET === "ap" ? "" : "Farm WiFi",
  staPassSet: NET !== "ap", host: "sprayer", subnet: "192.168.5", ppl: 450, pmax: 10, pdiv: 0.6, totalBase: 0, ev: [], evAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
-S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed.",
- ["wifi", "park"], [KEY, MKEY]);
+S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
+ (X8 ? "" : " The seed drill has no pressure or flow sensor on the module: those stay at 0."), ["impl", "wifi", "park"], [KEY, MKEY]);
 
 // on the tractor network from 3.2 s; the program talks (PGN 239 ten times a second) from 5.5 s
 const staUp = () => X.staOn && !!X.sta && T() > 3.2 && !(NET === "lost" && T() > LOST_AT);
@@ -38,7 +41,7 @@ function events() {
  if (sta) {
   L.push([3.2, "joined '" + X.sta + "', IP " + X.subnet + ".123, -58 dBm"]);
   L.push([5.6, "machine config from the program: lift off, raise 2 s, lower 4 s, outputs normal"]);
-  L.push([5.7, "output functions from the program: relays 1 2 3 4 5 0 0 0"]);
+  L.push([5.7, "output functions from the program: relays 1 2 3 4 5 6 7 8"]);      // the module logs the first eight
   if (NET === "lost") L.push([LOST_AT, "lost the tractor network '" + X.sta + "'"]);
  }
  const tB = T();
@@ -54,7 +57,7 @@ function restart(offMs) {
 function sprayer() {
  const link = linkOk(), sp = M.sprayerAt(link ? undefined : NET === "lost" ? LOST_AT : 0);
  const req = link || NET === "lost" ? sp.cmd : 0, on = link ? sp.cmd : 0;     // the request stays as last heard while the program is silent
- const bar = on ? sp.bar : link && sp.main ? 3.3 : NET === "lost" ? 3.3 : 0.1;  // pump pressure with the valves closed
+ const bar = !X8 ? 0 : on ? sp.bar : link && sp.main ? 3.3 : NET === "lost" ? 3.3 : 0.1;  // pump pressure with the valves closed
  const lpm = on ? S.nozzles(on) * 0.8 * Math.sqrt(bar / 3) : 0;
  return {req: req, on: on, bar: bar, lpm: lpm, total: Math.max(0, sp.total - X.totalBase), kmh: sp.main ? M.tractor(Math.max(0, M.T())).kmh : 0, raw: sp.total};
 }
@@ -68,8 +71,9 @@ function status() {
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: sp.req, n239: Math.floor(talking() * 10), nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: sp.on & 0xFF, on: sp.on, onHigh: true, fn: [1, 2, 3, 4, 5, 6, 7, 8]},   // X8 board: relays 1-8 are sections 1-8 (the default pin functions, v0.6), on when HIGH
-  spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: S.r2(0.5 + sp.bar / X.pmax * 4, 2),
+  // the relays are sections 1-8 (the v0.6 default) or, from the program's pin config, 1-16 (the AgOpenGPS default)
+  out: {bits: sp.on & 0xFFFF, on: sp.on, onHigh: X8, fn: Array.from({length: RELAYS}, (_, i) => i + 1)},
+  spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: X8 ? S.r2(0.5 + sp.bar / X.pmax * 4, 2) : 0,
    pulses: Math.round(sp.total * X.ppl)},
   cal: {ppl: X.ppl, pmax: X.pmax, pdiv: X.pdiv},
   log: X.ev.slice()};
