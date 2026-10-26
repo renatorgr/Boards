@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    25 Oct 2026: Machine tab for any standard machine module (official Machine_UDP_v5 or sprayer Nano): sections from
    the hello reply, Sprayer card only with PGN 160, up to 16 sections.
+   26 Oct 2026: Machine card fits a phone screen: the Hello replies row wraps, the checksum wording is a note under the list.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -182,7 +183,8 @@ a{color:var(--acc)}
   <div class="big" id="mState">–</div>
   <dl style="margin-top:6px"><dt>IP</dt><dd id="mIp" class="nw">–</dd><dt>Last packet</dt><dd id="mAgo" class="nw">–</dd>
    <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd>
-   <dt>Hello replies</dt><dd id="mHello" class="nw">–</dd><dt>Sections from</dt><dd id="mSecFrom" class="nw">–</dd></dl>
+   <dt>Hello replies</dt><dd id="mHello">–</dd><dt>Sections from</dt><dd id="mSecFrom" class="nw">–</dd></dl>
+  <p class="note hidden" id="mNoCrc" style="margin-top:8px">The hello replies come without a checksum, as the official Machine_UDP_v5 sends them: taken as they are, not counted as checksum errors.</p>
   <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254) and what the module reports, in its hello reply or in the sprayer PGN 160</p>
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
@@ -623,7 +625,7 @@ function renderMach(m){
  set("mState",m.here?"sending":"silent",m.here?"ok":"bad");
  set("mIp",m.ip);set("mAgo",ago(m.ago),m.here?"":"warn");
  set("mPkts",String(m.pkts));set("mBad",String(m.bad),m.bad?"warn":"");set("mPgn",m.lastPgn<0?"–":String(m.lastPgn));
- set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN+(m.helloNoCrc?" · without checksum, as the official module sends it":""));
+ set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN);$("mNoCrc").classList.toggle("hidden",!m.helloNoCrc);
  const have=m.secAgo>=0&&m.secAgo<5;
  set("mSecFrom",m.secAgo<0?"nothing yet":(m.secFrom160?"PGN 160":"hello reply")+", "+ago(m.secAgo),have?"":"warn");
  const box=$("mSec");machSecs(box,m.cmd,m.sec,have);box.classList.toggle("old",m.secAgo>=0&&!have);
