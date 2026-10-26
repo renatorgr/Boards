@@ -2,6 +2,7 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
+   2026-10-26 (Claude): relay cells show the relay number above its function; 16 relays were cramped.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -42,6 +43,9 @@ dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:any
 .secs span{height:26px;border-radius:5px;background:var(--soft);font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--mute)}
 .secs span.req{outline:2px solid var(--warn);outline-offset:-2px}
 .secs span.on{background:var(--ok);color:var(--accInk);font-weight:700}
+.secs.rl span{height:38px;flex-direction:column;line-height:1.1;font-size:11.5px;white-space:nowrap;overflow:hidden}
+.secs.rl small{font-size:9.5px;font-weight:400;color:var(--mute)}
+.secs.rl span.on small{color:inherit;opacity:.8}
 .note{color:var(--mute);font-size:13.5px;margin:6px 0 0}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
 button.act,label.act{border:0;background:var(--acc);color:var(--accInk);border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
@@ -77,7 +81,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <div class="secs" id="secs2"></div>
 <p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent).</p>
 <h2 style="margin-top:12px">Relays</h2>
-<div class="secs" id="relays"></div>
+<div class="secs rl" id="relays"></div>
 <p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
 </div>
 
@@ -139,7 +143,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const FN={0:'–',17:'Lift ↓',18:'Lift ↑',19:'Tram R',20:'Tram L',21:'Geo stop'};
+const FN={0:'–',17:'Lift ↓',18:'Lift ↑',19:'Tram R',20:'Tram L',21:'Geo'};
 function fnName(f){return f>=1&&f<=16?'S'+f:(FN[f]||'?')}
 function pw(){return prompt('Password of the own Wi-Fi network')}
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
@@ -159,7 +163,7 @@ async function refresh(){
     $('pulses').textContent=d.spr.pulses;
     for(let i=0;i<16;i++){const e=$('s'+i);e.className=(d.out.on>>i&1?'on':'')+(d.aog.req>>i&1&&!(d.out.on>>i&1)?' req':'')}
     if(nRelays!=d.out.fn.length){nRelays=d.out.fn.length;$('relays').innerHTML=cells('r',nRelays,0)}
-    let nSec=0;for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];if(f>=1&&f<=16)nSec++;e.textContent=(i+1)+' '+fnName(f);e.className=d.out.bits>>i&1?'on':''}
+    let nSec=0;for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];if(f>=1&&f<=16)nSec++;e.innerHTML='<small>'+(i+1)+'</small>'+fnName(f);e.className=d.out.bits>>i&1?'on':''}
     $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: what each relay does comes from the program (Tool → Machine → Pin config).';
     $('link').innerHTML=d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>';
     $('ago239').textContent=ago(d.aog.ago239);$('agoHello').textContent=ago(d.aog.agoHello);
