@@ -10,7 +10,7 @@
 (function () {
 const S = window.AioSim, KEY = "aiosim.teensy", M = S.Module(KEY);
 S.bar("No module behind this page: the values are made up. Park the tractor to try the update and the calibrations.",
- ["gps", "imu", "motor", "prog", "xiao", "mach", "park"], [KEY]);
+ ["gps", "imu", "motor", "prog", "xiao", "mach", "impl", "park"], [KEY]);
 // The sprayer module has a page of its own (the simulator's third page): a link to it at the end of the Machine
 // tab's card, the way its IP on the Machine tab would open it on the tractor. Not with the official module (no page).
 if (S.opt.mach === "nano") {
@@ -19,7 +19,9 @@ if (S.opt.mach === "nano") {
   if (!card) return;
   const p = document.createElement("p"), a = document.createElement("a");
   p.className = "note";p.id = "simSprayerLink";
-  a.href = "../sprayer/" + (S.opt.park === "1" ? "?park=1" : "");a.textContent = "the sprayer module's own page";
+  const q = new URLSearchParams();
+  for (const k of ["impl", "park"]) if (S.opt[k] !== S.CHOICES[k].dflt) q.set(k, S.opt[k]);
+  a.href = "../sprayer/" + (q.toString() ? "?" + q.toString() : "");a.textContent = "the sprayer module's own page";
   p.append("In the simulator: open ", a, ". On the tractor it is at http://" + M.st.net + ".123/ (its own Wi-Fi network: http://192.168.4.1/).");
   card.appendChild(p);
  };
