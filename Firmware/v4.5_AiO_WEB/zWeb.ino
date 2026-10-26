@@ -2,6 +2,8 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    24 Oct 2026: the STEER LED is driven by zLeds.ino, no longer from the stop command here.
+   26 Oct 2026: /api/status says whether the tractor is moving (steer.moving), so the page greys out the
+   buttons this file would refuse.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -188,6 +190,7 @@ static bool autosteerEngaged()
 {
     return watchdogTimer < WATCHDOG_THRESHOLD;
 }
+static bool tractorMoving();   // below, with the firmware update
 
 // ---------------------------------------------------------------- answers
 static const char* fixNameOf(int q)
@@ -319,6 +322,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.i("pwm", pwmDisplay);
     j.bo("switchOn", steerSwitch == 0);
     j.bo("active", autosteerEngaged());
+    j.bo("moving", tractorMoving());   // the page greys out what is refused then (firmware update, TM171 calibration)
     j.str("motor", isKeya ? "Keya" : steerConfig.IsDanfoss ? "Danfoss" : steerConfig.CytronDriver ? "Cytron" : "IBT2");
     j.num("aogKmh", gpsSpeed, 1);
     j.i("guidance", guidanceStatus);

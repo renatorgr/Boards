@@ -506,7 +506,7 @@ function Module(key) {
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});
   if (isTm) j.tm.set = tmSetJson(t);
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
-   switchOn: engaged, active: engaged, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
+   switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
    sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
@@ -669,7 +669,7 @@ function Module(key) {
   if (!isTm) return err(409, "no TM171 found");
   if (a === "calib" || a === "install") {
    if (steering()) return err(409, ENGAGED);
-   if (!parked && tractor(t, parked).moving) return err(409, "the tractor is moving - stop first (on a bench, switch simulator mode on)");
+   if (!parked && !cfg.simMode && tractor(t, parked).moving) return err(409, "the tractor is moving - stop first (on a bench, switch simulator mode on)");
    if (["starting", "running", "finishing"].includes(tm.calib)) return err(409, "a calibration is running");
    Object.assign(tm, {calib: a === "install" ? "running" : "starting", kind: a === "install" ? "install" : "gyro", end: t + (a === "install" ? 20 : 21)});
    line(a === "install" ? "[status] TM171: new install calibration started (about 20 s; keep the tractor parked, do not cut power)"
