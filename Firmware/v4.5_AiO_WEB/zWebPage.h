@@ -348,7 +348,7 @@ a{color:var(--acc)}
 <div class="grid">
  <div class="card"><h2>IMU</h2>
   <dl><dt>Type</dt><dd id="imuType2">–</dd><dt>Status</dt><dd id="tmState2">–</dd><dt>Heading</dt><dd id="tmHdg2">–</dd></dl>
-  <p class="note" id="imuNone">No TM171 found: a BNO085 has nothing to set up from here, and without an IMU this tab is empty.</p>
+  <p class="note hidden" id="imuNone">–</p>
   <p class="note hidden" id="imuWire">Everything on this tab sends commands to the TM171, so it needs one wire from Teensy pin 20 (TX5) to the TM171 RX pin. The board only wires the other direction.</p></div>
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
   <dl><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
@@ -500,7 +500,7 @@ function render(s){
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
-  $("imuNone").classList.toggle("hidden",tm);
+  $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");
   set("imuType2",t.type?t.type+" · "+t.port:"none");pill("tmState2",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");set("tmHdg2",t.ok?fmt(t.out,2,"°"):"–");
   if(tm&&t.set)renderTmSet(t.set);
   const noWire=tm&&t.set&&t.set.noWire,why=tm&&t.set?t.set.setupWhy:"",fixed=tm&&t.set&&!why&&t.set.fixAgo>=0&&t.set.fixAgo<120;
