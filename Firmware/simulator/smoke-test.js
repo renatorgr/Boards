@@ -17,6 +17,8 @@ const {chromium} = require("playwright");
 const site = path.resolve(process.argv[2] || "_site"), shots = process.argv[3] ? path.resolve(process.argv[3]) : "";
 const TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css"};
 const fail = [];
+// the whole check takes about two minutes; a browser that hangs must not hold the Action for hours
+const watchdog = setTimeout(() => { console.log("FAILED: the check did not finish in 6 minutes"); process.exit(1); }, 6 * 60 * 1000);
 
 const server = http.createServer((q, r) => {
  const u = decodeURIComponent(q.url.split("?")[0]);
@@ -174,6 +176,7 @@ async function teensy(browser, port, q, name) {
  }
  await browser.close();
  server.close();
+ clearTimeout(watchdog);
  if (fail.length) { console.log("FAILED:\n" + fail.join("\n")); process.exit(1); }
  console.log("Simulator pages OK");
 })().catch(e => { console.log(e); process.exit(1); });

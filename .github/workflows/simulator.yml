@@ -31,17 +31,17 @@ on:
 permissions:
   contents: read
 
-# one publication at a time, and the one under way finishes
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 env:
   PLAYWRIGHT: '1.63.0'   # the browser driver of the check; its Chromium comes with it
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15          # a build and check take about 4 minutes; a stuck browser must not hold the queue for hours
+    # a newer push to the same branch replaces the check of the older one; each branch has its own queue
+    concurrency:
+      group: simulator-build-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +58,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Open the pages in a browser
+        timeout-minutes: 8
         run: node Firmware/simulator/smoke-test.js _site shots
 
       - name: Keep the screenshots
@@ -99,6 +100,10 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    # one publication at a time, and the one under way finishes (GitHub Pages takes one deployment at a time)
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     steps:
       - name: Publish on GitHub Pages
         id: deployment
