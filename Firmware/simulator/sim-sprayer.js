@@ -68,7 +68,7 @@ function status() {
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: sp.req, n239: Math.floor(talking() * 10), nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: sp.on & 0xFF, on: sp.on, fn: [1, 2, 3, 4, 5, 0, 0, 0]},                 // relays 1-5 are sections 1-5 (the default pin functions)
+  out: {bits: sp.on & 0xFF, on: sp.on, fn: [1, 2, 3, 4, 5, 6, 7, 8]},                 // relays 1-8 are sections 1-8 (the default pin functions, v0.6)
   spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: S.r2(0.5 + sp.bar / X.pmax * 4, 2),
    pulses: Math.round(sp.total * X.ppl)},
   cal: {ppl: X.ppl, pmax: X.pmax, pdiv: X.pdiv},

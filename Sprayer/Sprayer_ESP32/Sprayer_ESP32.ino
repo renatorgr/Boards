@@ -6,7 +6,8 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.5 (2026-10-25), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.6 (2026-10-26), not yet tested on the sprayer.
+//   v0.6: all 8 relays are sections 1-8 by default (the boom has 5 now, up to 8 later).
 //   v0.5: the program subnet can also be set on the page (for routers that are not 192.168.5.x).
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
@@ -45,7 +46,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.5"
+#define FW_VERSION          "0.6"
 
 // ---------------------------------------------------------------- pins (ESP32_Relay_X8 board)
 const uint8_t RELAY_PIN[8] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8, on when HIGH (checked 2026-10-25)
@@ -85,8 +86,10 @@ struct Settings
     // machine config from the program (PGN 238)
     uint8_t raiseTime = 2, lowerTime = 4, hydEnable = 0, invertOutputs = 0;
     uint8_t user1 = 0, user2 = 0, user3 = 0, user4 = 0;
-    // output functions from the program (PGN 236): relays 1-5 = sections 1-5 until the program says otherwise
-    uint8_t pin[24] = { 1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    // output functions from the program (PGN 236): relays 1-8 = sections 1-8 until the program says otherwise.
+    // AgOpenWeb sends its own pin config at start (its default is pins 1-6 = sections 1-6, 7-8 = none), so
+    // for 8 sections set pins 7 and 8 to Section 7 and Section 8 in AgOpenWeb (Machine, Pin config).
+    uint8_t pin[24] = { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     // sensor calibration
     float   pulsesPerLitre = 450.0f;        // YF-S201: about 450. Calibrate with a bucket (README)
     float   pressureMaxBar = 10.0f;         // 0-10 bar sensor, 0.5 V = 0 bar, 4.5 V = full scale
