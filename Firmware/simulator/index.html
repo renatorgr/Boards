@@ -36,7 +36,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <body>
 <main>
 <h1>AiO v4.5 web page simulator</h1>
-<p class="lead">Try the web pages of the AiO v4.5 autosteer module, its XIAO and the ESP32 sprayer module without a board. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on, spraying.</p>
+<p class="lead">Try the web pages of the AiO v4.5 autosteer module, its XIAO and the ESP32 sprayer module without a board. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on, sowing with a 16-row seed drill (or spraying, when the sprayer is chosen in the strip).</p>
 <div class="grid">
  <div class="card"><h2>Teensy module page</h2>
   <p>What the module shows at <code>http://192.168.5.126/</code> on the tractor's network: GNSS, IMU, steering, messages, settings, the GPS receiver, the machine module (with a link to the sprayer module's page) and the firmware update.</p>
@@ -55,9 +55,11 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <li><a href="teensy/?gps=dualf9p&amp;imu=rvc&amp;motor=ibt2&amp;prog=aog">Dual F9P, BNO085 in RVC mode, IBT2 motor, AgOpenGPS</a></li>
  <li><a href="teensy/?gps=x20p&amp;xiao=0&amp;mach=0&amp;park=1">X20P and TM171, no XIAO, no machine module, tractor parked</a></li>
  <li><a href="teensy/?mach=aog">UM982 and TM171 with the official AgOpenGPS machine module (Machine_UDP_v5)</a></li>
- <li><a href="sprayer/?wifi=lost">Sprayer module that lost the tractor network: sections closed, the program's request outlined</a></li>
+ <li><a href="teensy/?impl=sprayer">UM982 and TM171 with the 8 m sprayer: 5 sections, pressure, flow and litres on the Machine tab</a></li>
+ <li><a href="sprayer/?impl=sprayer">Sprayer module page with the 8 m sprayer on the ESP32_Relay_X8 board: 8 relays, the boom's readings</a></li>
+ <li><a href="sprayer/?wifi=lost">Sprayer module that lost the tractor network: rows closed, the program's request outlined</a></li>
 </ul>
-<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO and the machine module in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
+<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO, the machine module and the implement (a seed drill with 16 rows 25 cm apart, or the 8 m sprayer with 5 sections) in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
 <footer>Pages of firmware {{FOLDER}} (version {{VERSION}}) and Sprayer_ESP32 (version {{SPRAYER_VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3.</footer>
 </main>
 </body>

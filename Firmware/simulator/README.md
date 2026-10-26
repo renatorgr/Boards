@@ -2,7 +2,7 @@
 
 Try the module's web pages without a module: **https://renatorgr.github.io/Boards/**
 
-These are the real pages of the firmware, the Teensy page (`zWebPage.h`), the XIAO Wi-Fi page (`xPage.h`) and the ESP32 sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`), with pretend modules behind them instead of the boards. A tractor drives up and down a field with autosteer on; the GPS gets its RTK fix, the IMU aligns, the sprayer module opens its sections and measures the boom. Nothing is real, but what the pages show and how they behave is what you see on the tractor.
+These are the real pages of the firmware, the Teensy page (`zWebPage.h`), the XIAO Wi-Fi page (`xPage.h`) and the ESP32 sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`), with pretend modules behind them instead of the boards. A tractor drives up and down a field with autosteer on; the GPS gets its RTK fix, the IMU aligns, the machine module opens the 16 rows of the seed drill (or, with the sprayer chosen, its 5 sections, measuring the boom's pressure and flow). Nothing is real, but what the pages show and how they behave is what you see on the tractor.
 
 A strip at the top of each page chooses the set-up:
 
@@ -13,7 +13,8 @@ A strip at the top of each page chooses the set-up:
 | Steering | Cytron, IBT2, Danfoss, Keya motor |
 | Program | AgOpenWeb, AgOpenGPS |
 | XIAO | on the GPS2 port or not (a dual F9P takes that port, so no XIAO then) |
-| Machine module | the sprayer module (ESP32 or Nano: hello reply, PGN 237 and PGN 160 with the readings; the Machine tab then links to the sprayer module's page), the official AgOpenGPS Machine_UDP_v5 (hello reply only), or none |
+| Machine module | the sprayer module program (Sprayer_ESP32 on the implement's relays: hello reply, PGN 237 and PGN 160 with the readings; the Machine tab then links to its page), the official AgOpenGPS Machine_UDP_v5 (hello reply only), or none |
+| Implement | a seed drill with 16 rows 25 cm apart (a separate ESP32 with two relay modules, 16 relays, a row each, no pressure or flow sensor), or the 8 m sprayer with 5 sections on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres) |
 | Tractor | driving with autosteer on, or parked |
 | XIAO chip | ESP32-C3 or ESP32-S3 (XIAO page only) |
 | Wi-Fi | sprayer page only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet |

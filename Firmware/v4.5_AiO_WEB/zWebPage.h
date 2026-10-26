@@ -3,7 +3,9 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    25 Oct 2026: Machine tab for any standard machine module (official Machine_UDP_v5 or sprayer Nano): sections from
    the hello reply, Sprayer card only with PGN 160, up to 16 sections.
-   26 Oct 2026: Machine card fits a phone screen: the Hello replies row wraps, the checksum wording is a note under the list.
+   26 Oct 2026: the buttons the module refuses while autosteer is on (or the tractor moves) are greyed out then,
+   with a line at the top of the tab saying why. Machine card fits a phone screen: the Hello replies row wraps,
+   the checksum wording is a note under the list.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -91,6 +93,7 @@ button.act,label.act{border:0;background:var(--acc);color:var(--accInk);border-r
 button.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button.danger{border:1px solid var(--bad);background:transparent;color:var(--bad);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
+button.locked{opacity:.45;cursor:not-allowed}
 .card.dim{opacity:.55}
 input:disabled,select:disabled,label.opt:has(input:disabled){opacity:.5;cursor:default}
 input[type=text]{font:inherit;font-family:var(--mono);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);flex:1;min-width:180px}
@@ -235,6 +238,7 @@ a{color:var(--acc)}
 </section>
 
 <section id="t-gps" class="hidden">
+<p class="note warn hidden" data-locknote="e" style="margin:0 0 10px"></p>
 <div class="grid fill gps">
 <div class="card"><h2>GPS receiver</h2>
  <div class="big" id="gModel">–</div>
@@ -250,7 +254,7 @@ a{color:var(--acc)}
  <details id="ck0Cmd" class="hidden"><summary class="note">AgOpenGPS commands (✓ already in the receiver)</summary><div id="ck0CmdList" class="mono" style="margin-top:6px"></div></details>
  <div class="row"><select id="ck0Um" class="hidden"><option value="d">UM982 with two antennas</option><option value="s">UM982 with one antenna</option></select></div>
  <p id="ck0UmNote" class="note hidden">One antenna: Status leaves the dual-antenna heading out. Kept in the Teensy's settings.</p>
- <div class="row"><button class="act hidden" type="button" id="ck0Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load">Load the AgOpenGPS settings</button>
+ <div class="row"><button class="act hidden" type="button" id="ck0Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load" data-lock="e">Load the AgOpenGPS settings</button>
  <!-- "Read all settings" (zRxCheck.ino, GET /api/rxdump) is kept in the Teensy but taken off the page (Renato, 2026-10-24): it
       was made to get X20P.txt, which is in the firmware now (zRxConfig.h). To put it back: this button, the ck0DumpRow block
       below, the same two in the second F9P card, and the lines marked "Read all settings" in renderCk and in the button handlers.
@@ -265,7 +269,7 @@ a{color:var(--acc)}
  <p id="ck1Warn" class="note bad hidden"></p>
  <div id="ck1Vals" class="hidden"><p class="note">Values read</p><div id="ck1Bad" class="mono warn" style="margin-top:4px"></div>
   <details id="ck1Det"><summary class="note" id="ck1OkSum">–</summary><div id="ck1List" class="mono" style="margin-top:6px"></div></details></div>
- <div class="row"><button class="act hidden" type="button" id="ck1Baud">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load">Load the AgOpenGPS settings</button>
+ <div class="row"><button class="act hidden" type="button" id="ck1Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load" data-lock="e">Load the AgOpenGPS settings</button>
  <!-- "Read all settings", see the first card: <button class="sec hidden" type="button" id="ck1Dump">Read all settings</button> --></div>
  <p id="ck1Msg" class="note"></p>
  <!-- <div class="hidden" id="ck1DumpRow"><div class="row"><button class="act" type="button" id="ck1Dl">Download</button></div>
@@ -293,7 +297,7 @@ a{color:var(--acc)}
  <label class="opt"><input type="checkbox" name="sbas" value="1"><span>SBAS</span></label>
  <p class="note">Changing the constellations restarts the receiver's GNSS: RTK is lost for a few seconds.</p>
 </div>
-<div class="row"><button class="sec" type="button" id="uRead">Read from the receiver</button><button class="act" type="submit" id="uWrite">Write to the receiver</button><span id="uMsg" class="note"></span></div>
+<div class="row"><button class="sec" type="button" id="uRead">Read from the receiver</button><button class="act" type="submit" id="uWrite" data-lock="e">Write to the receiver</button><span id="uMsg" class="note"></span></div>
 <p class="note">Reads what the receiver is using. Writes only what changed, to the receiver's RAM, BBR and flash (kept after a power off). Only with autosteer off.</p>
 </form>
 <form id="fm" class="hidden" novalidate>
@@ -323,7 +327,7 @@ a{color:var(--acc)}
  <p id="mKsxtWarn" class="note warn hidden"></p>
  <p id="mMsgOther" class="note warn hidden"></p>
 </div>
-<div class="row"><button class="sec" type="button" id="mRead">Read from the receiver</button><button class="act" type="submit" id="mWrite">Write to the receiver</button><span id="mMsg" class="note"></span></div>
+<div class="row"><button class="sec" type="button" id="mRead">Read from the receiver</button><button class="act" type="submit" id="mWrite" data-lock="e">Write to the receiver</button><span id="mMsg" class="note"></span></div>
 <p class="note">Reads with CONFIG, MASK, UNILOGLIST and MODE. Writes only what changed, one command at a time, then SAVECONFIG (kept after a power off). «–»: the receiver did not give the value. Only with autosteer off.</p>
 </form>
 </div>
@@ -340,19 +344,20 @@ a{color:var(--acc)}
 </section>
 
 <section id="t-imu" class="hidden">
+<p class="note warn hidden" data-locknote="m" style="margin:0 0 10px"></p>
 <div class="grid">
  <div class="card"><h2>IMU</h2>
   <dl><dt>Type</dt><dd id="imuType2">–</dd><dt>Status</dt><dd id="tmState2">–</dd><dt>Heading</dt><dd id="tmHdg2">–</dd></dl>
-  <p class="note" id="imuNone">No TM171 found: a BNO085 has nothing to set up from here, and without an IMU this tab is empty.</p>
+  <p class="note hidden" id="imuNone">–</p>
   <p class="note hidden" id="imuWire">Everything on this tab sends commands to the TM171, so it needs one wire from Teensy pin 20 (TX5) to the TM171 RX pin. The board only wires the other direction.</p></div>
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
   <dl><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
-  <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn">Calibrate gyro</button><span class="note">Takes 20 s. Park the tractor and switch autosteer off; the engine can stay running. The result is kept until the TM171 is powered off.</span></div>
-  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn">New install calibration</button><span class="note">Stored in the TM171's flash memory. Run it once after installing the TM171, or after a large temperature change. Takes about 20 s with the tractor parked and autosteer off. Do not cut power while it runs. When it finishes, switch the whole module off and on (the TM171 has no power switch of its own).</span></div>
+  <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn" data-lock="m">Calibrate gyro</button><span class="note">Takes 20 s. Park the tractor and switch autosteer off; the engine can stay running. The result is kept until the TM171 is powered off.</span></div>
+  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn" data-lock="m">New install calibration</button><span class="note">Stored in the TM171's flash memory. Run it once after installing the TM171, or after a large temperature change. Takes about 20 s with the tractor parked and autosteer off. Do not cut power while it runs. When it finishes, switch the whole module off and on (the TM171 has no power switch of its own).</span></div>
  </div>
  <div class="card hidden" id="tmSetCard"><h2>TM171 setup</h2>
   <dl><dt>Setup</dt><dd id="tmSetup2">–</dd></dl>
-  <div class="row hidden" id="tmFixRow"><button class="act" type="button" id="tmFixBtn">Fix TM171 setup</button><span class="note" id="tmFixNote">–</span></div>
+  <div class="row hidden" id="tmFixRow"><button class="act" type="button" id="tmFixBtn" data-lock="e">Fix TM171 setup</button><span class="note" id="tmFixNote">–</span></div>
   <details id="tmSetDet"><summary class="note" id="tmSetSum">TM171 settings</summary>
    <div style="margin-top:8px">
    <label class="opt"><input type="checkbox" id="tsMag"><span>Enable magnetometer<small>Leave off for AgOpenGPS: heading is aligned to GPS instead.</small></span></label>
@@ -362,7 +367,7 @@ a{color:var(--acc)}
    <div class="row"><span>Boot mode</span><select id="tsBoot"><option value="0">Auto</option><option value="1">Static</option><option value="2">Dynamic</option></select><span class="note">Applies after the module is switched off and on; requires "Save to flash".</span></div>
    <div class="row"><span>Output data rate</span><select id="tsRate"><option value="100">100 Hz</option><option value="50">50 Hz</option><option value="25">25 Hz</option></select><span class="note">25 Hz is the AgOpenGPS forum set-up, 100 Hz what the AiO v6 firmware uses: this firmware takes the newest sample at each GPS fix, so a higher rate only makes that sample fresher. Currently measured: <span id="tsRateNow">–</span>. The TM171's inhibit time (the shortest gap between two packets) is left as read: <span id="tsInhibit">–</span>.</span></div>
    <label class="opt"><input type="checkbox" id="tsSave" checked><span>Save to flash<small>If unchecked, the settings are lost when the TM171 is powered off.</small></span></label>
-   <div class="row"><button class="sec" type="button" id="tsRead">Read from TM171</button><button class="sec" type="button" id="tsAog">AgOpenGPS defaults</button><button class="act" type="button" id="tsWrite">Write to TM171</button></div>
+   <div class="row"><button class="sec" type="button" id="tsRead">Read from TM171</button><button class="sec" type="button" id="tsAog">AgOpenGPS defaults</button><button class="act" type="button" id="tsWrite" data-lock="e">Write to TM171</button></div>
    <p class="note" id="tsMsg">–</p>
    <p class="note">Settings are read from the TM171 at start-up (requires the TX5 wire). UART baud rate: <span id="tsBaud">–</span>. The baud rate is only changed by "Fix TM171 setup".</p>
    </div></details>
@@ -371,19 +376,20 @@ a{color:var(--acc)}
 </section>
 
 <section id="t-firmware" class="hidden">
+<p class="note warn hidden" data-locknote="m" style="margin:0 0 10px"></p>
 <div class="grid">
 <div class="card"><h2>Running firmware</h2>
  <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="target">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
  <div class="row"><button class="danger" id="reboot">Restart Teensy</button></div></div>
 <div class="card"><h2>Version on GitHub</h2>
  <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
- <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
+ <div class="row"><button class="act" id="ghInstall" data-lock="m" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
  <p class="note">The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.</p></div>
 <div class="card"><h2>Update firmware</h2>
  <div class="row"><label class="act">Choose .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">no file</span></div>
  <p id="hexInfo" class="note hidden"></p>
  <label class="opt"><input type="checkbox" id="force"><span>Other firmware<small>Installs it even without this update page inside (the next update will then have to be by USB).</small></span></label>
- <div class="row"><button class="act" id="install" disabled>Install</button></div>
+ <div class="row"><button class="act" id="install" data-lock="m" disabled>Install</button></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
  <p class="note">Only with autosteer off and the tractor stopped (on a bench, with the simulator mode on or no WAS, also while the program's simulator drives). The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation <b>do not switch the power off</b>. The saved settings are kept.</p></div>
@@ -494,7 +500,7 @@ function render(s){
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
-  $("imuNone").classList.toggle("hidden",tm);
+  $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");
   set("imuType2",t.type?t.type+" · "+t.port:"none");pill("tmState2",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");set("tmHdg2",t.ok?fmt(t.out,2,"°"):"–");
   if(tm&&t.set)renderTmSet(t.set);
   const noWire=tm&&t.set&&t.set.noWire,why=tm&&t.set?t.set.setupWhy:"",fixed=tm&&t.set&&!why&&t.set.fixAgo>=0&&t.set.fixAgo<120;
@@ -612,10 +618,24 @@ function render(s){
  $("alert").textContent=al.join("\n");$("alert").classList.toggle("hidden",!al.length);   /* (after the XIAO card: its version warning) */
  renderMach(s.mach);
  renderGh();
+ renderLock(s);
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
+
+// Buttons the module refuses while autosteer is engaged (data-lock "e"), or also while the tractor is moving ("m"; zWeb.ino
+// answers 409): greyed out then, and a click does nothing. A running gyro calibration keeps its Stop button.
+function renderLock(s){
+ const st=s.steer||{},t=s.tm||{},eng=!!st.active,mov=!!st.moving;
+ const calStop=["starting","running","finishing"].includes(t.calib)&&t.calibKind!=="install";
+ for(const b of document.querySelectorAll("[data-lock]"))
+  b.classList.toggle("locked",(eng||(mov&&b.dataset.lock==="m"))&&!(b.id==="tmCalBtn"&&calStop));
+ for(const p of document.querySelectorAll("[data-locknote]")){
+  const w=eng?"Some buttons are greyed out while autosteer is on.":mov&&p.dataset.locknote==="m"?"Some buttons are greyed out while the tractor is moving.":"";
+  p.textContent=w;p.classList.toggle("hidden",!w);}
+}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button.locked");if(b){e.preventDefault();e.stopImmediatePropagation();}},true);
 
 // The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays.
 // Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160) or the sprayer Nano.

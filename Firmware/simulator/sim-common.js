@@ -33,6 +33,7 @@ const CHOICES = {
  prog:  {label: "Program", dflt: "aow", options: [["aow", "AgOpenWeb"], ["aog", "AgOpenGPS"]]},
  xiao:  {label: "XIAO", check: true, dflt: "1"},
  mach:  {label: "Machine module", dflt: "nano", options: [["nano", "sprayer module (ESP32 / Nano)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
+ impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "seed drill, 16 rows 25 cm apart"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
  wifi:  {label: "Wi-Fi", dflt: "sta", options: [["sta", "on the tractor network"], ["lost", "tractor network lost"], ["ap", "tractor network not set"]]},
@@ -60,8 +61,13 @@ const wrap360 = h => ((h % 360) + 360) % 360;
 const r2 = (v, d) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
 const wob = (t, a, f) => a * Math.sin(t * f) * Math.cos(t * f * 0.37 + 1.1);   // a slow wobble, the same for the same t
 const OFFLINE = {};
-const NOZZLES = [4, 2, 4, 2, 4];                                           // per section of the 8 m boom
-const nozzles = bits => NOZZLES.reduce((a, n, i) => a + ((bits >> i) & 1) * n, 0);
+// the implement the tractor pulls: a section of the machine module per row or per boom section, the width of a pass
+const IMPLEMENTS = {
+ seeder:  {name: "seed drill", sections: 16, width: 16 * 0.25, nozzles: null},   // 16 rows 25 cm apart (4 m), a relay a row, no sprayer sensors
+ sprayer: {name: "sprayer", sections: 5, width: 8, nozzles: [4, 2, 4, 2, 4]},     // 8 m boom, 5 sections with 4 2 4 2 4 nozzles
+};
+const IMPL = IMPLEMENTS[opt.impl], ALL_SECTIONS = (1 << IMPL.sections) - 1;
+const nozzles = bits => IMPL.nozzles ? IMPL.nozzles.reduce((a, n, i) => a + ((bits >> i) & 1) * n, 0) : 0;   // nozzles open
 function form(body) {
  const p = new URLSearchParams(typeof body === "string" ? body : ""), o = {};
  for (const [k, v] of p) o[k] = v;
@@ -205,8 +211,9 @@ const UM_V = {rate: 100, mode: 2, elev: 10, rtkTo: 600, sbas: 0, hdMode: 1, hdLe
 const UBX_NAMES = Object.keys(UBX_V), UM_NAMES = Object.keys(UM_V);
 
 // ---- the field and the tractor
-// Up and down a 200 m field, 8 m between the passes, a U-turn at each end; parked: standing at the start.
-const FIELD = {lat: 38.5712345, lon: -7.9134567, alt: 212.43, len: 200, width: 8};
+// Up and down a 200 m field, the passes an implement's width apart (4 m seed drill, 8 m sprayer), a U-turn at each end;
+// parked: standing at the start.
+const FIELD = {lat: 38.5712345, lon: -7.9134567, alt: 212.43, len: 200, width: IMPL.width};
 const START = 15, PASS = 90, TURN = 12;     // s: moves off after power-on, one pass, one U-turn
 const RUNNING = 30;                         // s: a page opened the first time finds the module on for this long, the tractor on its way
 const V = FIELD.len / PASS, RT = FIELD.width / 2;
@@ -506,7 +513,7 @@ function Module(key) {
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});
   if (isTm) j.tm.set = tmSetJson(t);
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
-   switchOn: engaged, active: engaged, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
+   switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
    sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
@@ -559,14 +566,16 @@ function Module(key) {
   return [nmea("PANDA," + common + (imuOk ? String(Math.round(outH * 10) % 3600) : "65535") + "," + Math.round(roll * 10) + "," + Math.round(pitch * 10) + ",0")];
  }
  // the sprayer at time t: the sections the program asks for (PGN 254 / 239: on while the tractor sprays a pass), the ones
- // open a moment later (sec: the module lags 0.6 s), 5 sections with 4 2 4 2 4 nozzles, the boom pressure and flow, the litres
- // since the module started. Shared with the sprayer module's own page (sim-sprayer.js).
+ // open a moment later (sec: the module lags 0.6 s): every row of the seed drill, or every section of the sprayer's boom,
+ // then its pressure and flow (0.8 L/min a nozzle at 3 bar) and the litres since the module started; the seed drill has no
+ // such sensors on the module. Shared with the sprayer module's own page (sim-sprayer.js).
  function sprayer(t, tr, engaged) {
-  const cmdAt = x => { const q = tractor(x, parked); return engaged && q.straight && q.r > 1 && q.r < PASS - 1 ? 31 : 0; };
+  const cmdAt = x => { const q = tractor(x, parked); return engaged && q.straight && q.r > 1 && q.r < PASS - 1 ? ALL_SECTIONS : 0; };
   const cmd = cmdAt(t), sec = cmdAt(t - 0.6);
+  if (!IMPL.nozzles) return {cmd: cmd, sec: sec, bar: 0, lmin: 0, total: 0, main: engaged};
   const bar = sec ? 3.0 + wob(t, 0.08, 0.7) : engaged ? 3.3 : 0.1, lmin = nozzles(sec) * 0.8 * Math.sqrt(bar / 3);
   const passes = tr.moving ? Math.floor(tr.s / (PASS + TURN)) : 0, spray = tr.moving ? clamp(tr.r - 1.6, 0, PASS - 2) : 0;
-  return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * 12.8 / 60, main: engaged};
+  return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * nozzles(ALL_SECTIONS) * 0.8 / 60, main: engaged};
  }
  // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
  // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160)
@@ -669,7 +678,7 @@ function Module(key) {
   if (!isTm) return err(409, "no TM171 found");
   if (a === "calib" || a === "install") {
    if (steering()) return err(409, ENGAGED);
-   if (!parked && tractor(t, parked).moving) return err(409, "the tractor is moving - stop first (on a bench, switch simulator mode on)");
+   if (!parked && !cfg.simMode && tractor(t, parked).moving) return err(409, "the tractor is moving - stop first (on a bench, switch simulator mode on)");
    if (["starting", "running", "finishing"].includes(tm.calib)) return err(409, "a calibration is running");
    Object.assign(tm, {calib: a === "install" ? "running" : "starting", kind: a === "install" ? "install" : "gyro", end: t + (a === "install" ? 20 : 21)});
    line(a === "install" ? "[status] TM171: new install calibration started (about 20 s; keep the tractor parked, do not cut power)"
@@ -792,6 +801,6 @@ function Module(key) {
  };
 }
 
-return {opt: opt, CHOICES: CHOICES, BUILD: BUILD, VERSION: VERSION, RUNNING: RUNNING, hook: hook, hookXhr: hookXhr, bar: bar, Module: Module, OFFLINE: OFFLINE,
+return {opt: opt, CHOICES: CHOICES, BUILD: BUILD, VERSION: VERSION, RUNNING: RUNNING, IMPL: IMPL, hook: hook, hookXhr: hookXhr, bar: bar, Module: Module, OFFLINE: OFFLINE,
  form: form, ok: ok, err: err, load: load, save: save, forget: forget, wob: wob, r2: r2, sleep: sleep, nozzles: nozzles};
 })();
