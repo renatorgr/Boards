@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 26 Oct 2026 | Web page: the buttons the module refuses while autosteer is on or the tractor is moving (receiver settings, TM171 calibration and setup, firmware install) are greyed out then, with a line at the top of the tab saying why. |
 | 25 Oct 2026 | Machine tab: the official AgOpenGPS Machine_UDP_v5 is recognised too (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from the module's hello reply, up to 16; the Sprayer card only once PGN 160 arrives. LEDs: the in-between (orange) state is shown as red and green in turn, because orange looks like red through a diffused panel window. |
 | 24 Oct 2026 | LEDs with the AiO 26 meanings. TM171 settings: output rate from a list (25, 50, 100 Hz), the Setting layout as a real TM171 sends it, commands addressed to the TM171's own ID (writes sent "to everyone" were ignored), frames in the log. ZED-X20P settings file for the receiver check. Receiver set up in one go at the baud rate it is found at. The module's subnet changed from the XIAO page. The Firmware card shows the build inside a chosen `.hex`. |
 | 23 Oct 2026 | IMU tab: TM171 gyro calibration, new-install calibration, set-up check with **Fix TM171 setup**, settings read and written (needs the TX5 wire). Second F9P identified, checked and set up automatically; both receivers set up automatically. |
@@ -74,6 +75,8 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
 | **Machine** | Only once a machine module (IP .123: the official Machine_UDP_v5, the sprayer Nano, or anything that talks like them) has been heard on UDP 9999. Its IP, last packet, checksum errors, hello replies, and one square per section (up to 16) in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254) but still closed on the module, cyan asked off but still open. The module's side comes from its hello reply, or from the sprayer PGN 160. The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed. The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives. Only to look at. |
 | **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, GPS, UM982 console, build, free RAM, longest loop time, web errors); send it when something goes wrong. |
+
+While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
 
 The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
 
