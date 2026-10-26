@@ -6,11 +6,13 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.6 (2026-10-26), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.7 (2026-10-26), not yet tested on the sprayer.
+//   v0.7: also runs on a plain ESP32 dev module with relay modules (up to 16 relays): BOARD_RELAY_X8 0.
 //   v0.6: all 8 relays are sections 1-8 by default (the boom has 5 now, up to 8 later).
 //   v0.5: the program subnet can also be set on the page (for routers that are not 192.168.5.x).
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
+//   Or any ESP32 dev module with relay modules, up to 16 relays (BOARD_RELAY_X8 0 below).
 // The ESP32 is the standard AgOpenGPS "machine module" on the tractor's Wi-Fi network, IP <subnet>.123,
 // and it has its own Wi-Fi network and web page for setup and for watching the sprayer.
 //
@@ -46,16 +48,33 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.6"
+#define FW_VERSION          "0.7"
 
-// ---------------------------------------------------------------- pins (ESP32_Relay_X8 board)
-const uint8_t RELAY_PIN[8] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8, on when HIGH (checked 2026-10-25)
-#define NUM_RELAYS          8
+// ---------------------------------------------------------------- board and pins
+// BOARD_RELAY_X8 1 = the ESP32_Relay_X8 board (8 relays on it).
+// BOARD_RELAY_X8 0 = any ESP32 dev module (30 or 38 pins) with one or two relay modules wired to the pins
+//                    in RELAY_PIN below: relay 1 is the first pin. Keep the list as long as the relays you
+//                    have (8 or 16); the program decides which of them are sections (its pin config).
+#ifndef BOARD_RELAY_X8
+#define BOARD_RELAY_X8      1
+#endif
+
+#if BOARD_RELAY_X8
+const uint8_t RELAY_PIN[] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8 (checked 2026-10-25)
+#define RELAY_ON_HIGH       1       // this board's relays close when the pin is HIGH
+#define LED_PIN             23      // the board's programmable LED (set to -1 if it is not on this pin)
+#else
+// Free at boot and safe as outputs on a dev module (0, 2, 12, 15 are left out: they set the boot mode, and
+// 6-11 go to the flash). The sensors stay on 34, 35 and 39, which are input-only pins.
+const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33 };   // relays 1..16
+#define RELAY_ON_HIGH       0       // the usual relay modules (optocoupler inputs) close when the pin is LOW
+#define LED_PIN             2       // the dev module's blue LED
+#endif
+#define NUM_RELAYS          ((uint8_t)(sizeof(RELAY_PIN) / sizeof(RELAY_PIN[0])))
 #define PRESSURE_PIN        34      // ADC1, input only: pressure sensor signal through the 10k / 15k divider
 #define FLOW_PIN            35      // input only: flow meter signal through the 10k / 15k divider
 #define MASTER_PIN          39      // "SVN", input only: optional master switch sense (12 V through 47k / 10k)
 #define BUTTON_PIN          0       // the IO0 button: held 5 s = Wi-Fi settings back to the defaults
-#define LED_PIN             23      // the board's programmable LED (set to -1 if it is not on this pin)
 
 // ---------------------------------------------------------------- settings you may want to change
 #define USE_MASTER_SWITCH   0       // 1 = MASTER_PIN reads the master switch. 0 = the switch cuts the valves' 12 V in the wiring
@@ -104,7 +123,7 @@ Preferences prefs;
 
 uint16_t sectionsReq = 0;       // sections the program asks for, section 1 = bit 0 (PGN 239 / 229)
 uint16_t sectionsOn  = 0;       // sections the relays really have open
-uint8_t  relayBits   = 0;       // outputs on, relay 1 = bit 0
+uint16_t relayBits   = 0;       // outputs on, relay 1 = bit 0
 uint8_t  uTurn = 0, hydLift = 0, tramline = 0, geoStop = 0;
 float    gpsKmh = 0;
 bool     isRaise = false, isLower = false;

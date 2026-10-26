@@ -16,7 +16,7 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`LED_Bezel`](LED_Bezel) | A small 3D-printed comb (OpenSCAD and STL) that slides over the three front LEDs of the AiO v4.5 so each one lights only its own window on the panel. |
-| [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 8-relay board that runs a 5-section sprayer over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
+| [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
 
 Each folder has its own README with the details.
@@ -26,7 +26,7 @@ Each folder has its own README with the details.
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards:** designed and checked in KiCad, but not built or tested yet.
-- **Sprayer ESP32 v0.6:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. The Nano version (v0.3) is kept as it was.
+- **Sprayer ESP32 v0.7:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. Also builds for a plain ESP32 with relay modules (up to 16 relays). The Nano version (v0.3) is kept as it was.
 
 ## Getting started
 

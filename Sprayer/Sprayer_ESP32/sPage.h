@@ -143,7 +143,7 @@ const FN={0:'–',17:'Lift ↓',18:'Lift ↑',19:'Tram R',20:'Tram L',21:'Geo st
 function fnName(f){return f>=1&&f<=16?'S'+f:(FN[f]||'?')}
 function pw(){return prompt('Password of the own Wi-Fi network')}
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
-$('secs').innerHTML=cells('s',8,0);$('secs2').innerHTML=cells('s',8,8);$('relays').innerHTML=cells('r',8,0);
+$('secs').innerHTML=cells('s',8,0);$('secs2').innerHTML=cells('s',8,8);let nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
 let settingsLoaded=false;
 async function refresh(){
@@ -158,14 +158,16 @@ async function refresh(){
     $('volts').textContent=d.spr.volts.toFixed(2)+' V';
     $('pulses').textContent=d.spr.pulses;
     for(let i=0;i<16;i++){const e=$('s'+i);e.className=(d.out.on>>i&1?'on':'')+(d.aog.req>>i&1&&!(d.out.on>>i&1)?' req':'')}
-    for(let i=0;i<8;i++){const e=$('r'+i);e.textContent=(i+1)+' '+fnName(d.out.fn[i]);e.className=d.out.bits>>i&1?'on':''}
+    if(nRelays!=d.out.fn.length){nRelays=d.out.fn.length;$('relays').innerHTML=cells('r',nRelays,0)}
+    let nSec=0;for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];if(f>=1&&f<=16)nSec++;e.textContent=(i+1)+' '+fnName(f);e.className=d.out.bits>>i&1?'on':''}
+    $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: what each relay does comes from the program (Tool → Machine → Pin config).';
     $('link').innerHTML=d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>';
     $('ago239').textContent=ago(d.aog.ago239);$('agoHello').textContent=ago(d.aog.agoHello);
     $('kmh').textContent=d.aog.kmh.toFixed(1)+' km/h';
     $('hyd').textContent=(d.aog.hydEn?'enabled, ':'disabled, ')+(d.aog.hyd==1?'lowering':d.aog.hyd==2?'raising':'idle')+' (raise '+d.aog.raise+' s, lower '+d.aog.lower+' s)';
     $('tram').textContent=(d.aog.tram&1?'right ':'')+(d.aog.tram&2?'left':'')||'off';
     $('counts').textContent=d.aog.n239+' sections, '+d.aog.nHello+' hellos, '+d.aog.crcErr+' bad checksums';
-    $('invert').innerHTML=d.aog.invert?'<span class="bad">inverted: untick "relay active high" in the program</span>':'<span class="ok">normal (relay on = pin high)</span>';
+    $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
     $('sta').innerHTML=!d.wifi.staOn?'<span class="warn">not set</span>':d.wifi.up?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
