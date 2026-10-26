@@ -5,7 +5,8 @@
    the hello reply, Sprayer card only with PGN 160, up to 16 sections.
    26 Oct 2026: the buttons the module refuses while autosteer is on (or the tractor moves) are greyed out then,
    with a line at the top of the tab saying why. Machine card fits a phone screen: the Hello replies row wraps,
-   the checksum wording is a note under the list. The GPS2 port is automatic or off (Settings), and says what it found.
+   the checksum wording is a note under the list. The GPS2 port is automatic or off (Settings), and says what it found,
+   in one short line.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -221,8 +222,7 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Yaw direction<small>Automatic: learned in turns, from the antenna heading or, without it, from the GPS course.</small></span><select name="tm171YawSign"><option value="0">automatic</option><option value="1">+1</option><option value="-1">−1</option></select></div>
 </div>
 <div class="card"><h2>GPS2 port (Serial2)</h2>
- <div class="opt"><span style="flex:1">On the GPS2 port<small>Automatic: the Teensy finds out what is plugged in, at every start. A XIAO ESP32 is recognised by its «ESP32-hello»: the AgOpenWeb packets (UDP 8888) then go on to it and its PGNs go to AgOpenWeb (UDP 9999), as in firmware v26. A second F9P (dual F9P, as in the AiO firmware) is recognised by its UBX or NMEA data, or searched for at start-up when it sends at another baud rate; it gives the dual-antenna heading with UBX-NAV-RELPOSNED on its UART1. The port only changes hands with autosteer off. Off: the Teensy ignores the port.</small></span><select name="xiaoOff"><option value="0">automatic</option><option value="1">off</option></select></div>
- <p class="note">Found now: <span id="gps2Now">–</span></p>
+ <div class="opt"><span style="flex:1">On the GPS2 port: <b id="gps2Now">–</b><small>Automatic finds a XIAO or a second F9P by itself. Off ignores the port.</small></span><select name="xiaoOff"><option value="0">automatic</option><option value="1">off</option></select></div>
 </div>
 </div>
 <div class="card"><h2>Autosteer safety</h2>
@@ -599,7 +599,7 @@ function render(s){
  if(x){
   const xs=x.port===2?["GPS2 port: second F9P",""]:x.port===1?["GPS2 port off",""]:!x.on?["bridge off",""]:x.det?["connected","ok"]:x.hellos?["no hello","bad"]:["not detected",""];
   set("xState",xs[0],xs[1]);
-  set("gps2Now",x.port===1?"nothing (the port is off)":x.port===2?"a second F9P":x.det?"a XIAO ESP32":"nothing yet (no XIAO hello, no GNSS data)");
+  set("gps2Now",x.port===1?"ignored (off)":x.port===2?"a second F9P":x.det?"a XIAO ESP32":"nothing found yet");
   $("xiaoCard").classList.toggle("dim",x.port===2||x.port===1);   /* the port has the second F9P, or is off: the card is greyed */
   set("xHello",x.helloAgo<0?"never":ago(x.helloAgo));
   set("xTo",String(x.to));set("xFrom",String(x.from));set("xLast",x.lastPgn<0?"–":String(x.lastPgn));
