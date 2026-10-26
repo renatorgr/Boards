@@ -4,7 +4,7 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.6 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.7 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -96,7 +96,7 @@ pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.6` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.7` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -164,20 +164,49 @@ Monitor: `wifi-reset`.
 | 201 | program → module | subnet; the module restarts as `<subnet>.123`. Saved |
 | 200 → 123 | hello / reply | reply carries the sections really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
-| 237 | module → program | every 200 ms: sections open (5–6), relays on (7), master switch (8) |
-| 160 | module → program | once a second: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open. See `Docs/PGN.md` of the AgOpenWeb fork |
+| 237 | module → program | every 200 ms: sections open (5–6), relays on (7–8), master switch (9) |
+| 160 | module → program | once a second: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts
 messages with a right checksum from source `0x7F` (the program).
+
+## A separate ESP32 with relay modules
+
+The same program runs on a plain ESP32 dev module (30 or 38 pins) with one or two relay
+modules, for up to **16 relays**. At the top of `Sprayer_ESP32.ino` set
+`BOARD_RELAY_X8` to `0`. Then:
+
+| | ESP32_Relay_X8 board | ESP32 dev module + relay modules |
+|---|---|---|
+| Relay pins | 32, 33, 25, 26, 27, 14, 12, 13 | 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33 (relay 1 first; shorten the list to the relays you have) |
+| Relay closes when the pin is | HIGH (`RELAY_ON_HIGH 1`) | LOW on the usual optocoupled modules (`RELAY_ON_HIGH 0`); set 1 for a module with high-trigger jumpers |
+| LED | GPIO 23 | GPIO 2 (the blue LED) |
+| Sensors | G34 pressure, G35 flow, through the 10k / 15k dividers | the same pins and dividers |
+| Power | 5–30 V DC on the board | 5 V to the dev module's `5V`/`VIN` pin from an LM2596; the relay module's `JD-VCC` from the same 5 V (jumper off), its `VCC` from the ESP32's 3V3, GND to GND |
+
+Wiring the relay module: `IN1`…`IN16` to the pins above in order, one common GND. The 12 V
+for the valves goes through the master switch to the relays' COM, as on the X8 board.
+
+**Which relays are sections** is decided by the program, not by the module: in its pin
+config (AgOpenGPS: *Machine → Pin config*, default pins 1–16 = sections 1–16; AgOpenWeb:
+*Machine → Pin config*, default pins 1–6 = sections 1–6) every pin marked *Section n*
+makes relay n open with section n. The page's *Relays* card shows the result ("16 relays,
+8 of them sections"). A relay that is not a section can be the hydraulic lift or the
+tramline. The AgOpenWeb sprayer strip shows the first 8 sections; the module reports
+all 16 (PGN 160 byte 15).
+
+If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or tick
+"relay active high" in the program: the page's *Output polarity* line says which pin
+level the module is using.
 
 ## Notes
 
 - `USE_MASTER_SWITCH` (top of `Sprayer_ESP32.ino`): set to 1 to read the master switch
   on **G39** (12 V through 47 kΩ, then 10 kΩ to GND). Off by default: the switch cuts the
   valves' 12 V in the wiring.
-- `LED_PIN` is 23: if the board's LED does not blink, that is not the right pin; set it
-  to the right one or to −1.
+- `LED_PIN` is 23 on the X8 board: if its LED does not blink, that is not the right pin; set
+  it to the right one or to −1.
 - The FPD-270A valves and the YF-S201 are plastic and made for water. Rinse with clean
   water after each job. Fit a filter before the flow meter.
 - The ISOBUS group of AgOpenGPS is working on a standard way for modules to send such

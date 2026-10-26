@@ -11,7 +11,7 @@
 //   200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
 //   123 hello reply, 203 scan reply (to 255.255.255.255), 237 sign of life every 200 ms,
-//   160 sprayer readings once a second
+//   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15)
 
 static uint8_t rx[300];
 
@@ -39,21 +39,24 @@ static IPAddress broadcastIp()
 void sendSignOfLife()
 {
     uint8_t msg[] = { 0x80, 0x81, 0x7B, 237, 8,
-                      lowByte(sectionsOn), highByte(sectionsOn), relayBits, masterOn, 0, 0, 0, 0, 0 };
+                      lowByte(sectionsOn), highByte(sectionsOn), lowByte(relayBits), highByte(relayBits),
+                      masterOn, 0, 0, 0, 0 };
     sendPgn(msg, sizeof(msg), broadcastIp());
 }
 
-// Once a second, PGN 160: the sprayer readings for the AgOpenWeb fork's sprayer strip
+// Once a second, PGN 160: the sprayer readings for the AgOpenWeb fork's sprayer strip. Sections 1-8 in
+// byte 14 as the fork reads them; sections 9-16 in byte 15 (the fork and the Teensy accept the longer
+// message and still read byte 14)
 void sendReadings()
 {
     const uint16_t p = pressureBar * 100;                   // hundredths of a bar
     const uint16_t f = flowLpm * 100;                       // hundredths of a L/min
     const uint32_t t = totalLitres * 10;                    // tenths of a litre
-    uint8_t msg[] = { 0x80, 0x81, 0x7B, SPRAYER_PGN, 10,
+    uint8_t msg[] = { 0x80, 0x81, 0x7B, SPRAYER_PGN, 11,
                       lowByte(p), highByte(p),
                       lowByte(f), highByte(f),
                       (uint8_t)t, (uint8_t)(t >> 8), (uint8_t)(t >> 16), (uint8_t)(t >> 24),
-                      masterOn, lowByte(sectionsOn),
+                      masterOn, lowByte(sectionsOn), highByte(sectionsOn),
                       0 };
     sendPgn(msg, sizeof(msg), broadcastIp());
 }

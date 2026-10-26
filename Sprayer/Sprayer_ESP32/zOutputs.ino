@@ -9,11 +9,18 @@
 // Each relay has a function from the program (PGN 236, kept in cfg.pin): a section, the hydraulic
 // lift, a tramline side or the geo stop. Everything is off while the program is silent.
 //
-// cfg.invertOutputs (PGN 238, byte 8 bit 0; the official module calls it isRelayActiveHigh):
-//   0 = the pin is HIGH while the function is on - right for this board, whose relays switch on HIGH
-//   1 = the pin is LOW while the function is on (relay boards that switch on LOW)
+// RELAY_ON_HIGH (Sprayer_ESP32.ino) says how the relays of the chosen board close: on a HIGH pin
+// (ESP32_Relay_X8) or on a LOW pin (the usual relay modules). cfg.invertOutputs (PGN 238, byte 8
+// bit 0; the official module calls it isRelayActiveHigh) turns that round: 0 = as built, 1 = inverted.
 // The program sends this setting at start-up and when the machine profile is loaded, so the
-// "relay active high" box in its machine settings must stay unticked for this board.
+// "relay active high" box in its machine settings normally stays unticked.
+
+// The pin level for a function that is on or off, after the board's polarity and the program's setting
+static int relayLevel(bool on)
+{
+    const bool drive = on != (cfg.invertOutputs != 0);
+    return (drive == (RELAY_ON_HIGH != 0)) ? HIGH : LOW;
+}
 
 static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 
@@ -21,7 +28,7 @@ void outputsInit()
 {
     for (uint8_t i = 0; i < NUM_RELAYS; i++)
     {
-        digitalWrite(RELAY_PIN[i], LOW);
+        digitalWrite(RELAY_PIN[i], relayLevel(false));
         pinMode(RELAY_PIN[i], OUTPUT);
     }
 }
@@ -29,7 +36,7 @@ void outputsInit()
 // Everything off, whatever the polarity setting says (used before a restart or a program update)
 void outputsAllOff()
 {
-    for (uint8_t i = 0; i < NUM_RELAYS; i++) digitalWrite(RELAY_PIN[i], cfg.invertOutputs ? HIGH : LOW);
+    for (uint8_t i = 0; i < NUM_RELAYS; i++) digitalWrite(RELAY_PIN[i], relayLevel(false));
     relayBits = 0;
     sectionsOn = 0;
 }
@@ -73,13 +80,13 @@ void applyOutputs()
     state[FN_TRAM_LEFT - 1]  = linkOk && bitRead(tramline, 1);
     state[FN_GEO_STOP - 1]   = linkOk && geoStop != 0;
 
-    uint8_t bits = 0;
+    uint16_t bits = 0;
     uint16_t open = 0;
     for (uint8_t i = 0; i < NUM_RELAYS; i++)
     {
         const uint8_t f = cfg.pin[i];
         const bool on = f >= 1 && f <= FN_GEO_STOP && state[f - 1];
-        digitalWrite(RELAY_PIN[i], (on != (cfg.invertOutputs != 0)) ? HIGH : LOW);
+        digitalWrite(RELAY_PIN[i], relayLevel(on));
         if (on) bitSet(bits, i);
         if (on && f <= 16) bitSet(open, f - 1);
     }
