@@ -36,7 +36,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <body>
 <main>
 <h1>AiO v4.5 web page simulator</h1>
-<p class="lead">Try the web pages of the AiO v4.5 autosteer module, its XIAO and the ESP32 sprayer module without a board. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on, sowing with a 16-row seed drill (or spraying, when the sprayer is chosen in the strip).</p>
+<p class="lead">Try the web pages of the AiO v4.5 autosteer module, its XIAO and the ESP32 sprayer module without a board. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on, sowing with a 19-section no-till seed drill (or spraying, when the sprayer is chosen in the strip).</p>
 <div class="grid">
  <div class="card"><h2>Teensy module page</h2>
   <p>What the module shows at <code>http://192.168.5.126/</code> on the tractor's network: GNSS, IMU, steering, messages, settings, the GPS receiver, the machine module (with a link to the sprayer module's page) and the firmware update.</p>
@@ -45,7 +45,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <p>What the XIAO ESP32 on the GPS2 port shows on its own Wi-Fi network, at <code>http://192.168.4.1/</code>, made for a phone. Its password here is <code>agopengps</code>.</p>
   <a class="go" href="xiao/">Open</a></div>
  <div class="card"><h2>Sprayer module page</h2>
-  <p>What the ESP32 sprayer module shows on its own Wi-Fi network (<code>Sprayer-xxxx</code>, at <code>http://192.168.4.1/</code>) or on the tractor network at <code>http://192.168.5.123/</code>: pressure, flow and litres, the sections asked for and open, the relays, the Wi-Fi settings, the calibration and the program update. Its password here is <code>agopengps</code>.</p>
+  <p>What the ESP32 sprayer module shows on its own Wi-Fi network (<code>Sprayer-xxxx</code>, or <code>Seeder-xxxx</code> on the seed drill's KC868-A32, at <code>http://192.168.4.1/</code>) or on the tractor network at <code>http://192.168.5.123/</code>: pressure, flow and litres, the sections asked for and open, the relays, the network settings, the calibration and the program update. Its password here is <code>agopengps</code>.</p>
   <a class="go" href="sprayer/">Open</a></div>
 </div>
 <h3>Some set-ups to start from</h3>
@@ -59,7 +59,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <li><a href="sprayer/?impl=sprayer">Sprayer module page with the 8 m sprayer on the ESP32_Relay_X8 board: 8 relays, the boom's readings</a></li>
  <li><a href="sprayer/?wifi=lost">Sprayer module that lost the tractor network: rows closed, the program's request outlined</a></li>
 </ul>
-<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO, the machine module and the implement (a seed drill with 16 rows 25 cm apart, or the 8 m sprayer with 5 sections) in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
+<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO, the machine module and the implement (the no-till seed drill with 19 sections, or the 8 m sprayer with 5 sections) in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
 <footer>Pages of firmware {{FOLDER}} (version {{VERSION}}) and Sprayer_ESP32 (version {{SPRAYER_VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3.</footer>
 </main>
 </body>

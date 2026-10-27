@@ -2,10 +2,12 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): also keeps which sensors the machine has.
+   2026-10-27 (Claude): also the module IP's last number and the first section the relays follow.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// What is kept: the two Wi-Fi networks, the host name, the program's subnet (PGN 201), the machine
+// What is kept: the two Wi-Fi networks, the host name, the program's subnet (PGN 201) and the module IP's
+// last number, the first section the relays follow, the machine
 // config (PGN 238), the output functions (PGN 236), the sensors fitted and their calibration. Anything missing in
 // flash keeps the default from the Settings struct in Sprayer_ESP32.ino.
 
@@ -13,7 +15,7 @@ String defaultApSsid()
 {
     const uint64_t mac = ESP.getEfuseMac();
     char b[20];
-    snprintf(b, sizeof(b), "Sprayer-%02X%02X", (unsigned)((mac >> 32) & 0xFF), (unsigned)((mac >> 40) & 0xFF));
+    snprintf(b, sizeof(b), MODULE_KIND "-%02X%02X", (unsigned)((mac >> 32) & 0xFF), (unsigned)((mac >> 40) & 0xFF));
     return String(b);
 }
 
@@ -37,6 +39,8 @@ void settingsLoad()
     cfg.staPass = prefs.getString("staPass", "");
     cfg.host    = prefs.getString("host", DEFAULT_HOST);
     if (prefs.getBytesLength("subnet") == 3) prefs.getBytes("subnet", cfg.subnet, 3);
+    cfg.ipLast       = prefs.getUChar("ipLast", d.ipLast);
+    cfg.firstSection = prefs.getUChar("first", d.firstSection);
     cfg.raiseTime     = prefs.getUChar("raise", d.raiseTime);
     cfg.lowerTime     = prefs.getUChar("lower", d.lowerTime);
     cfg.hydEnable     = prefs.getUChar("hyd", d.hydEnable);
@@ -59,8 +63,10 @@ void settingsLoad()
     if (!(cfg.pulsesPerLitre > 1 && cfg.pulsesPerLitre < 100000)) cfg.pulsesPerLitre = d.pulsesPerLitre;
     if (!(cfg.pressureMaxBar > 0.5f && cfg.pressureMaxBar < 100))  cfg.pressureMaxBar = d.pressureMaxBar;
     if (!(cfg.pressureDivider > 0.1f && cfg.pressureDivider <= 1)) cfg.pressureDivider = d.pressureDivider;
+    if (cfg.ipLast < 2 || cfg.ipLast > 254) cfg.ipLast = d.ipLast;
+    if (cfg.firstSection > MAX_SECTIONS) cfg.firstSection = d.firstSection;
     cfg.sensors &= SENSOR_PRESSURE | SENSOR_FLOW;
-    for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > FN_GEO_STOP) cfg.pin[i] = 0;
+    for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > PIN_GEO_STOP) cfg.pin[i] = 0;
 }
 
 void settingsSave()
@@ -73,6 +79,8 @@ void settingsSave()
     prefs.putString("staPass", cfg.staPass);
     prefs.putString("host", cfg.host);
     prefs.putBytes("subnet", cfg.subnet, 3);
+    prefs.putUChar("ipLast", cfg.ipLast);
+    prefs.putUChar("first", cfg.firstSection);
     prefs.putUChar("raise", cfg.raiseTime);
     prefs.putUChar("lower", cfg.lowerTime);
     prefs.putUChar("hyd", cfg.hydEnable);

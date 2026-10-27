@@ -2,6 +2,8 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): the seed drill's sprayer module sends no PGN 160, as Sprayer_ESP32 v0.7.2 with no sensors ticked.
+   2026-10-27 (Claude): the seed drill is Renato's no-till drill, 19 sections (Sprayer_ESP32 v0.8 on a KC868-A32); the Teensy
+   sees its sections 1-16 only.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -34,7 +36,7 @@ const CHOICES = {
  prog:  {label: "Program", dflt: "aow", options: [["aow", "AgOpenWeb"], ["aog", "AgOpenGPS"]]},
  xiao:  {label: "XIAO", check: true, dflt: "1"},
  mach:  {label: "Machine module", dflt: "nano", options: [["nano", "sprayer module (ESP32 / Nano)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
- impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "seed drill, 16 rows 25 cm apart"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
+ impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "no-till seed drill, 19 sections"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
  wifi:  {label: "Wi-Fi", dflt: "sta", options: [["sta", "on the tractor network"], ["lost", "tractor network lost"], ["ap", "tractor network not set"]]},
@@ -64,10 +66,10 @@ const wob = (t, a, f) => a * Math.sin(t * f) * Math.cos(t * f * 0.37 + 1.1);   /
 const OFFLINE = {};
 // the implement the tractor pulls: a section of the machine module per row or per boom section, the width of a pass
 const IMPLEMENTS = {
- seeder:  {name: "seed drill", sections: 16, width: 16 * 0.25, nozzles: null},   // 16 rows 25 cm apart (4 m), a relay a row, no sprayer sensors
+ seeder:  {name: "seed drill", sections: 19, width: 19 * 0.18, nozzles: null},   // 19 sections (an actuator each), about 3.4 m (the 18 cm row width is a guess), no sprayer sensors
  sprayer: {name: "sprayer", sections: 5, width: 8, nozzles: [4, 2, 4, 2, 4]},     // 8 m boom, 5 sections with 4 2 4 2 4 nozzles
 };
-const IMPL = IMPLEMENTS[opt.impl], ALL_SECTIONS = (1 << IMPL.sections) - 1;
+const IMPL = IMPLEMENTS[opt.impl], ALL_SECTIONS = 2 ** IMPL.sections - 1;    // up to 31 sections in a JS number's bit operations
 const nozzles = bits => IMPL.nozzles ? IMPL.nozzles.reduce((a, n, i) => a + ((bits >> i) & 1) * n, 0) : 0;   // nozzles open
 function form(body) {
  const p = new URLSearchParams(typeof body === "string" ? body : ""), o = {};
@@ -212,7 +214,7 @@ const UM_V = {rate: 100, mode: 2, elev: 10, rtkTo: 600, sbas: 0, hdMode: 1, hdLe
 const UBX_NAMES = Object.keys(UBX_V), UM_NAMES = Object.keys(UM_V);
 
 // ---- the field and the tractor
-// Up and down a 200 m field, the passes an implement's width apart (4 m seed drill, 8 m sprayer), a U-turn at each end;
+// Up and down a 200 m field, the passes an implement's width apart (3.4 m seed drill, 8 m sprayer), a U-turn at each end;
 // parked: standing at the start.
 const FIELD = {lat: 38.5712345, lon: -7.9134567, alt: 212.43, len: 200, width: IMPL.width};
 const START = 15, PASS = 90, TURN = 12;     // s: moves off after power-on, one pass, one U-turn
@@ -584,10 +586,12 @@ function Module(key) {
  // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
  // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160);
  // the seed drill's ESP32 is set to no sensors on its page, so it sends no PGN 160 either (sections from the hello reply);
- // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop
+ // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop.
+ // The Teensy has sections 1-16 only (PGN 254, the hello reply, PGN 160): the seed drill's 17-19 do not show there
  let machTop = 0;
  function machine(t, tr, engaged) {
-  const sp = sprayer(t, tr, engaged), hellos = Math.floor(t - 5.5), used = sp.cmd | sp.sec;
+  const sp0 = sprayer(t, tr, engaged), sp = Object.assign({}, sp0, {cmd: sp0.cmd & 0xFFFF, sec: sp0.sec & 0xFFFF});
+  const hellos = Math.floor(t - 5.5), used = sp.cmd | sp.sec;
   for (let k = 16; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
   const p160 = h.nano && !!IMPL.nozzles;
   const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6), bad: 0, lastPgn: p160 ? 160 : 237, cmd: sp.cmd,
@@ -806,7 +810,7 @@ function Module(key) {
   st: st, T: T, line: line, progress: progress, save: () => save(key, st), offline: () => T() < 0,
   status: status, log: log, settingsJson: settingsJson, settingsPost: settingsPost, gps: gps, gpsPost: gpsPost, umPost: umPost, umGet: umGet,
   imuPost: imuPost, diag: diag, ota: ota, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
-  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd, sprayerAt: sprayerAt,
+  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd & 0xFFFF, sprayerAt: sprayerAt,
  };
 }
 
