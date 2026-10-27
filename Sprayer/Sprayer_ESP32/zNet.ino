@@ -1,24 +1,20 @@
-/* zNet.ino - Wi-Fi (own network + the tractor's network), the network cable, the web page and its API,
-   program update.
+/* zNet.ino - Wi-Fi (own network + the tractor's network), the web page and its API, program update.
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
    2026-10-27 (Claude): the sensors fitted are saved with the calibration.
-   2026-10-27 (Claude): the network cable (KC868-A32), the module IP's last number, the relays-follow setting.
+   2026-10-27 (Claude): the module IP's last number.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // Own network "Sprayer-xxxx" at 192.168.4.1, always on (a phone that joins it gets the page by itself).
 // Tractor network (the router AgOpenWeb's tablet uses): joined with a fixed IP <subnet>.123 (the last number
 // can be changed on the page, for a second module), which is where the program looks for the machine module.
-// A board with a network cable (USE_ETHERNET) is on the tractor network through the cable, with that same
-// fixed IP, unless the page says to join the tractor's Wi-Fi instead. Changes on the page need the own
-// network's password.
+// Changes on the page need the own network's password.
 //
 // GET  /              the page                       GET  /api/status    everything the page shows
-// GET  /api/settings  network + sensors + calib.     POST /api/wifi      network settings + subnet, then restart
+// GET  /api/settings  Wi-Fi + sensors + calibration  POST /api/wifi      Wi-Fi settings + subnet, then restart
 // POST /api/calib     sensors fitted + calibration   POST /api/total     total litres back to 0
-// POST /api/relays    the first section relay 1 follows (0 = the program's pin config)
 // POST /api/restart                                  POST /api/update    a new program (.bin), then restart
 // GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
 
@@ -26,28 +22,6 @@ static bool updateAuth = false;
 
 // The module's fixed IP on the tractor network
 IPAddress moduleIp() { return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], cfg.ipLast); }
-
-// ---------------------------------------------------------------- network cable (LAN8720 on the KC868-A32)
-#if USE_ETHERNET
-static bool ethStarted = false;
-
-static void ethStart()
-{
-    // The arguments of ETH.begin changed order in version 3 of the esp32 boards package
-#if ESP_ARDUINO_VERSION_MAJOR >= 3
-    ethStarted = ETH.begin(ETH_PHY_LAN8720, LAN_PHY_ADDR, LAN_MDC, LAN_MDIO, LAN_POWER, ETH_CLOCK_GPIO17_OUT);
-#else
-    ethStarted = ETH.begin(LAN_PHY_ADDR, LAN_POWER, LAN_MDC, LAN_MDIO, ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT);
-#endif
-    if (!ethStarted) { logEvent("network cable: the network chip did not start"); return; }
-    const IPAddress gw(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 1);
-    ETH.config(moduleIp(), gw, IPAddress(255, 255, 255, 0), gw);
-}
-
-bool ethUp() { return ethStarted && ETH.linkUp(); }
-#else
-bool ethUp() { return false; }
-#endif
 
 // ---------------------------------------------------------------- Wi-Fi
 void wifiStart()
@@ -65,9 +39,6 @@ void wifiStart()
         WiFi.setAutoReconnect(true);
         WiFi.begin(cfg.staSsid.c_str(), cfg.staPass.c_str());
     }
-#if USE_ETHERNET
-    if (!sta) ethStart();                                   // the cable, unless the tractor's Wi-Fi is chosen
-#endif
     dns.setErrorReplyCode(DNSReplyCode::NoError);
     dns.start(53, "*", WiFi.softAPIP());                    // every name -> this page (captive page)
     if (MDNS.begin(cfg.host.c_str()))
@@ -79,22 +50,12 @@ void wifiStart()
         MDNS.addServiceTxt("aow-ui", "tcp", "path", "/");
         MDNS.addServiceTxt("aow-ui", "tcp", "status", "/aow/status");
     }
-    logEvent("own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(),
-             sta ? ", joining the tractor network" : USE_ETHERNET ? ", tractor network on the cable" : ", tractor network not set");
+    logEvent("own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(), sta ? ", joining the tractor network" : ", tractor network not set");
 }
 
 // Once a second: say when the tractor network comes and goes
 void wifiWatch()
 {
-#if USE_ETHERNET
-    const bool cable = ethUp();
-    if (cable != ethWasUp)
-    {
-        ethWasUp = cable;
-        if (cable) logEvent("network cable connected, IP %s, %u Mbit/s", moduleIp().toString().c_str(), (unsigned)ETH.linkSpeed());
-        else logEvent("network cable: no link (unplugged, or the switch is off)");
-    }
-#endif
     const bool up = staUp();
     if (up == staWasUp) return;
     staWasUp = up;
@@ -179,15 +140,14 @@ static void apiStatus()
     String j;
     j.reserve(2000);
     j += "{\"fw\":\"" FW_NAME "\",\"ver\":\"" FW_VERSION "\",\"built\":\"" __DATE__ " " __TIME__ "\"";
-    j += ",\"kind\":\"" MODULE_KIND "\",\"board\":\"" BOARD_NAME "\"";
+    j += ",\"board\":\"" BOARD_NAME "\"";
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
     j += ",\"name\":" + jsonStr(moduleName());
 
     j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());
     j += ",\"staOn\":" + String(cfg.staOn ? "true" : "false") + ",\"sta\":" + jsonStr(cfg.staSsid);
-    j += ",\"up\":" + String(netUp() ? "true" : "false") + ",\"staUp\":" + String(staUp() ? "true" : "false");
-    j += ",\"eth\":" + String(USE_ETHERNET ? "true" : "false") + ",\"ethUp\":" + String(ethUp() ? "true" : "false");
-    j += ",\"ip\":" + jsonStr(netUp() ? moduleIp().toString() : String("")) + ",\"ipLast\":" + String(cfg.ipLast);
+    j += ",\"up\":" + String(staUp() ? "true" : "false");
+    j += ",\"ip\":" + jsonStr(staUp() ? moduleIp().toString() : String("")) + ",\"ipLast\":" + String(cfg.ipLast);
     j += ",\"rssi\":" + String(staUp() ? WiFi.RSSI() : 0) + ",\"host\":" + jsonStr(cfg.host);
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"}";
 
@@ -202,7 +162,7 @@ static void apiStatus()
     j += ",\"invert\":" + String(cfg.invertOutputs) + ",\"hydEn\":" + String(cfg.hydEnable);
     j += ",\"raise\":" + String(cfg.raiseTime) + ",\"lower\":" + String(cfg.lowerTime) + "}";
 
-    j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn) + ",\"first\":" + String(cfg.firstSection);
+    j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn);
     j += ",\"onHigh\":" + String(RELAY_ON_HIGH ? "true" : "false") + ",\"fn\":[";
     for (uint8_t i = 0; i < NUM_RELAYS; i++) { if (i) j += ","; j += String(relayFn(i)); }
     j += "]}";
@@ -231,7 +191,7 @@ static void apiSettingsGet()
     String j = "{\"apSsid\":" + jsonStr(cfg.apSsid) + ",\"staOn\":" + String(cfg.staOn ? "true" : "false");
     j += ",\"staSsid\":" + jsonStr(cfg.staSsid) + ",\"staPassSet\":" + String(cfg.staPass.length() ? "true" : "false");
     j += ",\"host\":" + jsonStr(cfg.host) + ",\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1);
-    j += ",\"eth\":" + String(USE_ETHERNET ? "true" : "false") + ",\"ipLast\":" + String(cfg.ipLast) + ",\"first\":" + String(cfg.firstSection);
+    j += ",\"ipLast\":" + String(cfg.ipLast);
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"";
     j += ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
     sendJson(j);
@@ -274,7 +234,7 @@ static void apiWifiPost()
     s.ipLast = ipLast;
     cfg = s;
     settingsSave();
-    logEvent("network settings saved from the page, restarting");
+    logEvent("Wi-Fi settings saved from the page, restarting");
     sendJson("{\"ok\":true,\"restart\":true}");
     restartAtMs = millis() + 500;
 }
@@ -306,20 +266,6 @@ static void apiTotalPost()
     totalLitres = 0;
     totalPulses = 0;
     logEvent("total set to 0 from the page");
-    sendJson("{\"ok\":true}");
-}
-
-// Relay 1 follows section "first", the next relays the next sections (0 = the program's pin config)
-static void apiRelaysPost()
-{
-    if (!passwordOk()) return;
-    long first = 0;
-    if (!argNumber("first", 0, MAX_SECTIONS, first)) { sendError(400, "first section: 0 to 64"); return; }
-    cfg.firstSection = first;
-    settingsSave();
-    if (first) logEvent("relays 1-%u follow sections %ld-%ld", (unsigned)NUM_RELAYS, first, min((long)MAX_SECTIONS, first + NUM_RELAYS - 1));
-    else logEvent("relays follow the program's pin config");
-    applyOutputs();
     sendJson("{\"ok\":true}");
 }
 
@@ -389,7 +335,6 @@ void webStart()
     server.on("/api/wifi", HTTP_POST, apiWifiPost);
     server.on("/api/calib", HTTP_POST, apiCalibPost);
     server.on("/api/total", HTTP_POST, apiTotalPost);
-    server.on("/api/relays", HTTP_POST, apiRelaysPost);
     server.on("/api/restart", HTTP_POST, apiRestartPost);
     server.on("/api/update", HTTP_POST, apiUpdateDone, apiUpdateUpload);
     server.on("/aow/status", HTTP_GET, apiAowStatus);

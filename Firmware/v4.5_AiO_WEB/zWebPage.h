@@ -10,6 +10,8 @@
    fell back to 5 when every section was off).
    27 Oct 2026: the Sprayer card also hides when the module stops sending PGN 160 (a sprayer module set to no sensors,
    or another module) and still sends the rest; its wording says module, not Nano.
+   27 Oct 2026: up to 64 section squares on the Machine tab (PGN 229 from the program, the seed drill module's
+   PGN 237); cmd and sec are hex digits now.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -192,10 +194,10 @@ a{color:var(--acc)}
    <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd>
    <dt>Hello replies</dt><dd id="mHello">–</dd><dt>Sections from</dt><dd id="mSecFrom" class="nw">–</dd></dl>
   <p class="note hidden" id="mNoCrc" style="margin-top:8px">The hello replies come without a checksum, as the official Machine_UDP_v5 sends them: taken as they are, not counted as checksum errors.</p>
-  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254) and what the module reports, in its hello reply or in the sprayer PGN 160</p>
+  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254; above 16, PGN 229) and what the module reports, in its hello reply, the sprayer PGN 160 or the seed drill PGN 237</p>
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
-  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
+  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer or seed drill module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
  <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
   <div class="big" id="mBar">–</div>
   <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the module started</dt><dd id="mTotal">–</dd>
@@ -646,7 +648,8 @@ function renderLock(s){
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button.locked");if(b){e.preventDefault();e.stopImmediatePropagation();}},true);
 
 // The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays.
-// Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160) or the sprayer Nano.
+// Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160), the sprayer module
+// (PGN 160) or the seed drill module (PGN 237 with sections 1-64).
 function renderMach(m){
  if(!m)return;
  $("navMach").classList.remove("hidden");
@@ -655,7 +658,7 @@ function renderMach(m){
  set("mPkts",String(m.pkts));set("mBad",String(m.bad),m.bad?"warn":"");set("mPgn",m.lastPgn<0?"–":String(m.lastPgn));
  set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN);$("mNoCrc").classList.toggle("hidden",!m.helloNoCrc);
  const have=m.secAgo>=0&&m.secAgo<5;
- set("mSecFrom",m.secAgo<0?"nothing yet":(m.secFrom160?"PGN 160":"hello reply")+", "+ago(m.secAgo),have?"":"warn");
+ set("mSecFrom",m.secAgo<0?"nothing yet":(m.secPgn===160||m.secPgn===237?"PGN "+m.secPgn:"hello reply")+", "+ago(m.secAgo),have?"":"warn");
  const box=$("mSec");machSecs(box,m.cmd,m.sec,have,m.secN);box.classList.toggle("old",m.secAgo>=0&&!have);
  // Sprayer card only while the module sends PGN 160: never heard, or not for 30 s while the module still talks
  // (a sprayer module set to no sensors, or another module): hidden. All silent: the last readings stay, in orange.
@@ -666,15 +669,18 @@ function renderMach(m){
  set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
  set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");
 }
-// One numbered square per section (5, or up to 16 when the program or the module uses more, 8 per row; as
+// One numbered square per section (5, or up to 64 when the program or the module uses more, 8 per row; as
 // many as the highest section used since the Teensy started, secN, so they do not shrink when all are off),
 // coloured as AgOpenWeb colours its section buttons: green open, red closed, orange asked on but still
 // closed, cyan asked off but still open. No word from the module yet: grey.
+// cmd and sec: sections 1-64 as hex digits, section 1 = the lowest bit.
+function hexBit(h,k){const i=h.length-1-(k>>2);return i>=0?(parseInt(h[i],16)>>(k&3))&1:0;}
 function machSecs(box,cmd,sec,have,top){
- let n=Math.max(5,top||0);for(let k=n;k<16;k++)if(((cmd|sec)>>k)&1)n=k+1;
+ cmd=String(cmd||"0");sec=String(sec||"0");
+ let n=Math.max(5,top||0);for(let k=n;k<64;k++)if(hexBit(cmd,k)|hexBit(sec,k))n=k+1;
  if(box.childElementCount!==n){box.textContent="";box.style.setProperty("--n",Math.min(n,8));
   for(let k=1;k<=n;k++){const e=document.createElement("span");e.textContent=k;box.appendChild(e);}}
- for(let k=0;k<n;k++){const a=(cmd>>k)&1,o=(sec>>k)&1,e=box.children[k];
+ for(let k=0;k<n;k++){const a=hexBit(cmd,k),o=hexBit(sec,k),e=box.children[k];
   e.className=!have?"":a&&o?"s-on":!a&&!o?"s-off":a?"s-goingon":"s-goingoff";
   e.title="Section "+(k+1)+": "+(a?"asked on":"asked off")+(have?", "+(o?"open":"closed"):"");}
 }

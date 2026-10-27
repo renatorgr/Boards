@@ -2,20 +2,23 @@
 # build.py - builds the web page simulator (a static site for GitHub Pages) from the firmware's own pages.
 # Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 # Written 2026 by Claude (Anthropic) for renatorgr.
+# 2026-10-27 (Claude): the seed drill module's page (Seeder/Seeder_ESP32/dPage.h); each module page fixes its implement.
 # Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # python3 Firmware/simulator/build.py [output folder, default _site]
 #
 # Takes the newest Firmware/vX.Y_AiO_WEB folder (as the module's update check does), cuts the page out of
-# zWebPage.h, the XIAO page out of vX.Y_XIAO_ESP32/xPage.h and the sprayer module's page out of
-# Sprayer/Sprayer_ESP32/sPage.h exactly as the firmware serves them, and puts the simulator scripts in their
-# <head>. Also passes them what the firmware knows and the simulator shows: the versions, the AgOpenGPS
-# receiver settings (zRxConfig.h), the size of the XIAO programs. Writes:
+# zWebPage.h, the XIAO page out of vX.Y_XIAO_ESP32/xPage.h, the sprayer module's page out of
+# Sprayer/Sprayer_ESP32/sPage.h and the seed drill module's page out of Seeder/Seeder_ESP32/dPage.h exactly as
+# the firmware serves them, and puts the simulator scripts in their <head>. Also passes them what the firmware
+# knows and the simulator shows: the versions, the AgOpenGPS receiver settings (zRxConfig.h), the size of the
+# XIAO programs; a module page also gets its implement (window.SIM_IMPL). Writes:
 #   index.html          the start page (index.html here, with the versions and the commit filled in)
 #   teensy/index.html   the Teensy page
 #   xiao/index.html     the XIAO page
 #   sprayer/index.html  the sprayer module's page
+#   seeder/index.html   the seed drill module's page
 #   sim-*.js            the simulator
 
 import datetime
@@ -30,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE = os.path.dirname(HERE)
 ROOT = os.path.dirname(FIRMWARE)
 SPRAYER = os.path.join(ROOT, "Sprayer", "Sprayer_ESP32")
+SEEDER = os.path.join(ROOT, "Seeder", "Seeder_ESP32")
 REPO = "renatorgr/Boards"
 
 
@@ -113,6 +117,8 @@ def main():
     version = define(os.path.join(fw, "zVersion.h"), "FW_VERSION")
     spr_ino = os.path.join(SPRAYER, "Sprayer_ESP32.ino")
     sprayer = {"name": define(spr_ino, "FW_NAME"), "version": define(spr_ino, "FW_VERSION"), "folder": os.path.relpath(SPRAYER, ROOT)}
+    sd_ino = os.path.join(SEEDER, "Seeder_ESP32.ino")
+    seeder = {"name": define(sd_ino, "FW_NAME"), "version": define(sd_ino, "FW_VERSION"), "folder": os.path.relpath(SEEDER, ROOT)}
     ubx_sets, um982d, um982s = rx_config(os.path.join(fw, "zRxConfig.h"))
     now = datetime.datetime.now(datetime.timezone.utc)
     built = "%s %2d %d %s" % (now.strftime("%b"), now.day, now.year, now.strftime("%H:%M:%S"))   # as __DATE__ __TIME__
@@ -123,33 +129,37 @@ def main():
         if os.path.exists(p):
             xiao_bin[chip] = os.path.getsize(p)
     build = {"version": version, "folder": folder, "built": built, "commit": sha[:7], "ubxSets": ubx_sets,
-             "um982d": um982d, "um982s": um982s, "xiaoBin": xiao_bin, "sprayer": sprayer}
+             "um982d": um982d, "um982s": um982s, "xiaoBin": xiao_bin, "sprayer": sprayer, "seeder": seeder}
     head = "<script>window.SIM_BUILD=%s;</script>\n" % json.dumps(build, ensure_ascii=False).replace("</", "<\\/")
-    pages = {
-        "teensy": (os.path.join(fw, "zWebPage.h"), "WEB_PAGE", "sim-teensy.js"),
-        "xiao": (os.path.join(xiao, "xPage.h"), "XIAO_PAGE", "sim-xiao.js"),
-        "sprayer": (os.path.join(SPRAYER, "sPage.h"), "SPRAYER_PAGE", "sim-sprayer.js"),
+    pages = {   # folder: the page, its raw string, its script, the implement it is for (a module page)
+        "teensy": (os.path.join(fw, "zWebPage.h"), "WEB_PAGE", "sim-teensy.js", ""),
+        "xiao": (os.path.join(xiao, "xPage.h"), "XIAO_PAGE", "sim-xiao.js", ""),
+        "sprayer": (os.path.join(SPRAYER, "sPage.h"), "SPRAYER_PAGE", "sim-sprayer.js", "sprayer"),
+        "seeder": (os.path.join(SEEDER, "dPage.h"), "SEEDER_PAGE", "sim-seeder.js", "seeder"),
     }
     if os.path.isdir(out):
         shutil.rmtree(out)
     os.makedirs(out)
-    for name, (path, var, script) in pages.items():
-        html = inject(raw_string(path, var), head + '<script src="../sim-common.js"></script>\n<script src="../%s"></script>\n' % script,
+    for name, (path, var, script, impl) in pages.items():
+        page_head = head + ("<script>window.SIM_IMPL=%s;</script>\n" % json.dumps(impl) if impl else "")
+        html = inject(raw_string(path, var), page_head + '<script src="../sim-common.js"></script>\n<script src="../%s"></script>\n' % script,
                       os.path.relpath(path, ROOT))
         os.makedirs(os.path.join(out, name))
         with open(os.path.join(out, name, "index.html"), "w", encoding="utf-8") as f:
             f.write(html)
-    for js in ("sim-common.js", "sim-teensy.js", "sim-xiao.js", "sim-sprayer.js"):
+    for js in ("sim-common.js", "sim-teensy.js", "sim-xiao.js", "sim-sprayer.js", "sim-seeder.js"):
         shutil.copy(os.path.join(HERE, js), out)
     start = read(os.path.join(HERE, "index.html"))
-    for k, v in {"VERSION": version, "FOLDER": folder, "SPRAYER_VERSION": sprayer["version"], "BUILT": now.strftime("%d %b %Y, %H:%M UTC"),
+    for k, v in {"VERSION": version, "FOLDER": folder, "SPRAYER_VERSION": sprayer["version"], "SEEDER_VERSION": seeder["version"],
+                 "BUILT": now.strftime("%d %b %Y, %H:%M UTC"),
                  "COMMIT": sha[:7] or "local",
                  "COMMIT_URL": "https://github.com/%s/commit/%s" % (REPO, sha) if sha else "https://github.com/" + REPO}.items():
         start = start.replace("{{" + k + "}}", v)
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
         f.write(start)
     open(os.path.join(out, ".nojekyll"), "w").close()
-    print("Simulator of %s and %s v%s (commit %s) in %s" % (folder, sprayer["name"], sprayer["version"], sha[:7] or "local", out))
+    print("Simulator of %s, %s v%s and %s v%s (commit %s) in %s" % (folder, sprayer["name"], sprayer["version"], seeder["name"], seeder["version"],
+                                                                   sha[:7] or "local", out))
 
 
 if __name__ == "__main__":

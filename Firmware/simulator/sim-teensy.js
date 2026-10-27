@@ -1,6 +1,7 @@
 /* sim-teensy.js - the web page simulator: the Teensy page (zWebPage.h) with a pretend module behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-27 (Claude): the Machine tab links to the seed drill module's page or the sprayer module's page, by the implement.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -11,17 +12,19 @@
 const S = window.AioSim, KEY = "aiosim.teensy", M = S.Module(KEY);
 S.bar("No module behind this page: the values are made up. Park the tractor to try the update and the calibrations.",
  ["gps", "imu", "motor", "prog", "xiao", "mach", "impl", "park"], [KEY]);
-// The sprayer module has a page of its own (the simulator's third page): a link to it at the end of the Machine
-// tab's card, the way its IP on the Machine tab would open it on the tractor. Not with the official module (no page).
+// Our machine modules have a page of their own (the seed drill's, the sprayer's): a link to the one of the chosen
+// implement at the end of the Machine tab's card, the way its IP on the Machine tab would open it on the tractor.
+// Not with the official module (no page).
 if (S.opt.mach === "nano") {
  const link = () => {
   const card = document.querySelector("#t-machine .card");
   if (!card) return;
-  const p = document.createElement("p"), a = document.createElement("a");
-  p.className = "note";p.id = "simSprayerLink";
+  const p = document.createElement("p"), a = document.createElement("a"), seeder = S.opt.impl === "seeder";
+  p.className = "note";p.id = "simModuleLink";
   const q = new URLSearchParams();
-  for (const k of ["impl", "park"]) if (S.opt[k] !== S.CHOICES[k].dflt) q.set(k, S.opt[k]);
-  a.href = "../sprayer/" + (q.toString() ? "?" + q.toString() : "");a.textContent = "the sprayer module's own page";
+  if (S.opt.park !== S.CHOICES.park.dflt) q.set("park", S.opt.park);
+  a.href = (seeder ? "../seeder/" : "../sprayer/") + (q.toString() ? "?" + q.toString() : "");
+  a.textContent = seeder ? "the seed drill module's own page" : "the sprayer module's own page";
   p.append("In the simulator: open ", a, ". On the tractor it is at http://" + M.st.net + ".123/ (its own Wi-Fi network: http://192.168.4.1/).");
   card.appendChild(p);
  };

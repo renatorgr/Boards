@@ -4,12 +4,11 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-The same program drives the **19-section no-till seed drill** on a **KinCony KC868-A32**
-(32 relays, network cable): see [The seed drill on a KC868-A32](#the-seed-drill-on-a-kc868-a32).
+The 19-section no-till seed drill on a KinCony KC868-A32 has its own program since
+v0.9: [Seeder/Seeder_ESP32](../../Seeder/Seeder_ESP32).
 
-Version 0.8 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
-tested on the sprayer. The KC868-A32 build is written from KinCony's pin list and has not
-run on a board yet.
+Version 0.9 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+tested on the sprayer.
 
 ## How it works
 
@@ -32,8 +31,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 
 - Once a second it also sends the sprayer readings (PGN 160: pressure, flow, litres,
   master switch, sections open), which the
   [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb) shows
-  above the section buttons. A machine without sensors (a seed drill) sends none: see
-  *Sensors fitted* below.
+  above the section buttons. With no sensor ticked it sends none: see *Sensors fitted*
+  below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
@@ -108,7 +107,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.8` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.9` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -139,8 +138,8 @@ divider (to-GND ÷ total) in the page's calibration.
 7. **Sensors fitted.** In *Calibration*, tick *Pressure sensor fitted* and *Flow meter
    fitted* for the sensors on the machine (both on the sprayer, ticked by default), then
    *Save*. The page only shows the readings and calibration fields of the sensors ticked;
-   an unticked sensor reads 0 (its pin floats without it). With **neither ticked** (a seed
-   drill) the *Sprayer* card goes away and the module stops sending PGN 160, so
+   an unticked sensor reads 0 (its pin floats without it). With **neither ticked** the
+   *Sprayer* card goes away and the module stops sending PGN 160, so
    AgOpenWeb's sprayer strip and the AiO module page's *Sprayer (PGN 160)* card do not
    show; the sections still reach them in the hello reply.
 
@@ -177,7 +176,7 @@ Monitor: `wifi-reset`.
 | PGN | Direction | What |
 |---|---|---|
 | 239 | program → module | sections 1–16 (bytes 11–12), hydraulic lift (7), tramline (8), geo stop (9), speed (6, km/h × 10) |
-| 229 | program → module | sections 1–64 (bytes 5–12, 8 per byte, section 1 = byte 5 bit 0), sent with every 239 when the tool has more than 16 sections. Sections 17–64 reach the relays that follow them (*Relay 1 follows section*) |
+| 229 | program → module | sections 1–64 (bytes 5–12, 8 per byte, section 1 = byte 5 bit 0), sent with every 239 when the tool has more than 16 sections. The relays here follow sections 1–16 only (the program's pin config) |
 | 238 | program → module | machine config: raise / lower time, lift enable, byte 8 bit 0 = outputs inverted. Saved |
 | 236 | program → module | 24 output functions: 1–16 section, 17 lift lower, 18 lift raise, 19 tramline right, 20 tramline left, 21 geo stop. Saved |
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
@@ -218,68 +217,6 @@ all 16 (PGN 160 byte 15).
 If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or tick
 "relay active high" in the program: the page's *Output polarity* line says which pin
 level the module is using.
-
-## The seed drill on a KC868-A32
-
-The no-till seed drill has **19 sections**, one linear actuator each. That is more than
-the 16 sections of PGN 239, and more relays than the boards above have, so it uses a
-**KinCony KC868-A32**: an ESP32 with 32 relays (10 A, COM / NO / NC), a network socket,
-32 inputs and 4 analog inputs, on 12 V. The module and the relays go in a box on the
-seed drill; only 12 V and a network cable come from the tractor.
-
-```
-Tablet (AgOpenWeb) ── Wi-Fi ── RUT901 router ── LAN1: AiO v4.5 (192.168.5.126)
-                                   └─────────── LAN2: network cable to the seed drill
-KC868-A32 (192.168.5.123) ──► relays 1–19 ──► 19 DPDT relays ──► 19 actuators
-   └── own Wi-Fi network "Seeder-xxxx" + web page (phone)
-```
-
-**The program.** At the top of `Sprayer_ESP32.ino` set `#define BOARD BOARD_KC868_A32`
-(board *ESP32 Dev Module* in the Arduino IDE, as before). That build:
-
-- drives the 32 relays through the board's four PCF8574 chips (I2C on GPIO 15 / 13),
-- is on the tractor network through the **network cable**, with the fixed IP
-  `<subnet>.123` (no Wi-Fi to set up; the page can still switch it to the tractor's
-  Wi-Fi instead),
-- calls itself **Seeder**: own Wi-Fi network `Seeder-xxxx` (password `agopengps`),
-  `http://seeder.local/`,
-- has **relay 1 = section 1, relay 2 = section 2** and so on up to relay 32 (the page's
-  *Relay 1 follows section* setting; 0 there gives the relays back to the program's pin
-  config, which only knows sections 1–16),
-- has **no sensors** ticked, so it sends no PGN 160.
-
-Its first upload goes over the board's USB socket, as in KinCony's guide for the
-KC868-A32. Later updates go over the page, as on the other boards.
-
-**Wiring, one section** (repeat for sections 1–19 on relays 1–19):
-
-| Connection | Wire |
-|---|---|
-| KC868-A32 `12V` / `GND` | 12 V from the tractor through a **2 A fuse** |
-| KC868 relay *n* `COM` | +12 V (fused) |
-| KC868 relay *n* `NO` | coil + of DPDT relay *n*; coil − to GND; a 1N4007 across the coil (stripe to +) |
-| DPDT relay *n* `COM1` / `COM2` | actuator *n* red / black |
-| DPDT relay *n* `NO1` and `NC2` | +12 V (actuator supply) |
-| DPDT relay *n* `NC1` and `NO2` | GND |
-| KC868 network socket | network cable to the RUT901's `LAN2` |
-
-KC868 relay off = DPDT relay off = the actuator pulls in = section **closed**. So a
-module that loses power, or hears nothing from the program for 2 s, closes every row.
-The actuators need their own fused 12 V feed: 19 actuators moving at once draw about
-12 A. Actuators with built-in end switches stop by themselves at each end.
-
-**AgOpenWeb.** *Tool Configuration → Tool → Sections*: 19 individual sections with their
-widths. With more than 16 sections AgOpenWeb sends PGN 229 by itself, and the module's
-page shows *Sections 17-64 (PGN 229): now*. The actuators take a few seconds for their
-stroke, so set *Tool → Timing → Look ahead on / off* to that time.
-
-**Bench test.** With AgOpenWeb running, turn sections on from the screen: relays 1–19
-click and the page's *Sections* card shows 19 green cells. Pull the network cable: every
-relay drops within 2 seconds, the page says *program silent, sections closed* and
-*Network cable: no link*.
-
-The AiO page's *Machine* tab and the XIAO page read PGN 254 / 239 / 160, which carry
-sections 1–16 only, so they show the first 16 sections of the seed drill.
 
 ## Notes
 
