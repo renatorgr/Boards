@@ -9,6 +9,8 @@
    24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
    27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
    (AmpSeal pin 3), and the message says to choose Single in the program (a 3-wire sensor).
+   27 Oct 2026: autosteer turned off by the program's on-screen button in Button mode reads "by the program
+   (its screen says why)", with a [status] line, instead of "steer button" (Autosteer.ino, steerOffByProgram).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -227,7 +229,7 @@ static void offText(char* b, size_t n, uint8_t c, int v)
         case SO_ENCODER:  snprintf(b, n, "wheel encoder kickout (%d pulses)", v); break;
         case SO_WAS:      snprintf(b, n, "WAS fault (%.2f V)", wasVolts); break;
         case SO_SILENT:   snprintf(b, n, "no steering data from the program for 2.5 s"); break;
-        case SO_PROGRAM:  snprintf(b, n, "by the program"); break;
+        case SO_PROGRAM:  snprintf(b, n, "by the program (its screen says why)"); break;
         case SO_SPEED:    snprintf(b, n, "speed below 0.1 km/h"); break;
         case SO_KEYA:     snprintf(b, n, "Keya kickout (%d %%, limit %d %%)", pct255(v), lim); break;
         case SO_KEYA_FAULT: snprintf(b, n, "Keya motor fault (0x%04X)", v & 0xFFFF); break;
@@ -253,11 +255,16 @@ void steerOnNote(bool on)
     else if (kickCause != SO_NONE && now - kickMs < 500)    { c = kickCause; v = kickValue; }
     else if (pgn254Ms == 0 || now - pgn254Ms > 1000)        c = SO_SILENT;
     else if (steerSwitch == 1 && steerConfig.SteerSwitch)   c = SO_SWITCH;
-    else if (steerSwitch == 1 && steerConfig.SteerButton)   c = SO_BUTTON;
+    else if (steerSwitch == 1 && steerConfig.SteerButton)   c = steerOffByProgram ? SO_PROGRAM : SO_BUTTON;
     else if (!(guidanceStatus & 1) || steerSwitch == 1)     c = SO_PROGRAM;   // no switch / button: it follows the program's button
     else if (gpsSpeed < 0.1f)                               c = SO_SPEED;
     else                                                    c = SO_OTHER;
     offCause = c; offMs = now; offValue = v;
+    if (c == SO_PROGRAM)                                    // its button, outside the boundary, speed limits, RTK lost:
+    {                                                       // the program's screen says which; the module only sees its bit go to 0
+        StatusLog.line("[status] Autosteer OFF: by the program (its screen says why: its button, boundary, speed, RTK)");
+        return;
+    }
     if (!SO_FROM_MODULE(c)) return;                         // the program knows why
 
     offModuleCount++;
