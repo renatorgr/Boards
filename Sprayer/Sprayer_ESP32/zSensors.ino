@@ -1,13 +1,15 @@
 /* zSensors.ino - pressure sensor, flow meter, optional master switch.
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-27 (Claude): dividers from a common resistor kit: pressure 10k / 10k, flow 10k / 22k.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// The ESP32 pins take 3.3 V at most, so both 5 V sensors go through a 10k / 15k divider (0.6):
-//   pressure sensor 0.5-4.5 V  ->  0.3-2.7 V on GPIO 34 (ADC, calibrated by the ESP32 itself)
-//   flow meter pulses 0-5 V    ->  0-3 V on GPIO 35 (counted by an interrupt)
-// cfg.pressureDivider is that 0.6; change it on the web page if other resistors are used.
+// The ESP32 pins take 3.3 V at most, so both 5 V sensors go through a divider (10k in series, then to GND):
+//   pressure sensor 0.5-4.5 V, 10k to GND (0.5)  ->  0.25-2.25 V on GPIO 34 (ADC, where it is most accurate)
+//   flow meter pulses 0-5 V, 22k to GND (0.69)    ->  0-3.4 V on GPIO 35 (counted by an interrupt; the high
+//       level stays above the ESP32's 2.5 V threshold even if the meter has its own pull-up)
+// cfg.pressureDivider is that 0.5; change it on the web page if other resistors are used.
 
 static volatile uint32_t flowPulses = 0;
 

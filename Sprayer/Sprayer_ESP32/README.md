@@ -4,7 +4,7 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.7 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.7.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -48,7 +48,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 
 | Pressure sensor 0–10 bar | 0.5–4.5 V output, powered at 5 V |
 | YF-S201 flow meter | 5 V, about 450 pulses per litre, 1–30 L/min |
 | USB-serial adapter (CH340 or FTDI), 3.3 V | Only for the first upload; later updates go over Wi-Fi |
-| 2 × 10 kΩ + 2 × 15 kΩ resistors | Dividers for the two sensor signals |
+| 3 × 10 kΩ + 1 × 22 kΩ resistors (¼ W) | Dividers for the two sensor signals |
 
 The relays switch **on when the pin is HIGH** (checked with `ESP32_Relay_Test`):
 relay 1 = GPIO 32, 2 = 33, 3 = 25, 4 = 26, 5 = 27, 6 = 14, 7 = 12, 8 = 13.
@@ -67,16 +67,23 @@ The other 2 × 10 row (G23, G22, G21 …) stays empty.
 ## Wiring
 
 The ESP32 pins take **3.3 V at most**. Both sensors run on 5 V, so each signal goes
-through a divider: **10 kΩ in series, then 15 kΩ to GND** (0.6). 4.5 V from the
-pressure sensor becomes 2.7 V, right inside the range the ESP32 measures well.
+through a divider, **10 kΩ in series** and then a resistor to GND:
+
+- pressure: **10 kΩ to GND** (0.5). 0.5–4.5 V from the sensor becomes 0.25–2.25 V, where
+  the ESP32 measures best. The page's calibration has this 0.5 as the divider.
+- flow: **22 kΩ to GND** (0.69). A 5 V pulse becomes about 3.4 V, well above the 2.5 V
+  the ESP32 needs to see a pulse, even if the meter has its own pull-up resistor.
+
+Both values come in the usual ¼ W resistor kits. With other resistors, put the pressure
+divider (to-GND ÷ total) in the page's calibration.
 
 | Connection | Wire |
 |---|---|
 | Board `DC+` / `GND` (3-pin green terminal) | 12 V from the battery through a **1 A fuse**. Separate feed, not through the master switch |
 | Pressure sensor red / black | 5V pin / GND |
-| Pressure sensor green (signal) | 10 kΩ → **G34**, and 15 kΩ from G34 to GND |
+| Pressure sensor green (signal) | 10 kΩ → **G34**, and 10 kΩ from G34 to GND |
 | YF-S201 red / black | 5V pin / GND |
-| YF-S201 yellow (signal) | 10 kΩ → **G35**, and 15 kΩ from G35 to GND |
+| YF-S201 yellow (signal) | 10 kΩ → **G35**, and 22 kΩ from G35 to GND |
 | Valves | 12 V from the battery, 5 A fuse → master switch → relay COM. Relay NO → valve +. Valve − → GND. 1N4007 diode across each valve (stripe to +) |
 
 - Use a separate shielded cable for the sensors, with its own GND wire back to the board.
@@ -182,7 +189,7 @@ modules, for up to **16 relays**. At the top of `Sprayer_ESP32.ino` set
 | Relay pins | 32, 33, 25, 26, 27, 14, 12, 13 | 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33 (relay 1 first; shorten the list to the relays you have) |
 | Relay closes when the pin is | HIGH (`RELAY_ON_HIGH 1`) | LOW on the usual optocoupled modules (`RELAY_ON_HIGH 0`); set 1 for a module with high-trigger jumpers |
 | LED | GPIO 23 | GPIO 2 (the blue LED) |
-| Sensors | G34 pressure, G35 flow, through the 10k / 15k dividers | the same pins and dividers |
+| Sensors | G34 pressure (10k / 10k), G35 flow (10k / 22k) | the same pins and dividers |
 | Power | 5–30 V DC on the board | 5 V to the dev module's `5V`/`VIN` pin from an LM2596; the relay module's `JD-VCC` from the same 5 V (jumper off), its `VCC` from the ESP32's 3V3, GND to GND |
 
 Wiring the relay module: `IN1`…`IN16` to the pins above in order, one common GND. The 12 V

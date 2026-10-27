@@ -1,6 +1,7 @@
 /* sim-sprayer.js - the web page simulator: the sprayer module's page (Sprayer/Sprayer_ESP32/sPage.h) with a pretend ESP32 behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-27 (Claude): default pressure divider 0.5, as the module (10k / 10k).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -18,7 +19,7 @@ const NAME = "00007C4EA4CF12B3", AP = "Sprayer-4E7C";      // from the ESP32's f
 const NET = S.opt.wifi, LOST_AT = 24;                       // sta: on the tractor network; lost: was, until LOST_AT s; ap: not set
 const IMPL = S.IMPL, X8 = !!IMPL.nozzles, RELAYS = X8 ? 8 : 16;   // the sprayer: the X8 board (8 relays on HIGH); the seed drill: a dev module with two relay modules (16, on LOW)
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: NET !== "ap", sta: NET === "ap" ? "" : "Farm WiFi",
- staPassSet: NET !== "ap", host: "sprayer", subnet: "192.168.5", ppl: 450, pmax: 10, pdiv: 0.6, totalBase: 0, ev: [], evAt: -1}));
+ staPassSet: NET !== "ap", host: "sprayer", subnet: "192.168.5", ppl: 450, pmax: 10, pdiv: 0.5, totalBase: 0, ev: [], evAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
 S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
  (X8 ? "" : " The seed drill has no pressure or flow sensor on the module: those stay at 0."), ["impl", "wifi", "park"], [KEY, MKEY]);

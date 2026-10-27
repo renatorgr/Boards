@@ -6,7 +6,9 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.7 (2026-10-26), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.7.1 (2026-10-27), not yet tested on the sprayer.
+//   v0.7.1: sensor dividers from a common resistor kit (no 15k): pressure 10k / 10k (0.5, the new
+//           default on the page), flow 10k / 22k.
 //   v0.7: also runs on a plain ESP32 dev module with relay modules (up to 16 relays): BOARD_RELAY_X8 0.
 //   v0.6: all 8 relays are sections 1-8 by default (the boom has 5 now, up to 8 later).
 //   v0.5: the program subnet can also be set on the page (for routers that are not 192.168.5.x).
@@ -48,7 +50,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.7"
+#define FW_VERSION          "0.7.1"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD_RELAY_X8 1 = the ESP32_Relay_X8 board (8 relays on it).
@@ -71,8 +73,8 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define LED_PIN             2       // the dev module's blue LED
 #endif
 #define NUM_RELAYS          ((uint8_t)(sizeof(RELAY_PIN) / sizeof(RELAY_PIN[0])))
-#define PRESSURE_PIN        34      // ADC1, input only: pressure sensor signal through the 10k / 15k divider
-#define FLOW_PIN            35      // input only: flow meter signal through the 10k / 15k divider
+#define PRESSURE_PIN        34      // ADC1, input only: pressure sensor signal through the 10k / 10k divider
+#define FLOW_PIN            35      // input only: flow meter signal through the 10k / 22k divider
 #define MASTER_PIN          39      // "SVN", input only: optional master switch sense (12 V through 47k / 10k)
 #define BUTTON_PIN          0       // the IO0 button: held 5 s = Wi-Fi settings back to the defaults
 
@@ -112,7 +114,7 @@ struct Settings
     // sensor calibration
     float   pulsesPerLitre = 450.0f;        // YF-S201: about 450. Calibrate with a bucket (README)
     float   pressureMaxBar = 10.0f;         // 0-10 bar sensor, 0.5 V = 0 bar, 4.5 V = full scale
-    float   pressureDivider = 0.6f;         // the divider on the sensor signal: 15k / (10k + 15k)
+    float   pressureDivider = 0.5f;         // the divider on the pressure signal: 10k / (10k + 10k)
 } cfg;
 
 // ---------------------------------------------------------------- state

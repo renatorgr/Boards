@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
    2026-10-26 (Claude): relay cells show the relay number above its function; 16 relays were cramped.
+   2026-10-27 (Claude): the divider field is for the pressure signal only (10k / 10k = 0.5).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -124,7 +125,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <div class="card"><h2>Calibration</h2>
 <div class="field"><span>Flow meter pulses per litre (YF-S201: about 450)</span><input type="number" id="ppl" step="0.1"></div>
 <div class="field"><span>Pressure sensor full scale (bar, at 4.5 V)</span><input type="number" id="pmax" step="0.1"></div>
-<div class="field"><span>Divider on the sensor signals (15k / (10k + 15k) = 0.6)</span><input type="number" id="pdiv" step="0.001"></div>
+<div class="field"><span>Divider on the pressure signal (10k / (10k + 10k) = 0.5)</span><input type="number" id="pdiv" step="0.001"></div>
 <div class="row"><button class="act" onclick="saveCalib()">Save</button></div>
 <div class="msg" id="msgCalib"></div>
 <p class="note">Bucket test: with one nozzle open, fill 10 L and note the litres counted. New pulses per litre = old × (counted ÷ 10).</p>
