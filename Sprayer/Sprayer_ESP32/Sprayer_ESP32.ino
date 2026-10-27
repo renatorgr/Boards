@@ -6,7 +6,9 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.9 (2026-10-27), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.9.1 (2026-10-27), not yet tested on the sprayer.
+//   v0.9.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
+//         status), so the AiO Teensy's Machine tab reads the sections of any module the same way.
 //   v0.9: the seed drill (KC868-A32) has its own folder, Seeder/Seeder_ESP32; this program is for the sprayer
 //         boards again (ESP32_Relay_X8, ESP32 dev module). It keeps reading PGN 229 in full and the module IP's
 //         last number.
@@ -33,7 +35,8 @@
 //       238 machine config (relay polarity, lift times), 236 pin functions (which relay does what),
 //       201 subnet, 200 hello, 202 scan. The config, pin functions and subnet are kept in flash.
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
-//       237 every 200 ms (sign of life), plus 160 once a second with the sprayer readings
+//       237 every 200 ms (what the outputs do, as the AiO v26 sends it), plus 160 once a second with the
+//       sprayer readings
 //       (pressure, flow, litres, master switch, sections open) for the AgOpenWeb fork's sprayer strip;
 //       with no sensor ticked on the page it sends no 160.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
@@ -60,7 +63,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.9"
+#define FW_VERSION          "0.9.1"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

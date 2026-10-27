@@ -7,7 +7,9 @@
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Seeder_ESP32.ino  v0.1 (2026-10-27), not yet run on a KC868-A32.
+// Seeder_ESP32.ino  v0.1.1 (2026-10-27), not yet run on a KC868-A32.
+//   v0.1.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
+//         status), the sections above 16 after it (bytes 13-18).
 //   v0.1: the seed drill part of Sprayer_ESP32 v0.8 on its own: the KC868-A32 only, no pressure or flow
 //         sensor, no PGN 160.
 //
@@ -26,7 +28,8 @@
 //   - relay 1 follows section 1, relay 2 section 2 and so on (the page can change the first section, or hand
 //       the relays back to the program's pin config, which only knows sections 1-16).
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
-//       237 every 200 ms (sign of life, with every open section: the AiO Teensy's Machine tab shows them).
+//       237 every 200 ms (what the outputs do, as the AiO v26 sends it, plus the sections above 16: the AiO
+//       Teensy's Machine tab shows them all).
 //   - no message from the program for 2 s (cable or Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Seeder-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://seeder.local/
@@ -52,7 +55,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.1"
+#define FW_VERSION          "0.1.1"
 
 // ---------------------------------------------------------------- the KC868-A32's pins
 // The relays hang on I2C bus A (SDA GPIO 15, SCL GPIO 13): PCF8574 0x24 = relays 1-8, 0x25 = 9-16,

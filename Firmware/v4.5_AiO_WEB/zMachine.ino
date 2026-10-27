@@ -9,6 +9,10 @@
    27 Oct 2026: up to 64 sections: those the program asks for from its PGN 229 (Autosteer.ino ReceiveUdp,
    sent with every 239 when the tool has more than 16 sections), those open from the seed drill module's
    PGN 237 (Seeder_ESP32, sections 17-64 in bytes 10-15).
+   27 Oct 2026: the sections of every machine module, whatever it is: PGN 237 from 0x7B in the AgOpenGPS AiO v26
+   layout (sections 1-16 the module really drives; 17-64 in bytes 13-18 when it sends them) before the hello
+   reply (the AiO v26 leaves its sections at 0 there) and PGN 160; several modules on the network (each its own
+   IP) are kept apart and their sections put together.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -20,29 +24,38 @@
 // dropped. Nothing is sent and nothing changes in the steering: it is only for the web page (Machine tab,
 // shown once the module has been heard) and the [machine] messages.
 //
-// Two modules are known, and anything that talks like them works:
+// These modules are known, and anything that talks like them works:
 //   - the official AgOpenGPS Machine_UDP_v5 (Arduino Nano + ENC28J60). Its hello reply leaves the checksum
 //     byte at 71, never computed, so it is taken without a checksum. Every 200 ms it also sends a PGN 237
 //     with fixed content and the program's source byte 0x7F (a leftover of the old code): here it only
 //     counts as a sign of life. With "Invert relay" on in the program, its hello reply carries the output
 //     levels, so the sections read reversed.
-//   - the sprayer module "Sprayer_Nano" (same hardware), or "Sprayer_ESP32". Hello reply with a right
+//   - the machine part of the AgOpenGPS AiO v26 firmware (Firmware_Teensy_AiO_26, MachineProcessor): hello
+//     reply with its sections left at 0, and PGN 237 from 0x7B fifty times a second with what it drives
+//     (layout below).
+//   - the sprayer module "Sprayer_Nano" (same hardware as the official one): hello reply with a right
 //     checksum, and PGN 160.
-//   - the seed drill module "Seeder_ESP32" (KinCony KC868-A32, up to 32 relays). Hello reply with a right
-//     checksum, and PGN 237 from 0x7B with all the open sections (below).
+//   - our ESP32 modules, "Sprayer_ESP32" (PGN 237 and 160) and "Seeder_ESP32" (PGN 237 with sections 17-64).
 //
 // The program asks for sections 1-16 in PGN 254 (relay, relayHi; Autosteer.ino) and, on a tool with more
 // than 16 sections, for sections 1-64 in PGN 229 (bytes 5-12, section 1 = byte 5 bit 0), which it sends to
 // UDP 8888 with every 239. The hello reply and PGN 160 carry sections 1-16 only.
+//
+// What a module has open comes, by its IP, from its PGN 237 when it sent one in the last MACH_237_MS, else
+// from its PGN 160, else from its hello reply. Several boards can answer as the machine module (each with its
+// own IP, say one for sections 1-16 and one for 17-32): up to MACH_MODS of them are kept apart, and the tab
+// shows the sections of all those heard lately together.
 //
 // Sprayer PGN 160 (0xA0), once a second, 16 bytes (17 with sections 9-16):
 //   80 81 7B A0 0A | pressure (cbar, 2) | flow (cL/min, 2) | total (dL, 4) | main switch (1) | sections (1) | CRC
 //   80 81 7B A0 0B | ... the same ... | sections 1-8 (1) | sections 9-16 (1) | CRC   (Sprayer_ESP32 v0.7)
 //   (little-endian; CRC = sum of the bytes from the 3rd to the one before the CRC, as in AgOpenGPS)
 //
-// Seed drill PGN 237 (0xED) from 0x7B, five times a second, 17 bytes (the official module's 237 has
-// 8 bytes of fixed content and the source 0x7F):
-//   80 81 7B ED 0B | sections 1-16 open (2) | relays 1-16 (2) | 1 (1) | sections 17-64 open (6) | CRC
+// PGN 237 (0xED) from 0x7B, as the AiO v26 sends it (the official Machine_UDP_v5's 237 has 8 bytes of fixed
+// content and the source 0x7F instead):
+//   80 81 7B ED 08 | sections 1-16 (2) | lift (1: 0 off, 1 down, 2 up) | tramline (1) | geo stop (1) |
+//                    status (1: bit 0 = the program's PGN 239 still arrives) | 0 | 0 | CRC
+//   80 81 7B ED 0E | ... the same 8 bytes ... | sections 17-64 (6) | CRC   (Seeder_ESP32)
 
 #define MACH_SRC          0x7B   // the machine module's source byte (IP .123)
 #define MACH_PGN_HELLO    123    // the module's reply to the program's hello (PGN 200): sections on, 2 bytes
@@ -51,6 +64,8 @@
 #define MACH_PKTS_LOOP    16     // packets read from UDP 9999 per loop at most
 #define MACH_SILENCE_MS   5000   // silent after this long (as STATUS_SILENCE_MS, which zStatus.ino defines after this file)
 #define MACH_229_MS       2000   // sections 17-64 asked for: only from a PGN 229 younger than this
+#define MACH_237_MS       2000   // a module that sent PGN 237 this lately: its sections from that, not the hello reply
+#define MACH_MODS         4      // machine modules (IPs) kept apart
 
 static struct
 {
@@ -64,8 +79,14 @@ static struct
     bool     helloNoCrc;         // the hello reply came without a checksum (the official module)
     uint32_t secMs;              // last word on the sections, from the hello reply, PGN 160 or 237 (0: never)
     uint8_t  secPgn;             // which of them: 123, 160 or 237
-    uint64_t sections;           // bit 0 = section 1, as the module reports them
+    uint64_t sections;           // bit 0 = section 1, those open on all the modules heard lately
     uint8_t  secTop;             // the highest section asked for or reported since the start (0: none yet)
+    struct
+    {
+        uint32_t ip;             // the module's IP (0: free)
+        uint32_t ms, ms237;      // its last word on the sections, its last PGN 237 (0: never)
+        uint64_t sections;       // what it has open
+    } mod[MACH_MODS];
 
     uint32_t ms229;              // last PGN 229 from the program (0: never)
     uint64_t asked229;           // its sections 1-64
@@ -93,6 +114,35 @@ static uint64_t machineAsked(uint32_t now)
     uint64_t a = (uint16_t)(relay | relayHi << 8);
     if (mach.ms229 && now - mach.ms229 < MACH_229_MS) a |= mach.asked229 & ~(uint64_t)0xFFFF;
     return a;
+}
+
+// A module's sections, by its IP: from PGN 237 (all), or from the hello reply / PGN 160 (sections 1-16, only
+// when the module sent no PGN 237 lately). Then the sections of all the modules heard lately put together.
+static void machineSections(uint32_t ip, uint8_t pgn, uint64_t sections, uint32_t now)
+{
+    uint8_t m = MACH_MODS;
+    for (uint8_t i = 0; i < MACH_MODS && m == MACH_MODS; i++)
+        if (mach.mod[i].ip == ip) m = i;
+    if (m == MACH_MODS)                                       // a new module: a free entry, or the one silent longest
+    {
+        m = 0;
+        for (uint8_t i = 1; i < MACH_MODS; i++)
+            if (!mach.mod[i].ip || (mach.mod[m].ip && now - mach.mod[i].ms > now - mach.mod[m].ms)) m = i;
+        mach.mod[m].ip = ip;
+        mach.mod[m].ms237 = 0;
+        mach.mod[m].sections = 0;
+    }
+    if (pgn == MACH_PGN_LIFE) mach.mod[m].ms237 = now;
+    else if (mach.mod[m].ms237 && now - mach.mod[m].ms237 < MACH_237_MS) return;
+    mach.mod[m].sections = sections;
+    mach.mod[m].ms = now;
+    mach.secMs = now;
+    mach.secPgn = pgn;
+
+    uint64_t all = 0;
+    for (uint8_t i = 0; i < MACH_MODS; i++)
+        if (mach.mod[i].ip && now - mach.mod[i].ms < MACH_SILENCE_MS) all |= mach.mod[i].sections;
+    mach.sections = all;
 }
 
 // Sections 1-64 as 16 hex digits, section 1 = the lowest bit ("000000000007ffff" = sections 1-19)
@@ -138,13 +188,10 @@ void machineLoop()
         mach.lastMs = now ? now : 1;
         mach.lastPgn = d[3];
 
-        // the hello reply and PGN 160 have sections 1-16: those above stay as the seed drill's 237 said
-        const uint64_t above16 = mach.sections & ~(uint64_t)0xFFFF;
+        const uint32_t from = (uint32_t)ip[0] << 24 | (uint32_t)ip[1] << 16 | (uint32_t)ip[2] << 8 | ip[3];
         if (hello && d[4] >= 2)
         {
-            mach.sections = above16 | (uint16_t)(d[5] | d[6] << 8);
-            mach.secMs    = mach.lastMs;
-            mach.secPgn   = MACH_PGN_HELLO;
+            machineSections(from, MACH_PGN_HELLO, (uint16_t)(d[5] | d[6] << 8), mach.lastMs);
             mach.helloMs  = mach.lastMs;
             mach.helloN++;
         }
@@ -154,19 +201,16 @@ void machineLoop()
             mach.flowCLmin = (uint16_t)(d[7] | d[8] << 8);
             mach.totalDl   = (uint32_t)d[9] | (uint32_t)d[10] << 8 | (uint32_t)d[11] << 16 | (uint32_t)d[12] << 24;
             mach.mainOn    = d[13] != 0;
-            mach.sections  = above16 | (d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14]);
-            mach.secMs     = mach.lastMs;
-            mach.secPgn    = MACH_PGN_SPRAYER;
+            machineSections(from, MACH_PGN_SPRAYER, d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14], mach.lastMs);
             mach.sprayMs   = mach.lastMs;
             mach.sprayN++;
         }
-        else if (fromModule && d[3] == MACH_PGN_LIFE && d[4] >= 11)
+        else if (fromModule && d[3] == MACH_PGN_LIFE && d[4] >= 2)
         {
             uint64_t s = (uint16_t)(d[5] | d[6] << 8);
-            for (uint8_t b = 0; b < 6; b++) s |= (uint64_t)d[10 + b] << (16 + 8 * b);
-            mach.sections = s;
-            mach.secMs    = mach.lastMs;
-            mach.secPgn   = MACH_PGN_LIFE;
+            if (d[4] >= 14)
+                for (uint8_t b = 0; b < 6; b++) s |= (uint64_t)d[13 + b] << (16 + 8 * b);
+            machineSections(from, MACH_PGN_LIFE, s, mach.lastMs);
         }
     }
 
@@ -191,8 +235,17 @@ void machineJson(Json& j, uint32_t now)
 {
     if (!mach.lastMs) return;
     j.obj("mach");
-    char ip[20];
-    snprintf(ip, sizeof(ip), "%u.%u.%u.%u", mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
+    // the IPs of the modules whose sections are shown (with the last word on the sections), else the last one heard
+    char ip[MACH_MODS * 17 + 4] = "";
+    for (uint8_t i = 0; i < MACH_MODS; i++)
+    {
+        const uint32_t a = mach.mod[i].ip;
+        if (!a || mach.secMs - mach.mod[i].ms >= MACH_SILENCE_MS) continue;
+        const size_t n = strlen(ip);
+        snprintf(ip + n, sizeof(ip) - n, "%s%lu.%lu.%lu.%lu", n ? ", " : "",
+                 (unsigned long)(a >> 24), (unsigned long)(a >> 16 & 255), (unsigned long)(a >> 8 & 255), (unsigned long)(a & 255));
+    }
+    if (!ip[0]) snprintf(ip, sizeof(ip), "%u.%u.%u.%u", mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
     j.str("ip", ip);
     j.bo("here", now - mach.lastMs < MACH_SILENCE_MS);
     j.i("ago", (long)((now - mach.lastMs) / 1000));

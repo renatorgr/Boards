@@ -15,7 +15,7 @@ S.bar("No module behind this page: the values are made up. Park the tractor to t
 // Our machine modules have a page of their own (the seed drill's, the sprayer's): a link to the one of the chosen
 // implement at the end of the Machine tab's card, the way its IP on the Machine tab would open it on the tractor.
 // Not with the official module (no page).
-if (S.opt.mach === "nano") {
+if (S.opt.mach === "nano" || S.opt.mach === "two") {
  const link = () => {
   const card = document.querySelector("#t-machine .card");
   if (!card) return;

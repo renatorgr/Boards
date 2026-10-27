@@ -5,6 +5,7 @@
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
    2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
    2026-10-27 (Claude): PGN 229 read in full (sections 1-64).
+   2026-10-27 (Claude): v0.9.1: PGN 237 in the AiO v26 layout (sections, lift, tramline, geo stop, status).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -13,8 +14,9 @@
 //   sent with every 239 when the tool has more than 16 sections), 238 machine config, 236 output functions,
 //   201 subnet, 200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
-//   123 hello reply, 203 scan reply (to 255.255.255.255), 237 sign of life every 200 ms (these carry
-//   sections 1-16 and relays 1-16, as in the official layouts),
+//   123 hello reply (sections 1-16 open), 203 scan reply (to 255.255.255.255),
+//   237 every 200 ms, as the AgOpenGPS AiO v26 sends it:
+//       80 81 7B ED 08 | sections 1-16 open (2) | lift (0 off, 1 down, 2 up) | tramline | geo stop | status | 0 | 0 | CRC
 //   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15), only when the machine has
 //       a pressure sensor or a flow meter (page setting)
 
@@ -39,13 +41,15 @@ static IPAddress broadcastIp()
     return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 255);
 }
 
-// Every 200 ms, PGN 237 "from machine": the official module sends it as a sign of life (with
-// dummy content); here it carries what the relays are doing
+// Every 200 ms, PGN 237 "from machine", in the layout of the AgOpenGPS AiO v26 firmware (MachineProcessor):
+// what the outputs really do (sections, lift, tramline, geo stop; all off while the program is silent) and
+// a status byte, bit 0 = the program's PGN 239 still arrives. The official Machine_UDP_v5 sends dummy content.
 void sendSignOfLife()
 {
+    const uint8_t lift = linkOk && isLower ? 1 : linkOk && isRaise ? 2 : 0;
     uint8_t msg[] = { 0x80, 0x81, 0x7B, 237, 8,
-                      lowByte(sectionsOn), highByte(sectionsOn), lowByte(relayBits), highByte(relayBits),
-                      masterOn, 0, 0, 0, 0 };
+                      lowByte(sectionsOn), highByte(sectionsOn), lift, (uint8_t)(linkOk ? tramline & 3 : 0),
+                      (uint8_t)(linkOk && geoStop ? 1 : 0), (uint8_t)(linkOk ? 1 : 0), 0, 0, 0 };
     sendPgn(msg, sizeof(msg), broadcastIp());
 }
 

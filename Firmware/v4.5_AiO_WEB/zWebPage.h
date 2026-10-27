@@ -11,7 +11,8 @@
    27 Oct 2026: the Sprayer card also hides when the module stops sending PGN 160 (a sprayer module set to no sensors,
    or another module) and still sends the rest; its wording says module, not Nano.
    27 Oct 2026: up to 64 section squares on the Machine tab (PGN 229 from the program, the seed drill module's
-   PGN 237); cmd and sec are hex digits now.
+   PGN 237); cmd and sec are hex digits now. The sections of any module (its PGN 237 in the AiO v26 layout) and of
+   several modules together; their IPs in the IP row.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -194,10 +195,10 @@ a{color:var(--acc)}
    <dt>Packets</dt><dd id="mPkts">–</dd><dt>Checksum errors</dt><dd id="mBad">–</dd><dt>Last PGN</dt><dd id="mPgn">–</dd>
    <dt>Hello replies</dt><dd id="mHello">–</dd><dt>Sections from</dt><dd id="mSecFrom" class="nw">–</dd></dl>
   <p class="note hidden" id="mNoCrc" style="margin-top:8px">The hello replies come without a checksum, as the official Machine_UDP_v5 sends them: taken as they are, not counted as checksum errors.</p>
-  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254; above 16, PGN 229) and what the module reports, in its hello reply, the sprayer PGN 160 or the seed drill PGN 237</p>
+  <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254; above 16, PGN 229) and what the machine modules report open, in their PGN 237 (else PGN 160 or the hello reply); several modules together</p>
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
-  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer or seed drill module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
+  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the AiO v26's machine part, the sprayer or seed drill module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
  <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
   <div class="big" id="mBar">–</div>
   <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the module started</dt><dd id="mTotal">–</dd>

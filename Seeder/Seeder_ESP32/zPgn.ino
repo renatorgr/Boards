@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
+   2026-10-27 (Claude): v0.1.1: PGN 237 in the AiO v26 layout, sections 17-64 after it (bytes 13-18).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -12,7 +13,9 @@
 //   201 subnet, 200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
 //   123 hello reply (sections 1-16 open, as in the official layout), 203 scan reply (to 255.255.255.255),
-//   237 every 200 ms: 80 81 7B ED 0B | sections 1-16 open (2) | relays 1-16 (2) | 1 | sections 17-64 open (6) | CRC
+//   237 every 200 ms, as the AgOpenGPS AiO v26 sends it, with the sections above 16 after it:
+//       80 81 7B ED 0E | sections 1-16 open (2) | lift (0 off, 1 down, 2 up) | tramline | geo stop | status |
+//                        0 | 0 | sections 17-64 open (6) | CRC
 //   (the official module sends it with 8 bytes of fixed content; the AiO Teensy's Machine tab reads all the
 //   sections from it). No PGN 160: the seed drill has no sensors.
 
@@ -37,14 +40,17 @@ static IPAddress broadcastIp()
     return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 255);
 }
 
-// Every 200 ms, PGN 237 "from machine": the official module sends it as a sign of life (with
-// dummy content); here it carries what the relays are doing (byte 9 = 1: no master switch on a seed drill)
-// and, in bytes 10-15, the open sections above 16
+// Every 200 ms, PGN 237 "from machine", in the layout of the AgOpenGPS AiO v26 firmware (MachineProcessor):
+// what the outputs really do (sections, lift, tramline, geo stop; all off while the program is silent) and
+// a status byte, bit 0 = the program's PGN 239 still arrives. The official Machine_UDP_v5 sends dummy content.
+// Bytes 13-18: the open sections above 16 (a reader of the 8-byte layout stops before them).
 void sendSignOfLife()
 {
     const uint64_t s = sectionsOn;
-    uint8_t msg[] = { 0x80, 0x81, 0x7B, 237, 11,
-                      (uint8_t)s, (uint8_t)(s >> 8), lowByte(relayBits), highByte(relayBits), 1,
+    const uint8_t lift = linkOk && isLower ? 1 : linkOk && isRaise ? 2 : 0;
+    uint8_t msg[] = { 0x80, 0x81, 0x7B, 237, 14,
+                      (uint8_t)s, (uint8_t)(s >> 8), lift, (uint8_t)(linkOk ? tramline & 3 : 0),
+                      (uint8_t)(linkOk && geoStop ? 1 : 0), (uint8_t)(linkOk ? 1 : 0), 0, 0,
                       (uint8_t)(s >> 16), (uint8_t)(s >> 24), (uint8_t)(s >> 32), (uint8_t)(s >> 40),
                       (uint8_t)(s >> 48), (uint8_t)(s >> 56),
                       0 };
