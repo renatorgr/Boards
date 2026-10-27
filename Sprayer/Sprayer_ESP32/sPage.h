@@ -4,6 +4,8 @@
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
    2026-10-26 (Claude): relay cells show the relay number above its function; 16 relays were cramped.
    2026-10-27 (Claude): the divider field is for the pressure signal only (10k / 10k = 0.5).
+   2026-10-27 (Claude): the sensors fitted are ticked in Calibration; readings and fields only for those (none: no
+   Sprayer card, as on a seed drill).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -59,6 +61,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 .opt{display:flex;gap:10px;align-items:center;padding:5px 0}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute)}
 .msg{font-size:13.5px;margin-top:6px;min-height:1.2em}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -66,14 +69,14 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <main>
 <div class="grid">
 
-<div class="card"><h2>Sprayer</h2>
+<div class="card" id="sprCard"><h2>Sprayer</h2>
 <div class="row3">
-<div><div class="big" id="bar">–<small>bar</small></div><div class="note">pressure</div></div>
-<div><div class="big" id="lpm">–<small>L/min</small></div><div class="note">flow</div></div>
-<div><div class="big" id="total">–<small>L</small></div><div class="note">applied</div></div>
+<div class="rp"><div class="big" id="bar">–<small>bar</small></div><div class="note">pressure</div></div>
+<div class="rf"><div class="big" id="lpm">–<small>L/min</small></div><div class="note">flow</div></div>
+<div class="rf"><div class="big" id="total">–<small>L</small></div><div class="note">applied</div></div>
 </div>
-<dl><dt>Master switch</dt><dd id="master">–</dd><dt>Sensor voltage</dt><dd id="volts">–</dd><dt>Flow pulses</dt><dd id="pulses">–</dd></dl>
-<div class="row"><button class="sec" onclick="post('/api/total',{},'msgTotal')">Total back to 0</button></div>
+<dl><dt>Master switch</dt><dd id="master">–</dd><dt class="rp">Sensor voltage</dt><dd class="rp" id="volts">–</dd><dt class="rf">Flow pulses</dt><dd class="rf" id="pulses">–</dd></dl>
+<div class="row rf"><button class="sec" onclick="post('/api/total',{},'msgTotal')">Total back to 0</button></div>
 <div class="msg" id="msgTotal"></div>
 </div>
 
@@ -123,12 +126,15 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 </div>
 
 <div class="card"><h2>Calibration</h2>
-<div class="field"><span>Flow meter pulses per litre (YF-S201: about 450)</span><input type="number" id="ppl" step="0.1"></div>
-<div class="field"><span>Pressure sensor full scale (bar, at 4.5 V)</span><input type="number" id="pmax" step="0.1"></div>
-<div class="field"><span>Divider on the pressure signal (10k / (10k + 10k) = 0.5)</span><input type="number" id="pdiv" step="0.001"></div>
+<div class="opt"><input type="checkbox" id="snP" onchange="showFitted()"><label for="snP">Pressure sensor fitted (G34)</label></div>
+<div class="opt"><input type="checkbox" id="snF" onchange="showFitted()"><label for="snF">Flow meter fitted (G35)</label></div>
+<p class="note" id="noSensors" hidden>No sensors (a seed drill): the module sends no sprayer readings (PGN 160), so AgOpenWeb and the AiO module page show none.</p>
+<div class="field cf"><span>Flow meter pulses per litre (YF-S201: about 450)</span><input type="number" id="ppl" step="0.1"></div>
+<div class="field cp"><span>Pressure sensor full scale (bar, at 4.5 V)</span><input type="number" id="pmax" step="0.1"></div>
+<div class="field cp"><span>Divider on the pressure signal (10k / (10k + 10k) = 0.5)</span><input type="number" id="pdiv" step="0.001"></div>
 <div class="row"><button class="act" onclick="saveCalib()">Save</button></div>
 <div class="msg" id="msgCalib"></div>
-<p class="note">Bucket test: with one nozzle open, fill 10 L and note the litres counted. New pulses per litre = old × (counted ÷ 10).</p>
+<p class="note cf">Bucket test: with one nozzle open, fill 10 L and note the litres counted. New pulses per litre = old × (counted ÷ 10).</p>
 </div>
 
 <div class="card"><h2>Program</h2>
@@ -150,12 +156,17 @@ function pw(){return prompt('Password of the own Wi-Fi network')}
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
 $('secs').innerHTML=cells('s',8,0);$('secs2').innerHTML=cells('s',8,8);let nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
+// show what belongs to the sensors fitted (1 pressure, 2 flow): class p = pressure, f = flow
+function fitted(pre,s){for(const e of document.querySelectorAll('.'+pre+'p'))e.hidden=!(s&1);for(const e of document.querySelectorAll('.'+pre+'f'))e.hidden=!(s&2)}
+function ticked(){return($('snP').checked?1:0)|($('snF').checked?2:0)}
+function showFitted(){const s=ticked();fitted('c',s);$('noSensors').hidden=s!==0}
 let settingsLoaded=false;
 async function refresh(){
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
     $('dot').className='dot'+(d.aog.link?' on':'');
     $('sub').textContent=(d.wifi.up?'on '+d.wifi.sta+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
+    const sn=d.cal.sensors===undefined?3:d.cal.sensors;$('sprCard').hidden=!sn;fitted('r',sn);
     $('bar').innerHTML=d.spr.bar.toFixed(1)+'<small>bar</small>';
     $('lpm').innerHTML=d.spr.lpm.toFixed(1)+'<small>L/min</small>';
     $('total').innerHTML=d.spr.total.toFixed(1)+'<small>L</small>';
@@ -188,6 +199,7 @@ async function loadSettings(){
   $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;$('subnetIn').value=d.subnet;
   $('staPass').placeholder=d.staPassSet?'(saved, leave empty to keep it)':'';
   $('ppl').value=d.ppl;$('pmax').value=d.pmax;$('pdiv').value=d.pdiv;
+  const sn=d.sensors===undefined?3:d.sensors;$('snP').checked=!!(sn&1);$('snF').checked=!!(sn&2);showFitted();
 }
 async function post(url,fields,msgId){
   const p=pw();if(p===null)return;
@@ -199,7 +211,7 @@ async function post(url,fields,msgId){
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
 function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim()},'msgWifi')}
-function saveCalib(){post('/api/calib',{ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
+function saveCalib(){post('/api/calib',{sensors:ticked(),ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
 async function update(){
   const f=$('bin').files[0];if(!f)return;const p=pw();if(p===null)return;
   const m=$('msgProg');m.textContent='sending '+f.name+'…';

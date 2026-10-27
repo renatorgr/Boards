@@ -2,6 +2,7 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
+   2026-10-27 (Claude): the sensors fitted are saved with the calibration.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -10,8 +11,8 @@
 // where the program looks for the machine module. Changes on the page need the own network's password.
 //
 // GET  /              the page                       GET  /api/status    everything the page shows
-// GET  /api/settings  Wi-Fi + calibration            POST /api/wifi      Wi-Fi settings + subnet, then restart
-// POST /api/calib     calibration                    POST /api/total     total litres back to 0
+// GET  /api/settings  Wi-Fi + sensors + calibration  POST /api/wifi      Wi-Fi settings + subnet, then restart
+// POST /api/calib     sensors fitted + calibration   POST /api/total     total litres back to 0
 // POST /api/restart                                  POST /api/update    a new program (.bin), then restart
 // GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
 
@@ -142,7 +143,7 @@ static void apiStatus()
     j += ",\"spr\":{\"bar\":" + String(pressureBar, 2) + ",\"lpm\":" + String(flowLpm, 2) + ",\"total\":" + String(totalLitres, 1);
     j += ",\"master\":" + String(masterOn ? "true" : "false") + ",\"volts\":" + String(sensorVolts, 2) + ",\"pulses\":" + String(totalPulses) + "}";
 
-    j += ",\"cal\":{\"ppl\":" + String(cfg.pulsesPerLitre, 1) + ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
+    j += ",\"cal\":{\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1) + ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
 
     j += ",\"log\":[";
     bool first = true;
@@ -162,7 +163,7 @@ static void apiSettingsGet()
 {
     String j = "{\"apSsid\":" + jsonStr(cfg.apSsid) + ",\"staOn\":" + String(cfg.staOn ? "true" : "false");
     j += ",\"staSsid\":" + jsonStr(cfg.staSsid) + ",\"staPassSet\":" + String(cfg.staPass.length() ? "true" : "false");
-    j += ",\"host\":" + jsonStr(cfg.host) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1);
+    j += ",\"host\":" + jsonStr(cfg.host) + ",\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1);
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"";
     j += ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
     sendJson(j);
@@ -213,14 +214,18 @@ static void apiCalibPost()
     const float ppl = server.arg("ppl").toFloat();
     const float pmax = server.arg("pmax").toFloat();
     const float pdiv = server.arg("pdiv").toFloat();
+    const long sensors = server.hasArg("sensors") ? server.arg("sensors").toInt() : cfg.sensors;   // an older page sends none
     if (!(ppl > 1 && ppl < 100000)) { sendError(400, "pulses per litre: 1 to 100000"); return; }
     if (!(pmax > 0.5f && pmax < 100)) { sendError(400, "sensor range: 0.5 to 100 bar"); return; }
     if (!(pdiv > 0.1f && pdiv <= 1)) { sendError(400, "divider: 0.1 to 1"); return; }
+    if (sensors < 0 || sensors > (SENSOR_PRESSURE | SENSOR_FLOW)) { sendError(400, "sensors: 0 to 3"); return; }
+    cfg.sensors = sensors;
     cfg.pulsesPerLitre = ppl;
     cfg.pressureMaxBar = pmax;
     cfg.pressureDivider = pdiv;
     settingsSave();
-    logEvent("calibration saved: %.1f pulses/L, %.1f bar sensor, divider %.3f", ppl, pmax, pdiv);
+    static const char* const FITTED[] = { "no sensors", "pressure sensor", "flow meter", "pressure sensor + flow meter" };
+    logEvent("saved: %s, %.1f pulses/L, %.1f bar sensor, divider %.3f", FITTED[cfg.sensors], ppl, pmax, pdiv);
     sendJson("{\"ok\":true}");
 }
 

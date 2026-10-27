@@ -1,11 +1,12 @@
 /* zSettings.ino - the settings kept in the ESP32's flash (Preferences).
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-27 (Claude): also keeps which sensors the machine has.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // What is kept: the two Wi-Fi networks, the host name, the program's subnet (PGN 201), the machine
-// config (PGN 238), the output functions (PGN 236) and the sensor calibration. Anything missing in
+// config (PGN 238), the output functions (PGN 236), the sensors fitted and their calibration. Anything missing in
 // flash keeps the default from the Settings struct in Sprayer_ESP32.ino.
 
 String defaultApSsid()
@@ -45,6 +46,7 @@ void settingsLoad()
     cfg.user3 = prefs.getUChar("user3", 0);
     cfg.user4 = prefs.getUChar("user4", 0);
     if (prefs.getBytesLength("pins") == 24) prefs.getBytes("pins", cfg.pin, 24);
+    cfg.sensors         = prefs.getUChar("sensors", d.sensors);
     cfg.pulsesPerLitre  = prefs.getFloat("ppl", d.pulsesPerLitre);
     cfg.pressureMaxBar  = prefs.getFloat("pmax", d.pressureMaxBar);
     cfg.pressureDivider = prefs.getFloat("pdiv", d.pressureDivider);
@@ -57,6 +59,7 @@ void settingsLoad()
     if (!(cfg.pulsesPerLitre > 1 && cfg.pulsesPerLitre < 100000)) cfg.pulsesPerLitre = d.pulsesPerLitre;
     if (!(cfg.pressureMaxBar > 0.5f && cfg.pressureMaxBar < 100))  cfg.pressureMaxBar = d.pressureMaxBar;
     if (!(cfg.pressureDivider > 0.1f && cfg.pressureDivider <= 1)) cfg.pressureDivider = d.pressureDivider;
+    cfg.sensors &= SENSOR_PRESSURE | SENSOR_FLOW;
     for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > FN_GEO_STOP) cfg.pin[i] = 0;
 }
 
@@ -79,6 +82,7 @@ void settingsSave()
     prefs.putUChar("user3", cfg.user3);
     prefs.putUChar("user4", cfg.user4);
     prefs.putBytes("pins", cfg.pin, 24);
+    prefs.putUChar("sensors", cfg.sensors);
     prefs.putFloat("ppl", cfg.pulsesPerLitre);
     prefs.putFloat("pmax", cfg.pressureMaxBar);
     prefs.putFloat("pdiv", cfg.pressureDivider);

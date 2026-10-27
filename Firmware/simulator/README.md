@@ -14,7 +14,7 @@ A strip at the top of each page chooses the set-up:
 | Program | AgOpenWeb, AgOpenGPS |
 | XIAO | on the GPS2 port or not (a dual F9P takes that port, so no XIAO then) |
 | Machine module | the sprayer module program (Sprayer_ESP32 on the implement's relays: hello reply, PGN 237 and PGN 160 with the readings; the Machine tab then links to its page), the official AgOpenGPS Machine_UDP_v5 (hello reply only), or none |
-| Implement | a seed drill with 16 rows 25 cm apart (a separate ESP32 with two relay modules, 16 relays, a row each, no pressure or flow sensor), or the 8 m sprayer with 5 sections on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres) |
+| Implement | a seed drill with 16 rows 25 cm apart (a separate ESP32 with two relay modules, 16 relays, a row each, no pressure or flow sensor: set to none on its page, so it sends no PGN 160 and the Teensy page shows no Sprayer card), or the 8 m sprayer with 5 sections on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres) |
 | Tractor | driving with autosteer on, or parked |
 | XIAO chip | ESP32-C3 or ESP32-S3 (XIAO page only) |
 | Wi-Fi | sprayer page only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet |
