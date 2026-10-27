@@ -13,6 +13,8 @@
    27 Oct 2026: up to 64 section squares on the Machine tab (PGN 229 from the program, the seed drill module's
    PGN 237); cmd and sec are hex digits now. The sections of any module (its PGN 237 in the AiO v26 layout) and of
    several modules together; their IPs in the IP row.
+   27 Oct 2026: a negative WAS reading on the differential input (nothing on AmpSeal pin 3): the WAS row and the
+   warning at the top say so and to choose Single in the program; the WAS check setting mentions it.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -232,7 +234,7 @@ a{color:var(--acc)}
 </div>
 </div>
 <div class="card"><h2>Autosteer safety</h2>
- <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°.</small></span></label>
+ <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°. With the program's A/D converter on Differential, a reading below −0.5 V is a fault too: nothing is wired to AmpSeal pin 3.</small></span></label>
  <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.</small></span></label>
 </div>
 <div class="card"><h2>Steering</h2>
@@ -539,7 +541,8 @@ function render(s){
  const sc=s.steerCfg,b=s.boot;
  if(st.wasless)set("wasV","no WAS: angle from the Keya position");
  else if(!st.adc)set("wasV","no ADS1115","bad");
- else set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":""),st.wasOut?"bad":!st.wasCheck?"warn":"");
+ else{const neg=st.wasOut&&sc&&!sc.singleWas&&st.wasV<-0.5;   // differential input, WAS_H under WAS_L: nothing on pin 3
+  set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(neg?" · negative on the differential input: nothing on pin 3? Choose Single in the program":st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":""),st.wasOut?"bad":!st.wasCheck?"warn":"");}
  set("sensT",(st.sensor==="current"?(st.motor==="Keya"?"Keya slip":"Current sensor"):"Pressure sensor"));
  set("sens",pct255(st.sensorV),st.sensor&&st.sensorV>=st.kick?"bad":"");   // the value read; the cut is in the steering settings card
  let ot="–";
@@ -566,7 +569,7 @@ function render(s){
  }
  const al=[];
  if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
- else if(st.wasBlock)al.push(("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
+ else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
  if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
  if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
  if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");

@@ -7,6 +7,8 @@
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb
    reads the same way ("AiO Board Msgs").
    24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
+   27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
+   (AmpSeal pin 3), and the message says to choose Single in the program (a 3-wire sensor).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -17,6 +19,10 @@
 //     / motor output: the tractor's own steering, the steering wheel, is not touched). It can be
 //     switched off on the web page for a bench without a WAS (the wheel angle then goes to the
 //     program as 0 while the WAS reads out of range).
+//     Differential input (A/D converter "Differential" in the program): -0.5 to 4.8 V. Below -0.5 V
+//     WAS_H is under WAS_L, which happens when nothing is wired to WAS_L (AmpSeal pin 3, it floats near
+//     5 V): a 3-wire sensor with the program set to Differential. The reading would be a large angle to
+//     one side (-98 deg for -3.67 V), so this is a fault with the hint to choose Single.
 //   - Why autosteer went off: switch, button, pressure / current / encoder kickout, WAS, the program
 //     silent. Shown on the program's screen (PGN 221), in the [status] messages and on the web page.
 //   - Hardware watchdog (WDOG1): the Teensy restarts if the loop stops for 2 s. 0.5 s before, an
@@ -58,6 +64,7 @@ void hwMessage(const char* text, uint8_t seconds, bool warning)
 #define WAS_V_PER_COUNT  (6.144f / 16384.0f)   // ADS1115 at +-6.144 V full scale, reading >> 1 (Autosteer.ino)
 #define WAS_LOW_V        0.20f
 #define WAS_HIGH_V       4.80f
+#define WAS_DIFF_LOW_V  -0.50f                 // differential input: WAS_H under WAS_L = nothing on WAS_L (AmpSeal pin 3)
 #define WAS_BAD_LOOPS    4                     // out of range 4 steering loops in a row (100 ms) = fault
 #define WAS_GOOD_LOOPS   40                    // back in range for 1 s = fault over
 
@@ -75,7 +82,11 @@ bool wasCheck(int16_t raw)
     wasVolts = raw * WAS_V_PER_COUNT;
     const bool single = steerConfig.SingleInputWAS;
     const bool bad = single ? (wasVolts < WAS_LOW_V || wasVolts > WAS_HIGH_V)
-                            : (wasVolts < -WAS_HIGH_V || wasVolts > WAS_HIGH_V);   // differential: only the ends
+                            : (wasVolts < WAS_DIFF_LOW_V || wasVolts > WAS_HIGH_V);
+    // Differential input and WAS_H well under WAS_L: nothing on WAS_L (AmpSeal pin 3), it floats near 5 V.
+    // That is a 3-wire sensor (signal on pin 2, ground on pin 4) with the program's A/D converter set to
+    // Differential: the hint names the setting to change (Single), or the other wiring (ground to pin 3 too).
+    const bool noLow = !single && wasVolts < WAS_DIFF_LOW_V;
     if (bad) { wasGoodN = 0; if (wasBadN < 255) wasBadN++; }
     else     { wasBadN = 0;  if (wasGoodN < 255) wasGoodN++; }
 
@@ -86,10 +97,19 @@ bool wasCheck(int16_t raw)
         if (!cfg.wasCheckOff)
         {
             wasBlock = true;
-            StatusLog.line("[status] WAS: %.2f V, out of the %.1f-%.1f V range (wire, plug or sensor?) - autosteer blocked",
-                           wasVolts, single ? WAS_LOW_V : -WAS_HIGH_V, WAS_HIGH_V);
             char m[64];
-            snprintf(m, sizeof(m), "WAS fault (%.2f V): autosteer blocked", wasVolts);
+            if (noLow)
+            {
+                StatusLog.line("[status] WAS: %.2f V, negative on the differential input: nothing on WAS_L (AmpSeal pin 3)? Choose Single in the program (A/D converter) or wire the sensor's ground to pin 3 - autosteer blocked",
+                               wasVolts);
+                snprintf(m, sizeof(m), "WAS %.2f V differential: pin 3 empty? Choose Single", wasVolts);
+            }
+            else
+            {
+                StatusLog.line("[status] WAS: %.2f V, out of the %.1f-%.1f V range (wire, plug or sensor?) - autosteer blocked",
+                               wasVolts, single ? WAS_LOW_V : WAS_DIFF_LOW_V, WAS_HIGH_V);
+                snprintf(m, sizeof(m), "WAS fault (%.2f V): autosteer blocked", wasVolts);
+            }
             hwMessage(m, 8, true);
         }
         else
