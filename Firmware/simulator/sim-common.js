@@ -4,6 +4,9 @@
    2026-10-27 (Claude): the seed drill's sprayer module sends no PGN 160, as Sprayer_ESP32 v0.7.2 with no sensors ticked.
    2026-10-27 (Claude): the seed drill is Renato's no-till drill, 19 sections (Sprayer_ESP32 v0.8 on a KC868-A32); the Teensy
    sees its sections 1-16 only.
+   2026-10-27 (Claude): the seed drill has its own module program (Seeder_ESP32) and page (sim-seeder.js); a module page
+   fixes the implement (window.SIM_IMPL, from build.py). The Teensy's Machine tab shows every section (its PGN 229, the seed
+   drill module's PGN 237): cmd and sec as hex digits.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -35,7 +38,7 @@ const CHOICES = {
  motor: {label: "Steering", dflt: "cytron", options: [["cytron", "Cytron"], ["ibt2", "IBT2"], ["danfoss", "Danfoss"], ["keya", "Keya motor"]]},
  prog:  {label: "Program", dflt: "aow", options: [["aow", "AgOpenWeb"], ["aog", "AgOpenGPS"]]},
  xiao:  {label: "XIAO", check: true, dflt: "1"},
- mach:  {label: "Machine module", dflt: "nano", options: [["nano", "sprayer module (ESP32 / Nano)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
+ mach:  {label: "Machine module", dflt: "nano", options: [["nano", "our module (Sprayer_ESP32 or Seeder_ESP32)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
  impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "no-till seed drill, 19 sections"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
@@ -47,6 +50,8 @@ for (const [k, c] of Object.entries(CHOICES)) {
  opt[k] = v !== null && (c.check ? v === "0" || v === "1" : c.options.some(o => o[0] === v)) ? v : c.dflt;
 }
 if (opt.gps === "dualf9p") opt.xiao = "0";             // one thing on the GPS2 port: the second F9P
+// a machine module's page is for one implement: the sprayer page the sprayer, the seed drill page the seed drill
+if (CHOICES.impl.options.some(o => o[0] === window.SIM_IMPL)) opt.impl = window.SIM_IMPL;
 const OPT_KEY = Object.keys(CHOICES).map(k => opt[k]).join(",");
 const STATE_V = 2;
 
@@ -574,7 +579,7 @@ function Module(key) {
  // the sprayer at time t: the sections the program asks for (PGN 254 / 239: on while the tractor sprays a pass), the ones
  // open a moment later (sec: the module lags 0.6 s): every row of the seed drill, or every section of the sprayer's boom,
  // then its pressure and flow (0.8 L/min a nozzle at 3 bar) and the litres since the module started; the seed drill has no
- // such sensors on the module. Shared with the sprayer module's own page (sim-sprayer.js).
+ // such sensors on the module. Shared with the module pages (sim-sprayer.js, sim-seeder.js).
  function sprayer(t, tr, engaged) {
   const cmdAt = x => { const q = tractor(x, parked); return engaged && q.straight && q.r > 1 && q.r < PASS - 1 ? ALL_SECTIONS : 0; };
   const cmd = cmdAt(t), sec = cmdAt(t - 0.6);
@@ -583,19 +588,20 @@ function Module(key) {
   const passes = tr.moving ? Math.floor(tr.s / (PASS + TURN)) : 0, spray = tr.moving ? clamp(tr.r - 1.6, 0, PASS - 2) : 0;
   return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * nozzles(ALL_SECTIONS) * 0.8 / 60, main: engaged};
  }
- // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
- // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160);
- // the seed drill's ESP32 is set to no sensors on its page, so it sends no PGN 160 either (sections from the hello reply);
+ // the machine module (zMachine.ino machineJson): the sprayer module (Sprayer_ESP32, or the Nano: hello reply, PGN 237 and PGN 160
+ // with the readings), the seed drill module (Seeder_ESP32: hello reply and PGN 237 with every open section, no PGN 160) or the
+ // official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160; sections 1-16 only);
+ // the sections the program asks for: 1-16 from PGN 254, the rest from its PGN 229 (sent with every 239 on 17+ sections);
  // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop.
- // The Teensy has sections 1-16 only (PGN 254, the hello reply, PGN 160): the seed drill's 17-19 do not show there
  let machTop = 0;
+ const hex16 = v => v.toString(16).padStart(16, "0");             // sections as zMachine.ino machineHex() sends them
  function machine(t, tr, engaged) {
-  const sp0 = sprayer(t, tr, engaged), sp = Object.assign({}, sp0, {cmd: sp0.cmd & 0xFFFF, sec: sp0.sec & 0xFFFF});
-  const hellos = Math.floor(t - 5.5), used = sp.cmd | sp.sec;
-  for (let k = 16; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
+  const sp = sprayer(t, tr, engaged), seeder = h.nano && !IMPL.nozzles, sec = seeder ? sp.sec : sp.sec & 0xFFFF;
+  const hellos = Math.floor(t - 5.5), used = sp.cmd | sec;
+  for (let k = 31; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
   const p160 = h.nano && !!IMPL.nozzles;
-  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6), bad: 0, lastPgn: p160 ? 160 : 237, cmd: sp.cmd,
-   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secN: machTop, secFrom160: p160, sprayAgo: -1};
+  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6), bad: 0, lastPgn: p160 ? 160 : 237, cmd: hex16(sp.cmd),
+   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: hex16(sec), secN: machTop, secPgn: p160 ? 160 : seeder ? 237 : 123, sprayAgo: -1};
   if (!p160) return j;
   return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
  }

@@ -4,15 +4,16 @@
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 // 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
+// 2026-10-27 (Claude): the seed drill module's own page (Seeder_ESP32); the Teensy's Machine tab shows all 19 sections.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
 //
 // Serves the site under /Boards/ as GitHub Pages does, opens the Teensy page with each receiver, the XIAO
-// page and the sprayer module's page, waits for the pretend module, clicks every tab and fails on a script
-// error in the page or a tab that shows nothing. GitHub itself is not asked (the version check then says
-// "no answer"). Also installs the firmware's own .hex on a parked module, end to end, and saves the sprayer's
-// calibration and the first section its relays follow (its password prompt is answered).
+// page and the seed drill and sprayer modules' pages, waits for the pretend module, clicks every tab and fails on
+// a script error in the page or a tab that shows nothing. GitHub itself is not asked (the version check then says
+// "no answer"). Also installs the firmware's own .hex on a parked module, end to end, saves the first section the
+// seed drill's relays follow and the sprayer's calibration (their password prompt is answered).
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
 const {chromium} = require("playwright");
@@ -64,13 +65,17 @@ async function teensy(browser, port, q, name) {
   if (t !== "status") await shot(pg, name + "-" + t);
  }
  await expect(pg, what, "#log", /\[boot\]/);
- if (!/mach=0|park=1/.test(q)) {       // the seed drill's sections 1-16 (the Teensy has no PGN 229), or the sprayer's 5 sections (parked: nothing asked yet, the tab draws 5)
-  const n = /impl=sprayer/.test(q) ? 5 : 16;
+ const spr = /impl=sprayer/.test(q), ours = !/mach=(aog|0)/.test(q);   // our module chosen (not the official one, not none)
+ if (!/mach=0|park=1/.test(q)) {       // the seed drill's 19 sections (PGN 229 and its module's PGN 237), or the sprayer's 5 (parked: nothing asked yet, the tab draws 5)
+  const n = spr ? 5 : 19;
   if ((await pg.locator("#mSec span").count()) !== n) fail.push(what + ": the Machine tab does not show " + n + " sections");
+  await expect(pg, what, "#mSecFrom", ours ? (spr ? /^PGN 160/ : /^PGN 237/) : /^hello reply/);
  }
- const sprayer = !/mach=(aog|0)/.test(q);     // the sprayer module chosen: the Machine tab links to its page
- if ((await pg.locator("#simSprayerLink a").count() > 0) !== sprayer) fail.push(what + ": the link to the sprayer page " + (sprayer ? "is missing" : "shows without the sprayer module"));
- const p160 = sprayer && /impl=sprayer/.test(q);   // only the sprayer has sensors: the seed drill's module sends no PGN 160
+ // our module: the Machine tab links to its page (the seed drill's or the sprayer's)
+ const la = pg.locator("#simModuleLink a"), link = (await la.count()) ? await la.getAttribute("href") : null;
+ if (!!link !== ours) fail.push(what + ": the link to the module's page " + (ours ? "is missing" : "shows without our module"));
+ else if (ours && !(spr ? /^\.\.\/sprayer\//.test(link) : /^\.\.\/seeder\//.test(link))) fail.push(what + ": the module link goes to " + link);
+ const p160 = ours && spr;   // only the sprayer has sensors: the seed drill's module sends no PGN 160
  if ((await pg.locator("#mSprayCard.hidden").count() === 0) !== p160) fail.push(what + ": the Sprayer (PGN 160) card " + (p160 ? "is missing" : "shows without PGN 160"));
  return pg;
 }
@@ -129,33 +134,29 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
- // the sprayer module's page with the seed drill: the KC868-A32 on the network cable sowing a pass with 19 of its 32 relays
- // (relay 1 = section 1 and so on), no sensors (no Sprayer card); then the calibration saved and the relays set back to the
- // program's pin config (the password asked in a prompt)
+ // the seed drill module's page: the KC868-A32 on the network cable sowing a pass with 19 of its 32 relays (relay 1 =
+ // section 1 and so on); then the relays set back to the program's pin config (the password asked in a prompt)
  {
-  const what = "Sprayer page, seed drill";
-  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
+  const what = "Seed drill page";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/", what);
   pg.on("dialog", d => d.accept("agopengps"));
   await pg.waitForTimeout(2500);
-  await expect(pg, what, "#kind", /^Seeder module$/);
+  await expect(pg, what, "h1", /^Seeder module$/);
   await expect(pg, what, "#sub", /^on the cable as 192\.168\.5\.123 · program talking/);
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
+  if (await pg.locator("#simBar select").count() !== 2) fail.push(what + ": the strip should offer only the network and the tractor");
   await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
   await expect(pg, what, "#log", /network cable connected/);
   await expect(pg, what, "#eth", /connected/);
   await expect(pg, what, "#ago229", /now/);
-  if (await pg.locator("#sprCard").isVisible()) fail.push(what + ": the Sprayer card shows on the seed drill (no sensors)");
-  if (!(await pg.locator("#noSensors").isVisible()) || await pg.locator("#ppl").isVisible()) fail.push(what + ": Calibration should say no sensors and hide the fields");
+  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+ · KC868-A32$/);
   if ((await pg.locator("#secs span").count()) !== 19) fail.push(what + ": expected the 19 sections");
   if ((await pg.locator("#secs span.on").count()) !== 19) fail.push(what + ": expected 19 sections open while sowing");
   if ((await pg.locator("#relays span").count()) !== 32) fail.push(what + ": expected the KC868-A32's 32 relays");
   if ((await pg.locator("#relays span.on").count()) !== 19) fail.push(what + ": expected 19 relays on while sowing");
   await expect(pg, what, "#relayNote", /^32 relays, 32 of them sections: relay 1 follows section 1/);
   await expect(pg, what, "#r18", /^19S19$/);
-  await shot(pg, "sprayer-status");
-  await pg.click("button[onclick='saveCalib()']"); await pg.waitForTimeout(800);
-  await expect(pg, what, "#msgCalib", /done/);
-  await expect(pg, what, "#log", /saved: no sensors, 450\.0 pulses\/L/);
+  await shot(pg, "seeder-status");
   await pg.fill("#first", "0");
   await pg.click("button[onclick='saveRelays()']"); await pg.waitForTimeout(1500);
   await expect(pg, what, "#msgRelays", /done/);
@@ -163,21 +164,27 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#relayNote", /^32 relays, 8 of them sections: what each relay does comes from the program/);
   await pg.close();
  }
- // the same page with the sprayer: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the total set to 0
+ // the sprayer module's page: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the calibration
+ // saved, the total set to 0
  {
-  const what = "Sprayer page, sprayer";
-  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?impl=sprayer", what);
+  const what = "Sprayer page";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
+  pg.on("dialog", d => d.accept("agopengps"));
   await pg.waitForTimeout(2500);
-  await expect(pg, what, "#sub", /program talking/);
-  await expect(pg, what, "#kind", /^Sprayer module$/);
-  await expect(pg, what, "#sub", /^on Farm WiFi as 192\.168\.5\.123/);
+  await expect(pg, what, "h1", /^Sprayer module$/);
+  await expect(pg, what, "#sub", /^on Farm WiFi as 192\.168\.5\.123 · program talking/);
+  if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
+  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+ · ESP32_Relay_X8$/);
   if ((await pg.locator("#secs span.on").count()) !== 5) fail.push(what + ": expected 5 sections open while spraying");
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
   await expect(pg, what, "#bar", /^[23]\.\dbar$/);
+  if (!(await pg.locator("#sprCard").isVisible())) fail.push(what + ": the Sprayer card is missing with both sensors");
   if (!(await pg.locator("#ppl").isVisible()) || !(await pg.locator("#pmax").isVisible())) fail.push(what + ": Calibration fields missing with both sensors");
-  await shot(pg, "sprayer-sprayer");
-  pg.on("dialog", d => d.accept("agopengps"));
+  await shot(pg, "sprayer-status");
+  await pg.click("button[onclick='saveCalib()']"); await pg.waitForTimeout(800);
+  await expect(pg, what, "#msgCalib", /done/);
+  await expect(pg, what, "#log", /saved: pressure sensor \+ flow meter, 450\.0 pulses\/L/);
   await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
   await expect(pg, what, "#msgTotal", /done/);
   await expect(pg, what, "#total", /^0\.\dL$/);
@@ -186,8 +193,8 @@ async function teensy(browser, port, q, name) {
  }
  // the seed drill's module with the network cable unplugged: sections closed, the program's request still outlined
  {
-  const what = "Sprayer page, network lost";
-  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?wifi=lost", what);
+  const what = "Seed drill page, network lost";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/?wifi=lost", what);
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#sub", /not on the tractor network · program silent/);
   await expect(pg, what, "#link", /silent, sections closed/);
@@ -195,7 +202,17 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#eth", /no link/);
   if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
   if ((await pg.locator("#secs span.req").count()) !== 19) fail.push(what + ": expected 19 sections asked for but closed");
-  await shot(pg, "sprayer-lost");
+  await shot(pg, "seeder-lost");
+  await pg.close();
+ }
+ // the sprayer's module that lost the tractor's Wi-Fi
+ {
+  const what = "Sprayer page, network lost";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?wifi=lost", what);
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#sub", /not on the tractor network · program silent/);
+  await expect(pg, what, "#log", /lost the tractor network 'Farm WiFi'/);
+  if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
   await pg.close();
  }
  await browser.close();

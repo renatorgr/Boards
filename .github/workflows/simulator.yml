@@ -1,6 +1,7 @@
 # Web page simulator: build, check, publish.
 # On every change to the firmware, builds the simulator of the modules' web pages (Firmware/simulator: the
-# real pages from zWebPage.h, xPage.h and the sprayer module's sPage.h with pretend modules behind them),
+# real pages from zWebPage.h, xPage.h, the seed drill module's dPage.h and the sprayer module's sPage.h with
+# pretend modules behind them),
 # opens it in a browser as a check, and on main publishes it on GitHub Pages at https://renatorgr.github.io/Boards/.
 # GitHub Pages must be switched on once by hand: repository Settings → Pages → Source "GitHub Actions".
 # Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
@@ -16,6 +17,8 @@ on:
       - '!Firmware/**/*.png'
       - 'Sprayer/Sprayer_ESP32/**'
       - '!Sprayer/**/*.md'
+      - 'Seeder/Seeder_ESP32/**'
+      - '!Seeder/**/*.md'
       - '.github/workflows/simulator.yml'
   push:
     branches: [main]
@@ -25,6 +28,8 @@ on:
       - '!Firmware/**/*.png'
       - 'Sprayer/Sprayer_ESP32/**'
       - '!Sprayer/**/*.md'
+      - 'Seeder/Seeder_ESP32/**'
+      - '!Seeder/**/*.md'
       - '.github/workflows/simulator.yml'
   workflow_dispatch:
 

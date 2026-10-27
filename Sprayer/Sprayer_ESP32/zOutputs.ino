@@ -3,19 +3,15 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Hydraulic lift timing after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
-   2026-10-27 (Claude): up to 64 sections, relays that follow the sections in a row, the KC868-A32's relays (I2C).
+   2026-10-27 (Claude): up to 64 sections (PGN 229); the seed drill's KC868-A32 moved to Seeder/Seeder_ESP32.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Each relay has a function (relayFn): a section, the hydraulic lift, a tramline side or the geo stop.
-//   - cfg.firstSection 1-64: relay 1 is that section and the next relays the next sections, in a row
-//     (a tool with more sections than the program's pin config knows: the 19-section seed drill).
-//   - cfg.firstSection 0: what the program gives each relay (PGN 236, kept in cfg.pin): sections 1-16 and
-//     the other functions, for the first 24 relays.
-// Everything is off while the program is silent.
+// Each relay has a function from the program (PGN 236, kept in cfg.pin): a section, the hydraulic
+// lift, a tramline side or the geo stop. Everything is off while the program is silent.
 //
 // RELAY_ON_HIGH (Sprayer_ESP32.ino) says how the relays of the chosen board close: on a HIGH pin
-// (ESP32_Relay_X8) or on a LOW pin (the usual relay modules, the KC868-A32). cfg.invertOutputs (PGN 238, byte 8
+// (ESP32_Relay_X8) or on a LOW pin (the usual relay modules). cfg.invertOutputs (PGN 238, byte 8
 // bit 0; the official module calls it isRelayActiveHigh) turns that round: 0 = as built, 1 = inverted.
 // The program sends this setting at start-up and when the machine profile is loaded, so the
 // "relay active high" box in its machine settings normally stays unticked.
@@ -33,67 +29,24 @@ static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 // tramline right, tramline left, geo stop
 uint8_t relayFn(uint8_t i)
 {
-    if (cfg.firstSection)
-    {
-        const uint16_t s = cfg.firstSection + i;
-        return s <= MAX_SECTIONS ? s : 0;
-    }
     if (i >= 24) return 0;
     const uint8_t p = cfg.pin[i];
     if (p >= PIN_HYD_LOWER && p <= PIN_GEO_STOP) return FN_OTHER + (p - PIN_HYD_LOWER + 1);
     return p <= 16 ? p : 0;
 }
 
-#if BOARD == BOARD_KC868_A32
-// The KC868-A32's relays: eight on each PCF8574 chip, one byte per chip (bit 0 = its first relay). A chip
-// is only written when its byte changes, and once a second anyway (a chip that missed a write catches up).
-static int16_t chipSent[4] = { -1, -1, -1, -1 };
-static bool    chipOk[4] = { true, true, true, true };
-static uint32_t chipRefreshMs = 0;
-
-static void relaysWrite(uint32_t bits)
-{
-    const bool refresh = millis() - chipRefreshMs >= 1000;
-    if (refresh) chipRefreshMs = millis();
-    for (uint8_t c = 0; c < 4; c++)
-    {
-        uint8_t b = 0;
-        for (uint8_t k = 0; k < 8; k++) if (relayLevel((bits >> (c * 8 + k)) & 1) == HIGH) b |= 1 << k;
-        if (b == chipSent[c] && !refresh) continue;
-        Wire.beginTransmission(RELAY_CHIP[c]);
-        Wire.write(b);
-        const bool ok = Wire.endTransmission() == 0;
-        if (ok != chipOk[c]) logEvent(ok ? "relays %u-%u answer again" : "relays %u-%u: no answer from their chip (I2C 0x%02X)",
-                                      c * 8 + 1, c * 8 + 8, RELAY_CHIP[c]);
-        chipOk[c] = ok;
-        chipSent[c] = ok ? b : -1;
-    }
-}
-#else
 static void relaysWrite(uint32_t bits)
 {
     for (uint8_t i = 0; i < NUM_RELAYS; i++) digitalWrite(RELAY_PIN[i], relayLevel((bits >> i) & 1));
 }
-#endif
 
 void outputsInit()
 {
-#if BOARD == BOARD_KC868_A32
-    Wire.begin(RELAY_SDA, RELAY_SCL, 100000);
-    chipRefreshMs = millis();
-    for (uint8_t c = 0; c < 4; c++)                         // quietly: the serial port is not open yet
-    {
-        Wire.beginTransmission(RELAY_CHIP[c]);
-        Wire.write(relayLevel(false) == HIGH ? 0xFF : 0x00);
-        chipOk[c] = Wire.endTransmission() == 0;
-    }
-#else
     for (uint8_t i = 0; i < NUM_RELAYS; i++)
     {
         digitalWrite(RELAY_PIN[i], relayLevel(false));
         pinMode(RELAY_PIN[i], OUTPUT);
     }
-#endif
 }
 
 // Everything off, whatever the polarity setting says (used before a restart or a program update)

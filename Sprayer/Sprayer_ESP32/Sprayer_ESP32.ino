@@ -6,7 +6,10 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.8 (2026-10-27), not yet tested on the sprayer or the seed drill.
+// Sprayer_ESP32.ino  v0.9 (2026-10-27), not yet tested on the sprayer.
+//   v0.9: the seed drill (KC868-A32) has its own folder, Seeder/Seeder_ESP32; this program is for the sprayer
+//         boards again (ESP32_Relay_X8, ESP32 dev module). It keeps reading PGN 229 in full and the module IP's
+//         last number.
 //   v0.8: more than 16 sections (PGN 229, up to 64) and the KinCony KC868-A32 board (32 relays, network
 //         cable): BOARD_KC868_A32, for the 19-section seed drill. Relays can follow the sections in a row
 //         ("first section" on the page), the module's IP can end in another number than 123 (a second module).
@@ -20,9 +23,8 @@
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
 //   Or any ESP32 dev module with relay modules, up to 16 relays (BOARD_DEVKIT below).
-//   Or the KinCony KC868-A32: ESP32, 32 relays, network cable, 12 V (BOARD_KC868_A32 below).
-// The ESP32 is the standard AgOpenGPS "machine module" on the tractor's network, IP <subnet>.123,
-// and it has its own Wi-Fi network and web page for setup and for watching the sprayer (or the seed drill).
+// The ESP32 is the standard AgOpenGPS "machine module" on the tractor's Wi-Fi network, IP <subnet>.123,
+// and it has its own Wi-Fi network and web page for setup and for watching the sprayer.
 //
 // What it does:
 //   - listens on UDP port 8888 for the program (AgOpenWeb or AgOpenGPS + AgIO):
@@ -33,11 +35,10 @@
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
 //       237 every 200 ms (sign of life), plus 160 once a second with the sprayer readings
 //       (pressure, flow, litres, master switch, sections open) for the AgOpenWeb fork's sprayer strip;
-//       a machine without sensors (set on the page: a seed drill) sends no 160.
-//   - no message from the program for 2 s (Wi-Fi or cable gone, tablet frozen): every section closes.
+//       with no sensor ticked on the page it sends no 160.
+//   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
-//       (on the KC868-A32 "Seeder-xxxx" and http://seeder.local/, see MODULE_KIND)
 //   - the page shows pressure, flow, L applied (only for the sensors fitted), sections asked for and open,
 //       the link to the program, and has the Wi-Fi settings and program subnet, the sensors fitted and their
 //       calibration, a program update (.bin) and a restart.
@@ -50,7 +51,6 @@
 
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <Wire.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <ESPmDNS.h>
@@ -60,7 +60,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.8"
+#define FW_VERSION          "0.9"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -68,11 +68,9 @@
 //   BOARD_DEVKIT     any ESP32 dev module (30 or 38 pins) with one or two relay modules wired to the pins in
 //                    RELAY_PIN below: relay 1 is the first pin. Keep the list as long as the relays you have
 //                    (8 or 16)
-//   BOARD_KC868_A32  the KinCony KC868-A32: 32 relays on it (through four PCF8574 chips), network cable
-//                    (or Wi-Fi), 12 V
+// (The seed drill's KinCony KC868-A32 has its own program: Seeder/Seeder_ESP32.)
 #define BOARD_RELAY_X8      1
 #define BOARD_DEVKIT        2
-#define BOARD_KC868_A32     3
 #ifndef BOARD
 #define BOARD               BOARD_RELAY_X8
 #endif
@@ -83,7 +81,6 @@ const uint8_t RELAY_PIN[] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8
 #define NUM_RELAYS          8
 #define RELAY_ON_HIGH       1       // this board's relays close when the pin is HIGH
 #define LED_PIN             23      // the board's programmable LED (set to -1 if it is not on this pin)
-#define USE_ETHERNET        0
 #elif BOARD == BOARD_DEVKIT
 #define BOARD_NAME          "ESP32 dev module"
 // Free at boot and safe as outputs on a dev module (0, 2, 12, 15 are left out: they set the boot mode, and
@@ -92,72 +89,24 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define NUM_RELAYS          ((uint8_t)(sizeof(RELAY_PIN) / sizeof(RELAY_PIN[0])))
 #define RELAY_ON_HIGH       0       // the usual relay modules (optocoupler inputs) close when the pin is LOW
 #define LED_PIN             2       // the dev module's blue LED
-#define USE_ETHERNET        0
-#elif BOARD == BOARD_KC868_A32
-// The relays hang on I2C bus A (SDA GPIO 15, SCL GPIO 13): PCF8574 0x24 = relays 1-8, 0x25 = 9-16,
-// 0x21 = 17-24, 0x22 = 25-32, bit 0 = the first relay of the eight. A PCF8574 pin LOW closes the relay.
-// The network chip is a LAN8720 (MDC GPIO 23, MDIO GPIO 18, clock out on GPIO 17, address 0).
-// (KinCony "KC868-A32 ESP32 I/O pin define", kincony.com/forum, thread 1771.)
-// The four analog inputs (0-5 V) are GPIO 39 (A1), 34 (A2), 36 (A3) and 35 (A4).
-#define BOARD_NAME          "KC868-A32"
-#define NUM_RELAYS          32
-#define RELAY_ON_HIGH       0
-#define LED_PIN             -1      // no LED for the program on this board
-#define RELAY_SDA           15
-#define RELAY_SCL           13
-const uint8_t RELAY_CHIP[4] = { 0x24, 0x25, 0x21, 0x22 };
-#define USE_ETHERNET        1
-#define LAN_PHY_ADDR        0
-#define LAN_POWER           -1      // no power pin for the network chip
-#define LAN_MDC             23
-#define LAN_MDIO            18
 #else
-#error "BOARD: choose BOARD_RELAY_X8, BOARD_DEVKIT or BOARD_KC868_A32"
+#error "BOARD: choose BOARD_RELAY_X8 or BOARD_DEVKIT"
 #endif
 
-#if USE_ETHERNET
-#include <ETH.h>
-#endif
-
-// The name the module goes by: its own Wi-Fi network (Sprayer-xxxx), http://sprayer.local/ and the page's title
-#ifndef MODULE_KIND
-#if BOARD == BOARD_KC868_A32
-#define MODULE_KIND         "Seeder"        // Renato's 19-section seed drill
-#define DEFAULT_HOST        "seeder"
-#else
-#define MODULE_KIND         "Sprayer"
-#define DEFAULT_HOST        "sprayer"
-#endif
-#endif
-#ifndef DEFAULT_HOST
-#define DEFAULT_HOST        "machine"
-#endif
-
-// Relay 1 follows this section and the next relays the next sections (0 = the relays follow the program's
-// pin config, PGN 236). The program's pin config only knows sections 1-16, so a board with more relays
-// than that starts at section 1. Can be changed on the page.
-#define DEFAULT_FIRST_SECTION (NUM_RELAYS > 16 ? 1 : 0)
-
-// Sensors. On the KC868-A32, GPIO 34 and 35 are its analog inputs A2 and A4 (0-5 V, the board has its own
-// divider on them): the seed drill has no sensors (cfg.sensors = 0 below), so nothing is wired there.
 #define PRESSURE_PIN        34      // ADC1, input only: pressure sensor signal through the 10k / 10k divider
 #define FLOW_PIN            35      // input only: flow meter signal through the 10k / 22k divider
 #define MASTER_PIN          39      // "SVN", input only: optional master switch sense (12 V through 47k / 10k)
 #define BUTTON_PIN          0       // the IO0 button: held 5 s = Wi-Fi settings back to the defaults
 
-// Sensors fitted (cfg.sensors, set on the page): a sprayer has both, a seed drill none
+// Sensors fitted (cfg.sensors, set on the page): the sprayer has both
 #define SENSOR_PRESSURE     1
 #define SENSOR_FLOW         2
-#if BOARD == BOARD_KC868_A32
-#define DEFAULT_SENSORS     0                               // the seed drill
-#else
-#define DEFAULT_SENSORS     (SENSOR_PRESSURE | SENSOR_FLOW) // the sprayer
-#endif
 
 // ---------------------------------------------------------------- settings you may want to change
 #define USE_MASTER_SWITCH   0       // 1 = MASTER_PIN reads the master switch. 0 = the switch cuts the valves' 12 V in the wiring
 #define NO_DATA_TIMEOUT_MS  2000    // no message from the program for this long: close every section
 #define DEFAULT_AP_PASS     "agopengps"
+#define DEFAULT_HOST        "sprayer"
 #define MAX_SECTIONS        64      // AgOpenWeb has up to 64 sections (PGN 229)
 #define LISTEN_PORT         8888
 #define SEND_PORT           9999
@@ -177,10 +126,8 @@ struct Settings
 {
     uint8_t subnet[3] = { 192, 168, 5 };    // the program's subnet (PGN 201); the module is <subnet>.<ipLast>
     uint8_t ipLast = 123;                   // 123 = the machine module; another number for a second module
-    uint8_t firstSection = DEFAULT_FIRST_SECTION;   // relay 1 = this section, then in a row (0 = pin config)
     String  apSsid, apPass;                 // the module's own Wi-Fi network
-    bool    staOn = false;                  // also join the tractor's Wi-Fi network (where AgOpenWeb is); on a
-                                            // board with a network cable, Wi-Fi instead of the cable
+    bool    staOn = false;                  // also join the tractor's Wi-Fi network (where AgOpenWeb is)
     String  staSsid, staPass;
     String  host;                           // http://<host>.local/ on the tractor network
     // machine config from the program (PGN 238)
@@ -191,7 +138,7 @@ struct Settings
     // for 8 sections set pins 7 and 8 to Section 7 and Section 8 in AgOpenWeb (Machine, Pin config).
     uint8_t pin[24] = { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     // sensors fitted and their calibration
-    uint8_t sensors = DEFAULT_SENSORS;      // none (a seed drill): no PGN 160, no readings on the page
+    uint8_t sensors = SENSOR_PRESSURE | SENSOR_FLOW;   // none: no PGN 160, no readings on the page
     float   pulsesPerLitre = 450.0f;        // YF-S201: about 450. Calibrate with a bucket (README)
     float   pressureMaxBar = 10.0f;         // 0-10 bar sensor, 0.5 V = 0 bar, 4.5 V = full scale
     float   pressureDivider = 0.5f;         // the divider on the pressure signal: 10k / (10k + 10k)
@@ -222,7 +169,7 @@ float    pressureBar = 0, sensorVolts = 0;
 float    flowLpm = 0, totalLitres = 0;
 uint32_t totalPulses = 0;
 
-bool     staWasUp = false, ethWasUp = false;
+bool     staWasUp = false;
 uint32_t restartAtMs = 0;       // the web page asked for a restart
 char     eventLog[12][96];      // the last events, for the page and the serial monitor
 uint8_t  eventNext = 0;
@@ -233,7 +180,6 @@ void settingsSave();
 void settingsResetWifi();
 void wifiStart();
 void wifiWatch();
-bool ethUp();
 IPAddress moduleIp();
 void webStart();
 void udpStart();
@@ -262,7 +208,6 @@ uint8_t pgnChecksum(const uint8_t* msg, size_t length)
 }
 
 bool staUp() { return cfg.staOn && WiFi.status() == WL_CONNECTED; }
-bool netUp() { return staUp() || ethUp(); }       // on the tractor network, over Wi-Fi or the cable
 
 void logEvent(const char* fmt, ...)
 {
@@ -289,8 +234,8 @@ static void ledSet(bool on)
 static void ledTick()
 {
     const uint32_t ms = millis();
-    if (netUp() && linkOk)      ledSet(true);
-    else if (netUp())           ledSet((ms / 500) % 2);
+    if (staUp() && linkOk)      ledSet(true);
+    else if (staUp())           ledSet((ms / 500) % 2);
     else                        ledSet((ms / 125) % 2);
 }
 
@@ -299,7 +244,6 @@ static void printStatus()
     Serial.printf("%s v%s  up %lu s  heap %u\n", FW_NAME, FW_VERSION, (unsigned long)(millis() / 1000), (unsigned)ESP.getFreeHeap());
     Serial.printf("Own network %s at 192.168.4.1, %d device(s)\n", cfg.apSsid.c_str(), WiFi.softAPgetStationNum());
     if (cfg.staOn) Serial.printf("Tractor network %s: %s, IP %s\n", cfg.staSsid.c_str(), staUp() ? "joined" : "not joined", WiFi.localIP().toString().c_str());
-    else if (USE_ETHERNET) Serial.printf("Network cable: %s, IP %s\n", ethUp() ? "connected" : "not connected", moduleIp().toString().c_str());
     else Serial.println("Tractor network: not set (web page > Wi-Fi)");
     Serial.printf("Program: %s | sections asked %08lX%08lX open %08lX%08lX | %.1f bar | %.1f L/min | %.1f L | master %s\n",
                   linkOk ? "talking" : "silent", (unsigned long)(sectionsReq >> 32), (unsigned long)sectionsReq,
@@ -342,7 +286,7 @@ static void buttonTick()
 // ---------------------------------------------------------------- setup and loop
 void setup()
 {
-    outputsInit();                  // relays off straight away (valves closed, seed rows shut)
+    outputsInit();                  // relays off straight away (valves closed)
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 #if LED_PIN >= 0
     pinMode(LED_PIN, OUTPUT);

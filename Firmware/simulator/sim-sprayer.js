@@ -5,44 +5,38 @@
    2026-10-27 (Claude): the sensors fitted (v0.7.2): the sprayer has both, the seed drill none; ticked on the page.
    2026-10-27 (Claude): v0.8: the seed drill is Renato's no-till drill, 19 sections, on a KC868-A32 (32 relays, network cable);
    sections as hex digits, the first section the relays follow, the module IP's last number.
+   2026-10-27 (Claude): v0.9: the sprayer only, on the ESP32_Relay_X8 board; the seed drill has its own page (sim-seeder.js).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiCalibPost, apiTotalPost,
-// apiRelaysPost, apiRestartPost, the program update on /api/update). The sections the program asks for and the sprayer's
-// readings come from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the seed
-// drill's 19 sections on a KC868-A32 (32 relays, relay 1 follows section 1 and so on, on the network cable, no pressure
-// or flow sensor: set to none, so no Sprayer card), or the sprayer's 5 sections on the ESP32_Relay_X8 board (both
-// sensors, on the tractor's Wi-Fi, the relays from the program's pin config).
+// apiRestartPost, the program update on /api/update). The sections the program asks for and the sprayer's readings come
+// from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the 8 m sprayer's 5 sections
+// on the ESP32_Relay_X8 board (8 relays from the program's pin config, both sensors, on the tractor's Wi-Fi).
 // The own-network password is the module's default, agopengps.
 "use strict";
 (function () {
 const S = window.AioSim, KEY = "aiosim.sprayer", MKEY = "aiosim.sprayer.module", M = S.Module(MKEY);
 const B = S.BUILD.sprayer || {}, FW = B.name || "Sprayer_ESP32", VER = B.version || "0.5";
-const IMPL = S.IMPL, X8 = !!IMPL.nozzles;                   // the sprayer: the X8 board; the seed drill: the KC868-A32
-const RELAYS = X8 ? 8 : 32, CABLE = !X8, KIND = X8 ? "Sprayer" : "Seeder", BOARD = X8 ? "ESP32_Relay_X8" : "KC868-A32";
-const NAME = "00007C4EA4CF12B3", AP = KIND + "-4E7C";       // from the ESP32's factory MAC, as zSettings.ino makes them
-// sta: on the tractor network (Wi-Fi, or the cable on the seed drill); lost: was, until LOST_AT s; ap: Wi-Fi not set / cable not plugged in
+const IMPL = S.IMPL, RELAYS = 8;
+const NAME = "00007C4EA4CF12B3", AP = "Sprayer-4E7C";          // from the ESP32's factory MAC, as zSettings.ino makes them
+// sta: on the tractor's Wi-Fi; lost: was, until LOST_AT s; ap: the tractor's Wi-Fi not set
 const NET = S.opt.wifi, LOST_AT = 24;
-const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: !CABLE && NET !== "ap", sta: CABLE || NET === "ap" ? "" : "Farm WiFi",
- staPassSet: !CABLE && NET !== "ap", host: KIND.toLowerCase(), subnet: "192.168.5", ipLast: 123, first: X8 ? 0 : 1, sensors: X8 ? 3 : 0,
+const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: NET !== "ap", sta: NET === "ap" ? "" : "Farm WiFi",
+ staPassSet: NET !== "ap", host: "sprayer", subnet: "192.168.5", ipLast: 123, sensors: 3,
  ppl: 450, pmax: 10, pdiv: 0.5, totalBase: 0, secTop: 0, ev: [], evAt: -1}));
-if (X.sensors === undefined) X.sensors = X8 ? 3 : 0;                // kept from a page opened before v0.7.2
-if (X.ipLast === undefined) Object.assign(X, {ipLast: 123, first: X8 ? 0 : 1, secTop: 0});   // and before v0.8
+if (X.sensors === undefined) X.sensors = 3;                         // kept from a page opened before v0.7.2
+if (X.ipLast === undefined) Object.assign(X, {ipLast: 123, secTop: 0});   // and before v0.8
 const T = () => (Date.now() - X.t0) / 1000;
-S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
- (X8 ? "" : " The seed drill's KC868-A32 is on the network cable (\"tractor network lost\" = the cable unplugged) and has no pressure or flow sensor: none is ticked in Calibration, so the module sends no PGN 160."),
- ["impl", "wifi", "park"], [KEY, MKEY]);
+S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed.",
+ ["wifi", "park"], [KEY, MKEY]);
 
-// on the tractor network from 3.2 s (the cable from 2.5 s), unless the tractor's Wi-Fi is chosen on the cable board;
-// the program talks (PGN 239 ten times a second, and 229 with it on the 19-section seed drill) from 5.5 s
+// on the tractor's Wi-Fi from 3.2 s; the program talks (PGN 239 ten times a second) from 5.5 s
 const cut = () => NET === "ap" || (NET === "lost" && T() > LOST_AT);
 const staUp = () => X.staOn && !!X.sta && T() > 3.2 && !cut();
-const ethUp = () => CABLE && !X.staOn && T() > 2.5 && !cut();
-const netUp = () => staUp() || ethUp();
-const linkOk = () => netUp() && T() > 5.5;
+const linkOk = () => staUp() && T() > 5.5;
 const ip = () => X.subnet + "." + X.ipLast;
-const reach = () => NET !== "ap" && ((X.staOn && !!X.sta) || (CABLE && !X.staOn));   // set up to be on the tractor network
+const reach = () => NET !== "ap" && X.staOn && !!X.sta;            // set up to be on the tractor network
 const talking = () => !reach() ? 0 : Math.max(0, Math.min(T(), NET === "lost" ? LOST_AT : Infinity) - 5.5);   // s the program has talked
 
 // the module's own messages: m:ss and the text, the last 12, as logEvent() keeps them
@@ -52,16 +46,15 @@ function event(x, t) {
  if (X.ev.length > 12) X.ev.shift();
 }
 function events() {
- const sta = X.staOn && !!X.sta, eth = CABLE && !X.staOn;
- const L = [[0.2, "own network '" + X.ap + "' at 192.168.4.1" + (sta ? ", joining the tractor network" : eth ? ", tractor network on the cable" : ", tractor network not set")],
+ const sta = X.staOn && !!X.sta;
+ const L = [[0.2, "own network '" + X.ap + "' at 192.168.4.1" + (sta ? ", joining the tractor network" : ", tractor network not set")],
   [0.3, "ready: module IP " + ip() + " on the tractor network, page at 192.168.4.1"]];
- if (sta && NET !== "ap") L.push([3.2, "joined '" + X.sta + "', IP " + ip() + ", -58 dBm"]);
- if (eth && NET !== "ap") L.push([2.5, "network cable connected, IP " + ip() + ", 100 Mbit/s"]);
- if ((sta || eth) && NET !== "ap") {
+ if (sta && NET !== "ap") {
+  L.push([3.2, "joined '" + X.sta + "', IP " + ip() + ", -58 dBm"]);
   L.push([5.6, "machine config from the program: lift off, raise 2 s, lower 4 s, outputs normal"]);
   // the module logs the first eight; AgOpenWeb's pin config has sections 1-8 here
-  L.push([5.7, "output functions from the program: relays 1 2 3 4 5 6 7 8" + (X.first ? " (not used: the relays follow the sections in a row)" : "")]);
-  if (NET === "lost") L.push([LOST_AT, sta ? "lost the tractor network '" + X.sta + "'" : "network cable: no link (unplugged, or the switch is off)"]);
+  L.push([5.7, "output functions from the program: relays 1 2 3 4 5 6 7 8"]);
+  if (NET === "lost") L.push([LOST_AT, "lost the tractor network '" + X.sta + "'"]);
  }
  const tB = T();
  for (const [t, x] of L) if (t > X.evAt && t <= tB) event(x, t);
@@ -76,37 +69,37 @@ function restart(offMs) {
 function sprayer() {
  const link = linkOk(), sp = M.sprayerAt(link ? undefined : NET === "lost" ? LOST_AT : 0);
  const req = link || NET === "lost" ? sp.cmd : 0, on = link ? sp.cmd : 0;     // the request stays as last heard while the program is silent
- const bar = !X8 || !(X.sensors & 1) ? 0 : on ? sp.bar : link && sp.main ? 3.3 : NET === "lost" ? 3.3 : 0.1;  // pump pressure with the valves closed
- const flow = X8 && (X.sensors & 2), lpm = flow && on ? S.nozzles(on) * 0.8 * Math.sqrt(sp.bar / 3) : 0;
+ const bar = !(X.sensors & 1) ? 0 : on ? sp.bar : link && sp.main ? 3.3 : NET === "lost" ? 3.3 : 0.1;  // pump pressure with the valves closed
+ const flow = X.sensors & 2, lpm = flow && on ? S.nozzles(on) * 0.8 * Math.sqrt(sp.bar / 3) : 0;
  return {req: req, on: on, bar: bar, lpm: lpm, total: flow ? Math.max(0, sp.total - X.totalBase) : 0, kmh: sp.main ? M.tractor(Math.max(0, M.T())).kmh : 0, raw: sp.total};
 }
 
-// what relay i does (relayFn): with X.first, sections in a row from that one; else the program's pin config (sections 1-8)
-const relayFn = i => X.first ? (X.first + i <= 64 ? X.first + i : 0) : i < 8 ? i + 1 : 0;
+// what relay i does (relayFn): the program's pin config, AgOpenWeb's default here (sections 1-8)
+const relayFn = i => i < 8 ? i + 1 : 0;
 const hex = v => v.toString(16);                                    // sections as the module sends them (jsonHex)
 
 function status() {
- const t = T(), up = netUp(), link = linkOk(), sp = sprayer(), tr = M.tractor(Math.max(0, M.T()));
+ const t = T(), up = staUp(), link = linkOk(), sp = sprayer(), tr = M.tractor(Math.max(0, M.T()));
  const silent = NET === "lost" && t > LOST_AT ? Math.floor(t - LOST_AT) : -1;     // s since the program was last heard
  const many = IMPL.sections > 16, fn = Array.from({length: RELAYS}, (_, i) => relayFn(i));
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", kind: KIND, board: BOARD, up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
-  wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, staUp: staUp(), eth: CABLE, ethUp: ethUp(), ip: up ? ip() : "", ipLast: X.ipLast,
-   rssi: staUp() ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
+ return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
+  wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
+   rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sp.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: bits, on: hex(on), first: X.first, onHigh: X8, fn: fn},
-  spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: X8 && (X.sensors & 1) ? S.r2(0.5 + sp.bar / X.pmax * 4, 2) : 0,
+  out: {bits: bits, on: hex(on), onHigh: true, fn: fn},
+  spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: X.sensors & 1 ? S.r2(0.5 + sp.bar / X.pmax * 4, 2) : 0,
    pulses: Math.round(sp.total * X.ppl)},
   cal: {sensors: X.sensors, ppl: X.ppl, pmax: X.pmax, pdiv: X.pdiv},
   log: X.ev.slice()};
 }
 const settings = () => ({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host, sensors: X.sensors, ppl: X.ppl,
- eth: CABLE, ipLast: X.ipLast, first: X.first, subnet: X.subnet, pmax: X.pmax, pdiv: X.pdiv});
+ ipLast: X.ipLast, subnet: X.subnet, pmax: X.pmax, pdiv: X.pdiv});
 const number = (v, lo, hi) => /^\d{1,5}$/.test(String(v)) && +v >= lo && +v <= hi;   // argNumber
 
 const printable = (v, lo, hi) => typeof v === "string" && v.length >= lo && v.length <= hi && /^[\x20-\x7E]*$/.test(v);
@@ -131,7 +124,7 @@ function wifiPost(b) {
  if (b.staPass || staSsid !== X.sta) X.staPassSet = !!b.staPass;   // a new network without a password: an open one
  Object.assign(X, {ap: b.apSsid, staOn: staOn, sta: staSsid, host: b.host, subnet: net, ipLast: b.ipLast === undefined ? X.ipLast : +b.ipLast});
  if (b.apPass) X.pass = b.apPass;
- event("network settings saved from the page, restarting");
+ event("Wi-Fi settings saved from the page, restarting");
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
@@ -151,13 +144,6 @@ function totalPost(b) {
  if (b.pw !== X.pass) return S.err(403, "wrong password");
  X.totalBase = sprayer().raw;
  event("total set to 0 from the page");
- return S.ok();
-}
-function relaysPost(b) {
- if (b.pw !== X.pass) return S.err(403, "wrong password");
- if (!number(b.first, 0, 64)) return S.err(400, "first section: 0 to 64");
- X.first = +b.first;
- event(X.first ? "relays 1-" + RELAYS + " follow sections " + X.first + "-" + Math.min(64, X.first + RELAYS - 1) : "relays follow the program's pin config");
  return S.ok();
 }
 function restartPost(b) {
@@ -189,7 +175,6 @@ S.hook(async (method, path, q, body) => {
  else if (post && path === "/api/wifi") r = wifiPost(b);
  else if (post && path === "/api/calib") r = calibPost(b);
  else if (post && path === "/api/total") r = totalPost(b);
- else if (post && path === "/api/relays") r = relaysPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
  else if (post && path === "/api/update") r = await updatePost(q, body);
  S.save(KEY, X);

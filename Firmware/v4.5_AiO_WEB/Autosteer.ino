@@ -19,6 +19,7 @@
    AiO_WEB 4.5, 23 Oct 2026 (Claude (Anthropic) for renatorgr): with "Button" as the steer switch, the
    program's on-screen autosteer button turns autosteer on and off too, like the physical button.
    AiO_WEB 4.5, 24 Oct 2026: the STEER LED is driven by zLeds.ino (this file only reports the button press).
+   AiO_WEB 4.5, 27 Oct 2026: PGN 229 (sections 1-64) handed to zMachine.ino for the web page's Machine tab.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -874,6 +875,10 @@ void ReceiveUdp()
 			else if (autoSteerUdpData[3] == 0xF7)  //247 vehicle geometry (AgOpenWeb), the whole packet
 			{
 				vehicleGeometry(udpPacket, got);   // zHandlers.ino
+			}
+			else if (autoSteerUdpData[3] == 0xE5)  //229 sections 1-64, with every 239 on a tool of 17+ sections
+			{
+				machineNote229(udpPacket, got);    // only for the web page's Machine tab (zMachine.ino)
 			}
 			else if (autoSteerUdpData[3] == 200) // Hello from AgIO
 			{

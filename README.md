@@ -1,6 +1,6 @@
 # Boards
 
-Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and Standard), plus a section controller for a field sprayer. Everything here works with [AgOpenWeb](https://github.com/AgOpenGPS-Official/AgOpenWeb) and [AgOpenGPS](https://github.com/AgOpenGPS-Official/AgOpenGPS).
+Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and Standard), plus section controllers for a field sprayer and a no-till seed drill. Everything here works with [AgOpenWeb](https://github.com/AgOpenGPS-Official/AgOpenWeb) and [AgOpenGPS](https://github.com/AgOpenGPS-Official/AgOpenGPS).
 
 > [!WARNING]
 > This firmware steers a tractor. Test every new version on the bench before you use it in the field. It comes with no warranty.
@@ -12,11 +12,12 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) | Teensy 4.1 firmware for the AiO v4.5 Micro and Standard. Handles the GPS (UM982, F9P, X20P or dual F9P), the IMU (TM171 or BNO085) and autosteer (Cytron, IBT2, Danfoss or Keya). Has its own web page for status, settings and firmware updates over the network. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32) | Program for a Seeed XIAO ESP32C3 or ESP32S3 on the GPS2 port. The XIAO runs its own Wi-Fi network, so you can check the module from your phone without the tablet. |
 | [`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin`](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin) | The XIAO program, compiled and ready to install. |
-| [`Firmware/simulator`](Firmware/simulator) | The web pages of the Teensy, the XIAO and the ESP32 sprayer module with pretend boards behind them, to try online without a board: **[renatorgr.github.io/Boards](https://renatorgr.github.io/Boards/)**. Rebuilt from the code on every change. |
+| [`Firmware/simulator`](Firmware/simulator) | The web pages of the Teensy, the XIAO and the ESP32 seed drill and sprayer modules with pretend boards behind them, to try online without a board: **[renatorgr.github.io/Boards](https://renatorgr.github.io/Boards/)**. Rebuilt from the code on every change. |
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`LED_Bezel`](LED_Bezel) | A small 3D-printed comb (OpenSCAD and STL) that slides over the three front LEDs of the AiO v4.5 so each one lights only its own window on the panel. |
-| [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi; also the 19-section seed drill on a KinCony KC868-A32 (32 relays, network cable). Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
+| [`Seeder/Seeder_ESP32`](Seeder/Seeder_ESP32) | Program for a KinCony KC868-A32 (ESP32, 32 relays, network cable) that runs the 19 sections of the no-till seed drill, one linear actuator each, on command from AgOpenWeb or AgOpenGPS (the official machine-module messages, PGN 229 for sections 17–64). Has its own web page for setup and updates. |
+| [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
 
 Each folder has its own README with the details.
@@ -26,7 +27,8 @@ Each folder has its own README with the details.
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards:** designed and checked in KiCad, but not built or tested yet.
-- **Sprayer ESP32 v0.8:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. Also builds for a plain ESP32 with relay modules (up to 16 relays). Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit. The sensors fitted are ticked on its page: with none (a seed drill) it sends no PGN 160. The Nano version (v0.3) is kept as it was. Up to 64 sections (PGN 229): the 19-section seed drill runs on a KC868-A32 over the network cable, relay 1 = section 1 and so on (written from KinCony's pin list, not yet run on a board).
+- **Sprayer ESP32 v0.9:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. Also builds for a plain ESP32 with relay modules (up to 16 relays). Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit. The sensors fitted are ticked on its page: with none it sends no PGN 160. The Nano version (v0.3) is kept as it was.
+- **Seeder ESP32 v0.1:** the seed drill part of Sprayer ESP32 v0.8 in its own folder: 19 sections on a KC868-A32 over the network cable, relay 1 = section 1 and so on. Written from KinCony's pin list, not yet run on a board.
 
 ## Getting started
 
@@ -41,6 +43,10 @@ Each folder has its own README with the details.
 1. **First install:** over USB-C, using the `…_USB.bin` file for your XIAO and the [esptool-js](https://espressif.github.io/esptool-js/) web page. Step-by-step instructions are in the [`v4.5_XIAO_ESP32_bin` README](Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin).
 2. Join the `XIAO-xxxx` Wi-Fi network (password `agopengps`) and open `http://192.168.4.1/`.
 3. **Updates:** over Wi-Fi from the XIAO page.
+
+### Seed drill
+
+Wiring (DPDT relays, end switches for the actuators), the first upload, the setup and a bench test are in the [`Seeder_ESP32` README](Seeder/Seeder_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/seeder/).
 
 ### Sprayer
 

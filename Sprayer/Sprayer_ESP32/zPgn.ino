@@ -4,7 +4,7 @@
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
    2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
-   2026-10-27 (Claude): PGN 229 read in full (sections 1-64); messages also go out over the network cable.
+   2026-10-27 (Claude): PGN 229 read in full (sections 1-64).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -27,7 +27,7 @@ void udpStart()
 
 static void sendPgn(uint8_t* msg, size_t length, IPAddress to)
 {
-    if (!netUp()) return;                                   // nobody to talk to yet (no tractor Wi-Fi, no cable)
+    if (!staUp()) return;                                   // nobody to talk to yet
     msg[length - 1] = pgnChecksum(msg, length);
     udp.beginPacket(to, SEND_PORT);
     udp.write(msg, length);
@@ -129,9 +129,8 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         if (dataLength < 24) return;
         for (uint8_t i = 0; i < 24; i++) cfg.pin[i] = d[5 + i] <= PIN_GEO_STOP ? d[5 + i] : 0;
         settingsSave();
-        logEvent("output functions from the program: relays %u %u %u %u %u %u %u %u%s",
-                 cfg.pin[0], cfg.pin[1], cfg.pin[2], cfg.pin[3], cfg.pin[4], cfg.pin[5], cfg.pin[6], cfg.pin[7],
-                 cfg.firstSection ? " (not used: the relays follow the sections in a row)" : "");
+        logEvent("output functions from the program: relays %u %u %u %u %u %u %u %u",
+                 cfg.pin[0], cfg.pin[1], cfg.pin[2], cfg.pin[3], cfg.pin[4], cfg.pin[5], cfg.pin[6], cfg.pin[7]);
         break;
 
     case 201:                                               // subnet: save and restart with the new IP

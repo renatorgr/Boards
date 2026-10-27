@@ -19,7 +19,7 @@ It provides:
 - Autosteer: Cytron / IBT2 / Danfoss through the PWM outputs, or a Keya motor on CAN3
 - Autosteer safety: WAS check, angle / speed cut-offs, Keya heartbeat, hardware watchdog, crash report
 - Web page on the module (port 80): status, messages, settings, GPS receiver tools, Machine tab, OTA update
-- Links to companion modules: XIAO ESP32 on the GPS2 port, the sprayer Nano (machine module, IP .123)
+- Links to companion modules: XIAO ESP32 on the GPS2 port, the machine module (sprayer or seed drill, IP .123)
 
 The owner, Renato, is a farmer and beginner programmer. He builds the `.hex` himself in the Arduino IDE and
 installs it over USB or from the web page. Explain changes to him simply.
@@ -126,14 +126,14 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | File | Purpose |
 |------|---------|
 | `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144, frames to and from UDP |
-| `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5 or sprayer Nano) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160 for the Machine tab (read only) |
+| `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5, sprayer Nano / ESP32, seed drill ESP32) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160, plus the program's PGN 229 (sections 1-64), for the Machine tab (read only) |
 
 ## Architecture Overview
 
 ### Communication flow
 ```
 AgOpenWeb / AgOpenGPS (tablet)
-   │  UDP 8888 in: PGN 254, 252, 251, 247, 200, 201, 202  ──► ReceiveUdp() (Autosteer.ino)
+   │  UDP 8888 in: PGN 254, 252, 251, 247, 229, 200, 201, 202  ──► ReceiveUdp() (Autosteer.ino)
    │  UDP 2233 in: NTRIP RTCM                              ──► udpNtrip() ──► receiver (Serial7)
    ◄── UDP 9999 out: NMEA per GGA epoch (zHandlers.ino), PGN 253 / 250 / 221 / 126 / 121 / 203
 Receiver (Serial7, 460800) ──► parser (GGA, VTG, HPR) + ubxFeed() ──► gnssProcess() ──► UDP 9999
@@ -201,6 +201,7 @@ byte before it (low 8 bits).
 | 252 (0xFC) | Steer settings: gains, PWM, WAS offset / counts | Autosteer.ino, EEPROM 10 |
 | 251 (0xFB) | Steer config: invert, relay, motor driver, sensors | Autosteer.ino, EEPROM 40 |
 | 247 (0xF7) | Vehicle geometry (AgOpenWeb): wheelbase | zHandlers.ino `vehicleGeometry()` |
+| 229 (0xE5) | Sections 1-64 (bytes 5-12), with every 239 on a tool of 17+ sections; only for the Machine tab | zMachine.ino `machineNote229()` |
 | 200 | Hello: answers 126 (steer) and 121 (IMU); tells AgOpenWeb from AgOpenGPS | Autosteer.ino, zStatus.ino |
 | 201 | Subnet change → EEPROM 60, restart | Autosteer.ino |
 | 202 | Scan request → 203 reply on 255.255.255.255:9999 | Autosteer.ino |
@@ -219,7 +220,7 @@ byte before it (low 8 bits).
 (XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino).
 
 ### Machine module (UDP 9999 in)
-123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only), 160 (0xA0) sprayer data from the Nano at .123, see `zMachine.ino` for the 16-byte layout.
+123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B with 11 data bytes, the seed drill's (Seeder_ESP32: sections 1-16 open in bytes 5-6, sections 17-64 in bytes 10-15), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts.
 
 ## Web Interface
 
