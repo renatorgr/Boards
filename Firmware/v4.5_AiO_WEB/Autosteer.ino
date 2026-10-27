@@ -20,6 +20,8 @@
    program's on-screen autosteer button turns autosteer on and off too, like the physical button.
    AiO_WEB 4.5, 24 Oct 2026: the STEER LED is driven by zLeds.ino (this file only reports the button press).
    AiO_WEB 4.5, 27 Oct 2026: PGN 229 (sections 1-64) handed to zMachine.ino for the web page's Machine tab.
+   AiO_WEB 4.5, 27 Oct 2026: steerOffByProgram tells zSafety.ino whether the program's on-screen button or the
+   physical button turned autosteer off (Button mode), so the reason reads "by the program", not "steer button".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -176,6 +178,7 @@ float highLowPerDeg = 0;
 
 //Steer switch button  ******************************************
 uint8_t currentState = 1, reading, previous = 0;
+bool steerOffByProgram = false;   // Button mode: the last off came from the program's on-screen button, not the physical one (zSafety.ino)
 uint8_t pulseCount = 0; // Steering Wheel Encoder
 bool encEnable = false; //debounce flag
 uint8_t thisEnc = 0, lastEnc = 0;
@@ -346,6 +349,7 @@ void autosteerLoop()
 				{
 					currentState = 1;
 					steerSwitch = 1;
+					steerOffByProgram = false;
 				}
 			}
 			previous = reading;
@@ -365,6 +369,7 @@ void autosteerLoop()
 				{
 					currentState = 1;
 					steerSwitch = 1;
+					steerOffByProgram = true;   // the program: its button, outside the boundary, speed, RTK lost...
 				}
 				guidanceStatusChanged = false;
 			}

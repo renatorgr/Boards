@@ -15,6 +15,7 @@
    several modules together; their IPs in the IP row.
    27 Oct 2026: a negative WAS reading on the differential input (nothing on AmpSeal pin 3): the WAS row and the
    warning at the top say so and to choose Single in the program; the WAS check setting mentions it.
+   27 Oct 2026: "Last turned off" by the program says that its screen gives the reason (button, boundary, speed, RTK).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -425,7 +426,7 @@ function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.create
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
-const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program",speed:"speed below 0.1 km/h",other:"other"};
+const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program (its screen says why: its button, boundary, speed, RTK)",speed:"speed below 0.1 km/h",other:"other"};
 const BW={power:"power on (or button / USB)",upload:"programming",restart:"restart requested (page, update or program)",watchdog:"watchdog (the firmware stopped)",crash:"firmware fault","crash-wdt":"firmware fault, restarted by the watchdog",temp:"high temperature",other:"other",unknown:"other"};
 const WHYF={1:"no RELPOSNED from the second F9P (GPS2 port: UART1 at 460800, UBX-NAV-RELPOSNED on)",2:"the RELPOSNED does not come with the GGA",3:"the second F9P has no RTK fixed solution between the antennas",4:"empty heading"};
 const WHY={1:"no HPR from the receiver (single antenna, or HPR off in the UM982)",2:"the HPR does not arrive with the GGA",3:"the UM982 has no heading solution from its two antennas",4:"empty heading in the HPR"};
