@@ -1,6 +1,7 @@
 /* sim-common.js - the web page simulator: a pretend AiO v4.5 module behind the real pages.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-27 (Claude): the seed drill's sprayer module sends no PGN 160, as Sprayer_ESP32 v0.7.2 with no sensors ticked.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -582,14 +583,16 @@ function Module(key) {
  }
  // the machine module (zMachine.ino machineJson): the sprayer module (ESP32, or the Nano: hello reply, PGN 237 and PGN 160 with
  // the readings) or the official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160);
+ // the seed drill's ESP32 is set to no sensors on its page, so it sends no PGN 160 either (sections from the hello reply);
  // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop
  let machTop = 0;
  function machine(t, tr, engaged) {
   const sp = sprayer(t, tr, engaged), hellos = Math.floor(t - 5.5), used = sp.cmd | sp.sec;
   for (let k = 16; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
-  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (h.nano ? 7 : 6), bad: 0, lastPgn: h.nano ? 160 : 237, cmd: sp.cmd,
-   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secN: machTop, secFrom160: h.nano, sprayAgo: -1};
-  if (!h.nano) return j;
+  const p160 = h.nano && !!IMPL.nozzles;
+  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6), bad: 0, lastPgn: p160 ? 160 : 237, cmd: sp.cmd,
+   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: sp.sec, secN: machTop, secFrom160: p160, sprayAgo: -1};
+  if (!p160) return j;
   return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
  }
 

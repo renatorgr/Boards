@@ -8,6 +8,8 @@
    the checksum wording is a note under the list. The GPS2 port is automatic or off (Settings), and says what it found,
    in one short line. The section squares stay as many as the highest section used since the module started (they
    fell back to 5 when every section was off).
+   27 Oct 2026: the Sprayer card also hides when the module stops sending PGN 160 (a sprayer module set to no sensors,
+   or another module) and still sends the rest; its wording says module, not Nano.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -193,10 +195,10 @@ a{color:var(--acc)}
   <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254) and what the module reports, in its hello reply or in the sprayer PGN 160</p>
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
-  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer Nano, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
+  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the sprayer module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
  <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
   <div class="big" id="mBar">–</div>
-  <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the Nano started</dt><dd id="mTotal">–</dd>
+  <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the module started</dt><dd id="mTotal">–</dd>
    <dt>Main switch</dt><dd id="mMain">–</dd><dt>Last PGN 160</dt><dd id="mSprayAgo" class="nw">–</dd></dl></div>
 </div>
 </section>
@@ -655,8 +657,11 @@ function renderMach(m){
  const have=m.secAgo>=0&&m.secAgo<5;
  set("mSecFrom",m.secAgo<0?"nothing yet":(m.secFrom160?"PGN 160":"hello reply")+", "+ago(m.secAgo),have?"":"warn");
  const box=$("mSec");machSecs(box,m.cmd,m.sec,have,m.secN);box.classList.toggle("old",m.secAgo>=0&&!have);
- $("mSprayCard").classList.toggle("hidden",m.sprayAgo<0);
- if(m.sprayAgo<0)return;
+ // Sprayer card only while the module sends PGN 160: never heard, or not for 30 s while the module still talks
+ // (a sprayer module set to no sensors, or another module): hidden. All silent: the last readings stay, in orange.
+ const noSpray=m.sprayAgo<0||(m.here&&m.sprayAgo>=30);
+ $("mSprayCard").classList.toggle("hidden",noSpray);
+ if(noSpray)return;
  const old=m.sprayAgo>=5;
  set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
  set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");

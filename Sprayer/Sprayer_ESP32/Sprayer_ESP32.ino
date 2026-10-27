@@ -6,7 +6,9 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.7.1 (2026-10-27), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.7.2 (2026-10-27), not yet tested on the sprayer.
+//   v0.7.2: the page says which sensors the machine has (pressure, flow, both or none). With none (a seed
+//           drill) the module sends no PGN 160, and its page, AgOpenWeb and the AiO page show no sprayer readings.
 //   v0.7.1: sensor dividers from a common resistor kit (no 15k): pressure 10k / 10k (0.5, the new
 //           default on the page), flow 10k / 22k.
 //   v0.7: also runs on a plain ESP32 dev module with relay modules (up to 16 relays): BOARD_RELAY_X8 0.
@@ -25,13 +27,14 @@
 //       201 subnet, 200 hello, 202 scan. The config, pin functions and subnet are kept in flash.
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
 //       237 every 200 ms (sign of life), plus 160 once a second with the sprayer readings
-//       (pressure, flow, litres, master switch, sections open) for the AgOpenWeb fork's sprayer strip.
+//       (pressure, flow, litres, master switch, sections open) for the AgOpenWeb fork's sprayer strip;
+//       a machine without sensors (set on the page: a seed drill) sends no 160.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
-//   - the page shows pressure, flow, L applied, sections asked for and open, the link to the program,
-//       and has the Wi-Fi settings and program subnet, the sensor calibration, a program update (.bin)
-//       and a restart.
+//   - the page shows pressure, flow, L applied (only for the sensors fitted), sections asked for and open,
+//       the link to the program, and has the Wi-Fi settings and program subnet, the sensors fitted and their
+//       calibration, a program update (.bin) and a restart.
 //   - IO0 button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
 //   - serial monitor (115200): "status", "wifi-reset", "total-reset", "restart".
 //
@@ -50,7 +53,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.7.1"
+#define FW_VERSION          "0.7.2"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD_RELAY_X8 1 = the ESP32_Relay_X8 board (8 relays on it).
@@ -77,6 +80,10 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define FLOW_PIN            35      // input only: flow meter signal through the 10k / 22k divider
 #define MASTER_PIN          39      // "SVN", input only: optional master switch sense (12 V through 47k / 10k)
 #define BUTTON_PIN          0       // the IO0 button: held 5 s = Wi-Fi settings back to the defaults
+
+// Sensors fitted (cfg.sensors, set on the page): a sprayer has both, a seed drill none
+#define SENSOR_PRESSURE     1
+#define SENSOR_FLOW         2
 
 // ---------------------------------------------------------------- settings you may want to change
 #define USE_MASTER_SWITCH   0       // 1 = MASTER_PIN reads the master switch. 0 = the switch cuts the valves' 12 V in the wiring
@@ -111,7 +118,8 @@ struct Settings
     // AgOpenWeb sends its own pin config at start (its default is pins 1-6 = sections 1-6, 7-8 = none), so
     // for 8 sections set pins 7 and 8 to Section 7 and Section 8 in AgOpenWeb (Machine, Pin config).
     uint8_t pin[24] = { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    // sensor calibration
+    // sensors fitted and their calibration
+    uint8_t sensors = SENSOR_PRESSURE | SENSOR_FLOW;   // none (a seed drill): no PGN 160, no readings on the page
     float   pulsesPerLitre = 450.0f;        // YF-S201: about 450. Calibrate with a bucket (README)
     float   pressureMaxBar = 10.0f;         // 0-10 bar sensor, 0.5 V = 0 bar, 4.5 V = full scale
     float   pressureDivider = 0.5f;         // the divider on the pressure signal: 10k / (10k + 10k)

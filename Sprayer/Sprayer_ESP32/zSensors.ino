@@ -2,6 +2,7 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): dividers from a common resistor kit: pressure 10k / 10k, flow 10k / 22k.
+   2026-10-27 (Claude): a sensor that is not fitted (page setting) reads 0: its pin floats without it.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -10,6 +11,8 @@
 //   flow meter pulses 0-5 V, 22k to GND (0.69)    ->  0-3.4 V on GPIO 35 (counted by an interrupt; the high
 //       level stays above the ESP32's 2.5 V threshold even if the meter has its own pull-up)
 // cfg.pressureDivider is that 0.5; change it on the web page if other resistors are used.
+// A sensor the page says is not fitted (cfg.sensors, a seed drill has none) reads 0: without the sensor and
+// its divider the pin floats and would show made-up pressure or pulses.
 
 static volatile uint32_t flowPulses = 0;
 
@@ -28,11 +31,19 @@ void sensorsInit()
 // 20 times a second
 void readSensors()
 {
-    const uint32_t mv = analogReadMilliVolts(PRESSURE_PIN);
-    sensorVolts = mv / 1000.0f / cfg.pressureDivider;      // back to the sensor's own volts
-    float bar = (sensorVolts - 0.5f) / 4.0f * cfg.pressureMaxBar;
-    if (bar < 0) bar = 0;
-    pressureBar += (bar - pressureBar) * 0.1f;              // smoothed so it does not jump
+    if (cfg.sensors & SENSOR_PRESSURE)
+    {
+        const uint32_t mv = analogReadMilliVolts(PRESSURE_PIN);
+        sensorVolts = mv / 1000.0f / cfg.pressureDivider;  // back to the sensor's own volts
+        float bar = (sensorVolts - 0.5f) / 4.0f * cfg.pressureMaxBar;
+        if (bar < 0) bar = 0;
+        pressureBar += (bar - pressureBar) * 0.1f;          // smoothed so it does not jump
+    }
+    else
+    {
+        sensorVolts = 0;
+        pressureBar = 0;
+    }
 
 #if USE_MASTER_SWITCH
     masterOn = analogReadMilliVolts(MASTER_PIN) > 1000;     // about 6 V at the switch with 47k / 10k
@@ -45,9 +56,10 @@ void readSensors()
 void updateFlow()
 {
     noInterrupts();
-    const uint32_t n = flowPulses;
+    uint32_t n = flowPulses;
     flowPulses = 0;
     interrupts();
+    if (!(cfg.sensors & SENSOR_FLOW)) n = 0;
 
     const float litres = n / cfg.pulsesPerLitre;            // litres in this second
     flowLpm = litres * 60.0f;

@@ -2,6 +2,7 @@
 // Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 // Written 2026 by Claude (Anthropic) for renatorgr.
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
+// 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -68,6 +69,8 @@ async function teensy(browser, port, q, name) {
  }
  const sprayer = !/mach=(aog|0)/.test(q);     // the sprayer module chosen: the Machine tab links to its page
  if ((await pg.locator("#simSprayerLink a").count() > 0) !== sprayer) fail.push(what + ": the link to the sprayer page " + (sprayer ? "is missing" : "shows without the sprayer module"));
+ const p160 = sprayer && /impl=sprayer/.test(q);   // only the sprayer has sensors: the seed drill's module sends no PGN 160
+ if ((await pg.locator("#mSprayCard.hidden").count() === 0) !== p160) fail.push(what + ": the Sprayer (PGN 160) card " + (p160 ? "is missing" : "shows without PGN 160"));
  return pg;
 }
 
@@ -125,8 +128,8 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
- // the sprayer module's page with the seed drill: sowing a pass with the 16 relays, then the calibration saved and the total set
- // to 0 (the password asked in a prompt)
+ // the sprayer module's page with the seed drill: sowing a pass with the 16 relays, no sensors (no Sprayer card), then the
+ // settings saved (the password asked in a prompt)
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
@@ -134,21 +137,19 @@ async function teensy(browser, port, q, name) {
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#sub", /as 192\.168\.5\.123 · program talking/);
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
-  await expect(pg, what, "#bar", /^\d+\.\dbar$/);
   await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
+  if (await pg.locator("#sprCard").isVisible()) fail.push(what + ": the Sprayer card shows on the seed drill (no sensors)");
+  if (!(await pg.locator("#noSensors").isVisible()) || await pg.locator("#ppl").isVisible()) fail.push(what + ": Calibration should say no sensors and hide the fields");
   if ((await pg.locator("#secs span.on, #secs2 span.on").count()) !== 16) fail.push(what + ": expected 16 rows open while sowing");
   if ((await pg.locator("#relays span.on").count()) !== 16) fail.push(what + ": expected 16 relays on while sowing");
   await expect(pg, what, "#relayNote", /^16 relays, 16 of them sections/);
   await shot(pg, "sprayer-status");
   await pg.getByRole("button", {name: "Save", exact: true}).click(); await pg.waitForTimeout(800);
   await expect(pg, what, "#msgCalib", /done/);
-  await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
-  await expect(pg, what, "#msgTotal", /done/);
-  await expect(pg, what, "#total", /^0\.\dL$/);
-  await expect(pg, what, "#log", /calibration saved: 450\.0 pulses\/L.*\n.*total set to 0 from the page/);
+  await expect(pg, what, "#log", /saved: no sensors, 450\.0 pulses\/L/);
   await pg.close();
  }
- // the same page with the sprayer: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow
+ // the same page with the sprayer: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the total set to 0
  {
   const what = "Sprayer page, sprayer";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/?impl=sprayer", what);
@@ -158,7 +159,13 @@ async function teensy(browser, port, q, name) {
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
   await expect(pg, what, "#bar", /^[23]\.\dbar$/);
+  if (!(await pg.locator("#ppl").isVisible()) || !(await pg.locator("#pmax").isVisible())) fail.push(what + ": Calibration fields missing with both sensors");
   await shot(pg, "sprayer-sprayer");
+  pg.on("dialog", d => d.accept("agopengps"));
+  await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
+  await expect(pg, what, "#msgTotal", /done/);
+  await expect(pg, what, "#total", /^0\.\dL$/);
+  await expect(pg, what, "#log", /total set to 0 from the page/);
   await pg.close();
  }
  // the sprayer module that lost the tractor network: rows closed, the program's request still outlined

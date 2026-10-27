@@ -4,7 +4,7 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.7.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.7.2 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -28,7 +28,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 
 - Once a second it also sends the sprayer readings (PGN 160: pressure, flow, litres,
   master switch, sections open), which the
   [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb) shows
-  above the section buttons.
+  above the section buttons. A machine without sensors (a seed drill) sends none: see
+  *Sensors fitted* below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
@@ -131,6 +132,13 @@ divider (to-GND ÷ total) in the page's calibration.
    (5 now), and for more than 6 sections set *Machine → Pin config* pins 7 and 8 to
    *Section 7* and *Section 8*. A relay that is not a section can be the hydraulic lift
    or the tramline instead. The page's *Relays* card shows what each relay does.
+7. **Sensors fitted.** In *Calibration*, tick *Pressure sensor fitted* and *Flow meter
+   fitted* for the sensors on the machine (both on the sprayer, ticked by default), then
+   *Save*. The page only shows the readings and calibration fields of the sensors ticked;
+   an unticked sensor reads 0 (its pin floats without it). With **neither ticked** (a seed
+   drill) the *Sprayer* card goes away and the module stops sending PGN 160, so
+   AgOpenWeb's sprayer strip and the AiO module page's *Sprayer (PGN 160)* card do not
+   show; the sections still reach them in the hello reply.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
 page *Install a new program* and choose the `.bin`.
@@ -172,7 +180,7 @@ Monitor: `wifi-reset`.
 | 200 → 123 | hello / reply | reply carries the sections really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
 | 237 | module → program | every 200 ms: sections open (5–6), relays on (7–8), master switch (9) |
-| 160 | module → program | once a second: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
+| 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts

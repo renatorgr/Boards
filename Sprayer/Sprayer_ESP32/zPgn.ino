@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
+   2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -11,7 +12,8 @@
 //   200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
 //   123 hello reply, 203 scan reply (to 255.255.255.255), 237 sign of life every 200 ms,
-//   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15)
+//   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15), only when the machine has
+//       a pressure sensor or a flow meter (page setting)
 
 static uint8_t rx[300];
 
@@ -46,9 +48,11 @@ void sendSignOfLife()
 
 // Once a second, PGN 160: the sprayer readings for the AgOpenWeb fork's sprayer strip. Sections 1-8 in
 // byte 14 as the fork reads them; sections 9-16 in byte 15 (the fork and the Teensy accept the longer
-// message and still read byte 14)
+// message and still read byte 14). A machine without sensors (a seed drill) has nothing to report: no PGN 160,
+// so the program and the AiO page show no sprayer readings; its sections still go out in the hello reply
 void sendReadings()
 {
+    if (!cfg.sensors) return;
     const uint16_t p = pressureBar * 100;                   // hundredths of a bar
     const uint16_t f = flowLpm * 100;                       // hundredths of a L/min
     const uint32_t t = totalLitres * 10;                    // tenths of a litre
