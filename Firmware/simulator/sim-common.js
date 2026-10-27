@@ -7,6 +7,8 @@
    2026-10-27 (Claude): the seed drill has its own module program (Seeder_ESP32) and page (sim-seeder.js); a module page
    fixes the implement (window.SIM_IMPL, from build.py). The Teensy's Machine tab shows every section (its PGN 229, the seed
    drill module's PGN 237): cmd and sec as hex digits.
+   2026-10-27 (Claude): the machine module can also be the AgOpenGPS AiO v26's machine part (PGN 237, sections 1-16), or two
+   of our modules (.123 sections 1-16, .124 the rest), shown together as zMachine.ino does.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -38,7 +40,8 @@ const CHOICES = {
  motor: {label: "Steering", dflt: "cytron", options: [["cytron", "Cytron"], ["ibt2", "IBT2"], ["danfoss", "Danfoss"], ["keya", "Keya motor"]]},
  prog:  {label: "Program", dflt: "aow", options: [["aow", "AgOpenWeb"], ["aog", "AgOpenGPS"]]},
  xiao:  {label: "XIAO", check: true, dflt: "1"},
- mach:  {label: "Machine module", dflt: "nano", options: [["nano", "our module (Sprayer_ESP32 or Seeder_ESP32)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
+ mach:  {label: "Machine module", dflt: "nano", options: [["nano", "our module (Sprayer_ESP32 or Seeder_ESP32)"], ["two", "two of our modules (.123 and .124)"],
+  ["v26", "AgOpenGPS AiO v26 (its machine part)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
  impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "no-till seed drill, 19 sections"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
@@ -246,7 +249,7 @@ function Module(key) {
  const h = {rx: opt.gps, imu: {tm171: "TM171", bno: "BNO085", rvc: "BNO085", none: ""}[opt.imu],
   imuPort: {tm171: "Serial5", bno: "I2C 0x4A", rvc: "Serial5 (RVC)", none: ""}[opt.imu],
   host: opt.prog === "aog" ? "AgOpenGPS" : "AgOpenWeb", motor: {cytron: "Cytron", ibt2: "IBT2", danfoss: "Danfoss", keya: "Keya"}[opt.motor],
-  gps2: 0, xiao: opt.xiao === "1", mach: opt.mach !== "0", nano: opt.mach === "nano"};
+  gps2: 0, xiao: opt.xiao === "1", mach: opt.mach !== "0", nano: opt.mach === "nano" || opt.mach === "two"};
  const rx = RX[h.rx], parked = opt.park === "1";
  const fresh = () => ({
   t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5",
@@ -588,20 +591,25 @@ function Module(key) {
   const passes = tr.moving ? Math.floor(tr.s / (PASS + TURN)) : 0, spray = tr.moving ? clamp(tr.r - 1.6, 0, PASS - 2) : 0;
   return {cmd: cmd, sec: sec, bar: bar, lmin: lmin, total: (passes * (PASS - 2) + spray) * nozzles(ALL_SECTIONS) * 0.8 / 60, main: engaged};
  }
- // the machine module (zMachine.ino machineJson): the sprayer module (Sprayer_ESP32, or the Nano: hello reply, PGN 237 and PGN 160
- // with the readings), the seed drill module (Seeder_ESP32: hello reply and PGN 237 with every open section, no PGN 160) or the
- // official Machine_UDP_v5 (hello reply without a checksum, PGN 237 five times a second, no PGN 160; sections 1-16 only);
- // the sections the program asks for: 1-16 from PGN 254, the rest from its PGN 229 (sent with every 239 on 17+ sections);
- // secN = the highest section asked for or reported since the module (here: the page) started, as mach.secTop.
+ // the machine module (zMachine.ino machineJson): our sprayer module (Sprayer_ESP32: hello reply, PGN 237 and PGN 160 with the
+ // readings), our seed drill module (Seeder_ESP32: hello reply and PGN 237 with every open section, no PGN 160), two of them
+ // (.123 with sections 1-16, .124 with the rest: the Teensy puts them together and lists both IPs), the AiO v26's machine part
+ // (hello reply with its sections at 0, PGN 237 with sections 1-16) or the official Machine_UDP_v5 (hello reply without a
+ // checksum, PGN 237 from 0x7F five times a second, no PGN 160; sections 1-16 from the hello reply). A module's sections come
+ // from its PGN 237 when it sends one. The sections the program asks for: 1-16 from PGN 254, the rest from its PGN 229 (sent
+ // with every 239 on 17+ sections). secN = the highest section asked for or reported since the module (here: the page)
+ // started, as mach.secTop.
  let machTop = 0;
  const hex16 = v => v.toString(16).padStart(16, "0");             // sections as zMachine.ino machineHex() sends them
  function machine(t, tr, engaged) {
-  const sp = sprayer(t, tr, engaged), seeder = h.nano && !IMPL.nozzles, sec = seeder ? sp.sec : sp.sec & 0xFFFF;
+  const kind = opt.mach, sp = sprayer(t, tr, engaged), sec = h.nano ? sp.sec : sp.sec & 0xFFFF;   // ours: every section; the others 1-16
   const hellos = Math.floor(t - 5.5), used = sp.cmd | sec;
   for (let k = 31; k > machTop; k--) if ((used >> (k - 1)) & 1) { machTop = k; break; }
-  const p160 = h.nano && !!IMPL.nozzles;
-  const j = {ip: st.net + ".123", here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6), bad: 0, lastPgn: p160 ? 160 : 237, cmd: hex16(sp.cmd),
-   helloAgo: 0, helloN: hellos, helloNoCrc: !h.nano, secAgo: 0, sec: hex16(sec), secN: machTop, secPgn: p160 ? 160 : seeder ? 237 : 123, sprayAgo: -1};
+  const p160 = h.nano && !!IMPL.nozzles, two = kind === "two";
+  const ip = st.net + ".123" + (two ? ", " + st.net + ".124" : "");
+  const j = {ip: ip, here: true, ago: 0, pkts: hellos * (p160 ? 7 : 6) * (two ? 2 : 1), bad: 0, lastPgn: p160 ? 160 : 237, cmd: hex16(sp.cmd),
+   helloAgo: 0, helloN: hellos * (two ? 2 : 1), helloNoCrc: kind === "aog", secAgo: 0, sec: hex16(sec), secN: machTop,
+   secPgn: kind === "aog" ? 123 : 237, sprayAgo: -1};
   if (!p160) return j;
   return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
  }

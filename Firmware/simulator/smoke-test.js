@@ -5,6 +5,7 @@
 // 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
 // 2026-10-27 (Claude): the seed drill module's own page (Seeder_ESP32); the Teensy's Machine tab shows all 19 sections.
+// 2026-10-27 (Claude): the AiO v26's machine part and two of our modules on the Teensy's Machine tab.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -65,11 +66,12 @@ async function teensy(browser, port, q, name) {
   if (t !== "status") await shot(pg, name + "-" + t);
  }
  await expect(pg, what, "#log", /\[boot\]/);
- const spr = /impl=sprayer/.test(q), ours = !/mach=(aog|0)/.test(q);   // our module chosen (not the official one, not none)
+ const spr = /impl=sprayer/.test(q), ours = !/mach=(aog|v26|0)/.test(q);   // our module chosen (not the official one, the AiO v26, none)
  if (!/mach=0|park=1/.test(q)) {       // the seed drill's 19 sections (PGN 229 and its module's PGN 237), or the sprayer's 5 (parked: nothing asked yet, the tab draws 5)
   const n = spr ? 5 : 19;
   if ((await pg.locator("#mSec span").count()) !== n) fail.push(what + ": the Machine tab does not show " + n + " sections");
-  await expect(pg, what, "#mSecFrom", ours ? (spr ? /^PGN 160/ : /^PGN 237/) : /^hello reply/);
+  await expect(pg, what, "#mSecFrom", /mach=aog/.test(q) ? /^hello reply/ : /^PGN 237/);
+  await expect(pg, what, "#mIp", /mach=two/.test(q) ? /^192\.168\.5\.123, 192\.168\.5\.124$/ : /^192\.168\.5\.123$/);
  }
  // our module: the Machine tab links to its page (the seed drill's or the sprayer's)
  const la = pg.locator("#simModuleLink a"), link = (await la.count()) ? await la.getAttribute("href") : null;
@@ -90,7 +92,7 @@ async function teensy(browser, port, q, name) {
  await shot(start, "start");
  await start.close();
  for (const [q, name] of [["", "um982"], ["?gps=x20p&xiao=0&mach=0", "x20p"], ["?gps=f9p&imu=bno&motor=keya&prog=aog&mach=aog", "f9p"],
-  ["?gps=dualf9p&imu=rvc&motor=ibt2&prog=aog", "dualf9p"], ["?imu=none&motor=danfoss&impl=sprayer", "noimu"]]) {
+  ["?gps=dualf9p&imu=rvc&motor=ibt2&prog=aog&mach=v26", "dualf9p"], ["?imu=none&motor=danfoss&impl=sprayer&mach=two", "noimu"], ["?mach=two", "two"]]) {
   const pg = await teensy(browser, port, q, name);
   await pg.close();
  }

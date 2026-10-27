@@ -7,7 +7,7 @@ pressure and flow, and has its own web page.
 The 19-section no-till seed drill on a KinCony KC868-A32 has its own program since
 v0.9: [Seeder/Seeder_ESP32](../../Seeder/Seeder_ESP32).
 
-Version 0.9 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.9.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -107,7 +107,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.9` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.9.1` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -182,7 +182,7 @@ Monitor: `wifi-reset`.
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
 | 200 → 123 | hello / reply | reply carries the sections 1–16 really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
-| 237 | module → program | every 200 ms: sections 1–16 open (5–6), relays 1–16 on (7–8), master switch (9) |
+| 237 | module → program | every 200 ms, in the layout of the AgOpenGPS AiO v26 firmware: sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives) |
 | 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the

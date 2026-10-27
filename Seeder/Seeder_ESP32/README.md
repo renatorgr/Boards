@@ -4,7 +4,7 @@ Section control for the **19-section no-till seed drill**, driven by **AgOpenWeb
 **AgOpenGPS** over the tractor's network, on a **KinCony KC868-A32** (ESP32, 32 relays,
 network socket). Each section is one linear actuator, switched by a 12 V DPDT relay.
 
-Version 0.1, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
+Version 0.1.1, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
 got its own folder (different implement, different hardware). Written from KinCony's pin
 list: it has not run on a KC868-A32 yet.
 
@@ -58,7 +58,7 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
    to have the same name).
 4. Power the KC868-A32 with 12 V and plug its USB socket into the computer, as in
    KinCony's guide for the board. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.1` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.1.1` and `ready`.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
 page *Install a new program* and choose the `.bin`.
@@ -155,10 +155,10 @@ does not move away from an end, that diode is the wrong way round.
 
 ## What the AiO module page shows
 
-The AiO v4.5 page's *Machine* tab shows every section of the seed drill (19 squares):
-what the program asks for (PGN 254 for 1–16, PGN 229 above) and what the module has open
-(its PGN 237, below). That needs the AiO firmware built after this change. The XIAO page
-reads PGN 254 only, so it shows sections 1–16.
+The AiO v4.5 page's *Machine* tab shows every section the program asks for (PGN 254 for
+1–16, PGN 229 above) and every section the machine modules report open (their PGN 237,
+below, as any module in the AiO v26 layout sends it; several modules together), so here the
+19 of the seed drill. The XIAO page reads PGN 254 only, so it shows sections 1–16.
 
 ## Forgotten Wi-Fi password
 
@@ -177,7 +177,7 @@ restarts. The program's config stays. The same from the Serial Monitor: `wifi-re
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
 | 200 → 123 | hello / reply | reply carries the sections 1–16 really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
-| 237 | module → network | every 200 ms, 11 data bytes: sections 1–16 open (5–6), relays 1–16 on (7–8), 1 (9: no master switch), sections 17–64 open (10–15). The official module sends 8 bytes of fixed content here; the AiO Teensy reads the sections from it |
+| 237 | module → network | every 200 ms, 14 data bytes: the layout of the AgOpenGPS AiO v26 firmware, sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives), 0, 0, then sections 17–64 open (13–18). The official Machine_UDP_v5 sends 8 bytes of fixed content here; the AiO Teensy reads the sections from it |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts

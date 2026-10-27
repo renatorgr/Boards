@@ -220,7 +220,7 @@ byte before it (low 8 bits).
 (XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino).
 
 ### Machine module (UDP 9999 in)
-123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B with 11 data bytes, the seed drill's (Seeder_ESP32: sections 1-16 open in bytes 5-6, sections 17-64 in bytes 10-15), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts.
+123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B, the AiO v26 layout (sections 1-16 the module drives in bytes 5-6, lift, tramline, geo stop, status; Seeder_ESP32 adds sections 17-64 in bytes 13-18), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts. A module's sections come from its 237 when it sends one (the AiO v26 leaves them at 0 in its hello reply); up to 4 modules (IPs) are kept apart and their sections put together.
 
 ## Web Interface
 
