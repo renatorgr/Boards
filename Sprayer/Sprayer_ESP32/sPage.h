@@ -1,4 +1,4 @@
-/* sPage.h - the sprayer module's web page (English).
+/* sPage.h - the sprayer (or seed drill) module's web page (English).
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
@@ -6,6 +6,8 @@
    2026-10-27 (Claude): the divider field is for the pressure signal only (10k / 10k = 0.5).
    2026-10-27 (Claude): the sensors fitted are ticked in Calibration; readings and fields only for those (none: no
    Sprayer card, as on a seed drill).
+   2026-10-27 (Claude): up to 64 sections and 32 relays, "relay 1 follows section", the network cable and the module
+   IP's last number; the title says Sprayer or Seeder (MODULE_KIND).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -65,7 +67,7 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 </style>
 </head>
 <body>
-<header><div class="dot" id="dot"></div><h1>Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
+<header><div class="dot" id="dot"></div><h1 id="kind">Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
 <main>
 <div class="grid">
 
@@ -82,17 +84,20 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 
 <div class="card"><h2>Sections</h2>
 <div class="secs" id="secs"></div>
-<div class="secs" id="secs2"></div>
 <p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent).</p>
 <h2 style="margin-top:12px">Relays</h2>
 <div class="secs rl" id="relays"></div>
 <p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
+<div class="field"><span>Relay 1 follows section (the next relays the next sections). 0 = what the program's pin config says (sections 1-16 only)</span><input type="number" id="first" min="0" max="64" step="1"></div>
+<div class="row"><button class="act" onclick="saveRelays()">Save</button></div>
+<div class="msg" id="msgRelays"></div>
 </div>
 
 <div class="card"><h2>AgOpenWeb</h2>
 <dl>
 <dt>Program</dt><dd id="link">–</dd>
 <dt>Last section message</dt><dd id="ago239">–</dd>
+<dt>Sections 17-64 (PGN 229)</dt><dd id="ago229">–</dd>
 <dt>Last hello</dt><dd id="agoHello">–</dd>
 <dt>Speed</dt><dd id="kmh">–</dd>
 <dt>Hydraulic lift</dt><dd id="hyd">–</dd>
@@ -102,10 +107,11 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 </dl>
 </div>
 
-<div class="card"><h2>Wi-Fi</h2>
+<div class="card"><h2>Network</h2>
 <dl>
-<dt>Own network</dt><dd id="ap">–</dd>
-<dt>Tractor network</dt><dd id="sta">–</dd>
+<dt>Own Wi-Fi network</dt><dd id="ap">–</dd>
+<dt class="eth" hidden>Network cable</dt><dd class="eth" id="eth" hidden>–</dd>
+<dt>Tractor Wi-Fi</dt><dd id="sta">–</dd>
 <dt>Module IP</dt><dd id="ip">–</dd>
 <dt>Signal</dt><dd id="rssi">–</dd>
 <dt>Program subnet</dt><dd id="subnet">–</dd>
@@ -113,14 +119,15 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <p class="note">The program looks for the machine module at &lt;subnet&gt;.123 on the tractor network. The subnet comes from the program (PGN 201), or is set below.</p>
 </div>
 
-<div class="card"><h2>Wi-Fi settings</h2>
+<div class="card"><h2>Network settings</h2>
 <div class="field"><span>Own network name</span><input type="text" id="apSsid" maxlength="32"></div>
 <div class="field"><span>New own-network password (leave empty to keep it)</span><input type="password" id="apPass" maxlength="63"></div>
-<div class="opt"><input type="checkbox" id="staOn"><label for="staOn">Join the tractor network (the router the tablet uses)</label></div>
+<div class="opt"><input type="checkbox" id="staOn"><label for="staOn" id="staOnLbl">Join the tractor network (the router the tablet uses)</label></div>
 <div class="field"><span>Tractor network name</span><input type="text" id="staSsid" maxlength="32"></div>
 <div class="field"><span>Tractor network password</span><input type="password" id="staPass" maxlength="63"></div>
 <div class="field"><span>Module name (http://name.local/)</span><input type="text" id="host" maxlength="24"></div>
-<div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network (the module becomes .123)</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5"></div>
+<div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5"></div>
+<div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
 <div class="row"><button class="act" onclick="saveWifi()">Save and restart</button></div>
 <div class="msg" id="msgWifi"></div>
 </div>
@@ -150,11 +157,14 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const FN={0:'–',17:'Lift ↓',18:'Lift ↑',19:'Tram R',20:'Tram L',21:'Geo'};
-function fnName(f){return f>=1&&f<=16?'S'+f:(FN[f]||'?')}
+// relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
+const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
+function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
+// sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
+function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
 function pw(){return prompt('Password of the own Wi-Fi network')}
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
-$('secs').innerHTML=cells('s',8,0);$('secs2').innerHTML=cells('s',8,8);let nRelays=0;
+let nSecs=0,nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
 // show what belongs to the sensors fitted (1 pressure, 2 flow): class p = pressure, f = flow
 function fitted(pre,s){for(const e of document.querySelectorAll('.'+pre+'p'))e.hidden=!(s&1);for(const e of document.querySelectorAll('.'+pre+'f'))e.hidden=!(s&2)}
@@ -165,7 +175,8 @@ async function refresh(){
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
     $('dot').className='dot'+(d.aog.link?' on':'');
-    $('sub').textContent=(d.wifi.up?'on '+d.wifi.sta+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
+    if(d.kind&&$('kind').textContent!==d.kind+' module'){$('kind').textContent=d.kind+' module';document.title=d.kind+' module'}
+    $('sub').textContent=(d.wifi.up?'on '+(d.wifi.staUp?d.wifi.sta:'the cable')+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
     const sn=d.cal.sensors===undefined?3:d.cal.sensors;$('sprCard').hidden=!sn;fitted('r',sn);
     $('bar').innerHTML=d.spr.bar.toFixed(1)+'<small>bar</small>';
     $('lpm').innerHTML=d.spr.lpm.toFixed(1)+'<small>L/min</small>';
@@ -173,22 +184,29 @@ async function refresh(){
     $('master').innerHTML=d.spr.master?'<span class="ok">on</span>':'<span class="bad">off</span>';
     $('volts').textContent=d.spr.volts.toFixed(2)+' V';
     $('pulses').textContent=d.spr.pulses;
-    for(let i=0;i<16;i++){const e=$('s'+i);e.className=(d.out.on>>i&1?'on':'')+(d.aog.req>>i&1&&!(d.out.on>>i&1)?' req':'')}
+    // as many sections as the program has asked for (secTop), at least those the relays follow (up to 16)
+    let mapped=0,nSec=0;for(const f of d.out.fn)if(f>=1&&f<=64){nSec++;mapped=Math.max(mapped,f)}
+    const n=Math.max(8,d.aog.secTop||0,Math.min(16,mapped));
+    if(nSecs!==n){nSecs=n;$('secs').innerHTML=cells('s',n,0)}
+    for(let i=0;i<nSecs;i++){const e=$('s'+i),on=bit(d.out.on,i);e.className=(on?'on':'')+(bit(d.aog.req,i)&&!on?' req':'')}
     if(nRelays!=d.out.fn.length){nRelays=d.out.fn.length;$('relays').innerHTML=cells('r',nRelays,0)}
-    let nSec=0;for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];if(f>=1&&f<=16)nSec++;e.innerHTML='<small>'+(i+1)+'</small>'+fnName(f);e.className=d.out.bits>>i&1?'on':''}
-    $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: what each relay does comes from the program (Tool → Machine → Pin config).';
+    for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];e.innerHTML='<small>'+(i+1)+'</small>'+fnName(f);e.className=d.out.bits>>>i&1?'on':''}
+    $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: '+(d.out.first?'relay 1 follows section '+d.out.first+', the next relays the next sections (set below).':'what each relay does comes from the program (Tool → Machine → Pin config).');
     $('link').innerHTML=d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>';
     $('ago239').textContent=ago(d.aog.ago239);$('agoHello').textContent=ago(d.aog.agoHello);
+    $('ago229').textContent=d.aog.ago229<0?'never (the tool has 16 sections or fewer)':ago(d.aog.ago229);
     $('kmh').textContent=d.aog.kmh.toFixed(1)+' km/h';
     $('hyd').textContent=(d.aog.hydEn?'enabled, ':'disabled, ')+(d.aog.hyd==1?'lowering':d.aog.hyd==2?'raising':'idle')+' (raise '+d.aog.raise+' s, lower '+d.aog.lower+' s)';
     $('tram').textContent=(d.aog.tram&1?'right ':'')+(d.aog.tram&2?'left':'')||'off';
-    $('counts').textContent=d.aog.n239+' sections, '+d.aog.nHello+' hellos, '+d.aog.crcErr+' bad checksums';
+    $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+d.aog.crcErr+' bad checksums';
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
-    $('sta').innerHTML=!d.wifi.staOn?'<span class="warn">not set</span>':d.wifi.up?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
-    $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
-    $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.123';
-    $('ver').textContent=d.fw+' v'+d.ver;$('built').textContent=d.built;$('up').textContent=Math.floor(d.up/60)+' min';
+    for(const e of document.querySelectorAll('.eth'))e.hidden=!d.wifi.eth;
+    $('eth').innerHTML=d.wifi.staOn?'<span class="warn">not used (tractor Wi-Fi instead)</span>':d.wifi.ethUp?'<span class="ok">connected</span>':'<span class="bad">no link</span>';
+    $('sta').innerHTML=!d.wifi.staOn?(d.wifi.eth?'not used (cable)':'<span class="warn">not set</span>'):d.wifi.staUp?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
+    $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.staUp?d.wifi.rssi+' dBm':'–';
+    $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
+    $('ver').textContent=d.fw+' v'+d.ver+(d.board?' · '+d.board:'');$('built').textContent=d.built;$('up').textContent=Math.floor(d.up/60)+' min';
     $('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     $('log').textContent=d.log.join('\n');
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
@@ -197,6 +215,8 @@ async function refresh(){
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
   $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;$('subnetIn').value=d.subnet;
+  $('ipLast').value=d.ipLast||123;$('first').value=d.first||0;
+  if(d.eth)$('staOnLbl').textContent='Use the tractor\'s Wi-Fi network instead of the network cable';
   $('staPass').placeholder=d.staPassSet?'(saved, leave empty to keep it)':'';
   $('ppl').value=d.ppl;$('pmax').value=d.pmax;$('pdiv').value=d.pdiv;
   const sn=d.sensors===undefined?3:d.sensors;$('snP').checked=!!(sn&1);$('snF').checked=!!(sn&2);showFitted();
@@ -210,7 +230,8 @@ async function post(url,fields,msgId){
     if(d.ok)settingsLoaded=false;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
-function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim()},'msgWifi')}
+function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi')}
+function saveRelays(){post('/api/relays',{first:$('first').value},'msgRelays')}
 function saveCalib(){post('/api/calib',{sensors:ticked(),ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
 async function update(){
   const f=$('bin').files[0];if(!f)return;const p=pw();if(p===null)return;

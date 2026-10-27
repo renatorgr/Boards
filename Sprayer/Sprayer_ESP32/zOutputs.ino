@@ -3,14 +3,19 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Hydraulic lift timing after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
+   2026-10-27 (Claude): up to 64 sections, relays that follow the sections in a row, the KC868-A32's relays (I2C).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Each relay has a function from the program (PGN 236, kept in cfg.pin): a section, the hydraulic
-// lift, a tramline side or the geo stop. Everything is off while the program is silent.
+// Each relay has a function (relayFn): a section, the hydraulic lift, a tramline side or the geo stop.
+//   - cfg.firstSection 1-64: relay 1 is that section and the next relays the next sections, in a row
+//     (a tool with more sections than the program's pin config knows: the 19-section seed drill).
+//   - cfg.firstSection 0: what the program gives each relay (PGN 236, kept in cfg.pin): sections 1-16 and
+//     the other functions, for the first 24 relays.
+// Everything is off while the program is silent.
 //
 // RELAY_ON_HIGH (Sprayer_ESP32.ino) says how the relays of the chosen board close: on a HIGH pin
-// (ESP32_Relay_X8) or on a LOW pin (the usual relay modules). cfg.invertOutputs (PGN 238, byte 8
+// (ESP32_Relay_X8) or on a LOW pin (the usual relay modules, the KC868-A32). cfg.invertOutputs (PGN 238, byte 8
 // bit 0; the official module calls it isRelayActiveHigh) turns that round: 0 = as built, 1 = inverted.
 // The program sends this setting at start-up and when the machine profile is loaded, so the
 // "relay active high" box in its machine settings normally stays unticked.
@@ -24,19 +29,77 @@ static int relayLevel(bool on)
 
 static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 
+// What relay i (0 = relay 1) does: 0 nothing, 1-64 that section, FN_OTHER + 1-5 lift lower, lift raise,
+// tramline right, tramline left, geo stop
+uint8_t relayFn(uint8_t i)
+{
+    if (cfg.firstSection)
+    {
+        const uint16_t s = cfg.firstSection + i;
+        return s <= MAX_SECTIONS ? s : 0;
+    }
+    if (i >= 24) return 0;
+    const uint8_t p = cfg.pin[i];
+    if (p >= PIN_HYD_LOWER && p <= PIN_GEO_STOP) return FN_OTHER + (p - PIN_HYD_LOWER + 1);
+    return p <= 16 ? p : 0;
+}
+
+#if BOARD == BOARD_KC868_A32
+// The KC868-A32's relays: eight on each PCF8574 chip, one byte per chip (bit 0 = its first relay). A chip
+// is only written when its byte changes, and once a second anyway (a chip that missed a write catches up).
+static int16_t chipSent[4] = { -1, -1, -1, -1 };
+static bool    chipOk[4] = { true, true, true, true };
+static uint32_t chipRefreshMs = 0;
+
+static void relaysWrite(uint32_t bits)
+{
+    const bool refresh = millis() - chipRefreshMs >= 1000;
+    if (refresh) chipRefreshMs = millis();
+    for (uint8_t c = 0; c < 4; c++)
+    {
+        uint8_t b = 0;
+        for (uint8_t k = 0; k < 8; k++) if (relayLevel((bits >> (c * 8 + k)) & 1) == HIGH) b |= 1 << k;
+        if (b == chipSent[c] && !refresh) continue;
+        Wire.beginTransmission(RELAY_CHIP[c]);
+        Wire.write(b);
+        const bool ok = Wire.endTransmission() == 0;
+        if (ok != chipOk[c]) logEvent(ok ? "relays %u-%u answer again" : "relays %u-%u: no answer from their chip (I2C 0x%02X)",
+                                      c * 8 + 1, c * 8 + 8, RELAY_CHIP[c]);
+        chipOk[c] = ok;
+        chipSent[c] = ok ? b : -1;
+    }
+}
+#else
+static void relaysWrite(uint32_t bits)
+{
+    for (uint8_t i = 0; i < NUM_RELAYS; i++) digitalWrite(RELAY_PIN[i], relayLevel((bits >> i) & 1));
+}
+#endif
+
 void outputsInit()
 {
+#if BOARD == BOARD_KC868_A32
+    Wire.begin(RELAY_SDA, RELAY_SCL, 100000);
+    chipRefreshMs = millis();
+    for (uint8_t c = 0; c < 4; c++)                         // quietly: the serial port is not open yet
+    {
+        Wire.beginTransmission(RELAY_CHIP[c]);
+        Wire.write(relayLevel(false) == HIGH ? 0xFF : 0x00);
+        chipOk[c] = Wire.endTransmission() == 0;
+    }
+#else
     for (uint8_t i = 0; i < NUM_RELAYS; i++)
     {
         digitalWrite(RELAY_PIN[i], relayLevel(false));
         pinMode(RELAY_PIN[i], OUTPUT);
     }
+#endif
 }
 
 // Everything off, whatever the polarity setting says (used before a restart or a program update)
 void outputsAllOff()
 {
-    for (uint8_t i = 0; i < NUM_RELAYS; i++) digitalWrite(RELAY_PIN[i], relayLevel(false));
+    relaysWrite(0);
     relayBits = 0;
     sectionsOn = 0;
 }
@@ -66,30 +129,39 @@ void hydTick()
     isRaise = cfg.hydEnable && raiseTimer;
 }
 
-// Every 50 ms and right after a PGN 239: the relays follow the program
+// Every 50 ms and right after a PGN 239 or 229: the relays follow the program
 void applyOutputs()
 {
-    linkOk = have239 && (millis() - last239Ms) < NO_DATA_TIMEOUT_MS;
+    const uint32_t now = millis();
+    linkOk = have239 && (now - last239Ms) < NO_DATA_TIMEOUT_MS;
 
-    bool state[FN_GEO_STOP];                                // state[f - 1] = function f on
-    const uint16_t req = (linkOk && masterOn) ? sectionsReq : 0;
-    for (uint8_t s = 0; s < 16; s++) state[s] = bitRead(req, s);
-    state[FN_HYD_LOWER - 1] = linkOk && isLower;
-    state[FN_HYD_RAISE - 1] = linkOk && isRaise;
-    state[FN_TRAM_RIGHT - 1] = linkOk && bitRead(tramline, 0);
-    state[FN_TRAM_LEFT - 1]  = linkOk && bitRead(tramline, 1);
-    state[FN_GEO_STOP - 1]   = linkOk && geoStop != 0;
+    // sections 17-64 come in PGN 229, which the program sends with every 239 when the tool has more than 16
+    const bool fresh229 = have229 && (now - last229Ms) < NO_DATA_TIMEOUT_MS;
+    sectionsReq = sections239 | (fresh229 ? sections229 & ~(uint64_t)0xFFFF : 0);
+    if (sectionsReq)
+    {
+        const uint8_t top = 64 - __builtin_clzll(sectionsReq);
+        if (top > secTop) secTop = top;
+    }
 
-    uint16_t bits = 0;
-    uint16_t open = 0;
+    const uint64_t req = (linkOk && masterOn) ? sectionsReq : 0;
+    const bool other[6] = { false,                          // other[f - FN_OTHER]
+                            linkOk && isLower, linkOk && isRaise,
+                            linkOk && (tramline & 1), linkOk && (tramline & 2),
+                            linkOk && geoStop != 0 };
+    uint32_t bits = 0;
+    uint64_t open = 0;
     for (uint8_t i = 0; i < NUM_RELAYS; i++)
     {
-        const uint8_t f = cfg.pin[i];
-        const bool on = f >= 1 && f <= FN_GEO_STOP && state[f - 1];
-        digitalWrite(RELAY_PIN[i], relayLevel(on));
-        if (on) bitSet(bits, i);
-        if (on && f <= 16) bitSet(open, f - 1);
+        const uint8_t f = relayFn(i);
+        bool on = false;
+        if (f >= 1 && f <= MAX_SECTIONS) on = (req >> (f - 1)) & 1;
+        else if (f > FN_OTHER && f <= FN_OTHER + 5) on = other[f - FN_OTHER];
+        if (!on) continue;
+        bits |= (uint32_t)1 << i;
+        if (f <= MAX_SECTIONS) open |= (uint64_t)1 << (f - 1);
     }
+    relaysWrite(bits);
     relayBits = bits;
     sectionsOn = open;
 }

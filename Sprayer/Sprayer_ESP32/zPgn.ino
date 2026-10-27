@@ -4,14 +4,17 @@
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
    2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
+   2026-10-27 (Claude): PGN 229 read in full (sections 1-64); messages also go out over the network cable.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // Received on port 8888, source 0x7F (the program):
-//   239 machine data, 229 64 sections, 238 machine config, 236 output functions, 201 subnet,
-//   200 hello, 202 scan
+//   239 machine data (sections 1-16), 229 sections 1-64 (bytes 5-12, 8 per byte, section 1 = byte 5 bit 0;
+//   sent with every 239 when the tool has more than 16 sections), 238 machine config, 236 output functions,
+//   201 subnet, 200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
-//   123 hello reply, 203 scan reply (to 255.255.255.255), 237 sign of life every 200 ms,
+//   123 hello reply, 203 scan reply (to 255.255.255.255), 237 sign of life every 200 ms (these carry
+//   sections 1-16 and relays 1-16, as in the official layouts),
 //   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15), only when the machine has
 //       a pressure sensor or a flow meter (page setting)
 
@@ -24,7 +27,7 @@ void udpStart()
 
 static void sendPgn(uint8_t* msg, size_t length, IPAddress to)
 {
-    if (!staUp()) return;                                   // nobody to talk to yet
+    if (!netUp()) return;                                   // nobody to talk to yet (no tractor Wi-Fi, no cable)
     msg[length - 1] = pgnChecksum(msg, length);
     udp.beginPacket(to, SEND_PORT);
     udp.write(msg, length);
@@ -76,20 +79,26 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         hydLift  = d[7];                                    // 1 lower, 2 raise
         tramline = d[8];                                    // bit 0 right, bit 1 left
         geoStop  = d[9];
-        sectionsReq = d[11] | (uint16_t)d[12] << 8;         // sections 1-8, 9-16
+        sections239 = d[11] | (uint16_t)d[12] << 8;         // sections 1-8, 9-16
         last239Ms = millis();
         have239 = true;
         count239++;
         applyOutputs();                                     // no need to wait for the next 50 ms
         break;
 
-    case 229:                                               // 64 sections: only the first 16 fit this board
-        if (dataLength < 2) return;
-        sectionsReq = d[5] | (uint16_t)d[6] << 8;
-        last239Ms = millis();
-        have239 = true;
+    case 229:                                               // sections 1-64, with every 239 on a tool of 17+ sections
+    {
+        if (dataLength < 8) return;
+        uint64_t s = 0;
+        for (uint8_t b = 0; b < 8; b++) s |= (uint64_t)d[5 + b] << (8 * b);
+        sections229 = s;
+        sections239 = (uint16_t)s;                          // the same sections 1-16 as in the 239
+        last229Ms = last239Ms = millis();
+        have229 = have239 = true;
+        count229++;
         applyOutputs();
         break;
+    }
 
     case 200:                                               // hello from the program: answer as a machine module
     {
@@ -118,10 +127,11 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
 
     case 236:                                               // output functions, 24 entries
         if (dataLength < 24) return;
-        for (uint8_t i = 0; i < 24; i++) cfg.pin[i] = d[5 + i] <= FN_GEO_STOP ? d[5 + i] : 0;
+        for (uint8_t i = 0; i < 24; i++) cfg.pin[i] = d[5 + i] <= PIN_GEO_STOP ? d[5 + i] : 0;
         settingsSave();
-        logEvent("output functions from the program: relays %u %u %u %u %u %u %u %u",
-                 cfg.pin[0], cfg.pin[1], cfg.pin[2], cfg.pin[3], cfg.pin[4], cfg.pin[5], cfg.pin[6], cfg.pin[7]);
+        logEvent("output functions from the program: relays %u %u %u %u %u %u %u %u%s",
+                 cfg.pin[0], cfg.pin[1], cfg.pin[2], cfg.pin[3], cfg.pin[4], cfg.pin[5], cfg.pin[6], cfg.pin[7],
+                 cfg.firstSection ? " (not used: the relays follow the sections in a row)" : "");
         break;
 
     case 201:                                               // subnet: save and restart with the new IP
@@ -140,7 +150,7 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         if (dataLength == 3 && d[5] == 202 && d[6] == 202)
         {
             uint8_t reply[] = { 0x80, 0x81, 0x7B, 203, 7,
-                                cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 123,
+                                cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], cfg.ipLast,
                                 from[0], from[1], from[2], 0 };
             sendPgn(reply, sizeof(reply), IPAddress(255, 255, 255, 255));
         }
