@@ -1,3 +1,10 @@
 # the web page simulator built locally (python3 Firmware/simulator/build.py) and the browser of its check
 _site/
 node_modules/
+
+# KiCad: local display settings, backups and generator report (Relay24_ESP32)
+*.kicad_prl
+*-backups/
+fp-info-cache
+Relay24_ESP32/drc.rpt
+__pycache__/

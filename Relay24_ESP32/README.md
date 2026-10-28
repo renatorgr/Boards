@@ -1,0 +1,121 @@
+# Relay24_ESP32 - 24-section relay board for an ESP32 DevKitC
+
+A 210 x 120 mm two-layer board that holds everything needed to drive 24 sections with
+12 V linear actuators from AgOpenGPS / AgOpenWeb (machine module over UDP):
+
+- an **ESP32 DevKitC V4** (38 pins) plugged into two 1x19 sockets, running
+  [Seeder_ESP32](../Seeder/Seeder_ESP32) or [Sprayer_ESP32](../Sprayer/Sprayer_ESP32)
+  with a board profile for this hardware (see *Firmware* below);
+- **three 74HC595 shift registers + three ULN2803A** driving **24 DPDT relays**
+  (HF115F/012-2ZS4, 8 A); each relay reverses one actuator: relay off = actuator pulled
+  in (section closed), relay on = actuator pushed out (section open); a green LED per
+  section;
+- **LAN8720A + RJ45** (RMII, 50 MHz clock from GPIO17, like the KinCony KC868-A32) so the
+  module can sit on the tractor network cable; Wi-Fi stays available;
+- **12 V in** with reverse-polarity diode, TVS and bulk capacitor, **LM2596S-5.0 buck**
+  to 5 V (DevKitC) and **AMS1117-3.3** for the logic and the PHY;
+- the actuator power comes in on its **own terminals**, one pair of rails per relay row,
+  so the 12 V for the actuators never flows through the logic supply.
+
+![Top view](pcb_top.png)
+
+Schematic: [Relay24_ESP32_schematic.pdf](Relay24_ESP32_schematic.pdf). Bottom view:
+[pcb_bottom.png](pcb_bottom.png). The design has **not been built yet**; see *Before
+ordering* at the end.
+
+## Connections
+
+All screw terminals are 5.08 mm KF301 blocks, wire openings towards the board edge.
+
+| Terminal | Function |
+|---|---|
+| J1 .. J12 (top edge) | sections 1 .. 12, pin 1 = red wire, pin 2 = black wire of the actuator |
+| J13 .. J24 (bottom edge) | sections 13 .. 24 (13 is under 12, 24 under 1) |
+| J26, J27 (top edge, both ends) | 12 V ACT A: + and - of the actuator supply for sections 1-12 (feed from one end or both) |
+| J28, J29 (bottom edge, both ends) | 12 V ACT B: same for sections 13-24 |
+| J25 (right edge) | 12 V IN for the board and the relay coils (put a 2 A fuse in the wire) |
+| J32 | RJ45, 100 Mbit, with magnetics and link / speed LEDs on the board |
+| J33 | I2C header: 3V3, GND, SDA (GPIO15), SCL (GPIO14), with 4.7 k pull-ups |
+| J34 | analog header: 3V3, GND, GPIO34, GPIO35 (0 - 3.3 V inputs) |
+
+All grounds are common (board 12 V, actuator rails, ESP32). The relay contacts:
+common 1 -> red wire, common 2 -> black wire; with the coil off the red wire is on GND
+and the black wire on the actuator rail, with the coil on it is the other way round.
+Swap the two wires of an actuator if it moves the wrong way.
+
+## ESP32 pins
+
+| Function | GPIO | Notes |
+|---|---|---|
+| 74HC595 data (SER) | 13 | three registers in a chain: U1 (sections 1-8) -> U2 (9-16) -> U3 (17-24) |
+| 74HC595 clock (SRCLK) | 16 | |
+| 74HC595 latch (RCLK) | 32 | |
+| 74HC595 output enable (OE, active low) | 4 | 4.7 k pull-up: all relays off until the program drives it low |
+| LAN8720A MDC / MDIO | 23 / 18 | PHY address 0 |
+| RMII TXD0 / TXD1 / TX_EN | 19 / 22 / 21 | |
+| RMII RXD0 / RXD1 / CRS_DV | 25 / 26 / 27 | |
+| RMII 50 MHz clock | 17 | ESP32 output (`ETH_CLOCK_GPIO17_OUT`), 33 ohm series resistor |
+| PHY reset / power | 33 | 10 k pull-down: the PHY stays in reset until the program sets it high |
+| I2C | 15 (SDA), 14 (SCL) | header J33 |
+| Analog | 34, 35 | header J34, input only |
+
+Pins 0, 2, 5, 12 are left free so the DevKitC boots and flashes normally.
+
+## Firmware
+
+Seeder_ESP32 / Sprayer_ESP32 need a board profile for this board (not written yet):
+
+- sections through the 74HC595 chain (bit 0 = section 1) instead of direct GPIOs:
+  `shiftOut` on GPIO13 / GPIO16, latch on GPIO32, then GPIO4 low;
+- Ethernet: `ETH.begin(0, 33, 23, 18, ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT)`;
+- the LEDs next to the relays and the PHY LEDs need no code.
+
+## Power
+
+- 12 V IN: board logic + relay coils, about 0.1 A idle, up to 1.1 A with all 24 coils
+  on (33 mA each). Reverse-polarity diode, 18 V TVS, 100 uF.
+- Actuator rails: one 12 V feed per row of 12 relays; the copper rail is 9 mm wide on
+  the top layer with a second strip on the bottom layer. Feed each rail from both ends
+  (J26 + J27, J28 + J29) when several actuators may move at once, or order the board
+  with 2 oz copper.
+- The DevKitC can be powered from USB for programming on the bench: D28 keeps the USB
+  5 V out of the buck converter.
+
+## Files
+
+- `Relay24_ESP32.kicad_pro`, `.kicad_sch` (+ three relay sheets), `.kicad_pcb`: KiCad 7
+  project. `Relay24_ESP32_schematic.pdf`, `pcb_top.png`, `pcb_bottom.png`,
+  `pcb_copper_*.png`: views.
+- `fabrication_JLCPCB/`: `Gerber_Relay24_ESP32.zip` (Gerber + drill), `BOM_*_all.csv` /
+  `CPL_*_all.csv` (every part) and `BOM_*_smd.csv` / `CPL_*_smd.csv` (surface-mount parts
+  only, for an order where the relays, terminals, sockets and RJ45 are soldered by hand).
+  JLCPCB format: BOM columns *Comment, Designator, Footprint, LCSC Part #*; CPL columns
+  *Designator, Mid X, Mid Y, Layer, Rotation*.
+- `tools/`: the generators. `design.py` holds every part, net and position;
+  `make_sch.py` writes the schematic, `make_pcb.py` places and routes the board
+  (`router.py` is a small grid router for the logic signals), `make_fab.py` writes the
+  JLCPCB files and the views. Run them from the project folder with the Python of
+  KiCad 7 (`python3 tools/make_pcb.py .`).
+
+## Before ordering
+
+Things that were assumed and should be checked on the real parts:
+
+- The DevKitC V4 sockets are 25.4 mm apart (38-pin module). Measure your module; the
+  30-pin DevKitC has another pitch and does not fit.
+- The RJ45 is the HanRun HR911105A pinout (pairs on 1-2 and 3-6, centre taps 4-5 and
+  7-8 to 3.3 V); another jack with built-in magnetics may differ. The PHY transmit pair
+  is wired to pins 3-6 and the receive pair to pins 1-2 (and the polarity follows the
+  layout): the tracks do not cross that way, and the LAN8720A Auto-MDIX sorts it out,
+  as any 10/100 link partner does.
+- The screw terminals follow the KiCad `TerminalBlock_bornier-2_P5.08mm` footprint
+  (wire opening on the pin-2 side); check the orientation on the first board.
+- LCSC numbers: the ULN2803A as C6116 was not verified, and the TVS, the electrolytic
+  capacitors, the inductor, the sockets and the headers have no number in the BOM
+  (choose equivalents in the JLCPCB parts library, or solder them yourself).
+- The references of the resistors, capacitors and LEDs are not printed on the board
+  (there is no room next to the PHY); the CPL files and the schematic have them.
+- Part rotations in the CPL are KiCad's; check the JLCPCB preview, in particular the
+  diodes, the TO-263 regulator, the SOT-223 and the QFN.
+- Linear actuators often draw 2-3 A while moving: size the actuator supply and the fuse
+  accordingly.
