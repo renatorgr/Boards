@@ -10,8 +10,9 @@ A 210 x 120 mm two-layer board that holds everything needed to drive 24 sections
   (HF115F/012-2ZS4, 8 A); each relay reverses one actuator: relay off = actuator pulled
   in (section closed), relay on = actuator pushed out (section open); a green LED per
   section;
-- **LAN8720A + RJ45** (RMII, 50 MHz clock from GPIO17, like the KinCony KC868-A32) so the
-  module can sit on the tractor network cable; Wi-Fi stays available;
+- **RTL8201F + RJ45** (RMII; the PHY runs on its own 25 MHz crystal and feeds the 50 MHz
+  reference clock into GPIO0) so the module can sit on the tractor network cable; Wi-Fi
+  stays available;
 - **12 V in** with reverse-polarity diode, TVS and bulk capacitor, **LM2596S-5.0 buck**
   to 5 V (DevKitC) and **AMS1117-3.3** for the logic and the PHY;
 - the actuator power comes in on its **own terminals**, one pair of rails per relay row,
@@ -51,15 +52,17 @@ Swap the two wires of an actuator if it moves the wrong way.
 | 74HC595 clock (SRCLK) | 16 | |
 | 74HC595 latch (RCLK) | 32 | |
 | 74HC595 output enable (OE, active low) | 4 | 4.7 k pull-up: all relays off until the program drives it low |
-| LAN8720A MDC / MDIO | 23 / 18 | PHY address 0 |
+| RTL8201F MDC / MDIO | 23 / 18 | PHY address 0 (strap resistors R32 / R36) |
 | RMII TXD0 / TXD1 / TX_EN | 19 / 22 / 21 | |
 | RMII RXD0 / RXD1 / CRS_DV | 25 / 26 / 27 | |
-| RMII 50 MHz clock | 17 | ESP32 output (`ETH_CLOCK_GPIO17_OUT`), 33 ohm series resistor |
+| RMII 50 MHz clock | 0 | input from the PHY (`ETH_CLOCK_GPIO0_IN`), 33 ohm series resistor; quiet at boot because the PHY is in reset |
 | PHY reset / power | 33 | 10 k pull-down: the PHY stays in reset until the program sets it high |
 | I2C | 15 (SDA), 14 (SCL) | header J33 |
 | Analog | 34, 35 | header J34, input only |
 
-Pins 0, 2, 5, 12 are left free so the DevKitC boots and flashes normally.
+Pins 2, 5, 12 and 17 are left free. GPIO0 carries the Ethernet clock, but only once the
+program releases the PHY reset on GPIO33, so the DevKitC still boots and flashes normally
+(GPIO0 is the only pin the ESP32 accepts the clock on).
 
 ## Firmware
 
@@ -67,8 +70,12 @@ Seeder_ESP32 / Sprayer_ESP32 need a board profile for this board (not written ye
 
 - sections through the 74HC595 chain (bit 0 = section 1) instead of direct GPIOs:
   `shiftOut` on GPIO13 / GPIO16, latch on GPIO32, then GPIO4 low;
-- Ethernet: `ETH.begin(0, 33, 23, 18, ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT)`;
-- the LEDs next to the relays and the PHY LEDs need no code.
+- Ethernet: `ETH.begin(ETH_PHY_RTL8201, 0, 23, 18, 33, ETH_CLOCK_GPIO0_IN)` with
+  arduino-esp32 3.x (in 2.x the order is `ETH.begin(0, 33, 23, 18, ETH_PHY_RTL8201,
+  ETH_CLOCK_GPIO0_IN)`);
+- the LEDs next to the relays and the PHY LEDs need no code: D30 (yellow) lights for a
+  10 Mbit link, D31 (green) for 100 Mbit, the chip's default LED mode (a program can
+  change it through MDIO, page 7 register 19).
 
 ## Power
 
@@ -105,9 +112,12 @@ Things that were assumed and should be checked on the real parts:
   30-pin DevKitC has another pitch and does not fit.
 - The RJ45 is the HanRun HR911105A pinout (pairs on 1-2 and 3-6, centre taps 4-5 and
   7-8 to 3.3 V); another jack with built-in magnetics may differ. The PHY transmit pair
-  is wired to pins 3-6 and the receive pair to pins 1-2 (and the polarity follows the
-  layout): the tracks do not cross that way, and the LAN8720A Auto-MDIX sorts it out,
-  as any 10/100 link partner does.
+  pair (MDI pair 0) is wired to pins 1-2 and the receive pair (MDI pair 1) to pins 3-6,
+  the usual wiring of an end device; the RTL8201F Auto-MDIX sorts out a crossed cable.
+- The RTL8201F replaced the LAN8720A on 2026-10-28 because JLCPCB assembles the LAN8720A
+  only on its Standard service (setup fee, wider board). The PHY runs on a 25 MHz crystal
+  and sends the reference clock out; the ESP32 reads it on GPIO0. Nothing of this has
+  been built yet.
 - The screw terminals follow the KiCad `TerminalBlock_bornier-2_P5.08mm` footprint
   (wire opening on the pin-2 side); check the orientation on the first board.
 - LCSC numbers were checked against the JLCPCB parts pages on 2026-10-28; stock

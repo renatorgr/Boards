@@ -146,6 +146,8 @@ def place_parts():
         ref = fp.Reference()
         ref.SetTextSize(VECTOR2I(FromMM(0.8), FromMM(0.8)))
         ref.SetTextThickness(FromMM(0.12))
+        if p["ref"] == "U9":
+            ref.SetPosition(mm(66.0, 52.3))    # the parts south of the PHY leave no room for it there
         if p["fp"][0] in ("Resistor_SMD", "Capacitor_SMD", "LED_SMD", "Connector_PinHeader_2.54mm",
                           "Connector_PinSocket_2.54mm"):
             ref.SetVisible(False)              # too dense for silkscreen; the CPL has them
@@ -288,12 +290,6 @@ def power_buses():
     for ref in ("J33", "J34"):
         p = pad_pos(ref, "2")
         polyline([p, (p[0], 44.9)], SIG_W, B_Cu, "GND")
-    # C31 (PHY 3.3 V decoupling) sits in the strap-resistor row, where tracks on both
-    # layers cut the pour to pieces: its ground pad gets a straight top-layer stub down
-    # to a via in the clear band just above the bottom relay row
-    p = pad_pos("C31", "2")
-    polyline([p, (p[0], 74.1)], SIG_W, F_Cu, "GND")
-    via(p[0], 74.1, "GND")
     # 12 V in: terminal to the reverse-protection diode
     j1 = pad_pos("J25", "1")
     d25a = pad_pos("D25", "2")
@@ -315,18 +311,19 @@ def power_buses():
         p = pad_pos(ref, "8")
         polyline([p, (p[0] + 2.0, p[1])], SIG_W, F_Cu, "GND")
         via(p[0] + 2.0, p[1], "GND")
-    # Ethernet pairs. Top layer: the PHY pins fan out above the chip (the rightmost pin
-    # turns first, so nothing crosses), down to a column of vias at x 82 with the 49.9 ohm
-    # terminations next to them. Bottom layer: four lines at 0.45 mm pitch across the board
-    # (the inner lines change level first), fan-out into the RJ45 pads.
+    # Ethernet pairs. Top layer: the four line pins (east side of the PHY, 0.5 mm pitch)
+    # run east and splay out, the outer lines turning first so that nothing crosses, to a
+    # column of vias at x 82 with the 49.9 ohm terminations next to them. Bottom layer:
+    # four lines at 0.45 mm pitch across the board (the inner lines change level first),
+    # fan-out into the RJ45 pads: pair 0 (transmit) on pins 1-2, pair 1 (receive) on 3-6.
     xv = 82.0
-    for net, pin, yf, xd, yv, xj, lvl, xt, yt2, rjpin in (
-            ("RXP", "23", 54.0, 82.0, 58.0, 84.5, 59.3, 188.5, 56.66, "6"),
-            ("RXN", "22", 54.5, 81.3, 59.5, 83.5, 59.75, 189.0, 60.46, "3"),
-            ("TXP", "21", 55.0, 80.6, 61.0, 84.0, 60.2, 188.1, 61.74, "2"),
-            ("TXN", "20", 55.5, 79.9, 62.5, 85.0, 60.65, 187.3, 63.0, "1")):
+    for net, pin, xd, yv, xj, lvl, xt, yt2, rjpin in (
+            ("MDI1N", "6", 75.0, 58.0, 84.5, 59.3, 188.5, 56.66, "6"),
+            ("MDI1P", "5", 76.0, 59.5, 83.5, 59.75, 189.0, 60.46, "3"),
+            ("MDI0N", "4", 76.0, 61.0, 84.0, 60.2, 188.1, 61.74, "2"),
+            ("MDI0P", "3", 75.0, 62.5, 85.0, 60.65, 187.3, 63.0, "1")):
         p = pad_pos("U9", pin)
-        polyline([p, (p[0], yf), (xd, yf), (xd, yv), (xv, yv)], SIG_W, F_Cu, net)
+        polyline([p, (xd, p[1]), (xd, yv), (xv, yv)], SIG_W, F_Cu, net)
         via(xv, yv, net)
         rt = [r for r in ("R38", "R39", "R40", "R41") if D.PARTS[r]["pins"]["1"] == net][0]
         polyline([(xv, yv), pad_pos(rt, "1")], SIG_W, F_Cu, net)
@@ -391,42 +388,66 @@ def gap_lanes():
 
 
 def phy_fanout():
-    """LAN8720A pin escapes. The pins are 0.5 mm apart, so each one gets a fixed track to
-    its resistor, capacitor, LED or to a via (the grid router takes over from there).
-    West column: 1 +3V3, 2 LED_SPD, 3 LED_LNK, 5 CLKIN, 6 VDDCR. South row: 7 RXD1, 8 RXD0,
-    9 +3V3, 10 PHYAD0, 11 CRS_DV, 12 MDIO (pull-ups in a row below). East column: 13 MDC,
-    15 RST, 16 TXEN, 17 TXD0, 18 TXD1. North row: 19 +3V3, 24 RBIAS (the pairs are above)."""
+    """RTL8201F pin escapes. The pins are 0.5 mm apart and the chip is turned 180 degrees,
+    so each pin gets a fixed track to its part or to a via (the grid router takes over
+    from there). East, top to bottom: 8 RXDV -> R35, 7 AVDD33 -> C31, 6/5/4/3 the line
+    pairs (power_buses), 2 AVDD10 -> C32, 1 RSET -> R31. North, west to east: 16 TXD0 (via),
+    15 TXC -> R30, 14 DVDD33 -> C30, 10 RXD1 and 9 RXD0 (vias). West, top to bottom:
+    17 TXD1, 20 TXEN, 21 RST -> R33, 22 MDC, 23 MDIO -> R34 (the five lines run west at
+    0.5 mm pitch and turn north at 1 mm pitch), 24 LED0 -> D30. South, west to east:
+    25 LED1 -> D31, 26 CRS_DV (via), 29 DVDD10 -> C33, 30 AVDD33 (a via and a bottom-layer
+    track to C31, there is no room for a third capacitor), 31/32 the crystal."""
     P = lambda n: pad_pos("U9", str(n))
-    w = SIG_W
-    def run(pts, net):
-        polyline(pts, w, F_Cu, net)
-    c30, d31, d30, r30 = pad_pos("C30", "1"), pad_pos("D31", "1"), pad_pos("D30", "2"), pad_pos("R30", "2")
-    c33, c34 = pad_pos("C33", "1"), pad_pos("C34", "1")
-    run([P(1), (63.35, P(1)[1]), (63.35, c30[1]), c30], "+3V3")
-    run([P(2), (62.85, P(2)[1]), (62.85, d31[1]), d31], "LED_SPD")
-    run([P(3), (d30[0], P(3)[1]), d30], "LED_LNK")
-    run([P(5), (r30[0], P(5)[1]), r30], "ETH_CLKIN")
-    run([P(6), (63.3, P(6)[1]), (63.3, c33[1]), c33, c34], "VDDCR")
-    r36, r35, c31, r32, r37, r34 = (pad_pos(r, "1") for r in ("R36", "R35", "C31", "R32", "R37", "R34"))
-    run([P(7), (P(7)[0], 66.3), (r36[0], 66.3), r36], "RMII_RXD1")
-    run([P(8), (P(8)[0], 66.8), (r35[0], 66.8), r35], "RMII_RXD0")
-    run([P(9), (P(9)[0], 67.3), (c31[0], 67.3), c31], "+3V3")
-    run([P(10), (P(10)[0], r32[1]), r32], "PHYAD0")
-    run([P(11), (P(11)[0], 63.5), (r37[0], 63.5), r37], "RMII_CRS_DV")
-    run([P(12), (P(12)[0], 62.95), (r34[0], 62.95), r34], "RMII_MDIO")
-    r33 = pad_pos("R33", "1")
-    run([P(13), (68.9, P(13)[1]), (68.9, 62.4), (72.5, 62.4)], "RMII_MDC")
-    via(72.5, 62.4, "RMII_MDC")
-    run([P(15), (69.4, P(15)[1]), (69.4, r33[1]), r33], "ETH_RST")
-    run([P(16), (70.0, P(16)[1])], "RMII_TXEN")
-    via(70.0, P(16)[1], "RMII_TXEN")
-    run([P(17), (69.4, P(17)[1]), (69.4, 58.4), (71.1, 58.4)], "RMII_TXD0")
-    via(71.1, 58.4, "RMII_TXD0")
-    run([P(18), (68.9, P(18)[1]), (68.9, 57.5), (69.9, 57.5)], "RMII_TXD1")
-    via(69.9, 57.5, "RMII_TXD1")
-    c32, r31 = pad_pos("C32", "1"), pad_pos("R31", "1")
-    run([P(19), (P(19)[0], 56.5), (c32[0], 56.5), c32], "+3V3")
-    run([P(24), (P(24)[0], r31[1]), r31], "RBIAS")
+    def run(pts, net, layer=F_Cu):
+        polyline(pts, SIG_W, layer, net)
+    # east
+    run([P(8), (69.4, P(8)[1]), (69.9, 57.75), pad_pos("R35", "1")], "PHY_RXDV")
+    run([P(7), (70.5, P(7)[1]), (71.1, 58.15), pad_pos("C31", "1")], "+3V3")
+    via(71.4, 58.6, "+3V3")
+    run([P(2), (73.2, P(2)[1]), (73.5, 61.55), pad_pos("C32", "1")], "AVDD10")
+    run([P(1), (71.6, P(1)[1]), (71.9, 62.05), pad_pos("R31", "1")], "RSET")
+    # north
+    run([P(16), (64.25, 57.1), (63.7, 56.55), (63.7, 54.8)], "RMII_TXD0")
+    via(63.7, 54.8, "RMII_TXD0")
+    run([P(15), pad_pos("R30", "1")], "ETH_REFCLK")
+    run([P(14), (65.25, 56.95), (65.75, 56.45), (66.4, 56.45), pad_pos("C30", "1")], "+3V3")
+    run([P(10), (67.25, 56.4), (67.6, 56.05), (67.6, 55.7)], "RMII_RXD1")
+    via(67.6, 55.7, "RMII_RXD1")
+    run([P(9), (67.75, 57.1), (68.5, 56.35), (68.5, 55.0)], "RMII_RXD0")
+    via(68.5, 55.0, "RMII_RXD0")
+    # west
+    run([P(17), (62.75, P(17)[1]), (62.75, 56.4)], "RMII_TXD1")
+    via(62.75, 56.4, "RMII_TXD1")
+    run([P(20), (61.8, P(20)[1]), (61.8, 56.4)], "RMII_TXEN")
+    via(61.8, 56.4, "RMII_TXEN")
+    run([P(21), (60.8, P(21)[1]), pad_pos("R33", "1")], "ETH_RST")
+    run([P(22), (59.8, P(22)[1]), (59.8, 56.4)], "RMII_MDC")
+    via(59.8, 56.4, "RMII_MDC")
+    run([P(23), (58.8, P(23)[1]), pad_pos("R34", "1")], "RMII_MDIO")
+    run([P(24), (63.0, P(24)[1]), (62.65, 62.1), pad_pos("D30", "2")], "PHY_LED0")
+    run([pad_pos("D30", "2"), pad_pos("R32", "2")], "PHY_LED0")
+    run([pad_pos("D30", "1"), pad_pos("R42", "1")], "LED0_K")
+    # south
+    run([P(25), (64.25, 62.6), (63.4, 63.45), (63.4, 65.0)], "PHY_LED1")
+    run([pad_pos("R36", "2"), (62.4, 65.6), (63.0, 65.0), (63.4, 65.0)], "PHY_LED1")
+    run([pad_pos("D31", "1"), pad_pos("R43", "1")], "LED1_K")
+    run([P(26), (64.75, 63.5), (64.5, 63.75), (64.5, 64.2)], "RMII_CRS_DV")
+    via(64.5, 64.2, "RMII_CRS_DV")
+    run([P(29), (66.25, 63.0), (65.5, 63.75), pad_pos("C33", "1")], "DVDD10")
+    run([P(30), (66.75, 63.6), (66.57, 63.78), (66.57, 64.2)], "+3V3")
+    via(66.57, 64.2, "+3V3")
+    run([(66.57, 64.2), (71.4, 64.2), (71.4, 58.6)], "+3V3", B_Cu)
+    run([P(31), (67.25, 65.5), (68.05, 66.3), pad_pos("Y1", "1")], "XTAL1")
+    run([pad_pos("Y1", "1"), (67.1, 66.9), (66.3, 67.7)], "XTAL1")
+    run([P(32), (67.75, 62.9), (68.5, 63.65), (70.8, 63.65), (70.8, 70.9)], "XTAL2")
+    run([(70.8, 69.1), pad_pos("Y1", "3")], "XTAL2")
+    # the crystal's ground pads: a stub and a via each (boxed in by the crystal tracks)
+    p = pad_pos("Y1", "4")
+    run([p, (p[0], 65.1)], "GND")
+    via(p[0], 65.1, "GND")
+    p = pad_pos("Y1", "2")
+    run([p, (p[0], 70.4)], "GND")
+    via(p[0], 70.4, "GND")
 
 
 def zones():
@@ -466,8 +487,8 @@ def silkscreen():
     for ref, names in (("J33", ("3V3", "GND", "SDA", "SCL")), ("J34", ("3V3", "GND", "34", "35"))):
         for i, name in enumerate(names):
             text(name, pad_pos(ref, str(i + 1))[0], 48.95, size=0.8, thick=0.12)
-    text("LNK", 55.0, 59.4, size=0.8, thick=0.12)
-    text("SPD", 55.0, 57.7, size=0.8, thick=0.12)
+    text("10M", 55.3, 62.1, size=0.8, thick=0.12)
+    text("100M", 60.8, 67.5, size=0.8, thick=0.12)
     text("PWR", 141.6, 72.5, size=0.8, thick=0.12)
     text("Relay24_ESP32 v1.0  2026  renatorgr  GPL v3", 29.2, 63.0, size=0.8, thick=0.12)
     text("Relay24_ESP32 v1.0", W / 2, 60.0, layer=pcbnew.B_SilkS, size=2.0, thick=0.3)
@@ -513,11 +534,12 @@ def router_jobs():
     """[(net, [(x, y, tht)])] in routing order, and the top-side ground pads."""
     order = []
     def rank(net):
-        if net in ("TXP", "TXN", "RXP", "RXN", "RBIAS", "VDDCR", "ETH_CLKIN", "PHYAD0"):
+        if net in ("MDI0P", "MDI0N", "MDI1P", "MDI1N", "RSET", "AVDD10", "DVDD10", "XTAL1", "XTAL2",
+                   "PHY_RXDV", "PHY_LED0", "PHY_LED1", "LED0_K", "LED1_K", "ETH_REFCLK"):
             return 0                                   # the fine-pitch PHY pins first
         if net.startswith("DRV"):
             return 1
-        if net in ("LED_LNK", "LED_SPD", "LED_LNK_K", "LED_SPD_A", "PWR_K"):
+        if net == "PWR_K":
             return 1
         if net == "+3V3":
             return 1.5                                 # wide: before the signals weave around it
@@ -548,8 +570,8 @@ def router_jobs():
         for pad in fp.Pads():
             if fp.GetReference() in ("U1", "U2", "U3") and pad.GetNumber() == "8":
                 continue                               # via placed in power_buses()
-            if fp.GetReference() in ("C1", "C2", "C3", "C31"):
-                continue                               # via placed in sr_fanout() / power_buses()
+            if fp.GetReference() in ("C1", "C2", "C3", "Y1"):
+                continue                               # via placed in sr_fanout() / phy_fanout()
             if pad.GetNetname() == "GND" and pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD:
                 p = pad.GetPosition()
                 gnd.append((p.x / 1e6, p.y / 1e6))
@@ -694,6 +716,10 @@ def main(folder):
     power_buses()
     zones()
     silkscreen()
+    if os.environ.get("RELAY24_FIXED_ONLY"):
+        board.Save(path)
+        print("DRC of the fixed copper only (unconnected items are expected):", drc(folder)[0])
+        return
     todo, gnd = router_jobs()
     r = router.Router(board, NETS, track, via, SIG_W, PWR_W, D.BOARD_W, D.BOARD_H)
     failed = r.run(REGIONS, todo, POWER_NETS, gnd)
