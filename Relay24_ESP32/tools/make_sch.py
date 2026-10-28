@@ -7,7 +7,8 @@ Written 2026 by Claude (Anthropic) for renatorgr. SPDX-License-Identifier: GPL-3
 Usage: python3 make_sch.py <output folder>
 
 Every part is a symbol from KiCad's standard libraries (copied into the file, so the
-project opens without extra libraries). Every pin gets a short wire and a global label
+project opens without extra libraries), except the RTL8201F, which KiCad does not have:
+custom_symbol() draws it as a box with its pins. Every pin gets a short wire and a global label
 with its net name, or a power symbol for GND / +3V3 / +5V / +12V, or a no-connect
 cross. The root sheet holds the power, the ESP32 sockets, the Ethernet and the drivers;
 three sub-sheets hold the 24 relays, one per driver.
@@ -60,6 +61,54 @@ def flat_symbol(libname, name):
     return node
 
 
+def custom_symbol(name):
+    """Symbols that KiCad's libraries do not have, drawn here as a box with named pins,
+    in the same form as flat_symbol() returns."""
+    if name != "RTL8201F":
+        raise SystemExit("no custom symbol " + name)
+    L, T = 17.78, 30.48                      # pin ends: x = +-L on the sides, y = +-T above / below
+    font = ["effects", ["font", ["size", "1.27", "1.27"]]]
+    hide = ["effects", ["font", ["size", "1.27", "1.27"]], "hide"]
+
+    def pin(num, pname, kind, x, y, ang):
+        return ["pin", kind, "line", ["at", fmt(x), fmt(y), fmt(ang)], ["length", "2.54"],
+                ["name", q(pname), copy.deepcopy(font)], ["number", q(num), copy.deepcopy(font)]]
+    pins = []
+    left = [("16", "TXD0", "input"), ("17", "TXD1", "input"), ("18", "TXD2", "input"), ("19", "TXD3", "input"),
+            ("20", "TXEN", "input"), ("15", "TXC/REF_CLK", "bidirectional"), None,
+            ("9", "RXD0", "output"), ("10", "RXD1", "output"), ("11", "RXD2/INTB", "bidirectional"),
+            ("12", "RXD3/CLK_CTL", "bidirectional"), ("13", "RXC", "output"), ("8", "RXDV", "bidirectional"),
+            ("26", "CRS_DV", "output"), ("28", "RXER", "output"), ("27", "COL", "output"), None,
+            ("22", "MDC", "input"), ("23", "MDIO", "bidirectional"), ("21", "PHYRSTB", "input")]
+    for i, e in enumerate(left):
+        if e:
+            pins.append(pin(e[0], e[1], e[2], -L, 22.86 - 2.54 * i, 0))
+    right = [("3", "MDI+[0]", "bidirectional"), ("4", "MDI-[0]", "bidirectional"), ("5", "MDI+[1]", "bidirectional"),
+             ("6", "MDI-[1]", "bidirectional"), None, ("24", "LED0/PHYAD0", "bidirectional"),
+             ("25", "LED1/PHYAD1", "bidirectional"), None, ("1", "RSET", "passive")]
+    for i, e in enumerate(right):
+        if e:
+            pins.append(pin(e[0], e[1], e[2], L, 22.86 - 2.54 * i, 180))
+    for i, (num, pname, kind) in enumerate([("7", "AVDD33", "power_in"), ("30", "AVDD33", "power_in"),
+                                            ("14", "DVDD33", "power_in"), ("2", "AVDD10OUT", "power_out"),
+                                            ("29", "DVDD10OUT", "power_out")]):
+        pins.append(pin(num, pname, kind, -10.16 + 5.08 * i, T, 270))
+    for i, (num, pname, kind) in enumerate([("31", "CKXTAL1", "passive"), ("32", "CKXTAL2", "passive"),
+                                            ("33", "EP/GND", "power_in")]):
+        pins.append(pin(num, pname, kind, -5.08 + 5.08 * i, -T, 90))
+    return ["symbol", q("Relay24:" + name), ["pin_names", ["offset", "1.016"]], ["in_bom", "yes"], ["on_board", "yes"],
+            ["property", q("Reference"), q("U"), ["at", "-15.24", "29.21", "0"],
+             ["effects", ["font", ["size", "1.27", "1.27"]], ["justify", "left"]]],
+            ["property", q("Value"), q(name), ["at", "2.54", "29.21", "0"],
+             ["effects", ["font", ["size", "1.27", "1.27"]], ["justify", "left"]]],
+            ["property", q("Footprint"), q(""), ["at", "0", "0", "0"], copy.deepcopy(hide)],
+            ["property", q("Datasheet"), q(""), ["at", "0", "0", "0"], copy.deepcopy(hide)],
+            ["symbol", q(name + "_0_1"),
+             ["rectangle", ["start", "-15.24", "27.94"], ["end", "15.24", "-27.94"],
+              ["stroke", ["width", "0.254"], ["type", "default"]], ["fill", ["type", "background"]]]],
+            ["symbol", q(name + "_1_1")] + pins]
+
+
 def symbol_pins(node):
     """[(number, name, x, y, angle)] in symbol coordinates (y up)."""
     pins = []
@@ -97,7 +146,7 @@ class Sheet:
     def use(self, libname, name):
         key = libname + ":" + name
         if key not in self.libsyms:
-            self.libsyms[key] = flat_symbol(libname, name)
+            self.libsyms[key] = custom_symbol(name) if libname == "Relay24" else flat_symbol(libname, name)
         return self.libsyms[key]
 
     def wire(self, x1, y1, x2, y2):
@@ -223,10 +272,11 @@ def main(folder):
         sheets[p["sch"][0]].part(p, paths[p["sch"][0]])
     # notes
     root.text("12 V in: reverse protection D25, TVS D26, LM2596 buck to 5 V, AMS1117 to 3.3 V. D28 lets the DevKitC USB power the logic for bench tests.", 20, 100, 2)
-    root.text("ESP32 DevKitC V4 (38 pins) in two 1x19 sockets. RMII pins are fixed by the ESP32: TXD0 19, TXD1 22, TXEN 21, RXD0 25, RXD1 26, CRS_DV 27, MDC 23, MDIO 18, 50 MHz clock out on GPIO17.", 200, 130, 2)
+    root.text("ESP32 DevKitC V4 (38 pins) in two 1x19 sockets. RMII pins are fixed by the ESP32: TXD0 19, TXD1 22, TXEN 21, RXD0 25, RXD1 26, CRS_DV 27, MDC 23, MDIO 18, 50 MHz reference clock in on GPIO0 (from the PHY).", 200, 130, 2)
     root.text("Shift registers: SER 13, SRCLK 16, RCLK 32, OE 4 (pulled up: all relays off until the program starts). PHY reset 33. I2C 15/14. Analog 34/35.", 200, 136, 2)
-    root.text("LAN8720A in REF_CLK-in mode (no crystal): GPIO17 -> R30 -> CLKIN. PHY address 0 (R32). Straps: MODE 111 (R35-R37), REGOFF low (LED1 to GND), nINTSEL high (LED2 from 3.3 V).", 330, 165, 2)
-    root.text("RJ45 HR911105A: pairs 1-2 and 3-6, centre taps (4, 5, 7, 8) to 3.3 V with C36/C37, its own LEDs unused (D30/D31 on the board).", 330, 171, 2)
+    root.text("RTL8201F on a 25 MHz crystal (Y1, C34/C35); the 50 MHz RMII clock comes OUT of TXC -> R30 -> GPIO0 (ETH_CLOCK_GPIO0_IN). R33 keeps the PHY in reset until GPIO33 is high, so GPIO0 is free at boot.", 330, 190, 2)
+    root.text("Straps: RXDV up (R35) = RMII; LED0/LED1 down (R32/R36) = PHY address 0, LEDs active high: D30 = 10 Mbit link/activity, D31 = 100 Mbit (default LED mode). RSET 2.49 k (R31). 49.9 ohm terminations to 3.3 V (R38-R41).", 330, 196, 2)
+    root.text("RJ45 HR911105A: PHY pair 0 (transmit) on pins 1-2, pair 1 (receive) on 3-6, centre taps (4, 5, 7, 8) to 3.3 V with C36/C37, its own LEDs unused.", 330, 202, 2)
     root.text("Drivers: 74HC595 (3.3 V) -> ULN2803A (coils at 12 V, flyback diodes inside, COM to +12V). One ULN per sheet of 8 relays.", 20, 275, 2)
     for n in subs:
         sheets[n].text("Each section: relay K (DPDT, coil A1 +12V / A2 driven low by the ULN), terminal J (1 = red wire, 2 = black wire). Relay off: red at GND, black at +12V ACT (pull in, closed). Relay on: red +12V ACT, black GND (push out, open).", 20, 280, 2)

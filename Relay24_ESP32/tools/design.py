@@ -14,8 +14,8 @@ What the board does (see ../README.md):
   Sprayer_ESP32;
 - three 74HC595 shift registers + three ULN2803A drive 24 DPDT relays HF115F/012-2ZS4;
   each relay reverses one 12 V linear actuator: relay off = pull in (section closed);
-- a LAN8720A + RJ45 give the network cable (RMII, 50 MHz clock from GPIO17, like the
-  KinCony KC868-A32), the ESP32 Wi-Fi stays available;
+- an RTL8201F + RJ45 give the network cable (RMII; the PHY runs on a 25 MHz crystal and
+  sends the 50 MHz reference clock into GPIO0), the ESP32 Wi-Fi stays available;
 - 12 V in -> LM2596S-5.0 -> 5 V (DevKitC) -> AMS1117-3.3 (logic, PHY);
 - the actuator power comes in on its own terminals, one pair of rails per relay row.
 """
@@ -46,7 +46,8 @@ FP = {
     "hdr4": ("Connector_PinHeader_2.54mm", "PinHeader_1x04_P2.54mm_Vertical"),
     "soic16": ("Package_SO", "SOIC-16_3.9x9.9mm_P1.27mm"),
     "soic18w": ("Package_SO", "SOIC-18W_7.5x11.6mm_P1.27mm"),
-    "qfn24": ("Package_DFN_QFN", "VQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm_ThermalVias"),
+    "qfn32": ("Package_DFN_QFN", "QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm_ThermalVias"),
+    "xtal3225": ("Crystal", "Crystal_SMD_3225-4Pin_3.2x2.5mm"),
     "to263": ("Package_TO_SOT_SMD", "TO-263-5_TabPin3"),
     "sot223": ("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
     "rj45": ("Connector_RJ", "RJ45_Hanrun_HR911105A_Horizontal"),
@@ -197,7 +198,7 @@ ESP_J2 = ["NC_3V3", "NC_EN", "NC_VP", "NC_VN", "A34", "A35", "SR_RCLK", "ETH_RST
           "RMII_RXD1", "RMII_CRS_DV", "I2C_SCL", "NC_IO12", "GND", "SR_SER", "NC_D2", "NC_D3",
           "NC_CMD", "+5V"]
 ESP_J3 = ["GND", "RMII_MDC", "RMII_TXD1", "NC_TX0", "NC_RX0", "RMII_TXEN", "GND", "RMII_TXD0",
-          "RMII_MDIO", "NC_IO5", "ETH_CLK", "SR_SRCLK", "SR_OE", "NC_IO0", "NC_IO2", "I2C_SDA",
+          "RMII_MDIO", "NC_IO5", "NC_IO17", "SR_SRCLK", "SR_OE", "ETH_CLK", "NC_IO2", "I2C_SDA",
           "NC_D1", "NC_D0", "NC_CLK"]
 ESP_J2_NAMES = ["3V3", "EN", "VP/36", "VN/39", "34", "35", "32", "33", "25", "26", "27", "14", "12",
                 "GND", "13", "D2/9", "D3/10", "CMD/11", "5V"]
@@ -236,53 +237,67 @@ for b in range(3):
     add(f"U{b + 4}", ("Transistor_Array", "ULN2803A"), "soic18w", "ULN2803A", uln, (ux, uy, 0, "F"),
         ("root", 95 + b * 90, 220, 0), lcsc="C22437476", desc="Darlington array 8 x 500 mA SOP-18 300 mil, ULN2803A pinout (Shanghai Belling ULN2803)")
 
-# --- Ethernet: LAN8720A + RJ45 --------------------------------------------------------------
+# --- Ethernet: RTL8201F + RJ45 ---------------------------------------------------------
+# The PHY sits east of the DevKitC, turned 180 degrees: its line pins (3-6) face the RJ45,
+# the RMII and management pins face the module, the crystal pins point south. The PHY runs
+# on a 25 MHz crystal and sends the 50 MHz RMII reference clock out of TXC into GPIO0
+# through R30 (ETH_CLOCK_GPIO0_IN); R33 keeps the PHY in reset until GPIO33 goes high, so
+# GPIO0 is quiet while the ESP32 samples its boot straps. Straps: RXDV pulled up = RMII;
+# LED0 / LED1 pulled down = PHY address 0 and active-high LEDs (LED0 = 10 Mbit link and
+# activity, LED1 = 100 Mbit, the chip's default LED mode).
 PHY = (66.0, 60.0)
-add("U9", ("Interface_Ethernet", "LAN8720A"), "qfn24", "LAN8720A",
-    {"1": "+3V3", "2": "LED_SPD", "3": "LED_LNK", "4": "NC_XTAL2", "5": "ETH_CLKIN", "6": "VDDCR",
-     "7": "RMII_RXD1", "8": "RMII_RXD0", "9": "+3V3", "10": "PHYAD0", "11": "RMII_CRS_DV", "12": "RMII_MDIO",
-     "13": "RMII_MDC", "14": "NC_INT", "15": "ETH_RST", "16": "RMII_TXEN", "17": "RMII_TXD0", "18": "RMII_TXD1",
-     "19": "+3V3", "20": "TXN", "21": "TXP", "22": "RXN", "23": "RXP", "24": "RBIAS", "25": "GND"},
-    PHY + (0, "F"), ("root", 400, 75, 0), lcsc="C45223", desc="Ethernet PHY RMII QFN-24 (Microchip LAN8720A-CP-TR)")
-add("R30", ("Device", "R"), "r0603", "33", {"1": "ETH_CLK", "2": "ETH_CLKIN"},
-    (60.4, 60.9, 0, "F"), ("root", 365, 57.5, 90), lcsc="C23140", desc="Resistor 0603 33 ohm (50 MHz clock from GPIO17)")
-add("R31", ("Device", "R"), "r0603", "12.1k 1%", {"1": "RBIAS", "2": "GND"},
-    (63.5, 54.9, 180, "F"), ("root", 435, 72.46, 90), lcsc="C123417", desc="Resistor 0603 12.1 kohm 1 % (RBIAS, Yageo RC0603FR-0712K1L)")
-add("R32", ("Device", "R"), "r0603", "10k", {"1": "PHYAD0", "2": "GND"},
-    (66.6, 65.9, 270, "F"), ("root", 365, 87.5, 90), lcsc="C25804", desc="Resistor 0603 10 kohm (PHY address 0)")
+add("U9", ("Relay24", "RTL8201F"), "qfn32", "RTL8201F",
+    {"1": "RSET", "2": "AVDD10", "3": "MDI0P", "4": "MDI0N", "5": "MDI1P", "6": "MDI1N", "7": "+3V3",
+     "8": "PHY_RXDV", "9": "RMII_RXD0", "10": "RMII_RXD1", "11": "NC_INTB", "12": "NC_CLK_CTL",
+     "13": "NC_RXC", "14": "+3V3", "15": "ETH_REFCLK", "16": "RMII_TXD0", "17": "RMII_TXD1",
+     "18": "NC_TXD2", "19": "NC_TXD3", "20": "RMII_TXEN", "21": "ETH_RST", "22": "RMII_MDC",
+     "23": "RMII_MDIO", "24": "PHY_LED0", "25": "PHY_LED1", "26": "RMII_CRS_DV", "27": "NC_COL",
+     "28": "NC_RXER", "29": "DVDD10", "30": "+3V3", "31": "XTAL1", "32": "XTAL2", "33": "GND"},
+    PHY + (180, "F"), ("root", 400, 90, 0), lcsc="C45044",
+    desc="Ethernet PHY 10/100 RMII QFN-32 5x5 mm (Realtek RTL8201F-VB-CG)")
+add("Y1", ("Device", "Crystal_GND24"), "xtal3225", "25MHz",
+    {"1": "XTAL1", "2": "GND", "3": "XTAL2", "4": "GND"}, (68.9, 68.0, 270, "F"), ("root", 400, 160, 0),
+    lcsc="C9006", desc="Crystal 25 MHz, CL 12 pF, 3225 4-pin (YXC X322525MOB4SI)")
+add("R30", ("Device", "R"), "r0603", "33", {"1": "ETH_REFCLK", "2": "ETH_CLK"},
+    (64.75, 55.3, 90, "F"), ("root", 330, 50, 0), lcsc="C23140", desc="Resistor 0603 33 ohm (50 MHz reference clock from the PHY to GPIO0)")
+add("R31", ("Device", "R"), "r0603", "2.49k 1%", {"1": "RSET", "2": "GND"},
+    (71.9, 63.3, 270, "F"), ("root", 490, 160, 0), lcsc="C136931", desc="Resistor 0603 2.49 kohm 1 % (RSET, Yageo RT0603FRE072K49L)")
+add("R32", ("Device", "R"), "r0603", "4.7k", {"1": "GND", "2": "PHY_LED0"},
+    (61.1, 63.9, 0, "F"), ("root", 490, 105, 0), lcsc="C23162", desc="Resistor 0603 4.7 kohm (strap: PHY address bit 0 low, LED0 active high)")
 add("R33", ("Device", "R"), "r0603", "10k", {"1": "ETH_RST", "2": "GND"},
-    (71.5, 61.3, 0, "F"), ("root", 365, 100, 90), lcsc="C25804", desc="Resistor 0603 10 kohm (PHY held in reset until GPIO33 goes high)")
+    (60.8, 55.3, 90, "F"), ("root", 330, 65, 0), lcsc="C25804", desc="Resistor 0603 10 kohm (PHY held in reset until GPIO33 goes high)")
 add("R34", ("Device", "R"), "r0603", "1.5k", {"1": "RMII_MDIO", "2": "+3V3"},
-    (70.0, 69.0, 270, "F"), ("root", 365, 112.5, 90), lcsc="C22843", desc="Resistor 0603 1.5 kohm (MDIO pull-up)")
-for i, (net, pos) in enumerate([("RMII_RXD0", (63.5, 69.0)), ("RMII_RXD1", (62.0, 69.0)), ("RMII_CRS_DV", (68.0, 69.0))]):
-    add(f"R{35 + i}", ("Device", "R"), "r0603", "10k", {"1": net, "2": "+3V3"},
-        pos + (270, "F"), ("root", 345 + i * 10, 125, 90), lcsc="C25804", desc="Resistor 0603 10 kohm (MODE strap: all capable, auto-negotiation)")
-for i, (net, pos) in enumerate([("TXP", (84.0, 61.0)), ("TXN", (84.0, 62.5)), ("RXP", (84.0, 58.0)), ("RXN", (84.0, 59.5))]):
+    (58.8, 55.3, 90, "F"), ("root", 330, 80, 0), lcsc="C22843", desc="Resistor 0603 1.5 kohm (MDIO pull-up)")
+add("R35", ("Device", "R"), "r0603", "4.7k", {"1": "PHY_RXDV", "2": "+3V3"},
+    (69.9, 56.4, 90, "F"), ("root", 330, 95, 0), lcsc="C23162", desc="Resistor 0603 4.7 kohm (strap: RXDV high = RMII mode)")
+add("R36", ("Device", "R"), "r0603", "4.7k", {"1": "GND", "2": "PHY_LED1"},
+    (61.1, 65.6, 0, "F"), ("root", 490, 135, 0), lcsc="C23162", desc="Resistor 0603 4.7 kohm (strap: PHY address bit 1 low, LED1 active high)")
+for i, (net, pos) in enumerate([("MDI0N", (84.0, 61.0)), ("MDI0P", (84.0, 62.5)), ("MDI1N", (84.0, 58.0)), ("MDI1P", (84.0, 59.5))]):
     add(f"R{38 + i}", ("Device", "R"), "r0603", "49.9 1%", {"1": net, "2": "+3V3"},
-        pos + (0, "F"), ("root", 460 + i * 10, 60, 90), lcsc="C23185", desc="Resistor 0603 49.9 ohm 1 % (line termination to 3.3 V)")
-add("R42", ("Device", "R"), "r0603", "330", {"1": "LED_LNK_K", "2": "GND"},
-    (58.0, 59.4, 180, "F"), ("root", 445, 100, 0), lcsc="C23138", desc="Resistor 0603 330 ohm")
-add("R43", ("Device", "R"), "r0603", "330", {"1": "+3V3", "2": "LED_SPD_A"},
-    (58.0, 57.7, 0, "F"), ("root", 445, 115, 0), lcsc="C23138", desc="Resistor 0603 330 ohm")
-add("D30", ("Device", "LED"), "led0603", "yellow", {"1": "LED_LNK_K", "2": "LED_LNK"},
-    (61.0, 59.4, 0, "F"), ("root", 460, 100, 0), lcsc="C965802", desc="LED 0603 yellow (XINGLIGHT XL-1608UYC-06): link / activity")
-add("D31", ("Device", "LED"), "led0603", "green", {"1": "LED_SPD", "2": "LED_SPD_A"},
-    (61.0, 57.9, 180, "F"), ("root", 460, 115, 0), lcsc="C965805", desc="LED 0603 green (yellow-green, Vf 2.2 V, XINGLIGHT XL-1608SYGC-06): 100 Mbit")
-for i, (net, pos, rot) in enumerate([("+3V3", (61.5, 56.4), 180), ("+3V3", (65.0, 69.0), 270), ("+3V3", (72.0, 57.0), 0),
-                                     ("VDDCR", (63.0, 64.3), 270)]):
+        pos + (0, "F"), ("root", 480, 50 + i * 12, 90), lcsc="C23185", desc="Resistor 0603 49.9 ohm 1 % (line termination to 3.3 V)")
+add("R42", ("Device", "R"), "r0603", "330", {"1": "LED0_K", "2": "GND"},
+    (58.0, 62.1, 180, "F"), ("root", 470, 118, 0), lcsc="C23138", desc="Resistor 0603 330 ohm (LED0)")
+add("R43", ("Device", "R"), "r0603", "330", {"1": "LED1_K", "2": "GND"},
+    (63.4, 68.4, 270, "F"), ("root", 470, 148, 0), lcsc="C23138", desc="Resistor 0603 330 ohm (LED1)")
+add("D30", ("Device", "LED"), "led0603", "yellow", {"1": "LED0_K", "2": "PHY_LED0"},
+    (61.1, 62.1, 0, "F"), ("root", 470, 105, 0), lcsc="C965802", desc="LED 0603 yellow (XINGLIGHT XL-1608UYC-06): 10 Mbit link / activity (LED0)")
+add("D31", ("Device", "LED"), "led0603", "green", {"1": "LED1_K", "2": "PHY_LED1"},
+    (63.4, 65.4, 90, "F"), ("root", 470, 135, 0), lcsc="C965805", desc="LED 0603 green (yellow-green, Vf 2.2 V, XINGLIGHT XL-1608SYGC-06): 100 Mbit link / activity (LED1)")
+for i, (net, pos, rot, what) in enumerate([("+3V3", (66.4, 55.3), 90, "DVDD33, pin 14"), ("+3V3", (71.4, 57.3), 90, "AVDD33, pin 7"),
+                                           ("AVDD10", (73.5, 63.3), 270, "AVDD10OUT, pin 2"), ("DVDD10", (65.5, 64.95), 270, "DVDD10OUT, pin 29")]):
     add(f"C{30 + i}", ("Device", "C"), "c0603", "100nF", {"1": net, "2": "GND"},
-        pos + (rot, "F"), ("root", 400 + i * 10, 125, 0), lcsc="C14663", desc="Capacitor 0603 100 nF")
-add("C34", ("Device", "C"), "c0603", "1uF", {"1": "VDDCR", "2": "GND"},
-    (61.4, 64.3, 270, "F"), ("root", 440, 125, 0), lcsc="C15849", desc="Capacitor 0603 1 uF (PHY 1.2 V regulator)")
-add("C35", ("Device", "C"), "c0805", "10uF", {"1": "+3V3", "2": "GND"},
-    (56.0, 64.5, 90, "F"), ("root", 450, 125, 0), lcsc="C15850", desc="Capacitor 0805 10 uF 25 V")
+        pos + (rot, "F"), ("root", 370 + i * 15, 140, 0), lcsc="C14663", desc=f"Capacitor 0603 100 nF ({what})")
+for i, (net, pos) in enumerate([("XTAL1", (66.3, 68.3)), ("XTAL2", (70.8, 71.7))]):
+    add(f"C{34 + i}", ("Device", "C"), "c0603", "18pF", {"1": net, "2": "GND"},
+        pos + (270, "F"), ("root", 385 + i * 30, 175, 0), lcsc="C1647", desc="Capacitor 0603 18 pF C0G (crystal load, Samsung CL10C180JB8NNNC)")
+add("C38", ("Device", "C"), "c0805", "10uF", {"1": "+3V3", "2": "GND"},
+    (55.5, 65.5, 90, "F"), ("root", 450, 140, 0), lcsc="C15850", desc="Capacitor 0805 10 uF 25 V (PHY 3.3 V bulk)")
 add("J32", ("Connector", "RJ45_LED_Shielded"), "rj45", "HR911105A",
-    {"1": "TXN", "2": "TXP", "3": "RXN", "4": "+3V3", "5": "+3V3", "6": "RXP", "7": "+3V3", "8": "+3V3",
+    {"1": "MDI0P", "2": "MDI0N", "3": "MDI1P", "4": "+3V3", "5": "+3V3", "6": "MDI1N", "7": "+3V3", "8": "+3V3",
      "9": "NC_LED1", "10": "NC_LED2", "11": "NC_LED3", "12": "NC_LED4", "SH": "GND"},
     RJ45_POS + (90, "F"), ("root", 520, 75, 0), lcsc="C12074",
     desc="RJ45 with magnetics and LEDs (HanRun HR911105A); centre taps to 3.3 V, its LED pins unused; "
-         "PHY TX on pins 1-2 and RX on 3-6 would need crossing tracks, so the pairs are swapped (Auto-MDIX) "
-         "and the polarity follows the layout (harmless for 10/100BASE-T)",
+         "PHY pair 0 (transmit) on pins 1-2, pair 1 (receive) on pins 3-6, Auto-MDIX for the rest",
     jlc_note="opening at the board edge")
 add("C36", ("Device", "C"), "c0603", "100nF", {"1": "+3V3", "2": "GND"},
     (186.0, 55.5, 90, "F"), ("root", 540, 110, 0), lcsc="C14663", desc="Capacitor 0603 100 nF (centre taps)")

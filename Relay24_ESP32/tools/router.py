@@ -29,6 +29,7 @@ TURN_COST = 2
 OFF_PREF = 2        # extra cost of a step against the layer's preferred direction
 EDGE = -2           # owner value of cells nothing may use
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+DIRS8 = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy, dx) != (0, 0)]
 VIA_CHECK = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)] + [(-2, 0), (2, 0), (0, -2), (0, 2)]
 
 
@@ -219,7 +220,10 @@ class Router:
         return d
 
     def flood(self, l, iy, ix, code, cap=60000):
-        """Cells connected to (l, iy, ix) through copper of this net (vias join the layers)."""
+        """Cells connected to (l, iy, ix) through copper of this net (vias join the layers).
+        Diagonal neighbours count: a thin track laid at 45 degrees marks a diagonal chain of
+        cells, which must not look like separate copper of the net (the router would then
+        add stubs to join it)."""
         if self.owner[l, iy, ix] != code:
             best = None
             for dy in range(-4, 5):
@@ -236,7 +240,7 @@ class Router:
         stack = [(l, iy, ix)]
         while stack and len(seen) < cap:
             ll, y, x = stack.pop()
-            nb = [(ll, y + dy, x + dx) for dy, dx in DIRS] + [(1 - ll, y, x)]
+            nb = [(ll, y + dy, x + dx) for dy, dx in DIRS8] + [(1 - ll, y, x)]
             for c in nb:
                 cl, yy, xx = c
                 if 0 <= yy < self.ny and 0 <= xx < self.nx and c not in seen and self.owner[cl, yy, xx] == code:
