@@ -27,6 +27,30 @@ THT_REFS = {p["ref"] for p in D.PARTS.values()
             if p["fp"][0] in ("Relay_THT", "TerminalBlock", "Connector_PinSocket_2.54mm",
                               "Connector_PinHeader_2.54mm", "Connector_RJ")}
 
+# JLCPCB places a part at the centre of its body. KiCad anchors surface-mount footprints
+# there too, but through-hole footprints on pin 1, so the CPL "Mid X/Y" of a through-hole
+# part is the centre of its courtyard, not the footprint position. JLCPCB's 2.54 mm pin
+# header and socket models also sit 90 degrees from KiCad's (checked on the JLCPCB
+# assembly preview, where the DevKitC sockets came out across the board), hence the
+# rotation offsets below, by footprint library.
+ROT_OFFSET = {"Connector_PinSocket_2.54mm": 90, "Connector_PinHeader_2.54mm": 90}
+
+
+def mid(fp, tht):
+    """CPL position of a footprint in mm: the anchor for SMD, the courtyard centre for THT."""
+    if not tht:
+        p = fp.GetPosition()
+        return p.x / 1e6, p.y / 1e6
+    box = None
+    for item in fp.GraphicalItems():
+        if item.GetLayer() in (pcbnew.F_CrtYd, pcbnew.B_CrtYd):
+            if box is None:
+                box = item.GetBoundingBox()
+            else:
+                box.Merge(item.GetBoundingBox())
+    c = box.GetCenter()
+    return c.x / 1e6, c.y / 1e6
+
 
 def run(cmd):
     print(" ", " ".join(cmd))
@@ -62,11 +86,13 @@ def bom_cpl(folder, fab):
         if ref.startswith("H"):
             continue                                  # mounting holes
         p = D.PARTS[ref]
-        pos = fp.GetPosition()
+        tht = ref in THT_REFS
+        x, y = mid(fp, tht)
+        rot = (fp.GetOrientationDegrees() + ROT_OFFSET.get(p["fp"][0], 0)) % 360
         rows.append(dict(ref=ref, value=p["value"], fpname=p["fp"][1], lcsc=p["lcsc"],
-                         x=pos.x / 1e6, y=pos.y / 1e6, rot=fp.GetOrientationDegrees() % 360,
+                         x=x, y=y, rot=rot,
                          layer="Top" if fp.GetLayer() == pcbnew.F_Cu else "Bottom",
-                         smd=ref not in THT_REFS))
+                         smd=not tht))
 
     def refkey(r):
         head = r.rstrip("0123456789")

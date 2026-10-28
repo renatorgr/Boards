@@ -119,7 +119,10 @@ Things that were assumed and should be checked on the real parts:
   (pads 2.9 x 5.4 mm, 9.9 mm apart): compare with the land pattern in its datasheet.
 - The references of the resistors, capacitors and LEDs are not printed on the board
   (there is no room next to the PHY); the CPL files and the schematic have them.
-- Part rotations in the CPL are KiCad's; check the JLCPCB preview, in particular the
-  diodes, the TO-263 regulator, the SOT-223 and the QFN.
+- The CPL gives the centre of the body for the through-hole parts (relays, terminals,
+  sockets, RJ45), as JLCPCB expects, and turns the 2.54 mm sockets and headers by 90
+  degrees to match JLCPCB's models. The other rotations are KiCad's; check the JLCPCB
+  preview, in particular the diodes, the electrolytic capacitors, the TO-263 regulator,
+  the SOT-223 and the QFN.
 - Linear actuators often draw 2-3 A while moving: size the actuator supply and the fuse
   accordingly.
