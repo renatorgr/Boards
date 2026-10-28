@@ -4,6 +4,7 @@
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 // 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
+// 2026-10-28 (Claude): Seeder_ESP32 v0.2: the seed drill's board is the Relay24_ESP32, 24 relays.
 // 2026-10-27 (Claude): the seed drill module's own page (Seeder_ESP32); the Teensy's Machine tab shows all 19 sections.
 // 2026-10-27 (Claude): the AiO v26's machine part and two of our modules on the Teensy's Machine tab.
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -136,7 +137,7 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
- // the seed drill module's page: the KC868-A32 on the network cable sowing a pass with 19 of its 32 relays (relay 1 =
+ // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
  // section 1 and so on); then the relays set back to the program's pin config (the password asked in a prompt)
  {
   const what = "Seed drill page";
@@ -151,19 +152,20 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#log", /network cable connected/);
   await expect(pg, what, "#eth", /connected/);
   await expect(pg, what, "#ago229", /now/);
-  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+ · KC868-A32$/);
+  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+ · Relay24_ESP32$/);
+  await expect(pg, what, "#invert", /relay on = pin high$/);
   if ((await pg.locator("#secs span").count()) !== 19) fail.push(what + ": expected the 19 sections");
   if ((await pg.locator("#secs span.on").count()) !== 19) fail.push(what + ": expected 19 sections open while sowing");
-  if ((await pg.locator("#relays span").count()) !== 32) fail.push(what + ": expected the KC868-A32's 32 relays");
+  if ((await pg.locator("#relays span").count()) !== 24) fail.push(what + ": expected the Relay24_ESP32's 24 relays");
   if ((await pg.locator("#relays span.on").count()) !== 19) fail.push(what + ": expected 19 relays on while sowing");
-  await expect(pg, what, "#relayNote", /^32 relays, 32 of them sections: relay 1 follows section 1/);
+  await expect(pg, what, "#relayNote", /^24 relays, 24 of them sections: relay 1 follows section 1/);
   await expect(pg, what, "#r18", /^19S19$/);
   await shot(pg, "seeder-status");
   await pg.fill("#first", "0");
   await pg.click("button[onclick='saveRelays()']"); await pg.waitForTimeout(1500);
   await expect(pg, what, "#msgRelays", /done/);
   await expect(pg, what, "#log", /relays follow the program's pin config/);
-  await expect(pg, what, "#relayNote", /^32 relays, 8 of them sections: what each relay does comes from the program/);
+  await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
   await pg.close();
  }
  // the sprayer module's page: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the calibration

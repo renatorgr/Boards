@@ -2,6 +2,8 @@
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
+   2026-10-28 (Claude): v0.2: the network chip of the board chosen in Seeder_ESP32.ino (RTL8201F on the
+   Relay24_ESP32, LAN8720 on the KC868-A32), held in reset before a restart.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -22,16 +24,20 @@ static bool updateAuth = false;
 // The module's fixed IP on the tractor network
 IPAddress moduleIp() { return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], cfg.ipLast); }
 
-// ---------------------------------------------------------------- network cable (LAN8720 on the KC868-A32)
-static bool ethStarted = false;
+// ---------------------------------------------------------------- network cable (the board's network chip)
+// Relay24_ESP32: RTL8201F, its clock into GPIO 0, its reset on GPIO 33 (ETH.begin lets it out of reset
+// before it starts the ESP32's network block, which needs that clock). KC868-A32: LAN8720, clock out on
+// GPIO 17. The pins are in Seeder_ESP32.ino.
+static bool ethStarted = false, ethBegun = false;
 
 static void ethStart()
 {
+    ethBegun = true;
     // The arguments of ETH.begin changed order in version 3 of the esp32 boards package
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    ethStarted = ETH.begin(ETH_PHY_LAN8720, LAN_PHY_ADDR, LAN_MDC, LAN_MDIO, LAN_POWER, ETH_CLOCK_GPIO17_OUT);
+    ethStarted = ETH.begin(LAN_PHY, LAN_PHY_ADDR, LAN_MDC, LAN_MDIO, LAN_POWER, LAN_CLOCK);
 #else
-    ethStarted = ETH.begin(LAN_PHY_ADDR, LAN_POWER, LAN_MDC, LAN_MDIO, ETH_PHY_LAN8720, ETH_CLOCK_GPIO17_OUT);
+    ethStarted = ETH.begin(LAN_PHY_ADDR, LAN_POWER, LAN_MDC, LAN_MDIO, LAN_PHY, LAN_CLOCK);
 #endif
     if (!ethStarted) { logEvent("network cable: the network chip did not start"); return; }
     const IPAddress gw(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 1);
@@ -39,6 +45,15 @@ static void ethStart()
 }
 
 bool ethUp() { return ethStarted && ETH.linkUp(); }
+
+// ETH.begin has been called (it takes GPIO 0 on the Relay24_ESP32, even when it fails)
+bool ethTried() { return ethBegun; }
+
+// Before a restart: the network chip back in reset, so its clock on GPIO 0 stops (Relay24_ESP32)
+void ethHoldReset()
+{
+    if (LAN_POWER >= 0 && ethBegun) gpio_set_level((gpio_num_t)LAN_POWER, 0);
+}
 
 // ---------------------------------------------------------------- Wi-Fi
 void wifiStart()
@@ -166,7 +181,7 @@ static void apiStatus()
     String j;
     j.reserve(2000);
     j += "{\"fw\":\"" FW_NAME "\",\"ver\":\"" FW_VERSION "\",\"built\":\"" __DATE__ " " __TIME__ "\"";
-    j += ",\"kind\":\"Seeder\",\"board\":\"KC868-A32\"";
+    j += ",\"kind\":\"Seeder\",\"board\":\"" BOARD_NAME "\"";
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
     j += ",\"name\":" + jsonStr(moduleName());
 
