@@ -437,18 +437,11 @@ def phy_fanout():
     run([P(30), (66.75, 63.6), (66.57, 63.78), (66.57, 64.2)], "+3V3")
     via(66.57, 64.2, "+3V3")
     run([(66.57, 64.2), (71.4, 64.2), (71.4, 58.6)], "+3V3", B_Cu)
-    run([P(31), (67.25, 65.5), (68.05, 66.3), pad_pos("Y1", "1")], "XTAL1")
-    run([pad_pos("Y1", "1"), (67.1, 66.9), (66.3, 67.7)], "XTAL1")
-    run([P(32), (67.75, 62.9), (68.5, 63.65), (70.8, 63.65), (70.8, 70.9)], "XTAL2")
-    run([(70.8, 69.1), pad_pos("Y1", "3")], "XTAL2")
-    # the crystal's ground pads: a stub and a via each (boxed in by the crystal tracks)
-    p = pad_pos("Y1", "4")
-    run([p, (p[0], 65.1)], "GND")
-    via(p[0], 65.1, "GND")
-    p = pad_pos("Y1", "2")
-    run([p, (p[0], 70.4)], "GND")
-    via(p[0], 70.4, "GND")
-
+    # 5032 crystal: XTAL1 on its left pad, XTAL2 on its right pad, the load capacitors below
+    run([P(31), (67.25, 66.8)], "XTAL1")
+    run([pad_pos("Y1", "1"), pad_pos("C34", "1")], "XTAL1")
+    run([P(32), (67.75, 62.9), (68.5, 63.65), (70.8, 63.65), (70.8, 66.8)], "XTAL2")
+    run([pad_pos("Y1", "2"), pad_pos("C35", "1")], "XTAL2")
 
 def zones():
     W, H = D.BOARD_W, D.BOARD_H
@@ -570,8 +563,8 @@ def router_jobs():
         for pad in fp.Pads():
             if fp.GetReference() in ("U1", "U2", "U3") and pad.GetNumber() == "8":
                 continue                               # via placed in power_buses()
-            if fp.GetReference() in ("C1", "C2", "C3", "Y1"):
-                continue                               # via placed in sr_fanout() / phy_fanout()
+            if fp.GetReference() in ("C1", "C2", "C3"):
+                continue                               # via placed in sr_fanout()
             if pad.GetNetname() == "GND" and pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD:
                 p = pad.GetPosition()
                 gnd.append((p.x / 1e6, p.y / 1e6))
