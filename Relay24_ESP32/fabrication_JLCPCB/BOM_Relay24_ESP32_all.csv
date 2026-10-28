@@ -1,0 +1,62 @@
+Comment,Designator,Footprint,LCSC Part #
+100nF,"C1,C2,C3,C30,C31,C32,C33,C36",C_0603_1608Metric,C14663
+100uF 50V,C25,CP_Elec_8x10,
+220uF 25V,C26,CP_Elec_8x10,
+10uF,"C27,C28,C29,C35,C37",C_0805_2012Metric,C15850
+1uF,C34,C_0603_1608Metric,C15849
+green,"D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,D17,D18,D19,D20,D21,D22,D23,D24,D31",LED_0603_1608Metric,C72043
+SS54,"D25,D27",D_SMA,C22452
+SMBJ18A,D26,D_SMB,
+SS34,D28,D_SMA,C8678
+red,D29,LED_0603_1608Metric,C2286
+yellow,D30,LED_0603_1608Metric,C72038
+Section 1,J1,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 2,J2,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 3,J3,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 4,J4,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 5,J5,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 6,J6,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 7,J7,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 8,J8,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 9,J9,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 10,J10,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 11,J11,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 12,J12,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 13,J13,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 14,J14,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 15,J15,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 16,J16,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 17,J17,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 18,J18,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 19,J19,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 20,J20,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 21,J21,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 22,J22,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 23,J23,TerminalBlock_bornier-2_P5.08mm,C8465
+Section 24,J24,TerminalBlock_bornier-2_P5.08mm,C8465
+12V IN,J25,TerminalBlock_bornier-2_P5.08mm,C8465
+12V ACT A (left),J26,TerminalBlock_bornier-2_P5.08mm,C8465
+12V ACT A (right),J27,TerminalBlock_bornier-2_P5.08mm,C8465
+12V ACT B (left),J28,TerminalBlock_bornier-2_P5.08mm,C8465
+12V ACT B (right),J29,TerminalBlock_bornier-2_P5.08mm,C8465
+DevKitC J2 (3V3..5V),J30,PinSocket_1x19_P2.54mm_Vertical,
+DevKitC J3 (GND..CLK),J31,PinSocket_1x19_P2.54mm_Vertical,
+HR911105A,J32,RJ45_Hanrun_HR911105A_Horizontal,C12074
+I2C,J33,PinHeader_1x04_P2.54mm_Vertical,
+Analog,J34,PinHeader_1x04_P2.54mm_Vertical,
+HF115F/012-2ZS4,"K1,K2,K3,K4,K5,K6,K7,K8,K9,K10,K11,K12,K13,K14,K15,K16,K17,K18,K19,K20,K21,K22,K23,K24",Relay_DPDT_Omron_G2RL-2,C163534
+33uH 3A,L1,L_12x12mm_H8mm,
+2.2k,"R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15,R16,R17,R18,R19,R20,R21,R22,R23,R24",R_0603_1608Metric,C4190
+1k,R29,R_0603_1608Metric,C21190
+33,R30,R_0603_1608Metric,C23140
+12.1k 1%,R31,R_0603_1608Metric,C22374
+10k,"R32,R33,R35,R36,R37",R_0603_1608Metric,C25804
+1.5k,R34,R_0603_1608Metric,C22843
+49.9 1%,"R38,R39,R40,R41",R_0603_1608Metric,C23182
+330,"R42,R43",R_0603_1608Metric,C23138
+4.7k,"R44,R45,R46",R_0603_1608Metric,C23162
+74HC595,"U1,U2,U3",SOIC-16_3.9x9.9mm_P1.27mm,C5947
+ULN2803A,"U4,U5,U6",SOIC-18W_7.5x11.6mm_P1.27mm,C6116
+LM2596S-5.0,U7,TO-263-5_TabPin3,C347421
+AMS1117-3.3,U8,SOT-223-3_TabPin2,C6186
+LAN8720A,U9,VQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm_ThermalVias,C45223

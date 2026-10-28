@@ -1,0 +1,5974 @@
+(kicad_sch
+  (version 20230121)
+  (generator eeschema)
+  (uuid "6e0e2bde-6103-4594-ad06-ac98326e8788")
+  (paper "A3")
+  (title_block
+    (title "Relays 17-24 (sections 17-24, driver U6)")
+    (date "2026-10-28")
+    (rev "1.0")
+    (company "renatorgr")
+    (comment 1 "Written by Claude (Anthropic) for renatorgr, GPL v3 or later")
+  )
+  (lib_symbols
+    (symbol "Relay:G2RL-2"
+      (property "Reference" "K"
+        (at 16.51 3.81 0)
+        (effects
+          (font (size 1.27 1.27))
+          (justify left)
+        )
+      )
+      (property "Value" "G2RL-2"
+        (at 16.51 1.27 0)
+        (effects
+          (font (size 1.27 1.27))
+          (justify left)
+        )
+      )
+      (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+        (at 16.51 -1.27 0)
+        (effects
+          (font (size 1.27 1.27))
+          (justify left)
+          hide
+        )
+      )
+      (property "Datasheet" "https://omronfs.omron.com/en_US/ecb/products/pdf/en-g2rl.pdf"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "Dual Pole Relay Omron DPDT"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "General Purpose Low Profile Relay DPDT Through Hole, Omron G2RL series, 8A 250VAC"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_fp_filters" "Relay?DPDT?Omron?G2RL*"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (in_bom yes)
+      (on_board yes)
+      (symbol "G2RL-2_0_1"
+        (rectangle
+          (start -15.24 5.08)
+          (end 15.24 -5.08)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+        (rectangle
+          (start -13.335 1.905)
+          (end -6.985 -1.905)
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -12.7 -1.905) (xy -7.62 1.905))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -10.16 -5.08) (xy -10.16 -1.905))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -10.16 5.08) (xy -10.16 1.905))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -6.985 0) (xy -6.35 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -5.715 0) (xy -5.08 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -4.445 0) (xy -3.81 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -3.175 0) (xy -2.54 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -1.905 0) (xy -1.27 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -0.635 0) (xy 0 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0 -2.54) (xy -1.905 3.81))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0 -2.54) (xy 0 -5.08))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0.635 0) (xy 1.27 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 1.905 0) (xy 2.54 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 3.175 0) (xy 3.81 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 4.445 0) (xy 5.08 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 5.715 0) (xy 6.35 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 6.985 0) (xy 7.62 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 8.255 0) (xy 8.89 0))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 10.16 -2.54) (xy 8.255 3.81))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 10.16 -2.54) (xy 10.16 -5.08))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -2.54 5.08) (xy -2.54 2.54) (xy -1.905 3.175) (xy -2.54 3.81))
+          (stroke (width 0) (type default))
+          (fill (type outline))
+        )
+        (polyline
+          (pts (xy 2.54 5.08) (xy 2.54 2.54) (xy 1.905 3.175) (xy 2.54 3.81))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 7.62 5.08) (xy 7.62 2.54) (xy 8.255 3.175) (xy 7.62 3.81))
+          (stroke (width 0) (type default))
+          (fill (type outline))
+        )
+        (polyline
+          (pts (xy 12.7 5.08) (xy 12.7 2.54) (xy 12.065 3.175) (xy 12.7 3.81))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "G2RL-2_1_1"
+        (pin passive line
+          (at 0 -7.62 90)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "11"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at -2.54 7.62 270)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "12"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 2.54 7.62 270)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "14"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 10.16 -7.62 90)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "21"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 7.62 7.62 270)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "22"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 12.7 7.62 270)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "24"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at -10.16 7.62 270)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "A1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at -10.16 -7.62 90)
+          (length 2.54)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "A2"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+    (symbol "power:GND"
+      (power)
+      (pin_names (offset 0))
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "#PWR"
+        (at 0 -6.35 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Value" "GND"
+        (at 0 -3.81 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Datasheet" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "global power"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "Power symbol creates a global label with name \"GND\" , ground"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (symbol "GND_0_1"
+        (polyline
+          (pts (xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "GND_1_1"
+        (pin power_in line
+          (at 0 0 270)
+          (length 0)
+          hide
+          (name "GND"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+    (symbol "power:+12V"
+      (power)
+      (pin_names (offset 0))
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "#PWR"
+        (at 0 -3.81 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Value" "+12V"
+        (at 0 3.556 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Datasheet" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "global power"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "Power symbol creates a global label with name \"+12V\""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (symbol "+12V_0_1"
+        (polyline
+          (pts (xy -0.762 1.27) (xy 0 2.54))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0 0) (xy 0 2.54))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0 2.54) (xy 0.762 1.27))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "+12V_1_1"
+        (pin power_in line
+          (at 0 0 90)
+          (length 0)
+          hide
+          (name "+12V"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+    (symbol "Connector:Screw_Terminal_01x02"
+      (pin_names (offset 1.016) hide)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "J"
+        (at 0 2.54 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Value" "Screw_Terminal_01x02"
+        (at 0 -5.08 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "screw terminal"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_fp_filters" "TerminalBlock*:*"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (symbol "Screw_Terminal_01x02_1_1"
+        (rectangle
+          (start -1.27 1.27)
+          (end 1.27 -3.81)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+        (circle
+          (center 0 -2.54)
+          (radius 0.635)
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -0.5334 -2.2098) (xy 0.3302 -3.048))
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -0.5334 0.3302) (xy 0.3302 -0.508))
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -0.3556 -2.032) (xy 0.508 -2.8702))
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -0.3556 0.508) (xy 0.508 -0.3302))
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (circle
+          (center 0 0)
+          (radius 0.635)
+          (stroke (width 0.1524) (type default))
+          (fill (type none))
+        )
+        (pin passive line
+          (at -5.08 0 0)
+          (length 3.81)
+          (name "Pin_1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at -5.08 -2.54 0)
+          (length 3.81)
+          (name "Pin_2"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "2"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+    (symbol "Device:LED"
+      (pin_numbers hide)
+      (pin_names (offset 1.016) hide)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "D"
+        (at 0 2.54 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Value" "LED"
+        (at 0 -2.54 0)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "LED diode"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "Light emitting diode"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_fp_filters" "LED* LED_SMD:* LED_THT:*"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (symbol "LED_0_1"
+        (polyline
+          (pts (xy -1.27 -1.27) (xy -1.27 1.27))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -1.27 0) (xy 1.27 0))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 1.27 -1.27) (xy 1.27 1.27) (xy -1.27 0) (xy 1.27 -1.27))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -3.048 -0.762) (xy -4.572 -2.286) (xy -3.81 -2.286) (xy -4.572 -2.286) (xy -4.572 -1.524))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -1.778 -0.762) (xy -3.302 -2.286) (xy -2.54 -2.286) (xy -3.302 -2.286) (xy -3.302 -1.524))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "LED_1_1"
+        (pin passive line
+          (at -3.81 0 0)
+          (length 2.54)
+          (name "K"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 3.81 0 180)
+          (length 2.54)
+          (name "A"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "2"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+    (symbol "Device:R"
+      (pin_numbers hide)
+      (pin_names (offset 0))
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "R"
+        (at 2.032 0 90)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Value" "R"
+        (at 0 0 90)
+        (effects
+          (font (size 1.27 1.27))
+        )
+      )
+      (property "Footprint" ""
+        (at -1.778 0 90)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_keywords" "R res resistor"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_description" "Resistor"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (property "ki_fp_filters" "R_*"
+        (at 0 0 0)
+        (effects
+          (font (size 1.27 1.27))
+          hide
+        )
+      )
+      (symbol "R_0_1"
+        (rectangle
+          (start -1.016 -2.54)
+          (end 1.016 2.54)
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "R_1_1"
+        (pin passive line
+          (at 0 3.81 270)
+          (length 1.27)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "1"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+        (pin passive line
+          (at 0 -3.81 90)
+          (length 1.27)
+          (name "~"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+          (number "2"
+            (effects
+              (font (size 1.27 1.27))
+            )
+          )
+        )
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 40 60 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "e508d54d-113b-4a20-bad7-773c79b349c9")
+    (property "Reference" "K17"
+      (at 38 58 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 42 62 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 40 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 40 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 40 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 40 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "a728ac7c-0dee-4ed1-bc38-04ca809b0040"))
+    (pin "12" (uuid "6577f140-10e8-4835-b1e9-ee2c779b88a0"))
+    (pin "14" (uuid "043ba1bc-b66f-4599-857d-110cb6839f7f"))
+    (pin "21" (uuid "0cf9983a-67f5-4ef2-8f90-3d9a77f7e72f"))
+    (pin "22" (uuid "b4531f25-7406-4e6e-840d-e95880c30861"))
+    (pin "24" (uuid "a9432ddb-e469-4f9b-909a-0bc5968c923b"))
+    (pin "A1" (uuid "5f73dde2-1e5f-4677-9162-d452e5abb0d0"))
+    (pin "A2" (uuid "2ecdea75-2641-430a-a426-eca787ab5d68"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K17") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 40 67.62) (xy 40 70.16))
+    (stroke (width 0) (type default))
+    (uuid "879d6813-c02e-4968-a6a7-7a547f4e9c94")
+  )
+  (global_label "SEC17_R"
+    (shape input)
+    (at 40 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "fd63f276-2e29-47a5-8472-694752ae98cb")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 40 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 37.46 52.38) (xy 37.46 49.84))
+    (stroke (width 0) (type default))
+    (uuid "ebfc7572-503d-4921-96a6-0301786af688")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 37.46 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "4496e002-e2c6-4aee-b631-0701f69b096b")
+    (property "Reference" "#PWR001"
+      (at 37.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 37.46 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 37.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 37.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "54a4baf0-9fe6-42cd-b777-cb16c2c8425d"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR001") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 42.54 52.38) (xy 42.54 49.84))
+    (stroke (width 0) (type default))
+    (uuid "ebe4b1bd-ae57-46e2-83b2-56c1fec68873")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 42.54 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "9e0e7cb3-6aa3-4e7f-9822-25cb0d8ceb4b")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 42.54 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 50.16 67.62) (xy 50.16 70.16))
+    (stroke (width 0) (type default))
+    (uuid "db3c067d-ba87-482f-a9b3-265be975ebff")
+  )
+  (global_label "SEC17_B"
+    (shape input)
+    (at 50.16 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "0f11aa92-665c-4420-9398-09e102738225")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 50.16 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 47.62 52.38) (xy 47.62 49.84))
+    (stroke (width 0) (type default))
+    (uuid "811d8f53-4e49-4ccf-b13e-2ce5b0653584")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 47.62 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "ceb4fc38-fcf7-44f2-ae2a-2b4eacc5de5f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 47.62 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 52.7 52.38) (xy 52.7 49.84))
+    (stroke (width 0) (type default))
+    (uuid "ed7c8d06-c9ef-42c5-bf84-a7b026b72034")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 52.7 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "f7051ba9-bd49-4fe8-8ed1-cc5b150d2752")
+    (property "Reference" "#PWR002"
+      (at 52.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 52.7 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 52.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 52.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "ea035ad9-ee67-460f-969e-f74420529e12"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR002") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 29.84 52.38) (xy 29.84 49.84))
+    (stroke (width 0) (type default))
+    (uuid "d7a02e35-eb34-424c-8aca-e792ef8e08b7")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 29.84 49.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "c5d0d100-3187-4903-82b1-05eb7e173158")
+    (property "Reference" "#PWR003"
+      (at 29.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 29.84 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 29.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 29.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "bd5f043c-42a3-40c6-bd53-2b9063e2c967"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR003") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 29.84 67.62) (xy 29.84 70.16))
+    (stroke (width 0) (type default))
+    (uuid "c617859b-0864-4264-a57b-f124bd978e65")
+  )
+  (global_label "RLY17"
+    (shape input)
+    (at 29.84 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "8185e97a-58bd-40f7-a26c-50662692444f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 29.84 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 75 57.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "0e87fa66-df48-4465-adea-c1fbc3f26f77")
+    (property "Reference" "J17"
+      (at 73 55.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 17"
+      (at 77 59.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 75 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 75 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 75 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 75 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "111c56bf-d9b0-4249-a0be-4ee066631fbb"))
+    (pin "2" (uuid "c835c086-cc6f-43d5-bc27-7c1d42805d61"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J17") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 69.92 57.46) (xy 67.38 57.46))
+    (stroke (width 0) (type default))
+    (uuid "c60e6fd8-ad05-495b-bc91-523d7db15f0f")
+  )
+  (global_label "SEC17_R"
+    (shape input)
+    (at 67.38 57.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "12132bef-ee0c-4227-9409-e445fe511508")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 67.38 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 69.92 60) (xy 67.38 60))
+    (stroke (width 0) (type default))
+    (uuid "6da47576-da68-48aa-8f67-382e41c4fda4")
+  )
+  (global_label "SEC17_B"
+    (shape input)
+    (at 67.38 60 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "5b1dc0c3-1192-4979-a22a-ed90f93ca49b")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 67.38 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 15 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "70dbbc59-6a96-47af-9e60-256878b3cb7e")
+    (property "Reference" "D17"
+      (at 13 47.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 17 51.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 15 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 15 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 15 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 15 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "2f1bed67-81a6-4124-8a2c-133c59524c71"))
+    (pin "2" (uuid "40468a84-e2d8-4c4e-b0b9-9946fbcb8d43"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D17") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 18.81 49.84) (xy 21.35 49.84))
+    (stroke (width 0) (type default))
+    (uuid "8ce21b8e-70e8-4e7d-b69f-c1c3fb705e4f")
+  )
+  (global_label "RLY17"
+    (shape input)
+    (at 21.35 49.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "94da47c1-c3b9-4d58-89c1-c0ef23cdc91e")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 21.35 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 11.19 49.84) (xy 8.65 49.84))
+    (stroke (width 0) (type default))
+    (uuid "ac5f40fb-79ec-4116-9094-2b818c54adb9")
+  )
+  (global_label "LEDA17"
+    (shape input)
+    (at 8.65 49.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "f8c9f8dd-39cf-4500-b445-ceb925b3fa38")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 8.65 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 15 39.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "8145d536-09df-4ef8-a26a-d347aea75456")
+    (property "Reference" "R17"
+      (at 13 37.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 17 41.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 15 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 15 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 15 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 15 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "b8ce2ecc-ff6a-44ee-aace-d08333caa46e"))
+    (pin "2" (uuid "52cacc24-7db6-4f68-b9ea-1635522c3595"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R17") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 11.19 39.68) (xy 8.65 39.68))
+    (stroke (width 0) (type default))
+    (uuid "dde4d9ca-ab60-42b1-8ca4-c51660057f91")
+  )
+  (global_label "LEDA17"
+    (shape input)
+    (at 8.65 39.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "f8456278-7560-4a31-9115-a86c605df783")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 8.65 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 18.81 39.68) (xy 21.35 39.68))
+    (stroke (width 0) (type default))
+    (uuid "77ab64c6-dbc6-417e-89be-ec2ccdb2b66f")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 21.35 39.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "11c5856a-7496-4216-b4aa-f08f24ac8cbf")
+    (property "Reference" "#PWR004"
+      (at 21.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 26.85 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 21.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 21.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "f34a56b8-5cea-4f33-8e29-200675f55fd2"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR004") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 135 60 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "87eb4cc4-fc8b-4b6f-a89c-b5bf4b68b698")
+    (property "Reference" "K18"
+      (at 133 58 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 137 62 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 135 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 135 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 135 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 135 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "9a14e9f2-36c8-4656-8258-77d719d40b8b"))
+    (pin "12" (uuid "59085b3e-2a8e-487c-a93f-ef638611d8e8"))
+    (pin "14" (uuid "22d9ced0-1f8c-4fa1-ab22-55184db2e06e"))
+    (pin "21" (uuid "0aea2caa-52e2-4a85-9c8b-1f07045c602f"))
+    (pin "22" (uuid "76c24dc6-5fde-45ae-860c-8d617fa4b03e"))
+    (pin "24" (uuid "7475f12a-4553-44d1-a52c-a21ce4710f5d"))
+    (pin "A1" (uuid "567e0eba-c250-46f6-830a-8cd5790c1d20"))
+    (pin "A2" (uuid "bdbf747c-8f27-45dc-af08-fa185a275293"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K18") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 135 67.62) (xy 135 70.16))
+    (stroke (width 0) (type default))
+    (uuid "c9d89b17-3717-4c15-89cf-4ead07e48cf9")
+  )
+  (global_label "SEC18_R"
+    (shape input)
+    (at 135 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "0ab79ec4-57c2-4498-9842-9a643b5b2ec6")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 135 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 132.46 52.38) (xy 132.46 49.84))
+    (stroke (width 0) (type default))
+    (uuid "915e1950-8a06-47eb-ab42-e87ef1b593fb")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 132.46 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "151a4803-222f-4b4d-8286-85b8823d19ec")
+    (property "Reference" "#PWR005"
+      (at 132.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 132.46 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 132.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 132.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "b58be917-3592-4bcf-8268-9691bf4da11e"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR005") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 137.54 52.38) (xy 137.54 49.84))
+    (stroke (width 0) (type default))
+    (uuid "9934cfdb-79bc-48a5-a425-a78339de1482")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 137.54 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "e6182651-ec51-4ffe-9d15-addbf5b22269")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 137.54 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 145.16 67.62) (xy 145.16 70.16))
+    (stroke (width 0) (type default))
+    (uuid "fbfbc21c-4d86-426a-9505-4040de02dda0")
+  )
+  (global_label "SEC18_B"
+    (shape input)
+    (at 145.16 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "627052d1-ac54-47c8-8232-99942ced78b4")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 145.16 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 142.62 52.38) (xy 142.62 49.84))
+    (stroke (width 0) (type default))
+    (uuid "21c67a42-e463-48a8-9796-f3b4c6d037b4")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 142.62 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "2b7d872b-e10a-49a4-8f64-f96a32e29426")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 142.62 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 147.7 52.38) (xy 147.7 49.84))
+    (stroke (width 0) (type default))
+    (uuid "9329cd76-7dd7-45ff-9b6e-a19f65ae67d8")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 147.7 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "08e714a0-1ed2-4dd6-86ea-fae6501cb7dd")
+    (property "Reference" "#PWR006"
+      (at 147.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 147.7 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 147.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 147.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "a21b16ab-fccd-4717-b617-a1835406605f"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR006") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 124.84 52.38) (xy 124.84 49.84))
+    (stroke (width 0) (type default))
+    (uuid "5f0f1ed0-130d-473a-925e-c8b0d925ff19")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 124.84 49.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "6d63e766-ec27-43d5-acaa-20f146cbf31c")
+    (property "Reference" "#PWR007"
+      (at 124.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 124.84 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 124.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 124.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "8ddd6bb6-98bd-4a9f-81c5-521762d831ad"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR007") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 124.84 67.62) (xy 124.84 70.16))
+    (stroke (width 0) (type default))
+    (uuid "4a76262c-edb9-44a8-aefe-9767e9f863cb")
+  )
+  (global_label "RLY18"
+    (shape input)
+    (at 124.84 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "27e8ab1f-2ebb-4ab4-bb3e-b2c7654973c5")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 124.84 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 170 57.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "c2941f0d-1b45-4261-8403-ad22852d3b28")
+    (property "Reference" "J18"
+      (at 168 55.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 18"
+      (at 172 59.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 170 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 170 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 170 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 170 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "6e81a316-56cc-4b58-bbd1-6da3c5b6ff0e"))
+    (pin "2" (uuid "aa837b98-8949-4524-aa6d-91c86666d23b"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J18") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 164.92 57.46) (xy 162.38 57.46))
+    (stroke (width 0) (type default))
+    (uuid "30bfa784-5288-4d4c-ae7a-1b2b58495b77")
+  )
+  (global_label "SEC18_R"
+    (shape input)
+    (at 162.38 57.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "007c3b4b-7172-4b3c-9b91-d61fe6b60a57")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 162.38 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 164.92 60) (xy 162.38 60))
+    (stroke (width 0) (type default))
+    (uuid "6b8dfbaa-0eec-4c27-a520-04fb2ac658e7")
+  )
+  (global_label "SEC18_B"
+    (shape input)
+    (at 162.38 60 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "6207399b-9cfd-44a2-8bc7-be42f883492e")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 162.38 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 110 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "1a7fc0ee-9ffc-47bf-8e8b-e60b6581d6a9")
+    (property "Reference" "D18"
+      (at 108 47.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 112 51.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 110 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 110 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 110 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 110 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "386cd560-a5b4-4cfe-b372-217a3662297b"))
+    (pin "2" (uuid "cdb9cf3b-52cb-4ac4-b9bc-9944f53ba863"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D18") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 113.81 49.84) (xy 116.35 49.84))
+    (stroke (width 0) (type default))
+    (uuid "7ecb500d-d93e-400e-863c-1127e5249d58")
+  )
+  (global_label "RLY18"
+    (shape input)
+    (at 116.35 49.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "e42b6b91-701a-4028-83a8-98a56da30012")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 116.35 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 106.19 49.84) (xy 103.65 49.84))
+    (stroke (width 0) (type default))
+    (uuid "6a1ae227-572b-4cf6-9c7c-24e2c71e21f6")
+  )
+  (global_label "LEDA18"
+    (shape input)
+    (at 103.65 49.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "21fc805e-3db9-4b23-ae87-114e585d5693")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 103.65 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 110 39.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "8eaa48c4-a856-416a-8adb-95690a22b97e")
+    (property "Reference" "R18"
+      (at 108 37.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 112 41.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 110 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 110 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 110 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 110 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "86022173-088c-4599-92f1-86f51bf5067a"))
+    (pin "2" (uuid "e9523684-7df4-4333-acc3-e8626b42bda0"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R18") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 106.19 39.68) (xy 103.65 39.68))
+    (stroke (width 0) (type default))
+    (uuid "71e7ae11-0188-415d-8cf0-89684e619e6e")
+  )
+  (global_label "LEDA18"
+    (shape input)
+    (at 103.65 39.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "714334b1-db13-422f-8639-61e1786e2f6c")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 103.65 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 113.81 39.68) (xy 116.35 39.68))
+    (stroke (width 0) (type default))
+    (uuid "fe314e77-9a5c-4608-84e4-d049baa8d14d")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 116.35 39.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "7c25f2ea-d0ac-40b6-9beb-50b725fb82c9")
+    (property "Reference" "#PWR008"
+      (at 116.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 121.85 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 116.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 116.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "856992c3-bd13-48af-ad25-036e44a53069"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR008") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 230 60 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "928f1e81-c201-4705-be84-3abd5fab6fab")
+    (property "Reference" "K19"
+      (at 228 58 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 232 62 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 230 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 230 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 230 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 230 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "5262b0c9-8448-40ab-9b09-bac30ac2c1e4"))
+    (pin "12" (uuid "ec1c2f05-f93a-4250-87e0-7689869c695c"))
+    (pin "14" (uuid "537d03f4-6859-4e11-8a93-5d39d4a8ab86"))
+    (pin "21" (uuid "369c1bc1-aeea-47b7-9db2-6f975fcb8cef"))
+    (pin "22" (uuid "47738da0-4b7e-486a-9330-72c0b97fce4f"))
+    (pin "24" (uuid "07d2e32f-cd76-46dd-96fe-6ccfb2af10fa"))
+    (pin "A1" (uuid "240008b4-1819-402e-8b3f-72440ca33805"))
+    (pin "A2" (uuid "8475154c-b0ae-4ec1-86f4-9ddb96420afe"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K19") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 230 67.62) (xy 230 70.16))
+    (stroke (width 0) (type default))
+    (uuid "17e6023f-3370-4943-a499-65ee83c06ccc")
+  )
+  (global_label "SEC19_R"
+    (shape input)
+    (at 230 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "83afc288-e084-48aa-80ac-9bc1ba6e0c8a")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 230 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 227.46 52.38) (xy 227.46 49.84))
+    (stroke (width 0) (type default))
+    (uuid "6194ae77-8c4d-4848-8759-0d3177ba46fa")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 227.46 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "14f3035b-baaa-4af2-b462-e85b9c20dd85")
+    (property "Reference" "#PWR009"
+      (at 227.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 227.46 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 227.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 227.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "6ea605d7-9e96-45bb-8c01-dddc17301a01"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR009") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 232.54 52.38) (xy 232.54 49.84))
+    (stroke (width 0) (type default))
+    (uuid "1b27accd-f5f5-4e71-b36c-8bd480c1b71a")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 232.54 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "01094889-007c-4502-91a8-9cb29e74f1a7")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 232.54 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 240.16 67.62) (xy 240.16 70.16))
+    (stroke (width 0) (type default))
+    (uuid "2eb6277c-4c69-46a7-b09b-78cf905f0966")
+  )
+  (global_label "SEC19_B"
+    (shape input)
+    (at 240.16 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "0dfa85cf-ea78-4f41-8954-1844ba9ccfc8")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 240.16 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 237.62 52.38) (xy 237.62 49.84))
+    (stroke (width 0) (type default))
+    (uuid "3fb05563-9ec9-4a19-9894-990e2e95b66f")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 237.62 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "c265f872-ef11-4d8b-a9f1-95ebf805d479")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 237.62 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 242.7 52.38) (xy 242.7 49.84))
+    (stroke (width 0) (type default))
+    (uuid "7726156b-78fc-400c-acce-c4ac7f59ab37")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 242.7 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "aa8911a2-4c20-4a1b-a546-e49d51419b2b")
+    (property "Reference" "#PWR010"
+      (at 242.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 242.7 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 242.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 242.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "91ce331f-2ad1-42b1-9419-bb0bf6696578"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR010") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 219.84 52.38) (xy 219.84 49.84))
+    (stroke (width 0) (type default))
+    (uuid "1adda3b4-7f35-42ba-a0de-aae937fefbbc")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 219.84 49.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "b44a661f-c73f-4874-b592-bd68324673bb")
+    (property "Reference" "#PWR011"
+      (at 219.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 219.84 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 219.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 219.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "5570f48c-26b9-469a-98a6-528447d41aa3"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR011") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 219.84 67.62) (xy 219.84 70.16))
+    (stroke (width 0) (type default))
+    (uuid "3ba4bb7c-06d6-433a-906c-854865e45786")
+  )
+  (global_label "RLY19"
+    (shape input)
+    (at 219.84 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "197651e3-7e75-41fd-911b-fa148f41e258")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 219.84 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 265 57.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "020e775f-52f5-4760-b48c-a4e7cbb0183e")
+    (property "Reference" "J19"
+      (at 263 55.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 19"
+      (at 267 59.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 265 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 265 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 265 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 265 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "a488729a-cf39-4232-a5e3-041e782a0300"))
+    (pin "2" (uuid "f2c43af8-8f69-4924-884e-e65c902f81a3"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J19") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 259.92 57.46) (xy 257.38 57.46))
+    (stroke (width 0) (type default))
+    (uuid "4dff6e2e-5634-4a66-9524-90ab6894bea4")
+  )
+  (global_label "SEC19_R"
+    (shape input)
+    (at 257.38 57.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "bca7a5a2-7f96-404c-9173-e5bb98c48e1a")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 257.38 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 259.92 60) (xy 257.38 60))
+    (stroke (width 0) (type default))
+    (uuid "1b5c238e-126a-47fd-b002-5b866a9f3a64")
+  )
+  (global_label "SEC19_B"
+    (shape input)
+    (at 257.38 60 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "49f99cb7-9de8-41a4-a6c6-829782193ff2")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 257.38 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 205 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "af247d1e-0bea-4182-9e94-5896d1f9c596")
+    (property "Reference" "D19"
+      (at 203 47.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 207 51.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 205 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 205 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 205 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 205 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "e7b252a1-a754-4de6-8087-d0b8723e0d05"))
+    (pin "2" (uuid "24a83ba4-219b-4c89-983a-4b0c6bf4c208"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D19") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 208.81 49.84) (xy 211.35 49.84))
+    (stroke (width 0) (type default))
+    (uuid "79b5a860-b8de-4d64-bff9-44f96c826c43")
+  )
+  (global_label "RLY19"
+    (shape input)
+    (at 211.35 49.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "d6720d21-35e6-409e-aaf0-4b431aa968a2")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 211.35 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 201.19 49.84) (xy 198.65 49.84))
+    (stroke (width 0) (type default))
+    (uuid "8ce68a38-0220-49d3-92ce-52e21c7f6710")
+  )
+  (global_label "LEDA19"
+    (shape input)
+    (at 198.65 49.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "13bd84b6-2dd7-4496-bb0a-3b83a4a6d252")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 198.65 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 205 39.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "e2058ace-ebb0-4534-8f05-a8c9fc01542f")
+    (property "Reference" "R19"
+      (at 203 37.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 207 41.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 205 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 205 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 205 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 205 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "f1880588-8748-4f1b-a3ef-816c34991334"))
+    (pin "2" (uuid "f19799c1-6082-4bd7-ad87-4b23ea5c22e9"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R19") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 201.19 39.68) (xy 198.65 39.68))
+    (stroke (width 0) (type default))
+    (uuid "9afce2c9-52bb-4a0a-a3cb-ac9a9824cc39")
+  )
+  (global_label "LEDA19"
+    (shape input)
+    (at 198.65 39.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "5af2bfb5-fc77-4019-a605-ab097e749685")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 198.65 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 208.81 39.68) (xy 211.35 39.68))
+    (stroke (width 0) (type default))
+    (uuid "bced3a83-c950-475f-bf3a-7cf6a5561f26")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 211.35 39.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "02f13a89-bffd-41b3-8951-4652dace221d")
+    (property "Reference" "#PWR012"
+      (at 211.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 216.85 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 211.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 211.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "26ea0882-4bd7-4770-9783-3873d8fd63cf"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR012") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 325 60 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "293e9cef-1a96-4f5c-ae38-ca49cd13b6fb")
+    (property "Reference" "K20"
+      (at 323 58 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 327 62 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 325 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 325 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 325 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 325 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "d1e8bf95-7295-4f55-967f-7ea17d146a5f"))
+    (pin "12" (uuid "965a7a0d-57f6-47aa-a9d0-5b9e65d21ed1"))
+    (pin "14" (uuid "0d30dc61-edd5-418f-92be-9e702a2e3c42"))
+    (pin "21" (uuid "2c112daf-ffb6-4b3e-b9ca-793245f457e3"))
+    (pin "22" (uuid "af58c242-8a4b-4336-826c-94249c7bc582"))
+    (pin "24" (uuid "cd5eb543-592b-4d2e-b3d6-b022ff961d6d"))
+    (pin "A1" (uuid "d552a157-d7e8-4cbf-83db-fa2fb9a35c96"))
+    (pin "A2" (uuid "fc148938-ce7c-4fce-bd1b-92edbafa70ec"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K20") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 325 67.62) (xy 325 70.16))
+    (stroke (width 0) (type default))
+    (uuid "a7f74288-290b-4b98-9575-fa72df7f7b0a")
+  )
+  (global_label "SEC20_R"
+    (shape input)
+    (at 325 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "f1efce48-cddc-4cdc-90fc-79685c9f93ea")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 325 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 322.46 52.38) (xy 322.46 49.84))
+    (stroke (width 0) (type default))
+    (uuid "da4892a0-84d1-48d4-b605-79e2ed9d9f17")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 322.46 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a7d575bf-da7c-4a40-9984-19620836d434")
+    (property "Reference" "#PWR013"
+      (at 322.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 322.46 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 322.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 322.46 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "d369f3e0-34ea-4f51-b49a-3bd5b349f4ca"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR013") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 327.54 52.38) (xy 327.54 49.84))
+    (stroke (width 0) (type default))
+    (uuid "2c44b9a5-ef25-485d-b754-f3b3e40cb904")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 327.54 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "292adcf1-ff0a-4eb1-a53c-ab18ad9b7b9a")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 327.54 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 335.16 67.62) (xy 335.16 70.16))
+    (stroke (width 0) (type default))
+    (uuid "b775f7d9-3485-41a8-a2dd-47c758c6e217")
+  )
+  (global_label "SEC20_B"
+    (shape input)
+    (at 335.16 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "ecfd69c0-5b50-4d62-bacc-f7e3adc8ac6f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 335.16 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 332.62 52.38) (xy 332.62 49.84))
+    (stroke (width 0) (type default))
+    (uuid "31a09235-e3b7-431d-887f-4e819816a1e3")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 332.62 49.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "05a3d613-19e0-4dab-a923-d5d4d11123c4")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 332.62 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 337.7 52.38) (xy 337.7 49.84))
+    (stroke (width 0) (type default))
+    (uuid "d8fbc220-5be2-45fd-81e7-68451caa77f1")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 337.7 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "baed1d67-f2a8-4c78-8e8c-05aeeccce411")
+    (property "Reference" "#PWR014"
+      (at 337.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 337.7 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 337.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 337.7 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "d1c8f879-c48d-4c16-b12e-e589704a1b24"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR014") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 314.84 52.38) (xy 314.84 49.84))
+    (stroke (width 0) (type default))
+    (uuid "55ee05c6-3dfc-45ec-95c8-7c47f86afce2")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 314.84 49.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "1b496aff-0d37-4eba-b5c6-bb8f2590f8c6")
+    (property "Reference" "#PWR015"
+      (at 314.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 314.84 44.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 314.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 314.84 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "083fcdc0-18dd-4e45-81df-ce2c3abfea05"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR015") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 314.84 67.62) (xy 314.84 70.16))
+    (stroke (width 0) (type default))
+    (uuid "5c181484-0fd1-428f-b0a6-6f63ec9127e2")
+  )
+  (global_label "RLY20"
+    (shape input)
+    (at 314.84 70.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "a089658a-8def-4846-a2cd-28785ed0b5ac")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 314.84 70.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 360 57.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "ee92f625-9f84-40cb-b948-da7257ce4bed")
+    (property "Reference" "J20"
+      (at 358 55.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 20"
+      (at 362 59.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 360 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 360 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 360 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 360 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "dc7fc995-6133-4992-bec9-0cf7a10ea3e2"))
+    (pin "2" (uuid "bd99f7c4-51d4-42f2-8205-4b02cc014182"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J20") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 354.92 57.46) (xy 352.38 57.46))
+    (stroke (width 0) (type default))
+    (uuid "b8c6e141-21aa-4e30-81b3-fc81001767d0")
+  )
+  (global_label "SEC20_R"
+    (shape input)
+    (at 352.38 57.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "8fb372c9-9dbd-4ca9-b48a-320d884777d1")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 352.38 57.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 354.92 60) (xy 352.38 60))
+    (stroke (width 0) (type default))
+    (uuid "1b0e57c8-76fb-435d-9e49-7d62e65780d7")
+  )
+  (global_label "SEC20_B"
+    (shape input)
+    (at 352.38 60 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "c32b1b15-ab6e-4e02-a7a8-fb4ae46cfd1d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 352.38 60 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 300 49.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "7c788bc6-ef2c-409c-9e85-8bed1908c3be")
+    (property "Reference" "D20"
+      (at 298 47.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 302 51.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 300 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 300 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 300 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 300 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "7d594025-6332-437b-a197-36ab9c4d6779"))
+    (pin "2" (uuid "df36b19f-4c45-4e11-af0b-cd89bb4969ff"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D20") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 303.81 49.84) (xy 306.35 49.84))
+    (stroke (width 0) (type default))
+    (uuid "a2a279ef-9d98-4299-9936-f9c178339e2c")
+  )
+  (global_label "RLY20"
+    (shape input)
+    (at 306.35 49.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "009b5a0f-0af7-4ae7-a784-67c742bd2dbe")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 306.35 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 296.19 49.84) (xy 293.65 49.84))
+    (stroke (width 0) (type default))
+    (uuid "65408f03-1d9c-4722-afe9-cc27d07b1c5f")
+  )
+  (global_label "LEDA20"
+    (shape input)
+    (at 293.65 49.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "8c4e665f-cc6d-4df6-a4cc-faf359b36b52")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 293.65 49.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 300 39.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "8d33e771-a64c-4b3f-8327-c9052e76b8f5")
+    (property "Reference" "R20"
+      (at 298 37.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 302 41.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 300 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 300 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 300 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 300 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "2db65362-6449-4586-b99b-db749eae6319"))
+    (pin "2" (uuid "b72e8912-5b53-42ba-b9bb-556898557442"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R20") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 296.19 39.68) (xy 293.65 39.68))
+    (stroke (width 0) (type default))
+    (uuid "53a6ef2a-4aca-4a43-be10-8927233a8649")
+  )
+  (global_label "LEDA20"
+    (shape input)
+    (at 293.65 39.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "0bac5416-ce00-47ce-9329-dca89a53444b")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 293.65 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 303.81 39.68) (xy 306.35 39.68))
+    (stroke (width 0) (type default))
+    (uuid "c5b3ab67-2e5d-4f5b-8422-16856a02478c")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 306.35 39.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "74a02422-d7e5-46af-b7e2-dcd95a3bf65d")
+    (property "Reference" "#PWR016"
+      (at 306.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 311.85 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 306.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 306.35 39.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "a5387ab6-7496-4cf1-8181-89ad212b9f8d"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR016") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 40 180 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "7bdebbe4-f75b-44c7-80b4-3e6284ea6efe")
+    (property "Reference" "K21"
+      (at 38 178 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 42 182 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 40 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 40 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 40 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 40 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "ba23af50-7308-4fa5-b384-49e2ac35bf36"))
+    (pin "12" (uuid "9af332ef-be32-4586-b109-e1ff1588a7b5"))
+    (pin "14" (uuid "be34dfd3-ad34-4790-b8ac-a5cb5fa321d6"))
+    (pin "21" (uuid "411ed9f2-6e8b-43d3-b193-77ca6516beca"))
+    (pin "22" (uuid "c0e52f14-1f2a-4f05-88da-2baa6cc3921a"))
+    (pin "24" (uuid "2b0d7bb0-88aa-43a8-a79b-4b592880a22b"))
+    (pin "A1" (uuid "4aa5511b-64a3-4f01-982f-7ea78b1ec581"))
+    (pin "A2" (uuid "595328ee-42eb-4349-866c-a866583f9d08"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K21") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 40 187.62) (xy 40 190.16))
+    (stroke (width 0) (type default))
+    (uuid "4b344d34-b964-4b2f-9988-7659e0da00c1")
+  )
+  (global_label "SEC21_R"
+    (shape input)
+    (at 40 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "299f7c30-d55e-48d9-8509-9751fe28cd09")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 40 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 37.46 172.38) (xy 37.46 169.84))
+    (stroke (width 0) (type default))
+    (uuid "89f23ad1-55d4-4b28-b5ee-10b576967e97")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 37.46 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "4377d472-d376-403d-b922-feb773d668e4")
+    (property "Reference" "#PWR017"
+      (at 37.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 37.46 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 37.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 37.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "958d1608-e3b8-4fc4-9925-df123faf3573"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR017") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 42.54 172.38) (xy 42.54 169.84))
+    (stroke (width 0) (type default))
+    (uuid "a3a443a8-6a3f-4ecf-ac89-090c472d45dc")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 42.54 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "65caf541-5290-4323-a7e2-1d553293499e")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 42.54 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 50.16 187.62) (xy 50.16 190.16))
+    (stroke (width 0) (type default))
+    (uuid "8e6548cf-43af-478b-9a28-d1c0fc74b4c4")
+  )
+  (global_label "SEC21_B"
+    (shape input)
+    (at 50.16 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "49fadbf0-8d15-4df2-b37a-f428c2163454")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 50.16 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 47.62 172.38) (xy 47.62 169.84))
+    (stroke (width 0) (type default))
+    (uuid "e317928d-5476-464d-bd2c-83a47f8287bf")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 47.62 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "0b61cf9b-b32c-481a-8560-c5f1ae0d0922")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 47.62 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 52.7 172.38) (xy 52.7 169.84))
+    (stroke (width 0) (type default))
+    (uuid "4c38cb6e-1bdf-46c8-8ffe-620e485dc6db")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 52.7 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "c2a1c5ee-a95a-4500-b6aa-e9243d4c2f46")
+    (property "Reference" "#PWR018"
+      (at 52.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 52.7 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 52.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 52.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "179038d2-3521-47e9-acb0-766e7a719193"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR018") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 29.84 172.38) (xy 29.84 169.84))
+    (stroke (width 0) (type default))
+    (uuid "264f7664-6010-4691-a132-ce0f8df092ac")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 29.84 169.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "fdfb2e91-866b-4844-b657-83fe9fd8b8a0")
+    (property "Reference" "#PWR019"
+      (at 29.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 29.84 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 29.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 29.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "17f0fde0-d302-4965-bd31-17321edc8bce"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR019") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 29.84 187.62) (xy 29.84 190.16))
+    (stroke (width 0) (type default))
+    (uuid "b2f97bf1-9044-4abd-89eb-f2586eef8783")
+  )
+  (global_label "RLY21"
+    (shape input)
+    (at 29.84 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "67c8b8f4-119e-4583-af5f-7d86cb3ce04b")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 29.84 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 75 177.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "2c20d133-dd0c-400e-923b-9eb70c15b743")
+    (property "Reference" "J21"
+      (at 73 175.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 21"
+      (at 77 179.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 75 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 75 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 75 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 75 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "22a4a8e8-9ac3-4ee9-98af-44b66df0bbd6"))
+    (pin "2" (uuid "aceea587-d312-48fb-9d77-55abcd8a56de"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J21") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 69.92 177.46) (xy 67.38 177.46))
+    (stroke (width 0) (type default))
+    (uuid "57f91848-d5f2-4dd8-a09b-58b82c7a5b25")
+  )
+  (global_label "SEC21_R"
+    (shape input)
+    (at 67.38 177.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "6cc08ace-cbce-4829-95df-1101ab71854c")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 67.38 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 69.92 180) (xy 67.38 180))
+    (stroke (width 0) (type default))
+    (uuid "26433b3f-f203-46e4-8606-22797c83870f")
+  )
+  (global_label "SEC21_B"
+    (shape input)
+    (at 67.38 180 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "24ea3ddc-8247-4241-8062-bcd887d1c64d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 67.38 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 15 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "d520148e-8b90-4fd9-ad51-7f24904bd790")
+    (property "Reference" "D21"
+      (at 13 167.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 17 171.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 15 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 15 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 15 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 15 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "53fa9cdc-2ddc-48c1-baf2-68da6e4ba684"))
+    (pin "2" (uuid "b6a82951-695e-478f-8127-b97aa816f4a7"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D21") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 18.81 169.84) (xy 21.35 169.84))
+    (stroke (width 0) (type default))
+    (uuid "9d1b8bb4-1bf1-4dc0-b8e0-50df3b4b2ee6")
+  )
+  (global_label "RLY21"
+    (shape input)
+    (at 21.35 169.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "215fd2ae-fa5c-4f0f-aa14-a6fb962b923a")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 21.35 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 11.19 169.84) (xy 8.65 169.84))
+    (stroke (width 0) (type default))
+    (uuid "67aa00fd-bb19-4425-a1e2-226af5428c3b")
+  )
+  (global_label "LEDA21"
+    (shape input)
+    (at 8.65 169.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "0527388f-60e3-49b2-a4f2-72a2a3d489ce")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 8.65 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 15 159.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "cd05ef0d-8702-4f86-a372-e8ff8d9ba43a")
+    (property "Reference" "R21"
+      (at 13 157.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 17 161.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 15 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 15 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 15 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 15 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "1be87859-2fdc-42ac-b830-66ce9a40ad50"))
+    (pin "2" (uuid "27eceab9-16a8-4954-af63-24c3079c0e98"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R21") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 11.19 159.68) (xy 8.65 159.68))
+    (stroke (width 0) (type default))
+    (uuid "4522179e-0769-4531-a38d-e43ecb15f659")
+  )
+  (global_label "LEDA21"
+    (shape input)
+    (at 8.65 159.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "6f55ab71-f6ca-4190-8dd5-4134a9ed7d8b")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 8.65 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 18.81 159.68) (xy 21.35 159.68))
+    (stroke (width 0) (type default))
+    (uuid "1f974a20-a39e-42d6-9410-78cdd9a1ab53")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 21.35 159.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "1a3dc387-b884-4a26-8574-64d1728bb8a9")
+    (property "Reference" "#PWR020"
+      (at 21.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 26.85 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 21.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 21.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "a1c58189-46c3-4b32-a787-1b0b9ab9c589"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR020") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 135 180 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a7e53e58-3c1c-4294-91bb-39db26b121a1")
+    (property "Reference" "K22"
+      (at 133 178 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 137 182 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 135 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 135 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 135 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 135 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "2777d8a9-dbbd-4930-bfdf-3b1aba5280aa"))
+    (pin "12" (uuid "d1fc9b22-1e9d-442b-abec-ec7f09ec3649"))
+    (pin "14" (uuid "df3f85fb-de93-4eae-90bb-b751c517e979"))
+    (pin "21" (uuid "7c588fea-bf9e-4979-a596-8b561e6e820b"))
+    (pin "22" (uuid "c676c4cd-6e09-4f26-a5fa-691ed2af23e6"))
+    (pin "24" (uuid "21b8e773-90c3-4b34-9731-fea61ffc8103"))
+    (pin "A1" (uuid "8de059cf-d4a2-4284-b2fe-3804ad93c799"))
+    (pin "A2" (uuid "c1c577a4-32a2-4c95-9684-6bcfdafb9965"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K22") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 135 187.62) (xy 135 190.16))
+    (stroke (width 0) (type default))
+    (uuid "5d20992e-6879-4805-806f-b237b01f3520")
+  )
+  (global_label "SEC22_R"
+    (shape input)
+    (at 135 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "8e1a0c10-91f4-4305-afe1-f5ce0ee883bf")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 135 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 132.46 172.38) (xy 132.46 169.84))
+    (stroke (width 0) (type default))
+    (uuid "20b7f415-3ba6-4308-b576-29a9f6f87a60")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 132.46 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "e5a0ff64-e1d0-41e5-b279-dc0e9bd1fea5")
+    (property "Reference" "#PWR021"
+      (at 132.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 132.46 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 132.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 132.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "34b97165-200d-490d-b8be-24d677d5546e"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR021") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 137.54 172.38) (xy 137.54 169.84))
+    (stroke (width 0) (type default))
+    (uuid "62c11de1-3773-48d6-8319-fc60a37501ed")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 137.54 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "a2ab88ee-eab0-4c32-bde5-a333160ef857")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 137.54 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 145.16 187.62) (xy 145.16 190.16))
+    (stroke (width 0) (type default))
+    (uuid "8693a66a-fd6f-4033-bd76-fa0024553e9a")
+  )
+  (global_label "SEC22_B"
+    (shape input)
+    (at 145.16 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "b51c0f48-2b6a-468c-8f03-d62f3adf15b9")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 145.16 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 142.62 172.38) (xy 142.62 169.84))
+    (stroke (width 0) (type default))
+    (uuid "7edece2b-cc28-40da-ae39-450e0fd2ab6e")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 142.62 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "04c648cc-0849-470f-9140-ff8c9ff543dd")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 142.62 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 147.7 172.38) (xy 147.7 169.84))
+    (stroke (width 0) (type default))
+    (uuid "bdc9b608-d4dd-48ad-ac4c-87d3328ba027")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 147.7 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "985ce039-ac06-44a5-bc7a-654b7915acc7")
+    (property "Reference" "#PWR022"
+      (at 147.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 147.7 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 147.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 147.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "bc4e3aca-3c6a-4fa6-b895-a127718fddab"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR022") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 124.84 172.38) (xy 124.84 169.84))
+    (stroke (width 0) (type default))
+    (uuid "5790343f-70b0-41a0-9ab6-9867316f5ebb")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 124.84 169.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "3c393d22-8ab7-4e69-9905-1af8c41ddb45")
+    (property "Reference" "#PWR023"
+      (at 124.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 124.84 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 124.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 124.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "3af6a0ef-85eb-456d-9ebc-4fff19613a01"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR023") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 124.84 187.62) (xy 124.84 190.16))
+    (stroke (width 0) (type default))
+    (uuid "ba80ac9f-fa8a-4de5-89f8-c6d007b27387")
+  )
+  (global_label "RLY22"
+    (shape input)
+    (at 124.84 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "358f649a-cf35-4506-8b79-efc1666623ed")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 124.84 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 170 177.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "dec56b58-a941-411a-b1cc-5c3e5476f1c3")
+    (property "Reference" "J22"
+      (at 168 175.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 22"
+      (at 172 179.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 170 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 170 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 170 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 170 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "c952211a-3dce-4dae-8911-196b98e1d958"))
+    (pin "2" (uuid "857b74d7-0132-4025-8bc5-8e81ac60fbff"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J22") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 164.92 177.46) (xy 162.38 177.46))
+    (stroke (width 0) (type default))
+    (uuid "513d30b2-c801-4216-88d1-388fa2a53187")
+  )
+  (global_label "SEC22_R"
+    (shape input)
+    (at 162.38 177.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "d11bad81-5f19-49e2-afa0-ef57a893d3b9")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 162.38 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 164.92 180) (xy 162.38 180))
+    (stroke (width 0) (type default))
+    (uuid "a10f1a2c-abfc-4332-9820-f2afaab1ccf2")
+  )
+  (global_label "SEC22_B"
+    (shape input)
+    (at 162.38 180 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "0d9b0560-7cde-4b32-a3ee-4f935568d090")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 162.38 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 110 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "531ee0e6-d4ed-4aac-8067-30f5da699370")
+    (property "Reference" "D22"
+      (at 108 167.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 112 171.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 110 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 110 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 110 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 110 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "7f436095-968c-4aa2-a78e-f31fdca54a88"))
+    (pin "2" (uuid "641f03e3-581b-4ae7-999d-df20aa200e21"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D22") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 113.81 169.84) (xy 116.35 169.84))
+    (stroke (width 0) (type default))
+    (uuid "5a772a5d-a7a9-4ecf-a808-717c02b41577")
+  )
+  (global_label "RLY22"
+    (shape input)
+    (at 116.35 169.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "9f41182e-8951-48b6-aa7d-10ff6baea265")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 116.35 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 106.19 169.84) (xy 103.65 169.84))
+    (stroke (width 0) (type default))
+    (uuid "3cd95677-7485-40b3-9c09-1540743dd3d8")
+  )
+  (global_label "LEDA22"
+    (shape input)
+    (at 103.65 169.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "a3642e3a-ddfa-4073-90ac-3e3d8599e4a9")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 103.65 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 110 159.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "5a34c1bf-d654-4eef-9b90-64f77a325c63")
+    (property "Reference" "R22"
+      (at 108 157.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 112 161.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 110 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 110 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 110 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 110 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "8feaa87b-a156-4f3e-97b8-19bd3c1fc367"))
+    (pin "2" (uuid "a1ea8a15-2e5f-47cb-a5a3-540190b4c690"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R22") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 106.19 159.68) (xy 103.65 159.68))
+    (stroke (width 0) (type default))
+    (uuid "3f5bdb9f-9740-4d55-aaf9-0b4024fc5663")
+  )
+  (global_label "LEDA22"
+    (shape input)
+    (at 103.65 159.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "f75fc18f-70ab-4538-86fa-fb8d7dd9f234")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 103.65 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 113.81 159.68) (xy 116.35 159.68))
+    (stroke (width 0) (type default))
+    (uuid "44f1bf76-70ae-4762-ac14-0068c4e8b9ce")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 116.35 159.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "911a6b0e-19db-4e94-87e7-57018a075d29")
+    (property "Reference" "#PWR024"
+      (at 116.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 121.85 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 116.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 116.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "ff482b50-15ef-414e-825c-e51642b3b810"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR024") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 230 180 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "b3891b48-a86b-4d3c-8cc8-9a66fb1787ac")
+    (property "Reference" "K23"
+      (at 228 178 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 232 182 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 230 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 230 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 230 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 230 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "3c4eb9cd-f730-497b-a31c-343b8f7cd3f8"))
+    (pin "12" (uuid "23288850-efe4-4d0f-9493-4d8729dfee8c"))
+    (pin "14" (uuid "fa10337c-6a1a-4b61-a679-9b8df8c8f2c4"))
+    (pin "21" (uuid "df2057e9-7b90-488b-9ea7-1eaa6cd9dcc7"))
+    (pin "22" (uuid "bbe5ddbb-6bd9-43ac-a2c0-2f1e29f26aa5"))
+    (pin "24" (uuid "ce9b0ef3-a2ea-4c90-a1a7-322f6fcfd1cc"))
+    (pin "A1" (uuid "67983ed9-86d9-46dd-be5b-11f8738fddb3"))
+    (pin "A2" (uuid "7fca1635-e2a4-4a0a-9b97-22da33940c51"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K23") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 230 187.62) (xy 230 190.16))
+    (stroke (width 0) (type default))
+    (uuid "225fcdf8-36df-4bf1-a530-c7a53f00af1f")
+  )
+  (global_label "SEC23_R"
+    (shape input)
+    (at 230 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "82402a92-22d6-47ab-bda0-d3ec15feee18")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 230 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 227.46 172.38) (xy 227.46 169.84))
+    (stroke (width 0) (type default))
+    (uuid "cf3d3e6a-86d0-4509-819b-2a56e01e62f6")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 227.46 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "512e2a40-a9cb-4425-94c9-357aaa999a1e")
+    (property "Reference" "#PWR025"
+      (at 227.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 227.46 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 227.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 227.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "fd536bc2-5889-4ab8-af78-1483dae7adc8"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR025") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 232.54 172.38) (xy 232.54 169.84))
+    (stroke (width 0) (type default))
+    (uuid "1642d1e2-569e-4f9d-831d-30fedf618c44")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 232.54 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "c2fc458f-bdf3-4792-a683-d616f567a4b5")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 232.54 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 240.16 187.62) (xy 240.16 190.16))
+    (stroke (width 0) (type default))
+    (uuid "87df2c37-485f-4e96-a175-44ec6ee5fa20")
+  )
+  (global_label "SEC23_B"
+    (shape input)
+    (at 240.16 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "b5f64873-6638-4005-aec1-df303dc0b1c2")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 240.16 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 237.62 172.38) (xy 237.62 169.84))
+    (stroke (width 0) (type default))
+    (uuid "501afe18-0db6-4e9c-97a2-d6abd3f24d9e")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 237.62 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "9c9fdcb2-fdc2-468c-9774-98d0e98e1311")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 237.62 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 242.7 172.38) (xy 242.7 169.84))
+    (stroke (width 0) (type default))
+    (uuid "bbd822a4-198a-4e8f-a855-574ae5a21a5d")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 242.7 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "003871bc-074e-400a-a3ff-7d4a8ebdbbb7")
+    (property "Reference" "#PWR026"
+      (at 242.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 242.7 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 242.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 242.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "e5fb1cd7-d9c5-467c-b2f6-701a3d406990"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR026") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 219.84 172.38) (xy 219.84 169.84))
+    (stroke (width 0) (type default))
+    (uuid "4a941ab9-b27b-44ca-8f52-e241f6ff937c")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 219.84 169.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "117a5d53-3175-4639-833c-1d02c3d6cfa2")
+    (property "Reference" "#PWR027"
+      (at 219.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 219.84 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 219.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 219.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "56f445d7-854f-41b1-b968-1a6810296893"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR027") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 219.84 187.62) (xy 219.84 190.16))
+    (stroke (width 0) (type default))
+    (uuid "5a5d155a-d2c0-4eda-bc88-d695508c983d")
+  )
+  (global_label "RLY23"
+    (shape input)
+    (at 219.84 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "b8d1fe91-cb2b-459f-ad2e-8d55ec658dc5")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 219.84 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 265 177.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "c145dce1-c42f-49be-a7d6-cd74644b126c")
+    (property "Reference" "J23"
+      (at 263 175.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 23"
+      (at 267 179.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 265 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 265 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 265 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 265 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "e0aa4ffa-c4a2-4511-94b9-c5dadf8669c2"))
+    (pin "2" (uuid "8594c262-7c57-4065-b203-bb5ddcc25877"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J23") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 259.92 177.46) (xy 257.38 177.46))
+    (stroke (width 0) (type default))
+    (uuid "ded9ab59-b99e-4d35-9ba5-c297a109a358")
+  )
+  (global_label "SEC23_R"
+    (shape input)
+    (at 257.38 177.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "e60061f4-959f-499b-80a1-10163c15444d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 257.38 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 259.92 180) (xy 257.38 180))
+    (stroke (width 0) (type default))
+    (uuid "313b88d7-fa32-4df8-8d7b-f4ee4a83d7dd")
+  )
+  (global_label "SEC23_B"
+    (shape input)
+    (at 257.38 180 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "fa8bf7f2-2fb8-4c47-8c11-e4574f06387d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 257.38 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 205 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "607a4591-98ce-451a-ac03-166967595930")
+    (property "Reference" "D23"
+      (at 203 167.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 207 171.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 205 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 205 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 205 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 205 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "3fca9e9e-3aa6-40e5-a04e-cce306020c53"))
+    (pin "2" (uuid "f0f27e16-8905-4c76-9e3e-440ec659c1e9"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D23") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 208.81 169.84) (xy 211.35 169.84))
+    (stroke (width 0) (type default))
+    (uuid "7916ac55-bff2-42a1-9b0d-f06f413da6c1")
+  )
+  (global_label "RLY23"
+    (shape input)
+    (at 211.35 169.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "3e9e7d4e-800f-446c-9306-69c6c34d09fe")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 211.35 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 201.19 169.84) (xy 198.65 169.84))
+    (stroke (width 0) (type default))
+    (uuid "b7b02054-da9a-4b33-a74d-f585c05cff85")
+  )
+  (global_label "LEDA23"
+    (shape input)
+    (at 198.65 169.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "c0e56de1-f09b-474d-a481-9cc43d346a0f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 198.65 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 205 159.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "d02af0cd-d33b-4814-9511-a0a5dab1c6fd")
+    (property "Reference" "R23"
+      (at 203 157.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 207 161.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 205 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 205 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 205 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 205 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "08934b03-ca22-4d3d-9d3c-128fdef3c0f3"))
+    (pin "2" (uuid "6af91cb7-0993-49b5-b54e-34b93a459e58"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R23") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 201.19 159.68) (xy 198.65 159.68))
+    (stroke (width 0) (type default))
+    (uuid "a8595e67-acde-4c66-b30a-8356ed8751ef")
+  )
+  (global_label "LEDA23"
+    (shape input)
+    (at 198.65 159.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "b9de9461-e03b-4f11-8a42-7c0488018109")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 198.65 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 208.81 159.68) (xy 211.35 159.68))
+    (stroke (width 0) (type default))
+    (uuid "a130a2cb-04c8-4943-953a-d29e10d58313")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 211.35 159.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "8e23bcf6-53e3-4ce2-be87-0170a85d01dd")
+    (property "Reference" "#PWR028"
+      (at 211.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 216.85 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 211.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 211.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "f5b4a0e4-de25-43d3-a804-7651155ff29f"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR028") (unit 1))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Relay:G2RL-2")
+    (at 325 180 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a5a34836-27d9-4e63-b1e9-bd841f4e7e88")
+    (property "Reference" "K24"
+      (at 323 178 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "HF115F/012-2ZS4"
+      (at 327 182 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Relay_THT:Relay_DPDT_Omron_G2RL-2"
+      (at 325 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 325 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C163534"
+      (at 325 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Relay DPDT 8 A, 12 V coil 360 ohm, 29x12.7 mm (RT2 / G2RL-2 layout)"
+      (at 325 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "11" (uuid "4fb03f45-0857-4a25-a566-861584b8678d"))
+    (pin "12" (uuid "580dbd84-4359-4d5b-a384-4b3c79af33e4"))
+    (pin "14" (uuid "a144ba2e-cd67-4120-95f7-aeb1feb87c46"))
+    (pin "21" (uuid "4e7f5667-4e73-48fb-b889-25aa29b26ae9"))
+    (pin "22" (uuid "8603cb2d-4067-466c-a3be-853fdfbbb351"))
+    (pin "24" (uuid "6807d298-d4f7-4fa9-891c-c1afce83cbfa"))
+    (pin "A1" (uuid "ee95f169-a46a-4a52-8353-3f272c946f84"))
+    (pin "A2" (uuid "98845eac-ae4d-45e1-ac53-fffb4d102c20"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "K24") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 325 187.62) (xy 325 190.16))
+    (stroke (width 0) (type default))
+    (uuid "7547a4ca-9b19-4f1c-8f0b-8fa0893ff270")
+  )
+  (global_label "SEC24_R"
+    (shape input)
+    (at 325 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "229f34a6-7932-456d-8fef-fb7e97da4fb4")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 325 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 322.46 172.38) (xy 322.46 169.84))
+    (stroke (width 0) (type default))
+    (uuid "0e9e726e-12f0-41ca-8883-231b31b509b1")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 322.46 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "be1ab324-37c5-48c1-961e-a8506e12a836")
+    (property "Reference" "#PWR029"
+      (at 322.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 322.46 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 322.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 322.46 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "9084c0db-2b50-4742-90e5-a76a2ed605a5"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR029") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 327.54 172.38) (xy 327.54 169.84))
+    (stroke (width 0) (type default))
+    (uuid "24b55f42-7c0b-4313-876a-7d08c748ff34")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 327.54 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "65af1ec9-9738-450f-90b3-00edf636a1da")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 327.54 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 335.16 187.62) (xy 335.16 190.16))
+    (stroke (width 0) (type default))
+    (uuid "4ad4cff1-d26a-4b53-9c51-9f4588fd8804")
+  )
+  (global_label "SEC24_B"
+    (shape input)
+    (at 335.16 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "3419d562-5711-45dd-9a37-9bafeb4903b0")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 335.16 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 332.62 172.38) (xy 332.62 169.84))
+    (stroke (width 0) (type default))
+    (uuid "98969bf6-eb4b-49d2-a0d3-68771d936735")
+  )
+  (global_label "12V_ACT_B"
+    (shape input)
+    (at 332.62 169.84 90)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "62045bba-3ee8-45a1-be8a-d52ef42cb0bb")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 332.62 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 337.7 172.38) (xy 337.7 169.84))
+    (stroke (width 0) (type default))
+    (uuid "983365fe-3635-4be3-b9b6-b1544ce2166a")
+  )
+  (symbol
+    (lib_id "power:GND")
+    (at 337.7 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "d74d7f65-a3bc-4c69-9b00-dee18f899fb3")
+    (property "Reference" "#PWR030"
+      (at 337.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "GND"
+      (at 337.7 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 337.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 337.7 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "56673f63-227f-4d6f-8861-b9c45039de08"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR030") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 314.84 172.38) (xy 314.84 169.84))
+    (stroke (width 0) (type default))
+    (uuid "49dd1706-e320-433d-84f5-66ec85ee7b17")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 314.84 169.84 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "70bac9e5-031a-42f9-8213-a9ac3b227bee")
+    (property "Reference" "#PWR031"
+      (at 314.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 314.84 164.34 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 314.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 314.84 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "83bdee21-3b41-4f5b-9464-79cfd40d0fdc"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR031") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 314.84 187.62) (xy 314.84 190.16))
+    (stroke (width 0) (type default))
+    (uuid "9a76685c-a4dc-4672-a4eb-29ed9fc0ea20")
+  )
+  (global_label "RLY24"
+    (shape input)
+    (at 314.84 190.16 270)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "25d5ea92-c7ed-4969-81b7-892aa38dc27f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 314.84 190.16 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Connector:Screw_Terminal_01x02")
+    (at 360 177.46 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "3077cd49-192c-448e-9713-b8324e5bafe4")
+    (property "Reference" "J24"
+      (at 358 175.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "Section 24"
+      (at 362 179.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "TerminalBlock:TerminalBlock_bornier-2_P5.08mm"
+      (at 360 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 360 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C8465"
+      (at 360 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Screw terminal 2 pins 5.08 mm KF301-5.0-2P (pin 1 red, pin 2 black)"
+      (at 360 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "9da4f522-7cdf-473f-8b94-c73a3602369f"))
+    (pin "2" (uuid "16b0d97d-16a8-42f2-8160-28ec3258df6c"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "J24") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 354.92 177.46) (xy 352.38 177.46))
+    (stroke (width 0) (type default))
+    (uuid "ea8d5889-1b8b-4ff9-a1af-1eb1e4bb640b")
+  )
+  (global_label "SEC24_R"
+    (shape input)
+    (at 352.38 177.46 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "ddb887ec-1cc7-4f96-8276-ab60704f6813")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 352.38 177.46 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 354.92 180) (xy 352.38 180))
+    (stroke (width 0) (type default))
+    (uuid "ef59052f-d968-4150-9e73-adf2be4b89db")
+  )
+  (global_label "SEC24_B"
+    (shape input)
+    (at 352.38 180 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "861bcb8d-98f4-4f6a-a619-29ffc96c5b98")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 352.38 180 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:LED")
+    (at 300 169.84 180)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "e67fb0d2-5b7e-46bb-83b5-d67e6c9fb9d0")
+    (property "Reference" "D24"
+      (at 298 167.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "green"
+      (at 302 171.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric"
+      (at 300 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 300 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C72043"
+      (at 300 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "LED 0603 green, on when the section is open"
+      (at 300 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "06959bca-89bc-431f-a46d-205d4cd2e396"))
+    (pin "2" (uuid "24c9e525-390b-421b-80c0-00aefdd8b0c6"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "D24") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 303.81 169.84) (xy 306.35 169.84))
+    (stroke (width 0) (type default))
+    (uuid "f7a222d2-8f1f-421b-bc16-add3a13f37d2")
+  )
+  (global_label "RLY24"
+    (shape input)
+    (at 306.35 169.84 0)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify left)
+    )
+    (uuid "b11b62a5-f0ad-4e14-9bde-bf571be300fc")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 306.35 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 296.19 169.84) (xy 293.65 169.84))
+    (stroke (width 0) (type default))
+    (uuid "0651ab02-c6ab-4a68-90f0-c8f5b36683f8")
+  )
+  (global_label "LEDA24"
+    (shape input)
+    (at 293.65 169.84 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "39399ae4-71c9-495e-91d4-9a2958537429")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 293.65 169.84 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 300 159.68 90)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "cd77cf04-f028-4a7e-98a3-58af1bcbdea8")
+    (property "Reference" "R24"
+      (at 298 157.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify right)
+      )
+    )
+    (property "Value" "2.2k"
+      (at 302 161.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left)
+      )
+    )
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+      (at 300 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 300 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "LCSC" "C4190"
+      (at 300 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Description" "Resistor 0603 2.2 kohm (section LED)"
+      (at 300 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "3a3326e0-316b-424c-92da-d7293a94c382"))
+    (pin "2" (uuid "db619af0-d537-4234-ba02-6f5ff3154eaa"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "R24") (unit 1))
+      )
+    )
+  )
+  (wire
+    (pts (xy 296.19 159.68) (xy 293.65 159.68))
+    (stroke (width 0) (type default))
+    (uuid "d74311ba-9668-40f8-8933-b4fd4b266867")
+  )
+  (global_label "LEDA24"
+    (shape input)
+    (at 293.65 159.68 180)
+    (fields_autoplaced)
+    (effects
+      (font (size 1.27 1.27))
+      (justify right)
+    )
+    (uuid "0045bd92-ce09-4e60-9fa0-1b53dd9999f7")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 293.65 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+  )
+  (wire
+    (pts (xy 303.81 159.68) (xy 306.35 159.68))
+    (stroke (width 0) (type default))
+    (uuid "90875a07-6a06-46ee-bbee-fb521262e2c0")
+  )
+  (symbol
+    (lib_id "power:+12V")
+    (at 306.35 159.68 270)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "366187b2-02de-4a4a-b284-2bc28ffdcd16")
+    (property "Reference" "#PWR032"
+      (at 306.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Value" "+12V"
+      (at 311.85 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+      )
+    )
+    (property "Footprint" ""
+      (at 306.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (property "Datasheet" ""
+      (at 306.35 159.68 0)
+      (effects
+        (font (size 1.27 1.27))
+        hide
+      )
+    )
+    (pin "1" (uuid "570424e7-817f-4564-9165-8454ac0ad8f1"))
+    (instances
+      (project "Relay24_ESP32"
+        (path "/db39fd22-63d8-4182-afad-4071785f4d93/6e0e2bde-6103-4594-ad06-ac98326e8788" (reference "#PWR032") (unit 1))
+      )
+    )
+  )
+  (text "Each section: relay K (DPDT, coil A1 +12V / A2 driven low by the ULN), terminal J (1 = red wire, 2 = black wire). Relay off: red at GND, black at +12V ACT (pull in, closed). Relay on: red +12V ACT, black GND (push out, open)."
+    (at 20 280 0)
+    (effects
+      (font (size 2 2))
+      (justify left bottom)
+    )
+    (uuid "1d226fc5-f610-49db-8db6-c00ed9fa7ad7")
+  )
+  (text "LED D with R 2.2k across the coil shows the section open. 12V_ACT_A = sections 1-12 (J26/J27), 12V_ACT_B = sections 13-24 (J28/J29)."
+    (at 20 286 0)
+    (effects
+      (font (size 2 2))
+      (justify left bottom)
+    )
+    (uuid "ce5f4d70-9192-4b19-be4f-97efaa573b1c")
+  )
+)
