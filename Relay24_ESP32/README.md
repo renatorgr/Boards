@@ -118,6 +118,9 @@ Things that were assumed and should be checked on the real parts:
   only on its Standard service (setup fee, wider board). The PHY runs on a 25 MHz crystal
   and sends the reference clock out; the ESP32 reads it on GPIO0. Nothing of this has
   been built yet.
+- Y1 is a 5.0 x 3.2 mm two-pin crystal (YXC X503225MSB2GI, load capacitance 20 pF, with
+  33 pF from each pin to ground). JLCPCB flags the smaller 3.2 x 2.5 mm four-pin crystal
+  as hard to assemble and may charge extra for it, so do not swap it back.
 - The screw terminals follow the KiCad `TerminalBlock_bornier-2_P5.08mm` footprint
   (wire opening on the pin-2 side); check the orientation on the first board.
 - LCSC numbers were checked against the JLCPCB parts pages on 2026-10-28; stock

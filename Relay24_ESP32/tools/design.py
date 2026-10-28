@@ -47,7 +47,7 @@ FP = {
     "soic16": ("Package_SO", "SOIC-16_3.9x9.9mm_P1.27mm"),
     "soic18w": ("Package_SO", "SOIC-18W_7.5x11.6mm_P1.27mm"),
     "qfn32": ("Package_DFN_QFN", "QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm_ThermalVias"),
-    "xtal3225": ("Crystal", "Crystal_SMD_3225-4Pin_3.2x2.5mm"),
+    "xtal5032": ("Crystal", "Crystal_SMD_5032-2Pin_5.0x3.2mm"),
     "to263": ("Package_TO_SOT_SMD", "TO-263-5_TabPin3"),
     "sot223": ("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
     "rj45": ("Connector_RJ", "RJ45_Hanrun_HR911105A_Horizontal"),
@@ -255,9 +255,10 @@ add("U9", ("Relay24", "RTL8201F"), "qfn32", "RTL8201F",
      "28": "NC_RXER", "29": "DVDD10", "30": "+3V3", "31": "XTAL1", "32": "XTAL2", "33": "GND"},
     PHY + (180, "F"), ("root", 400, 90, 0), lcsc="C45044",
     desc="Ethernet PHY 10/100 RMII QFN-32 5x5 mm (Realtek RTL8201F-VB-CG)")
-add("Y1", ("Device", "Crystal_GND24"), "xtal3225", "25MHz",
-    {"1": "XTAL1", "2": "GND", "3": "XTAL2", "4": "GND"}, (68.9, 68.0, 270, "F"), ("root", 400, 160, 0),
-    lcsc="C9006", desc="Crystal 25 MHz, CL 12 pF, 3225 4-pin (YXC X322525MOB4SI)")
+add("Y1", ("Device", "Crystal"), "xtal5032", "25MHz",
+    {"1": "XTAL1", "2": "XTAL2"}, (69.4, 67.6, 0, "F"), ("root", 400, 160, 0),
+    lcsc="C112569", desc="Crystal 25 MHz, CL 20 pF, 5032 2-pin (YXC X503225MSB2GI); "
+                         "the 3225 4-pin one is flagged as hard to assemble by JLCPCB")
 add("R30", ("Device", "R"), "r0603", "33", {"1": "ETH_REFCLK", "2": "ETH_CLK"},
     (64.75, 55.3, 90, "F"), ("root", 330, 50, 0), lcsc="C23140", desc="Resistor 0603 33 ohm (50 MHz reference clock from the PHY to GPIO0)")
 add("R31", ("Device", "R"), "r0603", "2.49k 1%", {"1": "RSET", "2": "GND"},
@@ -287,9 +288,9 @@ for i, (net, pos, rot, what) in enumerate([("+3V3", (66.4, 55.3), 90, "DVDD33, p
                                            ("AVDD10", (73.5, 63.3), 270, "AVDD10OUT, pin 2"), ("DVDD10", (65.5, 64.95), 270, "DVDD10OUT, pin 29")]):
     add(f"C{30 + i}", ("Device", "C"), "c0603", "100nF", {"1": net, "2": "GND"},
         pos + (rot, "F"), ("root", 370 + i * 15, 140, 0), lcsc="C14663", desc=f"Capacitor 0603 100 nF ({what})")
-for i, (net, pos) in enumerate([("XTAL1", (66.3, 68.3)), ("XTAL2", (70.8, 71.7))]):
-    add(f"C{34 + i}", ("Device", "C"), "c0603", "18pF", {"1": net, "2": "GND"},
-        pos + (270, "F"), ("root", 385 + i * 30, 175, 0), lcsc="C1647", desc="Capacitor 0603 18 pF C0G (crystal load, Samsung CL10C180JB8NNNC)")
+for i, (net, pos) in enumerate([("XTAL1", (67.55, 71.1)), ("XTAL2", (71.25, 71.1))]):
+    add(f"C{34 + i}", ("Device", "C"), "c0603", "33pF", {"1": net, "2": "GND"},
+        pos + (270, "F"), ("root", 385 + i * 30, 175, 0), lcsc="C1663", desc="Capacitor 0603 33 pF C0G (crystal load for CL 20 pF, Samsung CL10C330JB8NNNC)")
 add("C38", ("Device", "C"), "c0805", "10uF", {"1": "+3V3", "2": "GND"},
     (55.5, 65.5, 90, "F"), ("root", 450, 140, 0), lcsc="C15850", desc="Capacitor 0805 10 uF 25 V (PHY 3.3 V bulk)")
 add("J32", ("Connector", "RJ45_LED_Shielded"), "rj45", "HR911105A",
