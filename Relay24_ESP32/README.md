@@ -110,9 +110,13 @@ Things that were assumed and should be checked on the real parts:
   as any 10/100 link partner does.
 - The screw terminals follow the KiCad `TerminalBlock_bornier-2_P5.08mm` footprint
   (wire opening on the pin-2 side); check the orientation on the first board.
-- LCSC numbers: the ULN2803A as C6116 was not verified, and the TVS, the electrolytic
-  capacitors, the inductor, the sockets and the headers have no number in the BOM
-  (choose equivalents in the JLCPCB parts library, or solder them yourself).
+- LCSC numbers were checked against the JLCPCB parts pages on 2026-10-28; stock
+  changes, so a part shown as short at order time needs an equivalent with the same
+  footprint. Second-source choices: the ULN2803 is Shanghai Belling (C22437476, same
+  pinout as the TI ULN2803A), the LEDs are XINGLIGHT (the "green" ones are yellow-green,
+  Vf 2.2 V, low enough for the Ethernet LEDs on 3.3 V).
+- L1 is the SHOU HAN CYH127-33UH (12.3 x 12.3 mm) on KiCad's `L_12x12mm_H8mm` footprint
+  (pads 2.9 x 5.4 mm, 9.9 mm apart): compare with the land pattern in its datasheet.
 - The references of the resistors, capacitors and LEDs are not printed on the board
   (there is no room next to the PHY); the CPL files and the schematic have them.
 - Part rotations in the CPL are KiCad's; check the JLCPCB preview, in particular the

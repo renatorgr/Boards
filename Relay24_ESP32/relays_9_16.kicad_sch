@@ -1,7 +1,7 @@
 (kicad_sch
   (version 20230121)
   (generator eeschema)
-  (uuid "c2e6dca6-a13e-4efc-87b0-7e36fad6173f")
+  (uuid "83d4e7e3-c79e-4799-aa5d-37359c64fb54")
   (paper "A3")
   (title_block
     (title "Relays 9-16 (sections 9-16, driver U5)")
@@ -794,7 +794,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "cbf149c3-d222-464d-91ec-a0ec91b4482f")
+    (uuid "191713b3-c05f-4fc2-9cbc-fc7eea99a39a")
     (property "Reference" "K9"
       (at 38 58 0)
       (effects
@@ -837,24 +837,24 @@
         hide
       )
     )
-    (pin "11" (uuid "012c9e0a-577e-4807-b749-ac328f54ba64"))
-    (pin "12" (uuid "d9ad9163-9920-4771-a795-6985dab141a6"))
-    (pin "14" (uuid "37d816ef-954e-477e-84c3-7a4e2fb9a1f3"))
-    (pin "21" (uuid "2ce2b166-bca8-4f08-88da-c912bdf718f8"))
-    (pin "22" (uuid "30a4e9b9-95ee-4422-8827-4e8f61126740"))
-    (pin "24" (uuid "17050313-0d54-4e87-915c-ffed9005eae1"))
-    (pin "A1" (uuid "ab3edf86-02cb-496f-9ba8-1bc4e1852ce7"))
-    (pin "A2" (uuid "c20d76f4-6b55-4496-8e75-1f0d599e6683"))
+    (pin "11" (uuid "1280af30-9822-4125-8e34-468bbc36eb76"))
+    (pin "12" (uuid "80d60b98-871c-4739-9a14-bdd9d24527ff"))
+    (pin "14" (uuid "7d68e347-9da0-4f19-ad48-07e8184136d9"))
+    (pin "21" (uuid "4b0ffcbe-50f5-447b-9d2f-4da3c9471378"))
+    (pin "22" (uuid "52239f0d-f3e3-4ab2-973f-e3c21c9c5352"))
+    (pin "24" (uuid "7f4e6a5a-bafb-4f82-9e19-30a906b72f3f"))
+    (pin "A1" (uuid "423afbae-eafc-4cf7-9904-be828c5d4bd6"))
+    (pin "A2" (uuid "fb66512a-6657-4fe1-866b-6afb994167c0"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K9") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K9") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 40 67.62) (xy 40 70.16))
     (stroke (width 0) (type default))
-    (uuid "048f7553-d066-4ee3-b44b-5d70551f2f8e")
+    (uuid "dea7d134-fb5b-496e-8e0e-ddb7605230d0")
   )
   (global_label "SEC9_R"
     (shape input)
@@ -864,7 +864,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "4a87419c-279e-42c4-9672-7467afd48826")
+    (uuid "455448fb-fb0c-4155-b1c4-6a271959ce2c")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 40 70.16 0)
       (effects
@@ -876,7 +876,7 @@
   (wire
     (pts (xy 37.46 52.38) (xy 37.46 49.84))
     (stroke (width 0) (type default))
-    (uuid "995c106f-a3e5-4c32-b575-03b961b4ce39")
+    (uuid "eb7a3de8-8864-42ad-81e0-18053d4094b8")
   )
   (symbol
     (lib_id "power:GND")
@@ -885,7 +885,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6c8c6a7c-1276-4c00-8211-d33bd9ef7a07")
+    (uuid "1ba292d9-95d0-4073-b2fe-8514b9725208")
     (property "Reference" "#PWR001"
       (at 37.46 49.84 0)
       (effects
@@ -913,17 +913,17 @@
         hide
       )
     )
-    (pin "1" (uuid "dca34f53-8b22-45d0-8c96-cf0712f6a952"))
+    (pin "1" (uuid "6bb382ef-055a-4ccc-968a-d5b3c5d78103"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR001") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR001") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 42.54 52.38) (xy 42.54 49.84))
     (stroke (width 0) (type default))
-    (uuid "b69097d7-81a7-4842-bb4c-6dbc3fed7933")
+    (uuid "93dcc2ea-c72e-4ab4-a2a8-eee6dd0e1e11")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -933,7 +933,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "7143df26-c8f0-4c9c-96da-caf03dec9d99")
+    (uuid "5c430b21-f43c-41a2-a57e-fb65dd4718ed")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 42.54 49.84 0)
       (effects
@@ -945,7 +945,7 @@
   (wire
     (pts (xy 50.16 67.62) (xy 50.16 70.16))
     (stroke (width 0) (type default))
-    (uuid "95b91141-9832-45c9-b912-c0b4df9a6536")
+    (uuid "81f05b56-5e7e-48cb-95b3-50fe3b3256bc")
   )
   (global_label "SEC9_B"
     (shape input)
@@ -955,7 +955,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "475c4601-f72c-48b6-b37d-9c3f64a23bc2")
+    (uuid "7f5027c3-9845-465f-9572-646d8feb6048")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 50.16 70.16 0)
       (effects
@@ -967,7 +967,7 @@
   (wire
     (pts (xy 47.62 52.38) (xy 47.62 49.84))
     (stroke (width 0) (type default))
-    (uuid "fb2d7c3d-51bc-422a-94ae-ea2789c0fc00")
+    (uuid "dcb82d32-caa1-4bb6-bef9-dfa5d50287af")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -977,7 +977,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "e81723f2-3be0-4698-a7bb-1edb428dc548")
+    (uuid "88346c75-f800-4c34-9964-6da479533735")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 47.62 49.84 0)
       (effects
@@ -989,7 +989,7 @@
   (wire
     (pts (xy 52.7 52.38) (xy 52.7 49.84))
     (stroke (width 0) (type default))
-    (uuid "ea2bd989-1f50-4de5-a192-b2ed822fbd85")
+    (uuid "da9060ba-d172-4b0a-9ea6-f8135139af17")
   )
   (symbol
     (lib_id "power:GND")
@@ -998,7 +998,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "d8bab15b-8feb-46a4-8f7d-288363b4d418")
+    (uuid "dd28446f-1e5f-49ce-8909-a104094fe14f")
     (property "Reference" "#PWR002"
       (at 52.7 49.84 0)
       (effects
@@ -1026,17 +1026,17 @@
         hide
       )
     )
-    (pin "1" (uuid "392662d5-26a3-4599-8d4c-1f5ca329b787"))
+    (pin "1" (uuid "05ad6354-61f2-45a0-b9c8-eb18bc4fd693"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR002") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR002") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 29.84 52.38) (xy 29.84 49.84))
     (stroke (width 0) (type default))
-    (uuid "c8e954b3-a2d2-488f-b4fa-36f69596a842")
+    (uuid "11d054b7-acfb-43bf-9365-1594ba7671dc")
   )
   (symbol
     (lib_id "power:+12V")
@@ -1045,7 +1045,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "17f85c5d-77e0-4d38-91c6-6e064c59dd1d")
+    (uuid "a4c588f1-c578-4867-89c0-d4fe3c24adbc")
     (property "Reference" "#PWR003"
       (at 29.84 49.84 0)
       (effects
@@ -1073,17 +1073,17 @@
         hide
       )
     )
-    (pin "1" (uuid "c8d27fbe-dc8c-469e-ad2c-43a2c477ef6c"))
+    (pin "1" (uuid "b0632914-891d-48d7-8b2f-b250d86e4d3f"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR003") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR003") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 29.84 67.62) (xy 29.84 70.16))
     (stroke (width 0) (type default))
-    (uuid "1e2a09a4-d926-4551-89c8-dd99b8d24f3e")
+    (uuid "fd5b8f4b-8f20-4bfb-a244-62988534ca6a")
   )
   (global_label "RLY9"
     (shape input)
@@ -1093,7 +1093,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "4c201b6f-2f5b-4fbf-8668-9157f07c1139")
+    (uuid "be94850b-396c-45c3-87c6-22f70e1a784e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 29.84 70.16 0)
       (effects
@@ -1109,7 +1109,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "63aede06-284c-4523-85be-b87794fc449c")
+    (uuid "c507535c-1936-4526-ad81-999daf63073f")
     (property "Reference" "J9"
       (at 73 55.46 0)
       (effects
@@ -1152,18 +1152,18 @@
         hide
       )
     )
-    (pin "1" (uuid "fe5e93d5-8b01-4224-85d7-3ffe0f1d0f7c"))
-    (pin "2" (uuid "b901e450-83ca-43eb-9a56-9c8e6337f8a9"))
+    (pin "1" (uuid "30757513-7b3d-4062-ae38-381927fa85f5"))
+    (pin "2" (uuid "ae614966-8302-4f61-9353-73df1260a703"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J9") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J9") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 69.92 57.46) (xy 67.38 57.46))
     (stroke (width 0) (type default))
-    (uuid "e7267b92-c603-49fb-8f85-b47d88b53dcb")
+    (uuid "78044454-3da2-4492-af68-66e54764643e")
   )
   (global_label "SEC9_R"
     (shape input)
@@ -1173,7 +1173,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "c302440f-e75b-47f6-9d6a-ab79e4fb98ad")
+    (uuid "98b26b1d-535c-441b-a8f5-8edf291fdfcd")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 67.38 57.46 0)
       (effects
@@ -1185,7 +1185,7 @@
   (wire
     (pts (xy 69.92 60) (xy 67.38 60))
     (stroke (width 0) (type default))
-    (uuid "1e85b6f2-b4ac-4561-b488-93f3ebe0670a")
+    (uuid "d0005f97-9167-4323-80e8-f42e3ce3d6a8")
   )
   (global_label "SEC9_B"
     (shape input)
@@ -1195,7 +1195,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "2e960a7a-a41e-4912-b8c9-5d80cc36575c")
+    (uuid "db9da1fb-3f9a-4447-86af-86a52a7ad1ad")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 67.38 60 0)
       (effects
@@ -1211,7 +1211,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "c0ac56bc-bb76-4b7f-8436-c2b69f5cd69c")
+    (uuid "3490a69b-7f6b-4ee8-a868-e2121d193f7f")
     (property "Reference" "D9"
       (at 13 47.84 0)
       (effects
@@ -1240,32 +1240,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 15 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 15 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "08119295-ea58-4e84-a2e8-dc91122f8c36"))
-    (pin "2" (uuid "6d64c53a-3645-4b4f-96a9-b70dc47e3758"))
+    (pin "1" (uuid "9e20d02c-1a2b-4ccf-8d8a-183b3ca0270b"))
+    (pin "2" (uuid "c8ff4262-df5e-41c1-a5b2-ec08425fe90b"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D9") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D9") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 18.81 49.84) (xy 21.35 49.84))
     (stroke (width 0) (type default))
-    (uuid "070f4b75-4310-48e0-9155-551bfd124932")
+    (uuid "fdc355ef-20e0-4b31-bddd-8eed8284f4bd")
   )
   (global_label "RLY9"
     (shape input)
@@ -1275,7 +1275,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "4a181a6f-99cd-4e6b-b72c-e834ffd334f4")
+    (uuid "8cd8426b-938e-4b3c-8630-31dfc14cd79f")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 21.35 49.84 0)
       (effects
@@ -1287,7 +1287,7 @@
   (wire
     (pts (xy 11.19 49.84) (xy 8.65 49.84))
     (stroke (width 0) (type default))
-    (uuid "98a67ad3-9081-4c1d-a1cf-36532f256187")
+    (uuid "bee58284-cc27-4077-9d94-b016072269e2")
   )
   (global_label "LEDA9"
     (shape input)
@@ -1297,7 +1297,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "98b49c10-1d15-42a6-988c-9297f80d322c")
+    (uuid "3e954d46-4be1-430e-9217-bf35fe870c15")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 8.65 49.84 0)
       (effects
@@ -1313,7 +1313,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "91817ab5-c58a-4897-87b4-decd964a7b0b")
+    (uuid "b6d59ef4-d1bf-4a52-a10c-12929218655e")
     (property "Reference" "R9"
       (at 13 37.68 0)
       (effects
@@ -1356,18 +1356,18 @@
         hide
       )
     )
-    (pin "1" (uuid "056fc0ab-1a98-4573-8c88-db2d6eb85140"))
-    (pin "2" (uuid "b9073835-ab2f-4792-9fb8-9a8e12e5c364"))
+    (pin "1" (uuid "e7a65f67-0aae-43e3-8598-9b0a9468859e"))
+    (pin "2" (uuid "de1b1dd6-94d7-45d0-a5cf-1c9c1bd588f1"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R9") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R9") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 11.19 39.68) (xy 8.65 39.68))
     (stroke (width 0) (type default))
-    (uuid "e2cce4c4-a6cf-49ff-8461-ea56e6f9c5eb")
+    (uuid "7c88583d-4e6e-461d-8404-4dd9058e7121")
   )
   (global_label "LEDA9"
     (shape input)
@@ -1377,7 +1377,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "3a558669-89c0-4370-962f-26cb133d104d")
+    (uuid "c1d5bd80-4082-49fe-b071-17e026b6de8c")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 8.65 39.68 0)
       (effects
@@ -1389,7 +1389,7 @@
   (wire
     (pts (xy 18.81 39.68) (xy 21.35 39.68))
     (stroke (width 0) (type default))
-    (uuid "f2bc6ca5-4308-4027-8d7e-7458925be08a")
+    (uuid "6538293b-ae41-4aa7-b035-b51f7f32b7ef")
   )
   (symbol
     (lib_id "power:+12V")
@@ -1398,7 +1398,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "8e77f57c-6547-4cc3-8647-86bd20a96982")
+    (uuid "099c926a-94f0-465a-a4f7-545587bf0c8b")
     (property "Reference" "#PWR004"
       (at 21.35 39.68 0)
       (effects
@@ -1426,10 +1426,10 @@
         hide
       )
     )
-    (pin "1" (uuid "b484cd0d-1a7e-42e7-bdc9-b862d057af83"))
+    (pin "1" (uuid "58082e0f-302b-4e00-8349-739d5d3543e4"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR004") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR004") (unit 1))
       )
     )
   )
@@ -1440,7 +1440,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6d260dc7-5a39-4712-9f31-cfbfa3d2c221")
+    (uuid "db72b8cb-9517-468f-89e4-ef11533737f9")
     (property "Reference" "K10"
       (at 133 58 0)
       (effects
@@ -1483,24 +1483,24 @@
         hide
       )
     )
-    (pin "11" (uuid "f2db86af-23e1-4d34-b727-1c32696628aa"))
-    (pin "12" (uuid "1cbcc66d-6cb4-494e-97bc-067b1efb138d"))
-    (pin "14" (uuid "3ebb57ce-4c25-4b6d-a9df-d2410aabc62e"))
-    (pin "21" (uuid "96a43477-0e8c-4351-b7d1-30bb1d4fff1a"))
-    (pin "22" (uuid "81bd9634-fa82-4f8d-bd28-d4e402099288"))
-    (pin "24" (uuid "3f50ea38-3552-4293-ae98-9b6e89c420fc"))
-    (pin "A1" (uuid "0d2c1649-d960-4946-beed-1d0b19023ac1"))
-    (pin "A2" (uuid "109bb612-ffc7-45f9-995f-28d942fc2e19"))
+    (pin "11" (uuid "d03de7d2-873c-4152-af3d-6a0b3e9aaf1d"))
+    (pin "12" (uuid "dac3b36c-ca25-42ba-91af-9f0f1b6a693e"))
+    (pin "14" (uuid "8e2ddf87-a949-490c-aef1-94195b65f36f"))
+    (pin "21" (uuid "d423ed84-8a4e-4cba-8d77-3e051f32c457"))
+    (pin "22" (uuid "b87ffb52-ff18-4957-b5fd-7e9fd4746979"))
+    (pin "24" (uuid "61b48ddb-8c47-47ed-b693-50df3e7b51e0"))
+    (pin "A1" (uuid "9aaa7686-349b-4139-9581-b6de6aba885d"))
+    (pin "A2" (uuid "2c6e5e17-6994-450b-bcff-7b798e482595"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K10") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K10") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 135 67.62) (xy 135 70.16))
     (stroke (width 0) (type default))
-    (uuid "dcd8ac9c-9fff-43f2-ac11-1b3ed81fee62")
+    (uuid "08680055-a486-4d10-9e36-055d80a278b6")
   )
   (global_label "SEC10_R"
     (shape input)
@@ -1510,7 +1510,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "fe741580-4ca3-48a1-aaae-b709189c1c3f")
+    (uuid "067840e2-0317-4a1b-bb2c-7fc7f55cb340")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 135 70.16 0)
       (effects
@@ -1522,7 +1522,7 @@
   (wire
     (pts (xy 132.46 52.38) (xy 132.46 49.84))
     (stroke (width 0) (type default))
-    (uuid "77181bf5-1411-4e6b-a22a-679a48820cb5")
+    (uuid "cbf597ec-f2e6-4f75-a358-457b2b6a3c65")
   )
   (symbol
     (lib_id "power:GND")
@@ -1531,7 +1531,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "734a0d07-3b0d-412d-a7a6-adaab4bdb144")
+    (uuid "f3e8d480-725e-49a5-af21-6caf9a12c367")
     (property "Reference" "#PWR005"
       (at 132.46 49.84 0)
       (effects
@@ -1559,17 +1559,17 @@
         hide
       )
     )
-    (pin "1" (uuid "ef5c604e-4884-4233-b852-c2ed0c45337e"))
+    (pin "1" (uuid "d378a4a3-26a6-4524-8d44-fa3c9eab2c4d"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR005") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR005") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 137.54 52.38) (xy 137.54 49.84))
     (stroke (width 0) (type default))
-    (uuid "015a8b7f-fc42-4fe0-88ef-0ffd13c5c8ac")
+    (uuid "7199a7b5-ea39-41f0-8228-8521a8e1296f")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -1579,7 +1579,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "faf70958-891c-4b03-bbb4-818d34ab1ffb")
+    (uuid "772ae7ac-4782-44f4-a0a2-f2283f1e4974")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 137.54 49.84 0)
       (effects
@@ -1591,7 +1591,7 @@
   (wire
     (pts (xy 145.16 67.62) (xy 145.16 70.16))
     (stroke (width 0) (type default))
-    (uuid "8239dfcd-eb87-49ff-a7d9-b2154800b06a")
+    (uuid "524fffa4-0f8e-4607-bb54-ddc922c7da21")
   )
   (global_label "SEC10_B"
     (shape input)
@@ -1601,7 +1601,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "1a5054de-1f2a-4aaf-99f6-41d27482342e")
+    (uuid "e6282ddd-341c-46f4-8ff0-3cd2d2e8b58c")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 145.16 70.16 0)
       (effects
@@ -1613,7 +1613,7 @@
   (wire
     (pts (xy 142.62 52.38) (xy 142.62 49.84))
     (stroke (width 0) (type default))
-    (uuid "e69cfff1-1190-479e-ac8c-3e26bfdf3033")
+    (uuid "be66d27f-4265-44d5-abc2-5b6c442d5f3e")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -1623,7 +1623,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "ee69a3e2-e287-430a-a374-a2361aba5b07")
+    (uuid "d33ad8d1-1f7b-4399-8f8c-3c0ec8b63b41")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 142.62 49.84 0)
       (effects
@@ -1635,7 +1635,7 @@
   (wire
     (pts (xy 147.7 52.38) (xy 147.7 49.84))
     (stroke (width 0) (type default))
-    (uuid "b30d8be6-1dba-40f1-95bd-50f5329a29aa")
+    (uuid "e12630ee-9f38-434a-b68f-97ce1ba543fe")
   )
   (symbol
     (lib_id "power:GND")
@@ -1644,7 +1644,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "83815798-3ee8-440a-a5f8-690d393e745a")
+    (uuid "33a3d41a-9dce-4052-828f-1cdba8bacc34")
     (property "Reference" "#PWR006"
       (at 147.7 49.84 0)
       (effects
@@ -1672,17 +1672,17 @@
         hide
       )
     )
-    (pin "1" (uuid "ae058287-70cd-4c8a-ae7e-e73d7d12ce97"))
+    (pin "1" (uuid "8121df2a-b15e-4694-9f5c-8c1573bd5576"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR006") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR006") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 124.84 52.38) (xy 124.84 49.84))
     (stroke (width 0) (type default))
-    (uuid "141e370a-0f29-4835-b4f4-6607b6dfbe05")
+    (uuid "2460ab2c-0c65-4e1a-9083-4543bd0b8e58")
   )
   (symbol
     (lib_id "power:+12V")
@@ -1691,7 +1691,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "f4b0712f-f41b-47a0-8a7e-e36d5de17aff")
+    (uuid "868ca270-9364-4d47-9f5c-09b490d50016")
     (property "Reference" "#PWR007"
       (at 124.84 49.84 0)
       (effects
@@ -1719,17 +1719,17 @@
         hide
       )
     )
-    (pin "1" (uuid "a97bf3ff-93f8-4625-ae07-f88d8a266aa3"))
+    (pin "1" (uuid "3d1e618e-d1e3-4b1a-9097-f73416adf535"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR007") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR007") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 124.84 67.62) (xy 124.84 70.16))
     (stroke (width 0) (type default))
-    (uuid "65efecbe-52f8-4463-87aa-f3f2697b7a13")
+    (uuid "e2848ddb-9016-408f-adc2-919f32724f4c")
   )
   (global_label "RLY10"
     (shape input)
@@ -1739,7 +1739,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "9d6d6213-cf1d-4ad9-9477-e70d29f323e7")
+    (uuid "92754794-45ab-4ebb-b81a-4b4ac1ad434a")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 124.84 70.16 0)
       (effects
@@ -1755,7 +1755,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "eee74ab4-0d83-4aeb-b6bc-d821436d248d")
+    (uuid "e21cc92f-00fe-4411-9d95-7949ed96a4cd")
     (property "Reference" "J10"
       (at 168 55.46 0)
       (effects
@@ -1798,18 +1798,18 @@
         hide
       )
     )
-    (pin "1" (uuid "393d62ac-c6ea-4a9b-95be-a780afe7047f"))
-    (pin "2" (uuid "346d9f87-b701-4a5d-b61b-88fe89196fbd"))
+    (pin "1" (uuid "7554b6be-c653-4340-93dd-0df21cddeade"))
+    (pin "2" (uuid "58d95b99-06ca-47f0-9398-be486b889756"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J10") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J10") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 164.92 57.46) (xy 162.38 57.46))
     (stroke (width 0) (type default))
-    (uuid "d669ffd2-11bf-4d55-96db-3fc9a7c37916")
+    (uuid "06f662e2-6074-42c1-b6b6-13daf086e699")
   )
   (global_label "SEC10_R"
     (shape input)
@@ -1819,7 +1819,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "fdf7413d-840b-4405-b398-33f8e4a636d9")
+    (uuid "bc878515-bbbd-4d2f-9fd9-b9aa37cee350")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 162.38 57.46 0)
       (effects
@@ -1831,7 +1831,7 @@
   (wire
     (pts (xy 164.92 60) (xy 162.38 60))
     (stroke (width 0) (type default))
-    (uuid "11b8dea9-0546-4bbe-8ae6-ca9ee74bf2a6")
+    (uuid "5cae140c-4a9d-4497-b838-644753cd3b5a")
   )
   (global_label "SEC10_B"
     (shape input)
@@ -1841,7 +1841,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "2038f2af-3402-4845-8c4e-dc53602cb938")
+    (uuid "628d3992-2ef5-4f80-b502-d4121153058e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 162.38 60 0)
       (effects
@@ -1857,7 +1857,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "65d834da-9d2b-4d19-8e10-1eeb0185686d")
+    (uuid "ed6e4a49-61b8-485a-9f16-d12d75527275")
     (property "Reference" "D10"
       (at 108 47.84 0)
       (effects
@@ -1886,32 +1886,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 110 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 110 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "9925d911-0cd8-48a8-9a13-1b7acaf583a0"))
-    (pin "2" (uuid "ac6b9b22-01b9-43b6-b2ff-9717c84a8974"))
+    (pin "1" (uuid "fb11400e-d78d-4233-a996-6c9bf4970153"))
+    (pin "2" (uuid "6ffd4e12-be7d-45d8-9c5e-9730aab64d00"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D10") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D10") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 113.81 49.84) (xy 116.35 49.84))
     (stroke (width 0) (type default))
-    (uuid "5a759b0e-3102-493c-9564-9066f359df30")
+    (uuid "63bf2c2f-d80a-48f5-a968-58be339aa964")
   )
   (global_label "RLY10"
     (shape input)
@@ -1921,7 +1921,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "80f379a2-06d4-4da5-a9cf-8e4414e45854")
+    (uuid "00fc1d83-7a93-4a6d-aba6-e8e167bb9885")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 116.35 49.84 0)
       (effects
@@ -1933,7 +1933,7 @@
   (wire
     (pts (xy 106.19 49.84) (xy 103.65 49.84))
     (stroke (width 0) (type default))
-    (uuid "d1760f45-8626-496b-9b1d-b65ea6639015")
+    (uuid "ffc5e067-d27e-4e6e-8bb0-d80fc9a769f1")
   )
   (global_label "LEDA10"
     (shape input)
@@ -1943,7 +1943,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "de11ae7e-6637-4389-b2e5-df0f2d327beb")
+    (uuid "6b7e3210-611b-4a12-b43c-61445aa010ea")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 103.65 49.84 0)
       (effects
@@ -1959,7 +1959,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "ca666f37-a0b5-40a1-85d0-903dad6da14d")
+    (uuid "612624b5-ea27-4d12-a6ff-b96939e5e1e3")
     (property "Reference" "R10"
       (at 108 37.68 0)
       (effects
@@ -2002,18 +2002,18 @@
         hide
       )
     )
-    (pin "1" (uuid "1671f27e-2f48-4310-b9ef-f568e03553cf"))
-    (pin "2" (uuid "0b42e64d-5151-4e79-81c4-09747f9db711"))
+    (pin "1" (uuid "fced61f3-7a66-4121-8553-b751d035b334"))
+    (pin "2" (uuid "e01f162f-a580-47c9-9205-09ceea792a3b"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R10") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R10") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 106.19 39.68) (xy 103.65 39.68))
     (stroke (width 0) (type default))
-    (uuid "ad60bb82-217c-4bce-ba10-5c701e099845")
+    (uuid "a2974f4b-d095-49b5-a4f7-de0bac85b1a5")
   )
   (global_label "LEDA10"
     (shape input)
@@ -2023,7 +2023,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "b4bc13f8-63d0-4e24-90fc-1ae364d89b57")
+    (uuid "99ae824a-cdb7-46fd-9d33-2d40896949fc")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 103.65 39.68 0)
       (effects
@@ -2035,7 +2035,7 @@
   (wire
     (pts (xy 113.81 39.68) (xy 116.35 39.68))
     (stroke (width 0) (type default))
-    (uuid "df209173-22c8-4bd2-a78d-0b5c14cdb021")
+    (uuid "b366a756-b4a9-4398-8452-a5e23e7e58ad")
   )
   (symbol
     (lib_id "power:+12V")
@@ -2044,7 +2044,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "3622d82e-bf02-43e0-a168-43de4d66e7b9")
+    (uuid "8470746b-3ebd-4755-b324-24a94b8770f9")
     (property "Reference" "#PWR008"
       (at 116.35 39.68 0)
       (effects
@@ -2072,10 +2072,10 @@
         hide
       )
     )
-    (pin "1" (uuid "d502d4d1-1f1a-4e33-bff2-87b9af12606b"))
+    (pin "1" (uuid "37fb256c-9a0c-4ab6-a9aa-d0a9e228d213"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR008") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR008") (unit 1))
       )
     )
   )
@@ -2086,7 +2086,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "21f47858-75f1-4bbb-9343-650e94e44897")
+    (uuid "ec9f384f-72e3-4d47-b7a3-8fc90bdebfb3")
     (property "Reference" "K11"
       (at 228 58 0)
       (effects
@@ -2129,24 +2129,24 @@
         hide
       )
     )
-    (pin "11" (uuid "8583eb76-98a6-49e5-9ff2-2fbfcbd5d85f"))
-    (pin "12" (uuid "60252c59-6321-403b-9964-5d21c7323182"))
-    (pin "14" (uuid "dfe0cb6e-2e9e-4da2-95c1-4e315c76cfdd"))
-    (pin "21" (uuid "228aa4d6-bb68-448d-9989-28c01daf3097"))
-    (pin "22" (uuid "f63e4fb7-fac1-4e18-9f17-5e52896886bb"))
-    (pin "24" (uuid "8c0b35d5-a00c-4118-bb15-2731caa32c17"))
-    (pin "A1" (uuid "34ae5f4a-d0e8-44f7-a7bb-abee60394cb0"))
-    (pin "A2" (uuid "bba68d55-e493-4321-9c07-f7d17b6dc3b9"))
+    (pin "11" (uuid "b9d19453-ff4e-4483-8e0c-9fc89971d856"))
+    (pin "12" (uuid "9347d834-9275-486d-a075-44a6b7498758"))
+    (pin "14" (uuid "b9b9b9cb-91f6-4899-81b4-accac905d253"))
+    (pin "21" (uuid "3799fe40-4725-4561-87b4-5ade48d710c6"))
+    (pin "22" (uuid "bed0bb22-24ed-4e28-8973-b628eda72d80"))
+    (pin "24" (uuid "abc4670e-c107-44e2-aa5d-1daa175f1ebc"))
+    (pin "A1" (uuid "eb5c6843-a7a9-4c84-a9b9-e63a3eb83776"))
+    (pin "A2" (uuid "2eb7a69c-dda6-4027-9286-74b0e6a611ed"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K11") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K11") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 230 67.62) (xy 230 70.16))
     (stroke (width 0) (type default))
-    (uuid "8135af23-7066-479b-93c5-86bd745dc0da")
+    (uuid "6daaec6f-228f-46e3-ae7e-0a7ae56a310b")
   )
   (global_label "SEC11_R"
     (shape input)
@@ -2156,7 +2156,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "13485a47-b438-4ec3-a584-47b2135119f0")
+    (uuid "df0e72bf-6f96-46a4-ae1e-b550abf905af")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 230 70.16 0)
       (effects
@@ -2168,7 +2168,7 @@
   (wire
     (pts (xy 227.46 52.38) (xy 227.46 49.84))
     (stroke (width 0) (type default))
-    (uuid "8a311b92-6cab-47c0-bd5c-bacce599350f")
+    (uuid "741f4756-0594-4a0e-a273-5979dd56f5ee")
   )
   (symbol
     (lib_id "power:GND")
@@ -2177,7 +2177,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1be272ac-b0f8-4a03-97e7-297537805583")
+    (uuid "70ddf5b4-eb71-4235-b52c-64cda4dc61d1")
     (property "Reference" "#PWR009"
       (at 227.46 49.84 0)
       (effects
@@ -2205,17 +2205,17 @@
         hide
       )
     )
-    (pin "1" (uuid "b190f35d-42f2-454f-b995-d9a8ee230ac8"))
+    (pin "1" (uuid "aeb39fe1-038d-454b-bf3f-b3db17f10643"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR009") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR009") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 232.54 52.38) (xy 232.54 49.84))
     (stroke (width 0) (type default))
-    (uuid "bf8ac83f-b23d-4ce4-93ae-940215f8a25f")
+    (uuid "2367d7f8-420f-41c1-8ba4-12d6553c22f2")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -2225,7 +2225,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "b6551a16-21c1-4df0-859c-aded0784746b")
+    (uuid "c77413b6-be78-4672-b13e-a11bdf9b58f4")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 232.54 49.84 0)
       (effects
@@ -2237,7 +2237,7 @@
   (wire
     (pts (xy 240.16 67.62) (xy 240.16 70.16))
     (stroke (width 0) (type default))
-    (uuid "9d091e8c-983e-4b29-9d57-0405bd80f1c2")
+    (uuid "6ac53cbc-b265-46fd-a987-c81efbded026")
   )
   (global_label "SEC11_B"
     (shape input)
@@ -2247,7 +2247,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "205dc7cf-0d0c-47da-885b-6533cf31c176")
+    (uuid "452b954f-5be9-4ffe-9924-8ac4f6a06b5d")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 240.16 70.16 0)
       (effects
@@ -2259,7 +2259,7 @@
   (wire
     (pts (xy 237.62 52.38) (xy 237.62 49.84))
     (stroke (width 0) (type default))
-    (uuid "8044da32-896d-4e79-af55-ffd23ad22538")
+    (uuid "720225f6-3f97-41b7-be8c-1c8a465f9215")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -2269,7 +2269,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "26d72215-b816-4d34-8515-241d8c43db0b")
+    (uuid "5b516352-6d92-4c13-8102-3b5a408403ae")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 237.62 49.84 0)
       (effects
@@ -2281,7 +2281,7 @@
   (wire
     (pts (xy 242.7 52.38) (xy 242.7 49.84))
     (stroke (width 0) (type default))
-    (uuid "d8cc4ced-5452-4581-b5b8-b98bb6f6bf5f")
+    (uuid "3109fe3f-f83a-4f7f-ae40-a63bd0c2eab8")
   )
   (symbol
     (lib_id "power:GND")
@@ -2290,7 +2290,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "42ad22b2-9d58-4ffb-bebe-abe4654af9f9")
+    (uuid "a7963e23-d02d-4858-a7f2-1a8b9dc89724")
     (property "Reference" "#PWR010"
       (at 242.7 49.84 0)
       (effects
@@ -2318,17 +2318,17 @@
         hide
       )
     )
-    (pin "1" (uuid "93a39e4d-bf5b-48e2-8cad-a0c47b079f6c"))
+    (pin "1" (uuid "e8573325-6967-4aef-aee7-f64b71411d4e"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR010") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR010") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 219.84 52.38) (xy 219.84 49.84))
     (stroke (width 0) (type default))
-    (uuid "864432f9-34cc-46a0-8c3b-02079e90a864")
+    (uuid "0d7b010c-6dc5-4202-9402-5e1163525c12")
   )
   (symbol
     (lib_id "power:+12V")
@@ -2337,7 +2337,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "3408c79c-9749-4a17-9fe7-9bf7d2c108f2")
+    (uuid "194cedec-5c43-45f5-8b28-d93441474f00")
     (property "Reference" "#PWR011"
       (at 219.84 49.84 0)
       (effects
@@ -2365,17 +2365,17 @@
         hide
       )
     )
-    (pin "1" (uuid "749ce272-4c4e-483d-9c7f-a1302346b760"))
+    (pin "1" (uuid "544caad7-8986-4f69-a4cd-9458658d74b8"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR011") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR011") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 219.84 67.62) (xy 219.84 70.16))
     (stroke (width 0) (type default))
-    (uuid "b4ceb515-f777-4827-8516-b94f02ff7747")
+    (uuid "5b53be62-e989-43a0-bb0f-c4574989c2c0")
   )
   (global_label "RLY11"
     (shape input)
@@ -2385,7 +2385,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "1b888e73-bb45-4e61-a90d-17672de74280")
+    (uuid "3a56313b-7af4-405d-82a3-5b6bf98a60ba")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 219.84 70.16 0)
       (effects
@@ -2401,7 +2401,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "83b413d6-a323-48ab-b072-4f9f26828081")
+    (uuid "00b30281-3ae2-4c3a-ade9-265ce0896733")
     (property "Reference" "J11"
       (at 263 55.46 0)
       (effects
@@ -2444,18 +2444,18 @@
         hide
       )
     )
-    (pin "1" (uuid "1bbc0f8a-893e-4915-bfb1-ecc583138697"))
-    (pin "2" (uuid "2cb63752-1455-46e0-b9ce-d4cc5ffbf7a8"))
+    (pin "1" (uuid "dc2fb43d-1870-4f36-8e7d-6fc2cb1cdd58"))
+    (pin "2" (uuid "37944218-67fb-41ad-a020-a94832c92e01"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J11") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J11") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 259.92 57.46) (xy 257.38 57.46))
     (stroke (width 0) (type default))
-    (uuid "3deef458-f650-4600-b5e2-e0fdfa7286ac")
+    (uuid "91376013-200d-4031-b3a2-8ca311c4cae4")
   )
   (global_label "SEC11_R"
     (shape input)
@@ -2465,7 +2465,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "a607ad0e-5930-4d5e-af3e-088feb286e66")
+    (uuid "7348aa97-dda5-4f26-b626-74c0716970f9")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 257.38 57.46 0)
       (effects
@@ -2477,7 +2477,7 @@
   (wire
     (pts (xy 259.92 60) (xy 257.38 60))
     (stroke (width 0) (type default))
-    (uuid "b7d556b9-6d73-4bbc-8672-14b193cbc8ee")
+    (uuid "902cecb9-aedf-43e4-888e-9c10c2ff615e")
   )
   (global_label "SEC11_B"
     (shape input)
@@ -2487,7 +2487,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "42de3d8d-0c0b-44a9-8e0c-5b09f8e2e33d")
+    (uuid "6f7b0911-739c-4e96-99f5-6e15be63ed20")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 257.38 60 0)
       (effects
@@ -2503,7 +2503,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "dea03940-d042-4864-b03d-7f35a242ba8b")
+    (uuid "26d38936-627c-4b11-b12b-b88746821e96")
     (property "Reference" "D11"
       (at 203 47.84 0)
       (effects
@@ -2532,32 +2532,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 205 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 205 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "4ff39bbf-06a6-4b63-a4b1-ea2471551c8d"))
-    (pin "2" (uuid "f87636cc-109c-4f6b-83c4-5bc5875433c7"))
+    (pin "1" (uuid "5c542bfc-21b7-495d-a517-187f0b8a32e7"))
+    (pin "2" (uuid "a9d78ad2-44ed-46c7-ae65-e67780c10d35"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D11") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D11") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 208.81 49.84) (xy 211.35 49.84))
     (stroke (width 0) (type default))
-    (uuid "1d754cd7-d852-4508-bd76-479459953fb4")
+    (uuid "57cc7271-608b-4c2b-9161-d414b062e84c")
   )
   (global_label "RLY11"
     (shape input)
@@ -2567,7 +2567,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "7c7b15e9-c0cd-4693-8377-bb8a33fec734")
+    (uuid "3347baa0-4696-43b4-9cde-040e75c1a218")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 211.35 49.84 0)
       (effects
@@ -2579,7 +2579,7 @@
   (wire
     (pts (xy 201.19 49.84) (xy 198.65 49.84))
     (stroke (width 0) (type default))
-    (uuid "b856576d-4da8-4f09-af87-2e68ad1c8b45")
+    (uuid "61dfba77-601f-4370-afd0-f2862d23fb34")
   )
   (global_label "LEDA11"
     (shape input)
@@ -2589,7 +2589,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "cc53bf60-5acc-4fc4-b685-9c7c0c3b386f")
+    (uuid "3e81d08b-db20-4196-803f-42e01cb9899a")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 198.65 49.84 0)
       (effects
@@ -2605,7 +2605,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "09c75917-f1a1-4ea3-92b1-606dde45f65d")
+    (uuid "e8683759-79cf-457b-b297-5959481661a3")
     (property "Reference" "R11"
       (at 203 37.68 0)
       (effects
@@ -2648,18 +2648,18 @@
         hide
       )
     )
-    (pin "1" (uuid "43a4ce77-c936-4085-a487-6af25cae7746"))
-    (pin "2" (uuid "819eaac7-6fe5-49a1-9370-e1bcfa4d7954"))
+    (pin "1" (uuid "9d0d183b-71ec-4cd4-a707-2e6bd1d5863a"))
+    (pin "2" (uuid "d7abf2cb-8a4e-43c9-b524-ff33097c5619"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R11") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R11") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 201.19 39.68) (xy 198.65 39.68))
     (stroke (width 0) (type default))
-    (uuid "8b674449-b844-409b-9947-0b279a88a2a1")
+    (uuid "6da0a1f5-6381-4f86-b4a2-0b043cecd5d8")
   )
   (global_label "LEDA11"
     (shape input)
@@ -2669,7 +2669,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "eaf5f67b-c4de-44f3-9052-d71895ec8bbb")
+    (uuid "476421d2-fdf1-4d52-8f26-339022bb12f0")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 198.65 39.68 0)
       (effects
@@ -2681,7 +2681,7 @@
   (wire
     (pts (xy 208.81 39.68) (xy 211.35 39.68))
     (stroke (width 0) (type default))
-    (uuid "584f6b8d-84d6-4857-ad0b-7ce30f2ef2f9")
+    (uuid "0f8b2ac8-bfa0-4f00-95e8-d9b665e82bb1")
   )
   (symbol
     (lib_id "power:+12V")
@@ -2690,7 +2690,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "63ad4253-cf94-4d29-9fd8-b8ce0f5a0edb")
+    (uuid "3461437c-7d45-4f8c-987a-52e0641105fc")
     (property "Reference" "#PWR012"
       (at 211.35 39.68 0)
       (effects
@@ -2718,10 +2718,10 @@
         hide
       )
     )
-    (pin "1" (uuid "d377ff02-afae-4809-997a-2154ac8cc3cb"))
+    (pin "1" (uuid "77cedba8-e740-4e36-8aa8-aa2359e6cbc8"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR012") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR012") (unit 1))
       )
     )
   )
@@ -2732,7 +2732,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5336a887-1f05-4a33-8d6f-2c7f0edc9dec")
+    (uuid "878e922b-ba7f-4ee9-abee-732ed0e3492e")
     (property "Reference" "K12"
       (at 323 58 0)
       (effects
@@ -2775,24 +2775,24 @@
         hide
       )
     )
-    (pin "11" (uuid "105e57e1-16c8-40f6-86bb-1bc9fdd118b8"))
-    (pin "12" (uuid "543ff438-19fb-4116-98ad-e36b1bad1c47"))
-    (pin "14" (uuid "2bdcfd85-ae8f-4c38-abcd-720933f9754f"))
-    (pin "21" (uuid "513fff7e-647e-42b2-bec2-e40f0ce988fd"))
-    (pin "22" (uuid "2433ae0c-ca22-4087-8874-95e354581e1e"))
-    (pin "24" (uuid "37e39033-62a9-436e-8f64-234f6529ef64"))
-    (pin "A1" (uuid "34329c69-68e7-49a9-a2ce-a6c9de182d29"))
-    (pin "A2" (uuid "419a13cc-b1db-4927-8ca7-8fdc38033e3f"))
+    (pin "11" (uuid "265cb175-8fef-41a1-8526-80e51ec55628"))
+    (pin "12" (uuid "4d4ba91d-50e2-4f97-a699-98bdb15350dc"))
+    (pin "14" (uuid "841d81a3-3b71-4d6a-abcd-f4d03dc861a4"))
+    (pin "21" (uuid "814dfe17-8eff-4fd3-8bf9-fb1010de6638"))
+    (pin "22" (uuid "96cff8c1-93a2-4f54-9573-594c8869cad3"))
+    (pin "24" (uuid "698c9a43-d506-4434-8bbb-f300df69ed5e"))
+    (pin "A1" (uuid "d6c950c5-2e94-4b7b-ad54-661e0826523b"))
+    (pin "A2" (uuid "dcaf8889-ea1c-42c3-8c79-87920459e944"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K12") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K12") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 325 67.62) (xy 325 70.16))
     (stroke (width 0) (type default))
-    (uuid "14f76983-cf31-43a0-83a0-aae665d7313d")
+    (uuid "ea29796c-8288-4851-8b9e-083b8ffefe77")
   )
   (global_label "SEC12_R"
     (shape input)
@@ -2802,7 +2802,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "89c6f77f-cf79-484e-b4ea-12f9715ac55c")
+    (uuid "641c1f7d-c361-4bd6-a870-65070132d97f")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 325 70.16 0)
       (effects
@@ -2814,7 +2814,7 @@
   (wire
     (pts (xy 322.46 52.38) (xy 322.46 49.84))
     (stroke (width 0) (type default))
-    (uuid "6391e83e-4cbc-432b-85a1-d5350214da69")
+    (uuid "f03a8860-34a1-401b-b635-a26851f4eceb")
   )
   (symbol
     (lib_id "power:GND")
@@ -2823,7 +2823,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "437517d5-f423-44ae-9701-9ff27c8359ff")
+    (uuid "b4925380-bed8-46a1-b4e2-bec7c401ee84")
     (property "Reference" "#PWR013"
       (at 322.46 49.84 0)
       (effects
@@ -2851,17 +2851,17 @@
         hide
       )
     )
-    (pin "1" (uuid "d6c0d4ef-c8e1-4812-ad07-36e2d74141ce"))
+    (pin "1" (uuid "a74092b8-2a3f-44aa-b934-cbab72b4e09a"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR013") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR013") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 327.54 52.38) (xy 327.54 49.84))
     (stroke (width 0) (type default))
-    (uuid "925f3a7f-00cc-474b-96f5-e854dd571db0")
+    (uuid "8a44a4eb-29a7-453a-8a75-b55c6adc72c4")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -2871,7 +2871,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "71bf666c-db4a-45de-a14b-e95c7c75432e")
+    (uuid "0c5d28fa-0f81-4b18-9cc6-9f8e9f94939f")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 327.54 49.84 0)
       (effects
@@ -2883,7 +2883,7 @@
   (wire
     (pts (xy 335.16 67.62) (xy 335.16 70.16))
     (stroke (width 0) (type default))
-    (uuid "82e0b346-58c7-489c-b257-4fdfd8cc8ac7")
+    (uuid "6d55510e-28de-48fe-aa77-703b5c3aa78b")
   )
   (global_label "SEC12_B"
     (shape input)
@@ -2893,7 +2893,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "23910261-92e9-46c0-b3b9-e27861751e8a")
+    (uuid "88b401fe-7ccf-4f8a-822a-8b7df7cb0bff")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 335.16 70.16 0)
       (effects
@@ -2905,7 +2905,7 @@
   (wire
     (pts (xy 332.62 52.38) (xy 332.62 49.84))
     (stroke (width 0) (type default))
-    (uuid "ee2499ef-e70d-44e3-9dce-9d1a2e2137cf")
+    (uuid "d3320ca0-84aa-4c12-90e6-cd17cb6defe9")
   )
   (global_label "12V_ACT_A"
     (shape input)
@@ -2915,7 +2915,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "eb400578-1f10-4a96-ac72-eefc9ea0d1bd")
+    (uuid "5e0dde42-1674-45b5-b8d6-90c5299a098e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 332.62 49.84 0)
       (effects
@@ -2927,7 +2927,7 @@
   (wire
     (pts (xy 337.7 52.38) (xy 337.7 49.84))
     (stroke (width 0) (type default))
-    (uuid "15550884-cbe8-4474-b318-9c071b0fb8c4")
+    (uuid "d4073b66-ece1-4aa9-b865-d9b022cd2cf3")
   )
   (symbol
     (lib_id "power:GND")
@@ -2936,7 +2936,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "d10b9168-73ee-4deb-8c27-eb56fb645bd8")
+    (uuid "99cc5a91-a825-4047-a293-e62248bfe9d1")
     (property "Reference" "#PWR014"
       (at 337.7 49.84 0)
       (effects
@@ -2964,17 +2964,17 @@
         hide
       )
     )
-    (pin "1" (uuid "7203220d-f6ae-4795-b798-e1ed666cd7e7"))
+    (pin "1" (uuid "1990a63b-437a-4da7-8861-dbfb4c670fb7"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR014") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR014") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 314.84 52.38) (xy 314.84 49.84))
     (stroke (width 0) (type default))
-    (uuid "4f366992-2122-4334-8602-3f600398c0c6")
+    (uuid "ed48c9e6-5e31-4364-8c87-3def14e3fd18")
   )
   (symbol
     (lib_id "power:+12V")
@@ -2983,7 +2983,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "e484af2c-a9a0-4cfb-8296-d175f5bfce3a")
+    (uuid "c0ec9591-e1d8-401c-b922-469e37a52d0f")
     (property "Reference" "#PWR015"
       (at 314.84 49.84 0)
       (effects
@@ -3011,17 +3011,17 @@
         hide
       )
     )
-    (pin "1" (uuid "ee1a2c9b-7886-4ad2-ad51-dac190307fc6"))
+    (pin "1" (uuid "0117949f-12da-4f85-8f84-bc5b0400fb08"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR015") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR015") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 314.84 67.62) (xy 314.84 70.16))
     (stroke (width 0) (type default))
-    (uuid "dc1e4c74-8cd3-47ab-835c-861acda7e50c")
+    (uuid "b41581f9-d568-40b2-8413-6bbd72d66acb")
   )
   (global_label "RLY12"
     (shape input)
@@ -3031,7 +3031,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "c79a3782-100d-440c-9988-988b9508409a")
+    (uuid "49339cdd-1acd-4a22-a7a5-4809e5fc6b63")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 314.84 70.16 0)
       (effects
@@ -3047,7 +3047,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "42a7d0b3-1fca-4cf7-8c81-3973a5a77df2")
+    (uuid "51ea36c1-dbc3-45aa-9889-c6ac62a3217f")
     (property "Reference" "J12"
       (at 358 55.46 0)
       (effects
@@ -3090,18 +3090,18 @@
         hide
       )
     )
-    (pin "1" (uuid "3bf7eb85-a55c-47b4-8e79-bd0e694e2468"))
-    (pin "2" (uuid "6c8b58e8-0270-4a27-901c-8fe0267eec26"))
+    (pin "1" (uuid "042d1087-8c15-48c9-9e84-58d941c7e5b5"))
+    (pin "2" (uuid "e70f1333-2382-4857-b562-ddaffe31f53b"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J12") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J12") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 354.92 57.46) (xy 352.38 57.46))
     (stroke (width 0) (type default))
-    (uuid "9700b642-52e3-47ec-b0f2-536f9ecc25c5")
+    (uuid "acfb056b-6426-4307-bddb-a329aed9cab4")
   )
   (global_label "SEC12_R"
     (shape input)
@@ -3111,7 +3111,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "eb13bafc-6354-4ba2-9a08-4c791982a566")
+    (uuid "50f8ee09-2a1d-4231-802d-1206ae0d9238")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 352.38 57.46 0)
       (effects
@@ -3123,7 +3123,7 @@
   (wire
     (pts (xy 354.92 60) (xy 352.38 60))
     (stroke (width 0) (type default))
-    (uuid "ec5bd191-fbd7-4d24-a8da-6afe701487af")
+    (uuid "041333a8-90d0-4da1-8515-e199e013c179")
   )
   (global_label "SEC12_B"
     (shape input)
@@ -3133,7 +3133,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "f0efae46-33a3-4776-a753-d57cfbd0dbeb")
+    (uuid "2f325917-07d8-440d-af44-82c4fee92110")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 352.38 60 0)
       (effects
@@ -3149,7 +3149,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "4b29d233-aecc-4002-9d0e-bfbba86a4fc6")
+    (uuid "23fd4a34-2651-4725-804f-17abe7f711de")
     (property "Reference" "D12"
       (at 298 47.84 0)
       (effects
@@ -3178,32 +3178,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 300 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 300 49.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "3d988076-ea8d-47ac-8bed-51b62ff23ac5"))
-    (pin "2" (uuid "0838f846-4267-49e1-8155-a26c1d8c79fe"))
+    (pin "1" (uuid "6a9e3f2a-2b71-44df-903e-4e3754307790"))
+    (pin "2" (uuid "a27213ed-fa1a-4715-aa3c-b1bbfada36df"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D12") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D12") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 303.81 49.84) (xy 306.35 49.84))
     (stroke (width 0) (type default))
-    (uuid "a018775c-15e7-4424-8ae7-ea542330b9d3")
+    (uuid "82d37827-ec63-478e-8b61-a065bcbd5172")
   )
   (global_label "RLY12"
     (shape input)
@@ -3213,7 +3213,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "450cff6f-d26e-4312-b449-d4d842ac65ea")
+    (uuid "c3eaf19b-8a3d-40ca-b364-54eee70cab8a")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 306.35 49.84 0)
       (effects
@@ -3225,7 +3225,7 @@
   (wire
     (pts (xy 296.19 49.84) (xy 293.65 49.84))
     (stroke (width 0) (type default))
-    (uuid "796ad2e5-2350-40e3-b923-e9d328649220")
+    (uuid "5afc08fd-01a8-4dd8-a554-564a39684ed3")
   )
   (global_label "LEDA12"
     (shape input)
@@ -3235,7 +3235,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "06cd1d30-2064-449a-8e52-3c9308261905")
+    (uuid "ffdbbe4c-7e2b-4363-80e5-127545324511")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 293.65 49.84 0)
       (effects
@@ -3251,7 +3251,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1a556b41-770a-4d0a-a5ba-ad7c82c44c34")
+    (uuid "52ef8604-bdb2-4ea1-859c-45b2c5bda96f")
     (property "Reference" "R12"
       (at 298 37.68 0)
       (effects
@@ -3294,18 +3294,18 @@
         hide
       )
     )
-    (pin "1" (uuid "5ec7a26d-19b5-4d9f-9e94-8c7c5d987ad4"))
-    (pin "2" (uuid "ce2c6e57-e0a6-4755-b528-d073dfcccc2d"))
+    (pin "1" (uuid "f4a9218c-484e-4ef0-9c47-4439dded8651"))
+    (pin "2" (uuid "8d780e7f-e3b6-41ac-a45d-268843936729"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R12") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R12") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 296.19 39.68) (xy 293.65 39.68))
     (stroke (width 0) (type default))
-    (uuid "5f559697-3a8e-4b10-9a5e-4466bb7fc44a")
+    (uuid "8b5c3fca-a405-4b6e-b6f5-1001d9efe62f")
   )
   (global_label "LEDA12"
     (shape input)
@@ -3315,7 +3315,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "cf7dd3dc-766a-4553-a36d-112f76fab5c0")
+    (uuid "cd2a86f0-535e-4d5f-992b-9be7cca8fa13")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 293.65 39.68 0)
       (effects
@@ -3327,7 +3327,7 @@
   (wire
     (pts (xy 303.81 39.68) (xy 306.35 39.68))
     (stroke (width 0) (type default))
-    (uuid "f8ac165f-79d3-4257-b7b9-090206077dfe")
+    (uuid "bc2cfaae-1758-48ef-8a03-faa2891caad1")
   )
   (symbol
     (lib_id "power:+12V")
@@ -3336,7 +3336,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "62142d5f-87fe-457b-8379-b85dd24804c0")
+    (uuid "be457979-1f83-4cac-b681-2e133dfaa03b")
     (property "Reference" "#PWR016"
       (at 306.35 39.68 0)
       (effects
@@ -3364,10 +3364,10 @@
         hide
       )
     )
-    (pin "1" (uuid "2cd5dfbe-5e4a-40a7-accc-f1c5c92cdfbd"))
+    (pin "1" (uuid "e68709c7-2fca-4622-9210-aaf97f46d6a5"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR016") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR016") (unit 1))
       )
     )
   )
@@ -3378,7 +3378,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "771d66a4-c664-423d-a152-16ac7b50faa0")
+    (uuid "61162134-1024-41ed-85c8-4e6499783723")
     (property "Reference" "K13"
       (at 38 178 0)
       (effects
@@ -3421,24 +3421,24 @@
         hide
       )
     )
-    (pin "11" (uuid "40e06921-d961-443c-bc58-21df8595d8e6"))
-    (pin "12" (uuid "f2a2682b-b45c-4c2f-80ef-a739b39dd673"))
-    (pin "14" (uuid "e324d828-816a-433f-bc46-d2495fdbbe12"))
-    (pin "21" (uuid "1886f6d3-7dec-49bf-add4-786efc5147f6"))
-    (pin "22" (uuid "86d74bea-bde1-4a5d-a791-aea37b8d2a16"))
-    (pin "24" (uuid "157b756b-e586-416a-a2c7-45391dd5c5e2"))
-    (pin "A1" (uuid "d8e32e92-ad1b-469f-814d-3235c8ae9add"))
-    (pin "A2" (uuid "99f638ac-de6a-4a7b-a6e1-25f51f37e086"))
+    (pin "11" (uuid "18929e4e-d0f4-44c6-8b8d-09928fbcf3b9"))
+    (pin "12" (uuid "264a8e82-e9eb-4d50-8314-c3ee925d8861"))
+    (pin "14" (uuid "2d0b598f-b73b-4c36-bd98-89805034580d"))
+    (pin "21" (uuid "7afe11ea-8f7f-4512-9b55-1157556ec6f6"))
+    (pin "22" (uuid "86bed01e-c03e-4ba3-b002-dc7e1e570c22"))
+    (pin "24" (uuid "a7bb0fbc-1d74-44cd-bcc5-9ba7ef97e9f4"))
+    (pin "A1" (uuid "700805f4-a0b4-415a-b941-5dfde6c76e45"))
+    (pin "A2" (uuid "736714bc-46bd-4a84-90da-9e8085930801"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K13") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K13") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 40 187.62) (xy 40 190.16))
     (stroke (width 0) (type default))
-    (uuid "5120abb3-ae6d-47b6-877a-19efe187447e")
+    (uuid "b9ca4911-3692-4683-a6ce-62bc8479c178")
   )
   (global_label "SEC13_R"
     (shape input)
@@ -3448,7 +3448,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "126675e5-9a94-4043-8abe-15d7c70248b5")
+    (uuid "c8ca0480-aa0a-4811-abd2-c0940ef4264e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 40 190.16 0)
       (effects
@@ -3460,7 +3460,7 @@
   (wire
     (pts (xy 37.46 172.38) (xy 37.46 169.84))
     (stroke (width 0) (type default))
-    (uuid "7a5cabe0-d4d9-473d-b2d9-ed5d6bc88781")
+    (uuid "e755021c-9a48-4a1d-8a47-1583f0d608e5")
   )
   (symbol
     (lib_id "power:GND")
@@ -3469,7 +3469,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "83e3defb-e148-4781-b102-4a64d60a6bd0")
+    (uuid "10b64010-a1c6-426b-9bb8-9de2a1b8ae79")
     (property "Reference" "#PWR017"
       (at 37.46 169.84 0)
       (effects
@@ -3497,17 +3497,17 @@
         hide
       )
     )
-    (pin "1" (uuid "7cd20ce0-4bf4-43e4-b1eb-f5982f7fae6d"))
+    (pin "1" (uuid "2ead3f9e-1693-484c-bf30-4543910e41f3"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR017") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR017") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 42.54 172.38) (xy 42.54 169.84))
     (stroke (width 0) (type default))
-    (uuid "cd94f071-cc3c-4621-9384-b94a7a8e3e0d")
+    (uuid "38037b3f-d013-48ae-82aa-bdadde125a12")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -3517,7 +3517,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "cfc4acf1-04f8-4a30-9d63-977161f4dbf6")
+    (uuid "b9d13197-a5f1-42f1-88f9-d78da2a5e92e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 42.54 169.84 0)
       (effects
@@ -3529,7 +3529,7 @@
   (wire
     (pts (xy 50.16 187.62) (xy 50.16 190.16))
     (stroke (width 0) (type default))
-    (uuid "7f81357d-1c16-46f4-ad79-893dda4baa2a")
+    (uuid "5595a617-3735-4abf-bb5e-1e2019103897")
   )
   (global_label "SEC13_B"
     (shape input)
@@ -3539,7 +3539,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "7248c075-0188-4671-baa1-2dca9f237bd3")
+    (uuid "fbc4dab7-31fb-4744-9a86-516c69ed942e")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 50.16 190.16 0)
       (effects
@@ -3551,7 +3551,7 @@
   (wire
     (pts (xy 47.62 172.38) (xy 47.62 169.84))
     (stroke (width 0) (type default))
-    (uuid "211e6d50-1e6e-4d89-a2c2-854abc2a62e9")
+    (uuid "ffc8a408-767b-4cd0-92cf-c018c8c1067e")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -3561,7 +3561,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "d15debec-eb64-46ab-aacd-753348fa4e12")
+    (uuid "0e4fe1d9-0e42-4c5f-b167-e8401bd6fda5")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 47.62 169.84 0)
       (effects
@@ -3573,7 +3573,7 @@
   (wire
     (pts (xy 52.7 172.38) (xy 52.7 169.84))
     (stroke (width 0) (type default))
-    (uuid "45b5ba52-8383-4840-87cc-281676410849")
+    (uuid "6481ce19-2f87-4f36-9df0-448c164900a3")
   )
   (symbol
     (lib_id "power:GND")
@@ -3582,7 +3582,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5daf9aa0-b82f-4252-8673-ef8004218f48")
+    (uuid "1a127c64-11ac-438e-853a-b3b93a613b33")
     (property "Reference" "#PWR018"
       (at 52.7 169.84 0)
       (effects
@@ -3610,17 +3610,17 @@
         hide
       )
     )
-    (pin "1" (uuid "61f5eb56-b2d7-405d-97ad-c9eb45165553"))
+    (pin "1" (uuid "db4e5133-58bf-4cc0-93da-6241f40a7ac8"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR018") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR018") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 29.84 172.38) (xy 29.84 169.84))
     (stroke (width 0) (type default))
-    (uuid "84563267-4d1d-4d88-bf87-a01f2f89d3c4")
+    (uuid "7f27fa01-a751-4563-a21b-aa416cec07fd")
   )
   (symbol
     (lib_id "power:+12V")
@@ -3629,7 +3629,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "cb87fee0-fc5d-45d7-a430-a827441a0730")
+    (uuid "7a11ccd0-2236-439a-82c7-69c2f8e62e08")
     (property "Reference" "#PWR019"
       (at 29.84 169.84 0)
       (effects
@@ -3657,17 +3657,17 @@
         hide
       )
     )
-    (pin "1" (uuid "1fc9f47c-6d55-4f2f-bb8d-296b831a3953"))
+    (pin "1" (uuid "fd42204e-54f1-48f7-a347-546187a36f42"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR019") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR019") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 29.84 187.62) (xy 29.84 190.16))
     (stroke (width 0) (type default))
-    (uuid "c6127100-2310-447e-a45f-c617c3160a14")
+    (uuid "9f23a9cd-d63f-44c9-852e-56bb3ee439f2")
   )
   (global_label "RLY13"
     (shape input)
@@ -3677,7 +3677,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "c5bd7e94-bfee-4964-b89e-77db18a4c0e4")
+    (uuid "85aee86f-9711-4e48-bfb1-5866c037a779")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 29.84 190.16 0)
       (effects
@@ -3693,7 +3693,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "f2754a5e-1a41-4526-a1fb-961d6dd58acb")
+    (uuid "260595cc-62b8-4cc5-a461-059df5dd21bd")
     (property "Reference" "J13"
       (at 73 175.46 0)
       (effects
@@ -3736,18 +3736,18 @@
         hide
       )
     )
-    (pin "1" (uuid "034ab8c5-7d0a-4f96-af80-16e5e1c6970f"))
-    (pin "2" (uuid "f11daead-81cf-4c04-bd66-f6c7dd00b556"))
+    (pin "1" (uuid "3ec17cec-8081-4ff8-be0b-79f2611d6d15"))
+    (pin "2" (uuid "68a7b4c2-2d5e-490f-a1ea-895a39fd5508"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J13") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J13") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 69.92 177.46) (xy 67.38 177.46))
     (stroke (width 0) (type default))
-    (uuid "23d89e65-c193-4c23-b884-338dcb996ea4")
+    (uuid "5be0088b-05f3-44fa-979a-c3893a4d2194")
   )
   (global_label "SEC13_R"
     (shape input)
@@ -3757,7 +3757,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "9871403b-c6d8-440d-a6d7-91349274ae46")
+    (uuid "75c4c0be-3753-467d-82a1-b48993d4fe82")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 67.38 177.46 0)
       (effects
@@ -3769,7 +3769,7 @@
   (wire
     (pts (xy 69.92 180) (xy 67.38 180))
     (stroke (width 0) (type default))
-    (uuid "87a8a1f3-52e0-448a-9736-eb416dde725a")
+    (uuid "1c9c5360-1a1e-456e-ad56-c7b79d7e824d")
   )
   (global_label "SEC13_B"
     (shape input)
@@ -3779,7 +3779,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "576626b5-4a81-4840-bb69-ad358052cd85")
+    (uuid "90314287-6db3-412a-bd0e-96f9330d34d1")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 67.38 180 0)
       (effects
@@ -3795,7 +3795,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "f4c31891-f247-4d71-a05b-89e79921d805")
+    (uuid "b9287894-0351-414b-869b-e2e612d1015f")
     (property "Reference" "D13"
       (at 13 167.84 0)
       (effects
@@ -3824,32 +3824,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 15 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 15 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "1dd69583-0e91-409f-a00d-8d08590e5389"))
-    (pin "2" (uuid "d3e2f48f-b94a-467a-a728-eb72db51b5a6"))
+    (pin "1" (uuid "cb79d388-2e47-4119-99fc-b3304efb4774"))
+    (pin "2" (uuid "58a3d69d-8f79-4986-b99d-122878662ca1"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D13") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D13") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 18.81 169.84) (xy 21.35 169.84))
     (stroke (width 0) (type default))
-    (uuid "f9fca108-880f-46e5-aef0-4c0cc85ac80c")
+    (uuid "622c4e79-8a89-4e6b-a39b-982e6bdaee16")
   )
   (global_label "RLY13"
     (shape input)
@@ -3859,7 +3859,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "538b4b29-ee3e-4be5-afbf-74e340ac0e77")
+    (uuid "47bc81f5-a324-476f-8aac-2c05bb6be19c")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 21.35 169.84 0)
       (effects
@@ -3871,7 +3871,7 @@
   (wire
     (pts (xy 11.19 169.84) (xy 8.65 169.84))
     (stroke (width 0) (type default))
-    (uuid "d11ca9c6-5ecd-4064-b1c1-d75019428654")
+    (uuid "ebb23b5d-85dd-474a-b36e-2fe1547f9aaa")
   )
   (global_label "LEDA13"
     (shape input)
@@ -3881,7 +3881,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "4dbb29d1-f303-48c7-b83f-7bb9a991205a")
+    (uuid "c468ccc8-13f1-466e-95ed-b580e87a62a8")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 8.65 169.84 0)
       (effects
@@ -3897,7 +3897,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "38149edd-a65d-4007-9f6c-ef996d0fe364")
+    (uuid "5e2ae9a7-9363-4997-a125-b809d700ddc2")
     (property "Reference" "R13"
       (at 13 157.68 0)
       (effects
@@ -3940,18 +3940,18 @@
         hide
       )
     )
-    (pin "1" (uuid "5cd2b335-643c-457e-afc9-77842b2d61fd"))
-    (pin "2" (uuid "d7c9b663-d638-453f-8646-38bd89b23aa1"))
+    (pin "1" (uuid "a4e00e0e-0a11-4142-8b26-12d70050fc32"))
+    (pin "2" (uuid "7137d891-b28d-4175-877f-615c7f83bd37"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R13") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R13") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 11.19 159.68) (xy 8.65 159.68))
     (stroke (width 0) (type default))
-    (uuid "6476a0ee-a0c1-48be-b5ee-19a82d1a73e7")
+    (uuid "33054dec-637e-4263-bb75-b4e522c115a0")
   )
   (global_label "LEDA13"
     (shape input)
@@ -3961,7 +3961,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "dd25dec2-bab8-44e3-ae6c-ff39ce176c68")
+    (uuid "8fcdf42f-c740-4e30-8139-a919affe97ad")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 8.65 159.68 0)
       (effects
@@ -3973,7 +3973,7 @@
   (wire
     (pts (xy 18.81 159.68) (xy 21.35 159.68))
     (stroke (width 0) (type default))
-    (uuid "556e19a1-cbf4-4912-994d-1654a60a2ec2")
+    (uuid "bdc7c195-2a39-459a-a373-b08795a2cdd3")
   )
   (symbol
     (lib_id "power:+12V")
@@ -3982,7 +3982,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6a209dcb-efa2-42e9-92c5-03fb1c309fff")
+    (uuid "9f4e7a92-036d-4632-9a9e-3d900d61c31f")
     (property "Reference" "#PWR020"
       (at 21.35 159.68 0)
       (effects
@@ -4010,10 +4010,10 @@
         hide
       )
     )
-    (pin "1" (uuid "60d52cbd-d1ef-4f9c-b30b-2674bf3aa271"))
+    (pin "1" (uuid "b2ea7643-11ab-421e-85ab-966b63e0473e"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR020") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR020") (unit 1))
       )
     )
   )
@@ -4024,7 +4024,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "76eb073d-3c50-4bdb-9811-ee054f8c0f03")
+    (uuid "e0c63f4e-0c76-4086-9ddf-6cdc5dcdc25d")
     (property "Reference" "K14"
       (at 133 178 0)
       (effects
@@ -4067,24 +4067,24 @@
         hide
       )
     )
-    (pin "11" (uuid "15579c13-563e-4538-ac9b-dcbc1e1dd1d6"))
-    (pin "12" (uuid "c4c24ffd-25b1-495d-a155-361f5cd86d43"))
-    (pin "14" (uuid "acbdbe5d-dc28-40e6-9fc1-a6b5fba7c081"))
-    (pin "21" (uuid "8aa3e9ec-198b-453f-a800-3c02f0d4730b"))
-    (pin "22" (uuid "92a6c37a-7c54-4f34-bd0d-4a334e2daf01"))
-    (pin "24" (uuid "eb5b8d56-6357-487c-8fb9-9a917270e624"))
-    (pin "A1" (uuid "4ae0afb2-3511-4de8-8890-ada9ec4be587"))
-    (pin "A2" (uuid "bfc693b8-b2c8-4df2-8dfb-7e2bb1000a68"))
+    (pin "11" (uuid "57ebed3e-029f-49ec-a755-06637b1d9bc8"))
+    (pin "12" (uuid "404dc2d4-31e7-437b-8b6c-bab744fab002"))
+    (pin "14" (uuid "3d7361e5-47a0-4b8c-9c24-9467ba9d75bd"))
+    (pin "21" (uuid "6b077870-3efb-4fab-91f8-ffe5497f6569"))
+    (pin "22" (uuid "4b60cc4e-990a-4469-a4a7-ab7dc36a0a82"))
+    (pin "24" (uuid "a1494693-eedc-46dd-a6e4-06c28fe726a7"))
+    (pin "A1" (uuid "e84e6cc8-cd60-43db-a787-b16fc75e0fd4"))
+    (pin "A2" (uuid "23e96599-83af-41aa-80fb-f28d45a2a8d4"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K14") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K14") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 135 187.62) (xy 135 190.16))
     (stroke (width 0) (type default))
-    (uuid "521f2052-c535-4d5f-9ef7-08145771caff")
+    (uuid "435fb892-0135-4006-9152-dd6061092457")
   )
   (global_label "SEC14_R"
     (shape input)
@@ -4094,7 +4094,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "4b67aeec-54b7-4cf8-8eaa-4343f184c69a")
+    (uuid "82fcba82-b210-4a5f-ab91-912a5963b0df")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 135 190.16 0)
       (effects
@@ -4106,7 +4106,7 @@
   (wire
     (pts (xy 132.46 172.38) (xy 132.46 169.84))
     (stroke (width 0) (type default))
-    (uuid "f23ac2c9-8402-4a3e-aa2e-5a8a255b6efc")
+    (uuid "f1d3361f-9efe-4935-8d46-d477113bc484")
   )
   (symbol
     (lib_id "power:GND")
@@ -4115,7 +4115,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "e248425e-0e56-4d47-ac9c-eb0c5ff3f74f")
+    (uuid "427ae461-3d02-4728-bc31-500f79481bd1")
     (property "Reference" "#PWR021"
       (at 132.46 169.84 0)
       (effects
@@ -4143,17 +4143,17 @@
         hide
       )
     )
-    (pin "1" (uuid "7e003ae2-7d0a-44c3-8ba7-3aeea34a6074"))
+    (pin "1" (uuid "f3026127-1703-4bfb-9c07-10c625e1e95f"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR021") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR021") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 137.54 172.38) (xy 137.54 169.84))
     (stroke (width 0) (type default))
-    (uuid "9d75e7f5-0cc5-494c-8eea-8eda230b0a34")
+    (uuid "c9f1435f-0d94-4bad-a44a-99d352f1f960")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -4163,7 +4163,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "2122ed7a-2446-4a10-b6a5-adf48c97057f")
+    (uuid "61bad883-2a2d-42a2-8c3d-6219f89831c8")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 137.54 169.84 0)
       (effects
@@ -4175,7 +4175,7 @@
   (wire
     (pts (xy 145.16 187.62) (xy 145.16 190.16))
     (stroke (width 0) (type default))
-    (uuid "41754a11-c193-4284-bae9-449cff467275")
+    (uuid "0c588d13-7980-45d6-857b-79e169dac883")
   )
   (global_label "SEC14_B"
     (shape input)
@@ -4185,7 +4185,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "4bc8e053-bd1a-4354-bbd1-4f54527a7473")
+    (uuid "8a973003-b756-4f08-bd4c-0600c47938d6")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 145.16 190.16 0)
       (effects
@@ -4197,7 +4197,7 @@
   (wire
     (pts (xy 142.62 172.38) (xy 142.62 169.84))
     (stroke (width 0) (type default))
-    (uuid "928f8a11-727a-400a-82d7-bcfbc9bd9e8b")
+    (uuid "2db4c2f3-5e92-453a-90b6-d1623670762c")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -4207,7 +4207,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "5d5c37de-9ba0-447a-a845-20fbd48fb9de")
+    (uuid "7ff1103c-bbd1-4a6e-9033-78ebd39c8c81")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 142.62 169.84 0)
       (effects
@@ -4219,7 +4219,7 @@
   (wire
     (pts (xy 147.7 172.38) (xy 147.7 169.84))
     (stroke (width 0) (type default))
-    (uuid "980eca1f-f0bc-4fdd-841a-f8d3d4153776")
+    (uuid "4e2bbf77-144d-488f-b84d-5ffd2522efa9")
   )
   (symbol
     (lib_id "power:GND")
@@ -4228,7 +4228,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "08854592-6b14-4896-aee8-3397b071933e")
+    (uuid "05fec27e-4e07-4693-a798-e9571dcef89b")
     (property "Reference" "#PWR022"
       (at 147.7 169.84 0)
       (effects
@@ -4256,17 +4256,17 @@
         hide
       )
     )
-    (pin "1" (uuid "a53c7234-d652-4bab-9774-ef1e7366e6f2"))
+    (pin "1" (uuid "0bab6a1e-1c65-4806-bea4-d22dbcd794c2"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR022") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR022") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 124.84 172.38) (xy 124.84 169.84))
     (stroke (width 0) (type default))
-    (uuid "3bb474d3-8993-4a8f-8876-312ea92abf39")
+    (uuid "73192946-5d6a-4f4b-9bf5-1729308395a2")
   )
   (symbol
     (lib_id "power:+12V")
@@ -4275,7 +4275,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "274961be-7993-4ce1-8168-a129a636fe8c")
+    (uuid "0a4f854e-2d89-4631-899d-7bbddaf814d6")
     (property "Reference" "#PWR023"
       (at 124.84 169.84 0)
       (effects
@@ -4303,17 +4303,17 @@
         hide
       )
     )
-    (pin "1" (uuid "0ba38de7-ce15-4b50-89fc-36379188c7d2"))
+    (pin "1" (uuid "b1b33960-9bed-4730-996f-021023f26cca"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR023") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR023") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 124.84 187.62) (xy 124.84 190.16))
     (stroke (width 0) (type default))
-    (uuid "8dc11d4f-d390-4fae-be4f-901f0a0ed7fd")
+    (uuid "fd48625b-7bc0-4f34-bf9e-959896c55abe")
   )
   (global_label "RLY14"
     (shape input)
@@ -4323,7 +4323,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "61f69e59-c505-46ee-b5fe-9c331ec8e54d")
+    (uuid "7a9f3ba8-7f91-413a-a82f-0e77f4537987")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 124.84 190.16 0)
       (effects
@@ -4339,7 +4339,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "4198fb15-6c61-45f5-9415-a02fae43927a")
+    (uuid "1204e8aa-484e-451d-bebd-ff0c526ba127")
     (property "Reference" "J14"
       (at 168 175.46 0)
       (effects
@@ -4382,18 +4382,18 @@
         hide
       )
     )
-    (pin "1" (uuid "6ae680fc-3917-481e-957b-1a1223ecaaf9"))
-    (pin "2" (uuid "d16859b1-1334-42c0-a7a6-3b647ad4e0eb"))
+    (pin "1" (uuid "febf8b3d-90a9-4633-8f62-ade10bd100fa"))
+    (pin "2" (uuid "19b3d354-1105-41e7-a36a-d916d26772bf"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J14") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J14") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 164.92 177.46) (xy 162.38 177.46))
     (stroke (width 0) (type default))
-    (uuid "370d9391-9ba3-46af-84ac-10d263b9af9f")
+    (uuid "a60bb3f3-5636-410e-b5d5-641771d91171")
   )
   (global_label "SEC14_R"
     (shape input)
@@ -4403,7 +4403,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "7fcb1c2d-c9e0-4241-b6b7-334d93eb0ef3")
+    (uuid "1f7de6c4-7760-4279-82c3-8233ed3dee57")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 162.38 177.46 0)
       (effects
@@ -4415,7 +4415,7 @@
   (wire
     (pts (xy 164.92 180) (xy 162.38 180))
     (stroke (width 0) (type default))
-    (uuid "6123dfef-1a66-425a-a9df-b253cf93853f")
+    (uuid "8db9ed9b-565a-49d2-836a-158451d7103a")
   )
   (global_label "SEC14_B"
     (shape input)
@@ -4425,7 +4425,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "01a635e4-bed1-46e8-8653-f6879c8ccf26")
+    (uuid "2326832d-ea51-43d7-ae8c-4dbd91e45eb4")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 162.38 180 0)
       (effects
@@ -4441,7 +4441,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "a78c306d-6b57-42b4-87e4-45cd722556e2")
+    (uuid "f4480a64-126c-4bd0-ad5d-7937fbfa64ed")
     (property "Reference" "D14"
       (at 108 167.84 0)
       (effects
@@ -4470,32 +4470,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 110 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 110 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "94f1ce30-ee5b-4a21-8db4-be94a30b4710"))
-    (pin "2" (uuid "78f3746f-475d-4304-84b6-856250e475dc"))
+    (pin "1" (uuid "0bf650e1-5594-4f36-9059-7f2bbf735654"))
+    (pin "2" (uuid "f12230a5-3358-4e6e-a353-a9a756815b17"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D14") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D14") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 113.81 169.84) (xy 116.35 169.84))
     (stroke (width 0) (type default))
-    (uuid "0051c550-1dd5-4544-973d-35bb21dad731")
+    (uuid "0038fc35-2d8d-458c-ad81-f4bfb04c4ccf")
   )
   (global_label "RLY14"
     (shape input)
@@ -4505,7 +4505,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "f09dfd11-5a71-4c95-8bc2-6cb563d58594")
+    (uuid "59a92415-ce9f-4a22-92b6-f8f748925689")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 116.35 169.84 0)
       (effects
@@ -4517,7 +4517,7 @@
   (wire
     (pts (xy 106.19 169.84) (xy 103.65 169.84))
     (stroke (width 0) (type default))
-    (uuid "9ee87223-7275-4c98-9120-cd5655a0aa51")
+    (uuid "be4cf2f1-7e28-4067-927e-bc14ed5240b5")
   )
   (global_label "LEDA14"
     (shape input)
@@ -4527,7 +4527,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "82ee74c9-90dd-4af5-9a24-a623d8d99e99")
+    (uuid "699dd91a-c40e-45cd-be18-c5ef948c4115")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 103.65 169.84 0)
       (effects
@@ -4543,7 +4543,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "421af141-1a72-420d-999b-b393657a8579")
+    (uuid "680eead5-9f26-4799-a75b-8d2b0a337b31")
     (property "Reference" "R14"
       (at 108 157.68 0)
       (effects
@@ -4586,18 +4586,18 @@
         hide
       )
     )
-    (pin "1" (uuid "abc696cb-f62a-455d-8bf9-ea8b4387e4d1"))
-    (pin "2" (uuid "7363a508-db22-4d19-b0c3-78f4b41a5f4e"))
+    (pin "1" (uuid "1cca0bcf-d11c-41f1-9df1-7437903b25bb"))
+    (pin "2" (uuid "be0994ca-d563-4555-9237-774a7e19dc8d"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R14") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R14") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 106.19 159.68) (xy 103.65 159.68))
     (stroke (width 0) (type default))
-    (uuid "98d79840-d994-4416-baa1-16ca18c39c45")
+    (uuid "fdd9dacd-89c4-4b1b-ab03-f5670fe934b2")
   )
   (global_label "LEDA14"
     (shape input)
@@ -4607,7 +4607,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "06bb9b45-9ef5-45c4-b661-8c8c7d568eab")
+    (uuid "12c8f82e-5fdd-41e8-bcda-e4f59297ad48")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 103.65 159.68 0)
       (effects
@@ -4619,7 +4619,7 @@
   (wire
     (pts (xy 113.81 159.68) (xy 116.35 159.68))
     (stroke (width 0) (type default))
-    (uuid "15ab192f-8fd6-49cc-b99b-551981493968")
+    (uuid "547968d5-bda5-4021-aebc-d239fa17887e")
   )
   (symbol
     (lib_id "power:+12V")
@@ -4628,7 +4628,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "ba149edc-41b3-459a-913b-f38f37528d1c")
+    (uuid "8e402902-1327-43d9-98a5-057f66b4ccb9")
     (property "Reference" "#PWR024"
       (at 116.35 159.68 0)
       (effects
@@ -4656,10 +4656,10 @@
         hide
       )
     )
-    (pin "1" (uuid "cd391733-ace5-4618-8830-ab85467c869a"))
+    (pin "1" (uuid "402b3906-1479-425c-88a4-09670197692d"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR024") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR024") (unit 1))
       )
     )
   )
@@ -4670,7 +4670,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1e05930c-414a-4db0-9ea0-7bcd146a70c9")
+    (uuid "be64e153-0c50-48c4-93e4-97ff4a8ccc3a")
     (property "Reference" "K15"
       (at 228 178 0)
       (effects
@@ -4713,24 +4713,24 @@
         hide
       )
     )
-    (pin "11" (uuid "4e91674f-811d-4a1a-af21-a75bf677d714"))
-    (pin "12" (uuid "55f8c1eb-5033-417f-b2f3-08c9a010eb48"))
-    (pin "14" (uuid "acf05467-33c5-4553-a290-52c640195bd3"))
-    (pin "21" (uuid "0adbcdeb-f30b-4611-8d90-e3a205e37ccb"))
-    (pin "22" (uuid "7cc07f55-85cf-439f-9e9d-d5b6dae2d416"))
-    (pin "24" (uuid "6f2e3424-2913-47ef-a7ee-a878cb8fd6f2"))
-    (pin "A1" (uuid "18d7507f-351e-46d9-a3ac-5ba11decd700"))
-    (pin "A2" (uuid "f6ff74c8-5a08-4a4e-975e-6e96fc745292"))
+    (pin "11" (uuid "9a4b9027-e38c-4547-8f8f-151f9363c0d0"))
+    (pin "12" (uuid "e1444fac-bb2b-4e78-9d25-0b9106af2d26"))
+    (pin "14" (uuid "f63737ff-a447-4054-854e-dbe2e0b31896"))
+    (pin "21" (uuid "37b63131-dc3c-4807-a5d2-5cf4e512e206"))
+    (pin "22" (uuid "07644f9b-928a-4a80-bdd2-5738b70edb09"))
+    (pin "24" (uuid "2ae64469-7f05-4333-9bbb-bb4db506f5a8"))
+    (pin "A1" (uuid "c78569d3-f614-4a18-b0e3-633dabb33da3"))
+    (pin "A2" (uuid "f0033faa-ce9c-410c-9673-1692e2ad941b"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K15") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K15") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 230 187.62) (xy 230 190.16))
     (stroke (width 0) (type default))
-    (uuid "1392d3f4-3ead-4893-aef6-f93a7ef08b05")
+    (uuid "7e353eef-2074-411a-82ed-dc06f4751593")
   )
   (global_label "SEC15_R"
     (shape input)
@@ -4740,7 +4740,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "7d6531f3-0066-4071-ba28-6489c6d81a5f")
+    (uuid "14b34c45-6643-4a6b-832c-a4dc1e0ad4cc")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 230 190.16 0)
       (effects
@@ -4752,7 +4752,7 @@
   (wire
     (pts (xy 227.46 172.38) (xy 227.46 169.84))
     (stroke (width 0) (type default))
-    (uuid "88109780-bf44-4c12-9961-8a2f005a5e1e")
+    (uuid "68d1dfaa-6e6c-4626-a3f8-e1c9a4b8eebd")
   )
   (symbol
     (lib_id "power:GND")
@@ -4761,7 +4761,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5651d7f2-8a83-4b71-a754-50f406dd4cf2")
+    (uuid "a78c337b-bb60-4cea-8032-db0cfadb3194")
     (property "Reference" "#PWR025"
       (at 227.46 169.84 0)
       (effects
@@ -4789,17 +4789,17 @@
         hide
       )
     )
-    (pin "1" (uuid "98f51c8d-7760-401c-84b0-571fb3a3dd28"))
+    (pin "1" (uuid "06cfc116-701e-47eb-a22c-1067636ec875"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR025") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR025") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 232.54 172.38) (xy 232.54 169.84))
     (stroke (width 0) (type default))
-    (uuid "bd519a4c-85ca-41a6-9922-4ec97d7d09ae")
+    (uuid "ac0ecfbc-a4c3-4f2c-8984-94c249a559df")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -4809,7 +4809,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "3ca2efd6-1e88-45fb-8031-5f1b09b7df2f")
+    (uuid "55fd02cc-d420-49d2-b0e2-60561dfccc5b")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 232.54 169.84 0)
       (effects
@@ -4821,7 +4821,7 @@
   (wire
     (pts (xy 240.16 187.62) (xy 240.16 190.16))
     (stroke (width 0) (type default))
-    (uuid "dcda6c20-1d70-4678-bcf8-f30fc5f554a0")
+    (uuid "877788f4-6541-4028-aa2f-27ed438075b6")
   )
   (global_label "SEC15_B"
     (shape input)
@@ -4831,7 +4831,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "2e69dbbf-d51d-48ce-a493-a6855bfdf6ea")
+    (uuid "df98f2d4-89fc-48dd-9874-fde9cea3420c")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 240.16 190.16 0)
       (effects
@@ -4843,7 +4843,7 @@
   (wire
     (pts (xy 237.62 172.38) (xy 237.62 169.84))
     (stroke (width 0) (type default))
-    (uuid "fbae9113-ba72-40aa-8a8f-5a1e7dc4b470")
+    (uuid "3b6f02e9-09e2-4e76-b6de-85e592497f69")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -4853,7 +4853,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "1c360d98-77e7-470b-a56d-4c7fae83b125")
+    (uuid "66679308-7f96-478e-b162-67c2915e4e4b")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 237.62 169.84 0)
       (effects
@@ -4865,7 +4865,7 @@
   (wire
     (pts (xy 242.7 172.38) (xy 242.7 169.84))
     (stroke (width 0) (type default))
-    (uuid "3397c817-51dc-4e98-9ecc-8382ec4277fb")
+    (uuid "60aa4df1-783c-494d-b6b6-43fe753471d1")
   )
   (symbol
     (lib_id "power:GND")
@@ -4874,7 +4874,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1e247b41-c8a1-4832-90b6-167028bab1c3")
+    (uuid "d2e352b0-057d-4af8-8669-a11b1eae7f3b")
     (property "Reference" "#PWR026"
       (at 242.7 169.84 0)
       (effects
@@ -4902,17 +4902,17 @@
         hide
       )
     )
-    (pin "1" (uuid "2c49cfce-c53e-4a2f-838d-dfb13a7dad5c"))
+    (pin "1" (uuid "2078da59-b3f0-4ec2-ac2b-8ec7d9f41171"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR026") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR026") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 219.84 172.38) (xy 219.84 169.84))
     (stroke (width 0) (type default))
-    (uuid "98e5417f-9652-42f9-93e8-7739100f400f")
+    (uuid "247d66ec-3dee-4a16-9de5-8e0fe8d44979")
   )
   (symbol
     (lib_id "power:+12V")
@@ -4921,7 +4921,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "02fdafe0-607e-4b08-a442-92108aee080c")
+    (uuid "b32e19c9-e757-4c3c-b8f5-41e2b9c391de")
     (property "Reference" "#PWR027"
       (at 219.84 169.84 0)
       (effects
@@ -4949,17 +4949,17 @@
         hide
       )
     )
-    (pin "1" (uuid "be34e8a3-b8fd-4e61-ade0-e887bd55aad5"))
+    (pin "1" (uuid "03e8f862-728e-4842-bcde-4e9faf2bb490"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR027") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR027") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 219.84 187.62) (xy 219.84 190.16))
     (stroke (width 0) (type default))
-    (uuid "9466091b-16b5-4022-a895-6c071c0efc22")
+    (uuid "44ebb078-1456-4598-ad21-5bf1a0697056")
   )
   (global_label "RLY15"
     (shape input)
@@ -4969,7 +4969,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "ef5920c2-2d59-443c-ab0b-3b4172b0ead2")
+    (uuid "376bef96-3455-4863-aa99-223b012a0d9a")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 219.84 190.16 0)
       (effects
@@ -4985,7 +4985,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "372b000b-5698-4bbe-9584-9d09fc3279f3")
+    (uuid "187cae9f-1c73-4266-ac0b-dabe21d0583e")
     (property "Reference" "J15"
       (at 263 175.46 0)
       (effects
@@ -5028,18 +5028,18 @@
         hide
       )
     )
-    (pin "1" (uuid "b78fe94c-4e63-4fa2-a7b8-18f90e4f7114"))
-    (pin "2" (uuid "7118cacd-0d70-42f0-93b4-905c19223cb4"))
+    (pin "1" (uuid "0e12a620-f1e3-40b4-a369-82a32ed70199"))
+    (pin "2" (uuid "0859875b-b604-4497-98cf-8e9f3e3cfa57"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J15") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J15") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 259.92 177.46) (xy 257.38 177.46))
     (stroke (width 0) (type default))
-    (uuid "189624c8-0e3a-4bd3-97d6-6f24bdeaa909")
+    (uuid "a1751fee-7bdf-4bbd-a350-6fc89449e391")
   )
   (global_label "SEC15_R"
     (shape input)
@@ -5049,7 +5049,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "45df631d-138e-4b89-8fab-eb5ade0abc46")
+    (uuid "174c4c9e-d413-43e2-bfc2-1848f3f780c9")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 257.38 177.46 0)
       (effects
@@ -5061,7 +5061,7 @@
   (wire
     (pts (xy 259.92 180) (xy 257.38 180))
     (stroke (width 0) (type default))
-    (uuid "c41fa744-f279-474c-9d66-519d30931b7e")
+    (uuid "fb9a215c-6603-4f09-ac40-1e5f9e3e05f8")
   )
   (global_label "SEC15_B"
     (shape input)
@@ -5071,7 +5071,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "8b3be815-a6a8-4022-a6b2-7dd05426a4d8")
+    (uuid "b6013c4b-99b8-45bd-9962-c42557247338")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 257.38 180 0)
       (effects
@@ -5087,7 +5087,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "2b07b7c5-d773-46b3-9a99-a7b63a5aa779")
+    (uuid "d5b1bba5-2cff-4415-89a7-106320d875d4")
     (property "Reference" "D15"
       (at 203 167.84 0)
       (effects
@@ -5116,32 +5116,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 205 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 205 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "e1c8ae00-99b4-4863-9726-24780ced40c7"))
-    (pin "2" (uuid "69f5099c-644d-46ec-a9c0-612bfaf097c3"))
+    (pin "1" (uuid "5fcf7fb5-5bcc-4c58-9c08-8006a3ecd2a0"))
+    (pin "2" (uuid "72c5bf83-3776-4430-9c06-12eda0f055f4"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D15") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D15") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 208.81 169.84) (xy 211.35 169.84))
     (stroke (width 0) (type default))
-    (uuid "378822d6-e361-436e-bdab-e04ed3d4f54b")
+    (uuid "c1cf7467-a369-43e5-8267-fb3ba67d9df3")
   )
   (global_label "RLY15"
     (shape input)
@@ -5151,7 +5151,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "9962c0c1-3e0b-44f6-aeba-402bcbdf414c")
+    (uuid "cf6731f0-0a95-4183-a8d3-a276352561e5")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 211.35 169.84 0)
       (effects
@@ -5163,7 +5163,7 @@
   (wire
     (pts (xy 201.19 169.84) (xy 198.65 169.84))
     (stroke (width 0) (type default))
-    (uuid "46d29a31-73a1-4b7b-a296-b11d5f7356b9")
+    (uuid "592339bd-9eee-4bcb-8020-802c2ee5c97a")
   )
   (global_label "LEDA15"
     (shape input)
@@ -5173,7 +5173,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "6ad7646b-d28b-4fd6-bb68-5af6c3f4dfbe")
+    (uuid "181a65f1-f461-456d-b571-7a793cb7567b")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 198.65 169.84 0)
       (effects
@@ -5189,7 +5189,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5dd85830-5c16-4f89-bd07-7c17ff61b6e2")
+    (uuid "c7fe9320-6b33-46fb-a5df-a4725ceb2ee2")
     (property "Reference" "R15"
       (at 203 157.68 0)
       (effects
@@ -5232,18 +5232,18 @@
         hide
       )
     )
-    (pin "1" (uuid "a59ac5ee-8111-4cbf-9267-d9b275a6ac3b"))
-    (pin "2" (uuid "be0cb10e-84f3-49e5-ba74-ad82725ddc31"))
+    (pin "1" (uuid "54508402-9d38-49d8-b30d-e84568183494"))
+    (pin "2" (uuid "a658cdec-e35b-4331-903e-0d27d8cba4e9"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R15") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R15") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 201.19 159.68) (xy 198.65 159.68))
     (stroke (width 0) (type default))
-    (uuid "42db7fcf-a7a3-41f8-ab2b-b7def04c27c0")
+    (uuid "ba15d87a-ff4f-4f72-a074-25410c7038fa")
   )
   (global_label "LEDA15"
     (shape input)
@@ -5253,7 +5253,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "5cde8a26-6d31-470d-bfee-288bc872e070")
+    (uuid "e71fb59d-a637-4d05-b04e-af293a6ae733")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 198.65 159.68 0)
       (effects
@@ -5265,7 +5265,7 @@
   (wire
     (pts (xy 208.81 159.68) (xy 211.35 159.68))
     (stroke (width 0) (type default))
-    (uuid "707a4dfe-98d3-4007-9f06-6d9fa3858b32")
+    (uuid "8f76fdbe-f672-4056-8560-e4e8071187f2")
   )
   (symbol
     (lib_id "power:+12V")
@@ -5274,7 +5274,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "809c219e-9591-4566-971c-3cc8f3ac06c0")
+    (uuid "fefd55be-b6de-4073-86b7-d6173b2a56d8")
     (property "Reference" "#PWR028"
       (at 211.35 159.68 0)
       (effects
@@ -5302,10 +5302,10 @@
         hide
       )
     )
-    (pin "1" (uuid "74af5754-462a-409c-9624-67f99f66cfc6"))
+    (pin "1" (uuid "9941f642-dbed-4345-a16f-2922eb6d682b"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR028") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR028") (unit 1))
       )
     )
   )
@@ -5316,7 +5316,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "cff65b0a-d345-4dd9-a2ec-5b573ed0ed17")
+    (uuid "fdd40a52-03cb-4244-b367-48948d892154")
     (property "Reference" "K16"
       (at 323 178 0)
       (effects
@@ -5359,24 +5359,24 @@
         hide
       )
     )
-    (pin "11" (uuid "32b904dd-6d36-44c3-9e26-5ae7ccdbac04"))
-    (pin "12" (uuid "67b7a3e1-c104-43e8-ad23-ba903a1b7a54"))
-    (pin "14" (uuid "38f394ef-86f0-41f5-a843-168d490d271c"))
-    (pin "21" (uuid "50a01aca-4362-4a15-a9ec-6d059e8a8159"))
-    (pin "22" (uuid "9d99763e-796b-4ded-9563-eb513dad0eed"))
-    (pin "24" (uuid "a16ec2a9-ad7c-49f9-9bce-33827d5ef04c"))
-    (pin "A1" (uuid "148f62ff-aa92-420a-ad70-9861ef5b107a"))
-    (pin "A2" (uuid "ede33a6f-1c2c-43ce-9de3-974884dac778"))
+    (pin "11" (uuid "17a51426-0525-43a4-82d5-59a62385e53a"))
+    (pin "12" (uuid "f6fbd19a-2b8d-474a-8689-0d752840c605"))
+    (pin "14" (uuid "6ab9bee7-2069-4bf2-83a6-6b549649c841"))
+    (pin "21" (uuid "09f06b06-4c45-419c-8727-46d5328aef9b"))
+    (pin "22" (uuid "40077808-bd99-44b0-9b1c-f60754e10400"))
+    (pin "24" (uuid "cb3b5be5-94e7-4e29-b831-b622977ac28e"))
+    (pin "A1" (uuid "f3320e3b-f4e9-4c66-a9a7-922d00766b5a"))
+    (pin "A2" (uuid "11fbdb32-cc6a-4026-a0b2-88cb47c84c2c"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "K16") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "K16") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 325 187.62) (xy 325 190.16))
     (stroke (width 0) (type default))
-    (uuid "a791074d-3d68-4745-a169-07cd9ee17a4c")
+    (uuid "5c42c8c1-6a1d-4fdb-9776-e08286b2b30f")
   )
   (global_label "SEC16_R"
     (shape input)
@@ -5386,7 +5386,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "514be2f1-fa3b-47d1-a188-ee49faa29705")
+    (uuid "cc44d9fd-0091-49a5-b68b-f2044e9a5c73")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 325 190.16 0)
       (effects
@@ -5398,7 +5398,7 @@
   (wire
     (pts (xy 322.46 172.38) (xy 322.46 169.84))
     (stroke (width 0) (type default))
-    (uuid "8515a98c-64d9-44a3-b9b7-92d71a768185")
+    (uuid "c3ca726b-a94a-4468-bbbc-05cae3a02ec9")
   )
   (symbol
     (lib_id "power:GND")
@@ -5407,7 +5407,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "654deb7d-d3db-4d56-bb67-732d5314bbae")
+    (uuid "a5dc43d9-b93c-497a-9fc3-20f316e05618")
     (property "Reference" "#PWR029"
       (at 322.46 169.84 0)
       (effects
@@ -5435,17 +5435,17 @@
         hide
       )
     )
-    (pin "1" (uuid "e9a9e4fe-9de2-4ba4-ab31-5fbe15b949d5"))
+    (pin "1" (uuid "684c7fe7-a85a-46fa-bcf8-c057c95cbbbf"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR029") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR029") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 327.54 172.38) (xy 327.54 169.84))
     (stroke (width 0) (type default))
-    (uuid "e81e0a8f-a6cb-4d94-811e-14970c64ed8d")
+    (uuid "48744464-43e9-4375-8054-c2af0872e8da")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -5455,7 +5455,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "0aa9e30d-99ea-47b9-b50c-97d3cc02f618")
+    (uuid "46c9b829-85eb-4de6-b0a9-444dfbadc51b")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 327.54 169.84 0)
       (effects
@@ -5467,7 +5467,7 @@
   (wire
     (pts (xy 335.16 187.62) (xy 335.16 190.16))
     (stroke (width 0) (type default))
-    (uuid "6f79e25f-7b5a-411a-96b5-33a6b45ca555")
+    (uuid "770d7375-d749-48b2-9435-65df958922ac")
   )
   (global_label "SEC16_B"
     (shape input)
@@ -5477,7 +5477,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "1f7d3b5e-879b-4816-860b-32a8ea893761")
+    (uuid "64e40236-e963-4a9d-9145-7ddd8ab117f8")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 335.16 190.16 0)
       (effects
@@ -5489,7 +5489,7 @@
   (wire
     (pts (xy 332.62 172.38) (xy 332.62 169.84))
     (stroke (width 0) (type default))
-    (uuid "c77df71e-7ec4-4f81-887a-27bff08bda3c")
+    (uuid "bf5bee91-130a-4f37-8f08-f420b44134ca")
   )
   (global_label "12V_ACT_B"
     (shape input)
@@ -5499,7 +5499,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "a92a30a4-6fe5-4560-b715-4118d7537f31")
+    (uuid "8873b4fb-d44a-48a3-bf04-93fc703e5df2")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 332.62 169.84 0)
       (effects
@@ -5511,7 +5511,7 @@
   (wire
     (pts (xy 337.7 172.38) (xy 337.7 169.84))
     (stroke (width 0) (type default))
-    (uuid "722b0f7e-7b43-40e9-9e00-5b8acdb0b459")
+    (uuid "ad1fb8ed-43ff-4652-9b80-c3a4ecef5668")
   )
   (symbol
     (lib_id "power:GND")
@@ -5520,7 +5520,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "fd922f00-c501-4625-ae07-b656e176a88c")
+    (uuid "1074623e-2c82-4a05-a25d-046ef806b399")
     (property "Reference" "#PWR030"
       (at 337.7 169.84 0)
       (effects
@@ -5548,17 +5548,17 @@
         hide
       )
     )
-    (pin "1" (uuid "f792f3f2-b4b4-49e8-bfbe-be559dffd1c5"))
+    (pin "1" (uuid "70621ddf-340d-4a0d-8c73-9abe54ef8126"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR030") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR030") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 314.84 172.38) (xy 314.84 169.84))
     (stroke (width 0) (type default))
-    (uuid "28524c42-0e81-4797-afc6-0e420701d4fe")
+    (uuid "5a393d92-de63-41d5-93ed-2a2f187c5a6c")
   )
   (symbol
     (lib_id "power:+12V")
@@ -5567,7 +5567,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "8cc56852-26ab-48ac-8e3e-84093e9ef9c3")
+    (uuid "6bf5af52-5e8d-4238-ab80-dcbaa672001e")
     (property "Reference" "#PWR031"
       (at 314.84 169.84 0)
       (effects
@@ -5595,17 +5595,17 @@
         hide
       )
     )
-    (pin "1" (uuid "48763dfb-c844-46b7-a04a-8ba7a8390182"))
+    (pin "1" (uuid "d2ed70c4-4a20-45da-8b7f-ee924109c4c1"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR031") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR031") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 314.84 187.62) (xy 314.84 190.16))
     (stroke (width 0) (type default))
-    (uuid "aff47d27-657d-431c-bcac-0a5487cbdc63")
+    (uuid "cea0c902-2b2f-431b-8b11-ac174af639c5")
   )
   (global_label "RLY16"
     (shape input)
@@ -5615,7 +5615,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "bed7a925-cecb-4a39-9f09-e039a514846a")
+    (uuid "0a5389e1-4207-4cb1-9b6e-69778c9b587a")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 314.84 190.16 0)
       (effects
@@ -5631,7 +5631,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "036b3643-c342-4b9f-95a7-6b248c7464a0")
+    (uuid "3ab64820-f62a-4146-b4f3-ca50e2c0d80a")
     (property "Reference" "J16"
       (at 358 175.46 0)
       (effects
@@ -5674,18 +5674,18 @@
         hide
       )
     )
-    (pin "1" (uuid "548fa015-aa93-4c69-8bfa-64e0c92e290a"))
-    (pin "2" (uuid "39e4bad5-f1ba-4d2a-adb1-778b2d547f7c"))
+    (pin "1" (uuid "bfd1a45e-c17c-47b2-8702-bf536f45ce73"))
+    (pin "2" (uuid "52336f35-8317-4e11-ab67-93ea51ca236d"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "J16") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "J16") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 354.92 177.46) (xy 352.38 177.46))
     (stroke (width 0) (type default))
-    (uuid "69536c57-e7b1-4f50-ac2c-1b3ae26b4682")
+    (uuid "4a0bc340-be0a-41b3-86ce-4cd8a05c76ee")
   )
   (global_label "SEC16_R"
     (shape input)
@@ -5695,7 +5695,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "fb5c8bbe-9b73-42fa-9149-6c562f73b7d0")
+    (uuid "82b98ca0-a3a8-4836-9b9d-5c700c925429")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 352.38 177.46 0)
       (effects
@@ -5707,7 +5707,7 @@
   (wire
     (pts (xy 354.92 180) (xy 352.38 180))
     (stroke (width 0) (type default))
-    (uuid "aea0697d-f820-4229-a95d-6f6ba7b463a8")
+    (uuid "122cdd5f-9c0f-4ac3-b9e0-74a458f43c36")
   )
   (global_label "SEC16_B"
     (shape input)
@@ -5717,7 +5717,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "b51d3e7b-de30-43d7-a823-3f77a569b9d7")
+    (uuid "3652867a-c7ea-4494-8f20-29656ad1b1bf")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 352.38 180 0)
       (effects
@@ -5733,7 +5733,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "14ac8cd9-0bf5-4682-b183-2eaf2bd09292")
+    (uuid "b5c52fd4-55f8-4bac-a19f-9e7daead90f5")
     (property "Reference" "D16"
       (at 298 167.84 0)
       (effects
@@ -5762,32 +5762,32 @@
         hide
       )
     )
-    (property "LCSC" "C72043"
+    (property "LCSC" "C965805"
       (at 300 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (property "Description" "LED 0603 green, on when the section is open"
+    (property "Description" "LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open"
       (at 300 169.84 0)
       (effects
         (font (size 1.27 1.27))
         hide
       )
     )
-    (pin "1" (uuid "284bcd5c-b903-4037-a7ff-a2253c984f08"))
-    (pin "2" (uuid "bb33f665-8d67-44ed-8eb8-af9ac8f508a5"))
+    (pin "1" (uuid "c093c7bf-e83a-4e53-b436-0f3dc7d1cff5"))
+    (pin "2" (uuid "47742a82-757e-4404-9b4e-624517d54b58"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "D16") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "D16") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 303.81 169.84) (xy 306.35 169.84))
     (stroke (width 0) (type default))
-    (uuid "d10816d1-aa81-441f-9c2d-3bb2624f43e8")
+    (uuid "730fbdf2-7c1f-4da1-aeca-01e27d3b8578")
   )
   (global_label "RLY16"
     (shape input)
@@ -5797,7 +5797,7 @@
       (font (size 1.27 1.27))
       (justify left)
     )
-    (uuid "b1e57509-2d13-4e47-aeed-c0ec2020a40b")
+    (uuid "3fa88583-b498-4eb1-9e56-957ee179f2e2")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 306.35 169.84 0)
       (effects
@@ -5809,7 +5809,7 @@
   (wire
     (pts (xy 296.19 169.84) (xy 293.65 169.84))
     (stroke (width 0) (type default))
-    (uuid "4b3a5e4d-b12c-47a6-a24d-97d6e9ab670b")
+    (uuid "7b7c31cc-e3fc-4755-9c78-b44c8c3a79ac")
   )
   (global_label "LEDA16"
     (shape input)
@@ -5819,7 +5819,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "df04e804-5f00-4053-96fb-51a9d775000d")
+    (uuid "d874a47f-f78b-4adc-842e-2f6244f80fe3")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 293.65 169.84 0)
       (effects
@@ -5835,7 +5835,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "4a0941e4-a6ea-4b5c-a81d-e8697b041780")
+    (uuid "b12f121d-9808-4158-a148-7ac7e73c9970")
     (property "Reference" "R16"
       (at 298 157.68 0)
       (effects
@@ -5878,18 +5878,18 @@
         hide
       )
     )
-    (pin "1" (uuid "678f6e96-9c21-447a-ac49-fc4537e88585"))
-    (pin "2" (uuid "cee0467f-6ca9-473e-a7c0-852bf8c21e30"))
+    (pin "1" (uuid "0905a8a1-53b5-46e6-b9eb-fb14f97f3da3"))
+    (pin "2" (uuid "3d61e657-9066-4ac1-a6e7-c1625f410c76"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "R16") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "R16") (unit 1))
       )
     )
   )
   (wire
     (pts (xy 296.19 159.68) (xy 293.65 159.68))
     (stroke (width 0) (type default))
-    (uuid "d6724e01-3981-416c-a0f5-6a0543f8c4f4")
+    (uuid "f9c96091-10ac-45b5-99bb-d978c72720dc")
   )
   (global_label "LEDA16"
     (shape input)
@@ -5899,7 +5899,7 @@
       (font (size 1.27 1.27))
       (justify right)
     )
-    (uuid "5a73994a-456f-4978-9361-77d1eb3df700")
+    (uuid "cd86fd8c-39eb-4530-9e20-b8ebc47b3dcb")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 293.65 159.68 0)
       (effects
@@ -5911,7 +5911,7 @@
   (wire
     (pts (xy 303.81 159.68) (xy 306.35 159.68))
     (stroke (width 0) (type default))
-    (uuid "8cae155c-6c14-4258-9619-f01896f5ff30")
+    (uuid "b64801ae-e12b-49ff-9a27-6f6bb33694b6")
   )
   (symbol
     (lib_id "power:+12V")
@@ -5920,7 +5920,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1197b611-1047-45ca-be0a-60aa3f1cdc43")
+    (uuid "2d34cd0c-ac1a-4b3a-a454-bf4e0b5d5d6f")
     (property "Reference" "#PWR032"
       (at 306.35 159.68 0)
       (effects
@@ -5948,10 +5948,10 @@
         hide
       )
     )
-    (pin "1" (uuid "0448f6c7-932e-4d5b-80b3-47d8329b38a9"))
+    (pin "1" (uuid "e05e8234-1d2a-43de-bae9-598b277d409e"))
     (instances
       (project "Relay24_ESP32"
-        (path "/db39fd22-63d8-4182-afad-4071785f4d93/c2e6dca6-a13e-4efc-87b0-7e36fad6173f" (reference "#PWR032") (unit 1))
+        (path "/6e66ef07-5889-46af-82d6-f4ec529c8cc6/83d4e7e3-c79e-4799-aa5d-37359c64fb54" (reference "#PWR032") (unit 1))
       )
     )
   )
@@ -5961,7 +5961,7 @@
       (font (size 2 2))
       (justify left bottom)
     )
-    (uuid "24a10f43-2169-4fcd-99fb-cc36d40686a9")
+    (uuid "b9791052-b0a0-406f-8861-500d8af90b3a")
   )
   (text "LED D with R 2.2k across the coil shows the section open. 12V_ACT_A = sections 1-12 (J26/J27), 12V_ACT_B = sections 13-24 (J28/J29)."
     (at 20 286 0)
@@ -5969,6 +5969,6 @@
       (font (size 2 2))
       (justify left bottom)
     )
-    (uuid "88ed5ee4-89cf-4681-8bb9-0d22a2c2d65b")
+    (uuid "5b0efe6b-5298-4f36-a4b5-a99d3917451c")
   )
 )
