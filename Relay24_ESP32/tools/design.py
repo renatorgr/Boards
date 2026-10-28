@@ -122,7 +122,7 @@ for n in range(1, 25):
     add(f"D{n}", ("Device", "LED"), "led0603", "green",
         {"1": f"RLY{n}", "2": f"LEDA{n}"},
         led_pos + ("F",), (sheet, sx - 25, sy - 10.16, 180),
-        lcsc="C72043", desc="LED 0603 green, on when the section is open")
+        lcsc="C965805", desc="LED 0603 green (yellow-green, XINGLIGHT XL-1608SYGC-06), on when the section is open")
     add(f"R{n}", ("Device", "R"), "r0603", "2.2k",
         {"1": f"LEDA{n}", "2": "+12V"},
         r_pos + ("F",), (sheet, sx - 25, sy - 20.32, 90),
@@ -151,10 +151,10 @@ add("D25", ("Device", "D_Schottky"), "sma", "SS54",
     lcsc="C22452", desc="Schottky 5 A 40 V SMA: reverse polarity protection")
 add("D26", ("Device", "D_TVS"), "smb", "SMBJ18A",
     {"1": "+12V", "2": "GND"}, (204.0, 104.5, 0, "F"), ("root", 65, 50, 90),
-    lcsc="", desc="TVS 18 V standoff SMB (DO-214AA): spikes from the tractor")
+    lcsc="C151256", desc="TVS 18 V standoff SMB (DO-214AA, Littelfuse SMBJ18A): spikes from the tractor")
 add("C25", ("Device", "C_Polarized"), "elec8", "100uF 50V",
     {"1": "+12V", "2": "GND"}, (204.0, 96.0, 0, "F"), ("root", 75, 50, 0),
-    lcsc="", desc="Electrolytic SMD 8x10 mm 100 uF 50 V: buck input")
+    lcsc="C97812", desc="Electrolytic SMD 8x10.5 mm 100 uF 50 V (CS1H101M-CRF10): buck input")
 add("U7", ("Regulator_Switching", "LM2596S-5"), "to263", "LM2596S-5.0",
     {"1": "+12V", "2": "SW", "3": "GND", "4": "+5VB", "5": "GND"},
     (192.0, 102.0, 270, "F"), ("root", 95, 45, 0),
@@ -164,10 +164,10 @@ add("D27", ("Device", "D_Schottky"), "sma", "SS54",
     lcsc="C22452", desc="Schottky 5 A 40 V SMA: buck catch diode")
 add("L1", ("Device", "L"), "l12", "33uH 3A",
     {"1": "SW", "2": "+5VB"}, (189.5, 74.8, 180, "F"), ("root", 120, 42.46, 90),
-    lcsc="", desc="Power inductor 33 uH >= 3 A shielded, 12x12 mm SMD (e.g. CDRH127/LD-330, SRR1260-330M)")
+    lcsc="C2929502", desc="Power inductor 33 uH 3 A, 12.3x12.3 mm SMD (SHOU HAN CYH127-33UH)")
 add("C26", ("Device", "C_Polarized"), "elec8", "220uF 25V",
     {"1": "+5VB", "2": "GND"}, (187.5, 87.0, 180, "F"), ("root", 130, 50, 0),
-    lcsc="", desc="Electrolytic SMD 8x10 mm 220 uF 25 V: buck output")
+    lcsc="C165536", desc="Electrolytic SMD 8x10 mm 220 uF 25 V (Samyoung MVK 25V220): buck output")
 add("D28", ("Device", "D_Schottky"), "sma", "SS34",
     {"1": "+5V", "2": "+5VB"}, (152.0, 60.5, 0, "F"), ("root", 140, 42.46, 0),
     lcsc="C8678", desc="Schottky 3 A SMA: lets the DevKitC USB power the logic without feeding the buck")
@@ -205,10 +205,10 @@ ESP_J3_NAMES = ["GND", "23", "22", "TX0/1", "RX0/3", "21", "GND", "19", "18", "5
                 "0", "2", "15", "D1/8", "D0/7", "CLK/6"]
 add("J30", ("Connector_Generic", "Conn_01x19"), "sock19", "DevKitC J2 (3V3..5V)",
     {str(i + 1): ESP_J2[i] for i in range(19)}, (ESP_PIN1_X, ESP_Y - ESP_ROW_DY, 270, "F"),
-    ("root", 225, 60, 0), lcsc="", desc="Female header 1x19 2.54 mm (socket for the ESP32 DevKitC V4)")
+    ("root", 225, 60, 0), lcsc="C319202", desc="Female header 1x19 2.54 mm (socket for the ESP32 DevKitC V4)")
 add("J31", ("Connector_Generic", "Conn_01x19"), "sock19", "DevKitC J3 (GND..CLK)",
     {str(i + 1): ESP_J3[i] for i in range(19)}, (ESP_PIN1_X, ESP_Y + ESP_ROW_DY, 270, "F"),
-    ("root", 285, 60, 0), lcsc="", desc="Female header 1x19 2.54 mm (socket for the ESP32 DevKitC V4)")
+    ("root", 285, 60, 0), lcsc="C319202", desc="Female header 1x19 2.54 mm (socket for the ESP32 DevKitC V4)")
 
 # --- shift registers and drivers ----------------------------------------------------------
 SR_IN = ["SR_SER", "SR_Q1", "SR_Q2"]
@@ -234,7 +234,7 @@ for b in range(3):
     uln.update({str(p): f"RLY{base + p - 9}" for p in range(11, 18)})
     uln.update({"9": "GND", "10": "+12V"})
     add(f"U{b + 4}", ("Transistor_Array", "ULN2803A"), "soic18w", "ULN2803A", uln, (ux, uy, 0, "F"),
-        ("root", 95 + b * 90, 220, 0), lcsc="C6116", desc="Darlington array 8 x 500 mA SOIC-18W (TI ULN2803ADWR)")
+        ("root", 95 + b * 90, 220, 0), lcsc="C22437476", desc="Darlington array 8 x 500 mA SOP-18 300 mil, ULN2803A pinout (Shanghai Belling ULN2803)")
 
 # --- Ethernet: LAN8720A + RJ45 --------------------------------------------------------------
 PHY = (66.0, 60.0)
@@ -247,7 +247,7 @@ add("U9", ("Interface_Ethernet", "LAN8720A"), "qfn24", "LAN8720A",
 add("R30", ("Device", "R"), "r0603", "33", {"1": "ETH_CLK", "2": "ETH_CLKIN"},
     (60.4, 60.9, 0, "F"), ("root", 365, 57.5, 90), lcsc="C23140", desc="Resistor 0603 33 ohm (50 MHz clock from GPIO17)")
 add("R31", ("Device", "R"), "r0603", "12.1k 1%", {"1": "RBIAS", "2": "GND"},
-    (63.5, 54.9, 180, "F"), ("root", 435, 72.46, 90), lcsc="C22374", desc="Resistor 0603 12.1 kohm 1 % (RBIAS)")
+    (63.5, 54.9, 180, "F"), ("root", 435, 72.46, 90), lcsc="C123417", desc="Resistor 0603 12.1 kohm 1 % (RBIAS, Yageo RC0603FR-0712K1L)")
 add("R32", ("Device", "R"), "r0603", "10k", {"1": "PHYAD0", "2": "GND"},
     (66.6, 65.9, 270, "F"), ("root", 365, 87.5, 90), lcsc="C25804", desc="Resistor 0603 10 kohm (PHY address 0)")
 add("R33", ("Device", "R"), "r0603", "10k", {"1": "ETH_RST", "2": "GND"},
@@ -259,15 +259,15 @@ for i, (net, pos) in enumerate([("RMII_RXD0", (63.5, 69.0)), ("RMII_RXD1", (62.0
         pos + (270, "F"), ("root", 345 + i * 10, 125, 90), lcsc="C25804", desc="Resistor 0603 10 kohm (MODE strap: all capable, auto-negotiation)")
 for i, (net, pos) in enumerate([("TXP", (84.0, 61.0)), ("TXN", (84.0, 62.5)), ("RXP", (84.0, 58.0)), ("RXN", (84.0, 59.5))]):
     add(f"R{38 + i}", ("Device", "R"), "r0603", "49.9 1%", {"1": net, "2": "+3V3"},
-        pos + (0, "F"), ("root", 460 + i * 10, 60, 90), lcsc="C23182", desc="Resistor 0603 49.9 ohm 1 % (line termination to 3.3 V)")
+        pos + (0, "F"), ("root", 460 + i * 10, 60, 90), lcsc="C23185", desc="Resistor 0603 49.9 ohm 1 % (line termination to 3.3 V)")
 add("R42", ("Device", "R"), "r0603", "330", {"1": "LED_LNK_K", "2": "GND"},
     (58.0, 59.4, 180, "F"), ("root", 445, 100, 0), lcsc="C23138", desc="Resistor 0603 330 ohm")
 add("R43", ("Device", "R"), "r0603", "330", {"1": "+3V3", "2": "LED_SPD_A"},
     (58.0, 57.7, 0, "F"), ("root", 445, 115, 0), lcsc="C23138", desc="Resistor 0603 330 ohm")
 add("D30", ("Device", "LED"), "led0603", "yellow", {"1": "LED_LNK_K", "2": "LED_LNK"},
-    (61.0, 59.4, 0, "F"), ("root", 460, 100, 0), lcsc="C72038", desc="LED 0603 yellow: link / activity")
+    (61.0, 59.4, 0, "F"), ("root", 460, 100, 0), lcsc="C965802", desc="LED 0603 yellow (XINGLIGHT XL-1608UYC-06): link / activity")
 add("D31", ("Device", "LED"), "led0603", "green", {"1": "LED_SPD", "2": "LED_SPD_A"},
-    (61.0, 57.9, 180, "F"), ("root", 460, 115, 0), lcsc="C72043", desc="LED 0603 green: 100 Mbit")
+    (61.0, 57.9, 180, "F"), ("root", 460, 115, 0), lcsc="C965805", desc="LED 0603 green (yellow-green, Vf 2.2 V, XINGLIGHT XL-1608SYGC-06): 100 Mbit")
 for i, (net, pos, rot) in enumerate([("+3V3", (61.5, 56.4), 180), ("+3V3", (65.0, 69.0), 270), ("+3V3", (72.0, 57.0), 0),
                                      ("VDDCR", (63.0, 64.3), 270)]):
     add(f"C{30 + i}", ("Device", "C"), "c0603", "100nF", {"1": net, "2": "GND"},
@@ -298,10 +298,10 @@ add("R46", ("Device", "R"), "r0603", "4.7k", {"1": "I2C_SCL", "2": "+3V3"},
     (63.32, 50.8, 270, "F"), ("root", 330, 160, 90), lcsc="C23162", desc="Resistor 0603 4.7 kohm (I2C pull-up)")
 add("J33", ("Connector_Generic", "Conn_01x04"), "hdr4", "I2C",
     {"1": "+3V3", "2": "GND", "3": "I2C_SDA", "4": "I2C_SCL"}, (55.7, 47.5, 90, "F"), ("root", 355, 165, 0),
-    lcsc="", desc="Pin header 1x4 2.54 mm: 3V3, GND, SDA (GPIO15), SCL (GPIO14) for future sensors")
+    lcsc="C124378", desc="Pin header 1x4 2.54 mm: 3V3, GND, SDA (GPIO15), SCL (GPIO14) for future sensors")
 add("J34", ("Connector_Generic", "Conn_01x04"), "hdr4", "Analog",
     {"1": "+3V3", "2": "GND", "3": "A34", "4": "A35"}, (67.0, 47.5, 90, "F"), ("root", 355, 185, 0),
-    lcsc="", desc="Pin header 1x4 2.54 mm: 3V3, GND, GPIO34, GPIO35 (analog inputs, 0-3.3 V)")
+    lcsc="C124378", desc="Pin header 1x4 2.54 mm: 3V3, GND, GPIO34, GPIO35 (analog inputs, 0-3.3 V)")
 
 # --- mounting holes ---------------------------------------------------------------------
 for i, pos in enumerate([(7.5, 24.0), (BOARD_W - 7.5, 24.0), (7.5, BOARD_H - 24.0), (186.0, 113.0),
