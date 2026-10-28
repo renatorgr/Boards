@@ -1,20 +1,21 @@
-/* sim-seeder.js - the web page simulator: the seed drill module's page (Seeder/Seeder_ESP32/dPage.h) with a pretend KC868-A32 behind it.
+/* sim-seeder.js - the web page simulator: the seed drill module's page (Seeder/Seeder_ESP32/dPage.h) with a pretend Relay24_ESP32 behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): made from sim-sprayer.js (Sprayer_ESP32 v0.8) when the seed drill got its own program, Seeder_ESP32 v0.1.
+   2026-10-28 (Claude): Seeder_ESP32 v0.2: the Relay24_ESP32 board (24 relays) instead of the KC868-A32 (32).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The seed drill module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiRelaysPost, apiRestartPost, the
 // program update on /api/update). The sections the program asks for come from the pretend tractor of sim-common.js, the
-// same the Teensy page's Machine tab shows: Renato's no-till seed drill, 19 sections on a KinCony KC868-A32 (32 relays,
+// same the Teensy page's Machine tab shows: Renato's no-till seed drill, 19 sections on the Relay24_ESP32 board (24 relays,
 // relay 1 follows section 1 and so on), on the network cable. No pressure or flow sensor.
 // The own-network password is the module's default, agopengps.
 "use strict";
 (function () {
 const S = window.AioSim, KEY = "aiosim.seeder", MKEY = "aiosim.seeder.module", M = S.Module(MKEY);
 const B = S.BUILD.seeder || {}, FW = B.name || "Seeder_ESP32", VER = B.version || "0.1";
-const IMPL = S.IMPL, RELAYS = 32;
+const IMPL = S.IMPL, RELAYS = 24, BOARD = "Relay24_ESP32";
 const NAME = "00007C4EA4CF12B3", AP = "Seeder-4E7C";           // from the ESP32's factory MAC, as zSettings.ino makes them
 // sta: on the tractor network (the cable); lost: was, until LOST_AT s (the cable unplugged); ap: the cable not plugged in
 const NET = S.opt.wifi, LOST_AT = 24;
@@ -22,7 +23,7 @@ const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "
  host: "seeder", subnet: "192.168.5", ipLast: 123, first: 1, secTop: 0, ev: [], evAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
 S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
- " The KC868-A32 is on the network cable: \"tractor network lost\" = the cable unplugged.",
+ " The Relay24_ESP32 board is on the network cable: \"tractor network lost\" = the cable unplugged.",
  ["wifi", "park"], [KEY, MKEY]);
 
 // on the tractor network from 2.5 s on the cable (3.2 s on the tractor's Wi-Fi, when chosen on the page instead);
@@ -81,7 +82,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sd.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sd.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", kind: "Seeder", board: "KC868-A32", up: Math.floor(t),
+ return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", kind: "Seeder", board: BOARD, up: Math.floor(t),
   heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, staUp: staUp(), eth: true, ethUp: ethUp(), ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: staUp() ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
@@ -89,7 +90,7 @@ function status() {
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sd.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: bits, on: hex(on), first: X.first, onHigh: false, fn: fn},
+  out: {bits: bits, on: hex(on), first: X.first, onHigh: true, fn: fn},
   log: X.ev.slice()};
 }
 const settings = () => ({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host, eth: true, ipLast: X.ipLast,

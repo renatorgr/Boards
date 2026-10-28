@@ -14,10 +14,10 @@ A strip at the top of each page chooses the set-up:
 | Program | AgOpenWeb, AgOpenGPS |
 | XIAO | on the GPS2 port or not (a dual F9P takes that port, so no XIAO then) |
 | Machine module | our module program for the implement: Seeder_ESP32 on the seed drill (hello reply and PGN 237 with every open section) or Sprayer_ESP32 on the sprayer (hello reply, PGN 237 and PGN 160 with the readings); the Machine tab then links to its page. Or two of our modules (.123 with sections 1-16, .124 with the rest: the Machine tab shows them together and lists both IPs), the machine part of the AgOpenGPS AiO v26 firmware (PGN 237 with sections 1-16, its hello reply with none), the official AgOpenGPS Machine_UDP_v5 (hello reply only, sections 1-16), or none |
-| Implement | Teensy page only: the no-till seed drill with 19 sections, about 3.4 m (a KinCony KC868-A32 on the network cable, 32 relays, relay 1 = section 1 and so on, no pressure or flow sensor, so no Sprayer card on the Teensy page; the Machine tab shows all 19 sections, from the program's PGN 229 and the module's PGN 237), or the 8 m sprayer with 5 sections on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres). The seed drill page is always the seed drill, the sprayer page the sprayer |
+| Implement | Teensy page only: the no-till seed drill with 19 sections, about 3.4 m (the Relay24_ESP32 board on the network cable, 24 relays, relay 1 = section 1 and so on, no pressure or flow sensor, so no Sprayer card on the Teensy page; the Machine tab shows all 19 sections, from the program's PGN 229 and the module's PGN 237), or the 8 m sprayer with 5 sections on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres). The seed drill page is always the seed drill, the sprayer page the sprayer |
 | Tractor | driving with autosteer on, or parked |
 | XIAO chip | ESP32-C3 or ESP32-S3 (XIAO page only) |
-| Wi-Fi | module pages only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet. On the seed drill's KC868-A32 this is the network cable: plugged in, unplugged, or never plugged in |
+| Wi-Fi | module pages only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet. On the seed drill's Relay24_ESP32 this is the network cable: plugged in, unplugged, or never plugged in |
 
 With the tractor **parked** you can try what the module refuses while autosteer is on: the firmware update (choose any `.hex` from this repository, or any file to see it refused), the TM171 calibrations, writing the receiver settings, the restart. The pretend module goes away for a few seconds and the page reloads itself, as on the tractor. On the XIAO page and the module pages the password is the default, `agopengps`; the seed drill page's network settings, relay setting, restart and program update, and the sprayer page's calibration, Wi-Fi settings, total reset, restart and program update (any `.bin`, or another file to see it refused) all work.
 
@@ -34,7 +34,7 @@ The choices are in the page address (`teensy/?gps=f9p&imu=bno&motor=keya&prog=ao
 | `sim-common.js` | the pretend module: the tractor, the GNSS, the IMU, the steering, the receiver settings, the log, the firmware update, and the strip with the choices |
 | `sim-teensy.js` | the Teensy page's requests (zWeb.ino `webDispatch()`) answered by the pretend module |
 | `sim-xiao.js` | the XIAO page's requests (v4.5_XIAO_ESP32.ino) answered by a pretend XIAO, with the module behind it |
-| `sim-seeder.js` | the seed drill module page's requests (Seeder_ESP32 zNet.ino) answered by a pretend KC868-A32, sowing what the tractor sows |
+| `sim-seeder.js` | the seed drill module page's requests (Seeder_ESP32 zNet.ino) answered by a pretend Relay24_ESP32, sowing what the tractor sows |
 | `sim-sprayer.js` | the sprayer module page's requests (Sprayer_ESP32 zNet.ino) answered by a pretend ESP32, spraying what the tractor sprays |
 | `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package) |
 

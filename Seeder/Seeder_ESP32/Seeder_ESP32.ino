@@ -1,21 +1,31 @@
-/* Seeder_ESP32.ino - seed drill section control for AgOpenWeb / AgOpenGPS on a KinCony KC868-A32 (32 relays).
+/* Seeder_ESP32.ino - seed drill section control for AgOpenWeb / AgOpenGPS on the Relay24_ESP32 board (24 relays)
+   or a KinCony KC868-A32 (32 relays).
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Made from Sprayer_ESP32 v0.8 (folder Sprayer of the same repository): the seed drill has its own folder.
    The machine-module messages follow the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
+   2026-10-28 (Claude): v0.2: the Relay24_ESP32 board (folder Relay24_ESP32) is the default board.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Seeder_ESP32.ino  v0.1.1 (2026-10-27), not yet run on a KC868-A32.
+// Seeder_ESP32.ino  v0.2 (2026-10-28), not yet run on a board.
+//   v0.2: the Relay24_ESP32 board of this repository (BOARD_RELAY24, the default): 24 DPDT relays through
+//         74HC595 shift registers, one per actuator, and an RTL8201F network chip. The KC868-A32 stays
+//         as BOARD_KC868_A32.
 //   v0.1.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
 //         status), the sections above 16 after it (bytes 13-18).
 //   v0.1: the seed drill part of Sprayer_ESP32 v0.8 on its own: the KC868-A32 only, no pressure or flow
 //         sensor, no PGN 160.
 //
-// Board: KinCony KC868-A32: ESP32, 32 relays (10 A, COM / NO / NC) through four PCF8574 chips, a network
-//   socket (LAN8720), 32 inputs, 4 analog inputs, 12 V in. For the 19-section no-till seed drill: relay n
-//   drives the 12 V DPDT relay that runs the linear actuator of section n (README.md).
+// Boards (BOARD below):
+//   - Relay24_ESP32 (folder Relay24_ESP32 of this repository): an ESP32 DevKitC V4 plugged into a board with
+//     24 DPDT relays, one per section, that turn the linear actuator's polarity round themselves, and a
+//     network socket (RTL8201F), 12 V in.
+//   - KinCony KC868-A32: ESP32, 32 relays (10 A, COM / NO / NC) through four PCF8574 chips, a network
+//     socket (LAN8720), 32 inputs, 4 analog inputs, 12 V in. Relay n drives the 12 V DPDT relay that runs
+//     the linear actuator of section n (README.md).
+// For the 19-section no-till seed drill.
 // The ESP32 is the standard AgOpenGPS "machine module" on the tractor's network, IP <subnet>.123, through
 // the network cable, and it has its own Wi-Fi network and web page for setup and for watching the seed drill.
 //
@@ -36,7 +46,8 @@
 //   - the page shows the sections asked for and open, the relays, the link to the program and the network,
 //       and has the network settings and program subnet, the first section the relays follow, a program
 //       update (.bin) and a restart.
-//   - IO0 button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
+//   - IO0 (BOOT) button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
+//       On the Relay24_ESP32 only while the network cable is not in use (GPIO 0 carries its clock).
 //   - serial monitor (115200): "status", "wifi-reset", "restart".
 //
 // Arduino IDE: board package "esp32" by Espressif Systems (version 2 or 3), board "ESP32 Dev Module",
@@ -52,26 +63,67 @@
 #include <Preferences.h>
 #include <Update.h>
 #include "esp_system.h"
+#include "driver/gpio.h"
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.1.1"
+#define FW_VERSION          "0.2"
 
-// ---------------------------------------------------------------- the KC868-A32's pins
+// ---------------------------------------------------------------- board and pins
+// BOARD says which board this is (change the line below, or compile with -DBOARD=...):
+//   BOARD_RELAY24     the Relay24_ESP32 board of this repository: 24 DPDT relays, network cable
+//   BOARD_KC868_A32   the KinCony KC868-A32: 32 relays, each switching an external DPDT relay, network cable
+#define BOARD_RELAY24       1
+#define BOARD_KC868_A32     2
+#ifndef BOARD
+#define BOARD               BOARD_RELAY24
+#endif
+
+#if BOARD == BOARD_RELAY24
+// The relays hang on three 74HC595 shift registers in a chain (data GPIO 13, clock GPIO 16, latch GPIO 32)
+// through ULN2803A drivers: U1 = relays 1-8, U2 = 9-16, U3 = 17-24, output QA of each = its first relay.
+// A HIGH output closes the relay. Output enable (GPIO 4, active low) has a pull-up on the board, so every
+// relay stays off until the program has shifted in zeros and pulls it low.
+// The network chip is an RTL8201F (address 0, MDC GPIO 23, MDIO GPIO 18). It runs on its own crystal and
+// sends the 50 MHz network clock into GPIO 0; a pull-down on its reset (GPIO 33) keeps it quiet until the
+// program starts it, so the ESP32 still boots and takes uploads normally. (Relay24_ESP32/README.md.)
+#define BOARD_NAME          "Relay24_ESP32"
+#define NUM_RELAYS          24
+#define RELAY_ON_HIGH       1       // the relay closes when its 74HC595 output is HIGH
+#define SR_DATA             13      // 74HC595 SER
+#define SR_CLOCK            16      // 74HC595 SRCLK
+#define SR_LATCH            32      // 74HC595 RCLK
+#define SR_ENABLE           4       // 74HC595 OE, LOW = outputs on
+#define LAN_PHY             ETH_PHY_RTL8201
+#define LAN_PHY_ADDR        0
+#define LAN_POWER           33      // the network chip's reset: LOW = held in reset
+#define LAN_MDC             23
+#define LAN_MDIO            18
+#define LAN_CLOCK           ETH_CLOCK_GPIO0_IN
+#define BUTTON_PIN          0       // the DevKitC's BOOT button
+#define BUTTON_ON_LAN_CLOCK 1       // GPIO 0 is also the network clock (buttonTick)
+#elif BOARD == BOARD_KC868_A32
 // The relays hang on I2C bus A (SDA GPIO 15, SCL GPIO 13): PCF8574 0x24 = relays 1-8, 0x25 = 9-16,
 // 0x21 = 17-24, 0x22 = 25-32, bit 0 = the first relay of the eight. A PCF8574 pin LOW closes the relay.
 // The network chip is a LAN8720 (MDC GPIO 23, MDIO GPIO 18, clock out on GPIO 17, address 0).
 // (KinCony "KC868-A32 ESP32 I/O pin define", kincony.com/forum, thread 1771.)
+#define BOARD_NAME          "KC868-A32"
 #define NUM_RELAYS          32
 #define RELAY_ON_HIGH       0       // the relay closes when its PCF8574 pin is LOW
 #define RELAY_SDA           15
 #define RELAY_SCL           13
 const uint8_t RELAY_CHIP[4] = { 0x24, 0x25, 0x21, 0x22 };
+#define LAN_PHY             ETH_PHY_LAN8720
 #define LAN_PHY_ADDR        0
 #define LAN_POWER           -1      // no power pin for the network chip
 #define LAN_MDC             23
 #define LAN_MDIO            18
-#define BUTTON_PIN          0       // the IO0 (download) button: held 5 s = Wi-Fi settings back to the defaults
+#define LAN_CLOCK           ETH_CLOCK_GPIO17_OUT
+#define BUTTON_PIN          0       // the IO0 (download) button
+#define BUTTON_ON_LAN_CLOCK 0
+#else
+#error "BOARD: choose BOARD_RELAY24 or BOARD_KC868_A32"
+#endif
 
 // ---------------------------------------------------------------- settings you may want to change
 #define NO_DATA_TIMEOUT_MS  2000    // no message from the program for this long: close every section
@@ -139,6 +191,8 @@ void settingsResetWifi();
 void wifiStart();
 void wifiWatch();
 bool ethUp();
+bool ethTried();
+void ethHoldReset();
 IPAddress moduleIp();
 void webStart();
 void udpStart();
@@ -210,6 +264,7 @@ static void serialCommands()
 static void buttonTick()
 {
     static uint32_t downSince = 0;
+    if (BUTTON_ON_LAN_CLOCK && ethTried()) return;          // GPIO 0 carries the network clock: not a button now
     if (digitalRead(BUTTON_PIN) == HIGH) { downSince = 0; return; }
     if (downSince == 0) { downSince = millis(); return; }
     if (millis() - downSince > 5000 && restartAtMs == 0)
@@ -269,6 +324,7 @@ void loop()
     if (restartAtMs && (int32_t)(now - restartAtMs) >= 0)
     {
         outputsAllOff();
+        ethHoldReset();             // the network chip quiet again, as at power-on
         delay(100);
         ESP.restart();
     }

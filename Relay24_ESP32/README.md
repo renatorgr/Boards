@@ -66,13 +66,18 @@ program releases the PHY reset on GPIO33, so the DevKitC still boots and flashes
 
 ## Firmware
 
-Seeder_ESP32 / Sprayer_ESP32 need a board profile for this board (not written yet):
+[Seeder_ESP32](../Seeder/Seeder_ESP32) v0.2 runs this board (`BOARD_RELAY24`, its
+default):
 
-- sections through the 74HC595 chain (bit 0 = section 1) instead of direct GPIOs:
-  `shiftOut` on GPIO13 / GPIO16, latch on GPIO32, then GPIO4 low;
+- sections through the 74HC595 chain (bit 0 = section 1): 24 bits on GPIO13 / GPIO16,
+  relay 24 first, latch on GPIO32; GPIO4 goes low only after the chips hold zeros;
 - Ethernet: `ETH.begin(ETH_PHY_RTL8201, 0, 23, 18, 33, ETH_CLOCK_GPIO0_IN)` with
   arduino-esp32 3.x (in 2.x the order is `ETH.begin(0, 33, 23, 18, ETH_PHY_RTL8201,
-  ETH_CLOCK_GPIO0_IN)`);
+  ETH_CLOCK_GPIO0_IN)`); the driver lets the PHY out of reset before it starts the
+  ESP32's network block, which needs the clock. Before a restart the program puts the
+  PHY back in reset;
+- the DevKitC's BOOT button is not read while the network cable is in use (GPIO0 carries
+  the clock); `wifi-reset` on the Serial Monitor resets a forgotten Wi-Fi password;
 - the LEDs next to the relays and the PHY LEDs need no code: D30 (yellow) lights for a
   10 Mbit link, D31 (green) for 100 Mbit, the chip's default LED mode (a program can
   change it through MDIO, page 7 register 19).

@@ -16,7 +16,8 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`AiO_Micro45_XIAO_C3`](AiO_Micro45_XIAO_C3) | Adapter board (KiCad) that plugs a XIAO into the GPS2 socket of the AiO v4.5 Micro. Gerber, BOM and CPL files are ready to order from JLCPCB. |
 | [`AiO_Std45_XIAO_C3`](AiO_Std45_XIAO_C3) | The same adapter for the AiO v4.5 Standard. |
 | [`LED_Bezel`](LED_Bezel) | A small 3D-printed comb (OpenSCAD and STL) that slides over the three front LEDs of the AiO v4.5 so each one lights only its own window on the panel. |
-| [`Seeder/Seeder_ESP32`](Seeder/Seeder_ESP32) | Program for a KinCony KC868-A32 (ESP32, 32 relays, network cable) that runs the 19 sections of the no-till seed drill, one linear actuator each, on command from AgOpenWeb or AgOpenGPS (the official machine-module messages, PGN 229 for sections 17–64). Has its own web page for setup and updates. |
+| [`Relay24_ESP32`](Relay24_ESP32) | Relay board (KiCad) for an ESP32 DevKitC: 24 DPDT relays that drive 12 V linear actuators in both directions, a network socket and 12 V in, for the seed drill's sections. Gerber, BOM and CPL files for JLCPCB. |
+| [`Seeder/Seeder_ESP32`](Seeder/Seeder_ESP32) | Program for the Relay24_ESP32 board (or a KinCony KC868-A32: ESP32, 32 relays, network cable) that runs the 19 sections of the no-till seed drill, one linear actuator each, on command from AgOpenWeb or AgOpenGPS (the official machine-module messages, PGN 229 for sections 17–64). Has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
 
@@ -26,9 +27,9 @@ Each folder has its own README with the details.
 
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
-- **Adapter boards:** designed and checked in KiCad, but not built or tested yet.
+- **Adapter boards and Relay24_ESP32:** designed and checked in KiCad, but not built or tested yet.
 - **Sprayer ESP32 v0.9:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. Also builds for a plain ESP32 with relay modules (up to 16 relays). Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit. The sensors fitted are ticked on its page: with none it sends no PGN 160. The Nano version (v0.3) is kept as it was.
-- **Seeder ESP32 v0.1:** the seed drill part of Sprayer ESP32 v0.8 in its own folder: 19 sections on a KC868-A32 over the network cable, relay 1 = section 1 and so on. Written from KinCony's pin list, not yet run on a board.
+- **Seeder ESP32 v0.2:** the seed drill part of Sprayer ESP32 v0.8 in its own folder: 19 sections over the network cable, relay 1 = section 1 and so on, on the Relay24_ESP32 board (default) or a KC868-A32. Written from the board design and KinCony's pin list, not yet run on a board.
 
 ## Getting started
 
@@ -46,7 +47,7 @@ Each folder has its own README with the details.
 
 ### Seed drill
 
-Wiring (DPDT relays, end switches for the actuators), the first upload, the setup and a bench test are in the [`Seeder_ESP32` README](Seeder/Seeder_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/seeder/).
+Choosing the board, wiring (actuators, end switches), the first upload, the setup and a bench test are in the [`Seeder_ESP32` README](Seeder/Seeder_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/seeder/).
 
 ### Sprayer
 

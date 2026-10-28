@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Hydraulic lift timing after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
+   2026-10-28 (Claude): v0.2: the Relay24_ESP32's relays (74HC595 shift registers) next to the KC868-A32's.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -13,7 +14,8 @@
 //     the other functions, for the first 24 relays.
 // Everything is off while the program is silent.
 //
-// RELAY_ON_HIGH (Seeder_ESP32.ino) says how the KC868-A32's relays close: on a LOW PCF8574 pin.
+// RELAY_ON_HIGH (Seeder_ESP32.ino) says how the board's relays close: on a HIGH 74HC595 output on the
+// Relay24_ESP32, on a LOW PCF8574 pin on the KC868-A32.
 // cfg.invertOutputs (PGN 238, byte 8 bit 0; the official module calls it isRelayActiveHigh) turns that
 // round: 0 = as built, 1 = inverted.
 // The program sends this setting at start-up and when the machine profile is loaded, so the
@@ -43,6 +45,35 @@ uint8_t relayFn(uint8_t i)
     return p <= 16 ? p : 0;
 }
 
+#if BOARD == BOARD_RELAY24
+// The Relay24_ESP32's relays: 24 bits shifted into the chain of three 74HC595 chips, relay 24 first (it ends
+// up at the far end, U3 output QH) and relay 1 last (U1 output QA), then one latch pulse moves them all to the
+// outputs at once. Written every time: a bit upset by noise on the wires is put right within 50 ms.
+static void relaysWrite(uint32_t bits)
+{
+    for (int8_t i = NUM_RELAYS - 1; i >= 0; i--)
+    {
+        digitalWrite(SR_DATA, relayLevel((bits >> i) & 1));
+        digitalWrite(SR_CLOCK, HIGH);
+        digitalWrite(SR_CLOCK, LOW);
+    }
+    digitalWrite(SR_LATCH, HIGH);
+    digitalWrite(SR_LATCH, LOW);
+}
+
+void outputsInit()
+{
+    pinMode(SR_DATA, OUTPUT);
+    pinMode(SR_CLOCK, OUTPUT);
+    pinMode(SR_LATCH, OUTPUT);
+    digitalWrite(SR_CLOCK, LOW);
+    digitalWrite(SR_LATCH, LOW);
+    relaysWrite(0);                                         // every relay off in the chips first,
+    pinMode(SR_ENABLE, OUTPUT);
+    digitalWrite(SR_ENABLE, LOW);                           // then their outputs on (the board's pull-up held them off)
+}
+
+#elif BOARD == BOARD_KC868_A32
 // The KC868-A32's relays: eight on each PCF8574 chip, one byte per chip (bit 0 = its first relay). A chip
 // is only written when its byte changes, and once a second anyway (a chip that missed a write catches up).
 static int16_t chipSent[4] = { -1, -1, -1, -1 };
@@ -79,6 +110,7 @@ void outputsInit()
         chipOk[c] = Wire.endTransmission() == 0;
     }
 }
+#endif
 
 // Everything off, whatever the polarity setting says (used before a restart or a program update)
 void outputsAllOff()
