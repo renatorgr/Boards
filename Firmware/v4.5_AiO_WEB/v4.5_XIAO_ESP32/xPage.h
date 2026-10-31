@@ -1,6 +1,8 @@
 /* xPage.h - the XIAO web page (English).
    Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware AiO_WEB.
    Written 2026 by Claude (Anthropic) for renatorgr.
+   31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed) and red
+   only without one; a "Download the report" button on the Firmware tab, like the Teensy page's.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -165,6 +167,9 @@ a{color:var(--acc)}
  <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
  <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
  <p class="note">It uses the password of the «Update or restart» card. The phone needs internet: on the XIAO's own network alone it usually has none. Connect the XIAO to the farm network or to the phone's hotspot and open the page over that network.</p></div>
+<div class="card"><h2>Report for an analysis</h2>
+ <p class="note">Puts the XIAO's state and settings, the module status it receives and both message lists in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
+ <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div></div>
 <div class="card"><h2>Update or restart</h2>
  <div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="binFile" accept=".bin" class="hidden"></label><span id="binName" class="note">no file</span></div>
  <label class="field"><span>XIAO network password (to confirm)</span><input type="password" id="pwP" maxlength="63"></label>
@@ -198,7 +203,7 @@ function renderModule(t){
  if(!t||!t.s){set("mAge","no data from the module","warn");set("mFix","–");return;}
  const s=t.s,g=s.gnss||{},d=s.dual||{},m=s.tm||{},st=s.steer||{},n=s.net||{};
  set("mAge",ago(t.ago>3?t.ago:0),t.ago>3?"warn":"");
- const fixCls=g.fix===4?"ok":(g.fix===5||g.fix===2)?"warn":"bad";
+ const fixCls=g.gga&&g.fix>0?"ok":"bad";   // green with a position (the name says how good), red without one
  set("mFix",g.gga?(g.fixName):"no data from the receiver",fixCls);
  set("mSats",g.sats||"–");set("mHdop",g.hdop||"–");set("mAge2",g.age?g.age+" s":"–");
  set("mKmh",fmt(g.kmh,1," km/h"));
@@ -253,6 +258,24 @@ function renderState(x){
  set("pFw",x.fw);set("pBuilt",x.built);set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");
 }
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
+// ---- the report for an analysis: every answer of the XIAO in one .json file, downloaded by this browser
+$("dumpBtn").addEventListener("click",async()=>{
+ const b=$("dumpBtn"),m=$("dumpMsg");b.disabled=true;m.className="note";m.textContent="Gathering…";
+ const r={made:new Date().toString(),page:location.href,browser:navigator.userAgent};
+ for(const [k,u] of [["state","/api/state"],["teensy","/api/teensy"],["settings","/api/settings"]]){try{r[k]=await getJ(u);}catch(e){r[k]={error:String(e)};}}
+ const lt=[],lx=[];let a=0,xa=0;
+ for(let i=0;i<40;i++){let j;try{j=await getJ("/api/log?after="+a+"&xafter="+xa);}catch(e){break;}
+  if(j.error||!j.t)break;
+  for(const l of j.t)lt.push(dur(Math.floor(l.t/1000))+"  "+l.x);
+  for(const l of j.x)lx.push(dur(Math.floor(l.t/1000))+"  "+l.x);
+  if(j.t.length)a=j.t[j.t.length-1].s;if(j.x.length)xa=j.x[j.x.length-1].s;
+  if(!j.more)break;}
+ r.teensyLog=lt;r.xiaoLog=lx;
+ const d=new Date(),z=n=>String(n).padStart(2,"0"),fw=((r.state&&r.state.fw)||"xiao").split(" ")[0];
+ const name=fw+"_report_"+d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"_"+z(d.getHours())+z(d.getMinutes())+".json";
+ const el=document.createElement("a");el.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,1)],{type:"application/json"}));el.download=name;
+ document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(el.href),10000);
+ m.className="note ok";m.textContent="Downloaded: "+name;b.disabled=false;});
 // The XIAO restarted (its time on went back, or another build runs): the whole page again from the XIAO,
 // on the same tab - a new program brings its own page, and every card and list starts afresh.
 function reloadAfterRestart(msg){

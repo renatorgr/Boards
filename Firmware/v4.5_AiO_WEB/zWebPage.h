@@ -16,6 +16,7 @@
    27 Oct 2026: a negative WAS reading on the differential input (nothing on AmpSeal pin 3): the WAS row and the
    warning at the top say so and to choose Single in the program; the WAS check setting mentions it.
    27 Oct 2026: "Last turned off" by the program says that its screen gives the reason (button, boundary, speed, RTK).
+   31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed), red only without one.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -468,7 +469,7 @@ function ckAlerts(c,who,al){
 function render(s){
  lastS=s;lastUp=s.up;
  $("hdr").textContent=(s.fw.lastIndexOf(" ")>0?s.fw.slice(0,s.fw.lastIndexOf(" ")):s.fw)+" · "+s.ip;
- const g=s.gnss,fixCls=g.fix===4?"ok":(g.fix===5||g.fix===2)?"warn":"bad";
+ const g=s.gnss,fixCls=g.gga&&g.fix>0?"ok":"bad";   // green with a position (the name says how good), red without one
  set("fixName",g.gga?(g.fixName):"no data from the receiver",fixCls);
  set("sats",g.sats||"–");set("hdop",g.hdop||"–");set("age",g.age?g.age+" s":"–");
  set("kmh",fmt(g.kmh,1," km/h")+(g.speedSrc!=="-"?" ("+(g.speedSrc)+")":""));
