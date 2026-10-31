@@ -7,14 +7,16 @@
 // 2026-10-28 (Claude): Seeder_ESP32 v0.2: the seed drill's board is the Relay24_ESP32, 24 relays.
 // 2026-10-27 (Claude): the seed drill module's own page (Seeder_ESP32); the Teensy's Machine tab shows all 19 sections.
 // 2026-10-27 (Claude): the AiO v26's machine part and two of our modules on the Teensy's Machine tab.
+// 2026-10-31 (Claude): the update check reads the site's own firmware.json: the same build says "latest version
+//                      installed", a newer build of the same version says "new" (Teensy page, XIAO C3 and S3).
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
 //
 // Serves the site under /Boards/ as GitHub Pages does, opens the Teensy page with each receiver, the XIAO
 // page and the seed drill and sprayer modules' pages, waits for the pretend module, clicks every tab and fails on
-// a script error in the page or a tab that shows nothing. GitHub itself is not asked (the version check then says
-// "no answer"). Also installs the firmware's own .hex on a parked module, end to end, saves the first section the
+// a script error in the page or a tab that shows nothing. GitHub itself is not asked: the version check gets the
+// site's firmware.json (or a copy with a newer build in it) instead of https://renatorgr.github.io/Boards/firmware.json. Also installs the firmware's own .hex on a parked module, end to end, saves the first section the
 // seed drill's relays follow and the sprayer's calibration (their password prompt is answered).
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
@@ -36,11 +38,17 @@ const server = http.createServer((q, r) => {
  r.end(fs.readFileSync(f));
 });
 
-async function page(browser, url, what) {
+// what the version check finds on GitHub: the site's firmware.json, or a copy changed by `newer`
+const published = newer => { const j = JSON.parse(fs.readFileSync(path.join(site, "firmware.json"), "utf8")); if (newer) newer(j); return JSON.stringify(j); };
+const LATER = "Dec 31 2099 23:59:59";
+
+async function page(browser, url, what, newer) {
  const pg = await browser.newPage({viewport: {width: 1000, height: 1100}});
  pg.on("pageerror", e => fail.push(what + ": " + e));
  pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) fail.push(what + ": console " + m.text()); });
  await pg.route(/^https:\/\/(api\.github\.com|github\.com|raw\.githubusercontent\.com)\//, r => r.abort());
+ await pg.route("https://renatorgr.github.io/Boards/firmware.json", r => r.fulfill({status: 200, contentType: "application/json",
+  headers: {"Access-Control-Allow-Origin": "*"}, body: published(newer)}));
  await pg.goto(url);
  return pg;
 }
@@ -54,6 +62,7 @@ async function teensy(browser, port, q, name) {
  const what = "Teensy page " + (q || "(defaults)");
  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/" + q, what);
  await pg.waitForTimeout(2500);
+ await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — latest version installed$/);
  await expect(pg, what, "#hdr", /_AiO_WEB · 192\.168\.5\.126/);
  await expect(pg, what, "#simBar", /SIMULATOR/);
  if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
@@ -121,6 +130,16 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
+ // a newer build of the same version on GitHub: offered as new
+ {
+  const what = "Teensy page, newer build on GitHub";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/", what, j => { j.teensy.built = LATER; });
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — new \(installed: [\d.]+, built /);
+  if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
+  if (await pg.locator("#ghNote").isHidden()) fail.push(what + ": no note about the new firmware");
+  await pg.close();
+ }
  // the XIAO page
  {
   const what = "XIAO page";
@@ -128,6 +147,7 @@ async function teensy(browser, port, q, name) {
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#hdr", /_XIAO_ESP32C3/);
   await expect(pg, what, "#mFw", /AiO/);
+  await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — latest version installed$/);
   await shot(pg, "xiao-status");
   for (const t of ["log", "wifi", "prog"]) {
    await pg.click('nav button[data-t="' + t + '"]'); await pg.waitForTimeout(800);
@@ -135,6 +155,16 @@ async function teensy(browser, port, q, name) {
    if (t === "wifi") { await pg.click("#scan"); await pg.waitForTimeout(3500); await expect(pg, what, "#scanMsg", /networks/); }
    await shot(pg, "xiao-" + t);
   }
+  await pg.close();
+ }
+ // an S3 XIAO when only the S3's .bin on GitHub is a newer build: new for it (a C3 would stay "installed")
+ {
+  const what = "XIAO S3 page, newer S3 build on GitHub";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?chip=s3", what, j => { if (j.xiao.S3) j.xiao.S3.built = LATER; });
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#hdr", /_XIAO_ESP32S3/);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — new \(installed: /);
+  if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   await pg.close();
  }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =

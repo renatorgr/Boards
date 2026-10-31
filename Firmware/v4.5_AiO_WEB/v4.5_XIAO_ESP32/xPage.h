@@ -3,6 +3,8 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed) and red
    only without one; a "Download the report" button on the Firmware tab, like the Teensy page's.
+   31 Oct 2026: the GitHub check also compares when this XIAO's .bin was compiled (firmware.json on the simulator's
+   site), so a new build of the same version (4.5) shows as new.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -13,7 +15,7 @@
 // The module card names the GPS receiver and the IMU (TM171 or BNO085) the Teensy found. A newer
 // version on GitHub (renatorgr/Boards, folder Firmware): the browser asks GitHub (when the phone has
 // internet) and can install it through the same update as a chosen file; "latest version installed" when the
-// newest version there is the one installed.
+// newest version there is the one installed, compiled at the same time.
 #pragma once
 
 const char XIAO_PAGE[] PROGMEM = R"XIAOPAGE(<!doctype html>
@@ -395,39 +397,53 @@ function sendBin(blob,name,p0){
 // ---- a newer version on GitHub (renatorgr/Boards, folder Firmware, one folder per version:
 // vX.Y_AiO_WEB, with vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin and ..S3.bin in it).
 // Asked by this browser when the page opens, every 6 hours, and with "Check now".
+// firmware.json (written by Firmware/simulator/build.py on every change on main, published with the simulator)
+// says when each XIAO .bin there was compiled: a new build of the same version shows as new. Without it, the
+// folder names alone (the version number only).
 const GH_API="https://api.github.com/repos/renatorgr/Boards/contents/Firmware",GH_WEB="https://github.com/renatorgr/Boards/tree/main/Firmware";
-const GH_RX=/^v(\d+(?:\.\d+)*)_AiO_WEB$/;
+const GH_PUB="https://renatorgr.github.io/Boards/firmware.json";
+const GH_RX=/^v(\d+(?:\.\d+)*)_AiO_WEB$/,MON="JanFebMarAprMayJunJulAugSepOctNovDec";
 let gh=null,ghState="",ghAt=0;
 function verCmp(a,b){const x=String(a).split(".").map(Number),y=String(b).split(".").map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d;}return 0;}
+function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||"").trim()),i=m?MON.indexOf(m[1]):-1;   // "Oct 31 2026 19:27:45" -> "20261031192745"
+ return i<0||i%3?"":m[3]+String(i/3+1).padStart(2,"0")+m[2].padStart(2,"0")+m[4]+m[5]+m[6];}
+function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0;}
+function verText(v,b){const k=builtKey(b);return v+(k?", built "+(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"");}
 function runningVer(){const m=lastState&&/^v(\d+(?:\.\d+)*)_/.exec(lastState.fw);return m?m[1]:"";}
+function myChip(){return chipName==="ESP32-S3"?"S3":chipName==="ESP32-C3"?"C3":"";}
+function ghBuilt(){const x=gh&&gh.xiao&&gh.xiao[myChip()];return x&&x.built||"";}   // when the .bin for this XIAO's chip was compiled
 async function ghList(path){const r=await fetch(GH_API+(path?"/"+path:"")+"?ref=main");/* a simple request: no CORS preflight */if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
 async function ghCheck(){
  if(ghState==="busy")return;
  ghState="busy";renderGh();
- try{const l=await ghList("");let best=null;
-  for(const e of l)if(e.type==="dir"){const m=GH_RX.exec(e.name);if(m&&(!best||verCmp(m[1],best.ver)>0))best={ver:m[1],dir:e.name};}
+ let best=null;
+ try{const r=await fetch(GH_PUB,{cache:"no-store"}),j=r.ok?await r.json():null,m=j&&GH_RX.exec(j.folder||"");
+  if(m)best={ver:m[1],dir:j.folder,xiao:j.xiao||{}};}catch(e){}
+ try{if(!best){const l=await ghList("");
+   for(const e of l)if(e.type==="dir"){const m=GH_RX.exec(e.name);if(m&&(!best||verCmp(m[1],best.ver)>0))best={ver:m[1],dir:e.name};}}
   gh=best;ghState=best?"ok":"none";}
  catch(e){ghState="fail";}
  ghAt=Date.now();renderGh();
 }
-function ghNewer(){const r=runningVer();return !!(gh&&r&&verCmp(gh.ver,r)>0);}
+function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(ghBuilt(),lastState.built):NaN;}   // >0: GitHub's is newer
+function ghNewer(){return ghCmp()>0;}
 function renderGh(){
- const r=runningVer(),nw=ghNewer();
+ const c=ghCmp(),nw=c>0,inst=lastState?verText(runningVer(),lastState.built):"";
  set("ghVer",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":gh.ver+(nw?(" — new version (installed: "+r+")"):verCmp(gh.ver,r)===0?" — latest version installed":(" — the installed version ("+r+") is newer")),
+  !gh?"–":verText(gh.ver,ghBuilt())+(nw?(" — new (installed: "+inst+")"):c===0?" — latest version installed":c<0?(" — the installed one ("+inst+") is newer"):""),
   nw?"ok":ghState==="fail"?"warn":"");
  $("ghInstall").disabled=!nw||busy;
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?("There is a new version on GitHub: "+gh.ver+" (installed: "+r+"). Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("There is a new version on GitHub: "+verText(gh.ver,ghBuilt())+" (installed: "+inst+"). Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
 }
 async function ghInstall(){
  if(!ghNewer()||busy)return;
- const chip=chipName==="ESP32-S3"?"S3":chipName==="ESP32-C3"?"C3":"";
+ const chip=myChip();
  if(!chip){fwMsg("It is not known whether this XIAO is a C3 or an S3.","bad");return;}
  if(!$("pwP").value){fwMsg("Type the XIAO network password.","bad");$("pwP").focus();return;}
  const bdir="v"+gh.ver+"_XIAO_ESP32_bin",name="v"+gh.ver+"_XIAO_ESP32"+chip+".bin";
- if(!confirm(("Install version "+gh.ver+" from GitHub ("+name+") on the XIAO?")))return;
+ if(!confirm(("Install "+verText(gh.ver,ghBuilt())+" from GitHub ("+name+") on the XIAO?")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{

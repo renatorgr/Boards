@@ -17,6 +17,8 @@
    warning at the top say so and to choose Single in the program; the WAS check setting mentions it.
    27 Oct 2026: "Last turned off" by the program says that its screen gives the reason (button, boundary, speed, RTK).
    31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed), red only without one.
+   31 Oct 2026: the GitHub check also compares when the firmware was compiled (firmware.json on the simulator's site), so
+   a new build of the same version (4.5) shows as new; Install from GitHub takes vX.Y_AiO_WEB.hex or .ino.hex.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -1194,41 +1196,53 @@ $("dumpBtn").addEventListener("click",async()=>{
 // ---- a newer version on GitHub (renatorgr/Boards, folder Firmware, one folder per version:
 // vX.Y_AiO_WEB with vX.Y_AiO_WEB.hex in it).
 // Asked by this browser when the page opens, every 6 hours, and with "Check now".
+// The newest version folder on GitHub and, from firmware.json (written by Firmware/simulator/build.py on every
+// change on main and published with the simulator), the .hex in it and when it was compiled: a new build of the
+// same version shows as new. Without firmware.json, the folder names alone (the version number only).
 const GH_API="https://api.github.com/repos/renatorgr/Boards/contents/Firmware",GH_WEB="https://github.com/renatorgr/Boards/tree/main/Firmware";
-const GH_RX=/^v(\d+(?:\.\d+)*)_AiO_WEB$/;
+const GH_PUB="https://renatorgr.github.io/Boards/firmware.json";
+const GH_RX=/^v(\d+(?:\.\d+)*)_AiO_WEB$/,MON="JanFebMarAprMayJunJulAugSepOctNovDec";
 let gh=null,ghState="",ghAt=0;
 function verCmp(a,b){const x=String(a).split(".").map(Number),y=String(b).split(".").map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d;}return 0;}
+function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||"").trim()),i=m?MON.indexOf(m[1]):-1;   // "Oct 31 2026 19:28:53" -> "20261031192853"
+ return i<0||i%3?"":m[3]+String(i/3+1).padStart(2,"0")+m[2].padStart(2,"0")+m[4]+m[5]+m[6];}
+function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0;}
+function verText(v,b){const k=builtKey(b);return v+(k?", built "+(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"");}
 function runningVer(){const m=lastS&&/^v(\d+(?:\.\d+)*)_/.exec(lastS.fw);return m?m[1]:"";}
 async function ghList(path){const r=await fetch(GH_API+(path?"/"+path:"")+"?ref=main");/* a simple request: no CORS preflight */if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
 async function ghCheck(){
  if(ghState==="busy")return;
  ghState="busy";renderGh();
- try{const l=await ghList("");let best=null;
-  for(const e of l)if(e.type==="dir"){const m=GH_RX.exec(e.name);if(m&&(!best||verCmp(m[1],best.ver)>0))best={ver:m[1],dir:e.name};}
+ let best=null;
+ try{const r=await fetch(GH_PUB,{cache:"no-store"}),j=r.ok?await r.json():null,m=j&&j.teensy&&GH_RX.exec(j.folder||"");
+  if(m)best={ver:m[1],dir:j.folder,file:j.teensy.file,built:j.teensy.built||""};}catch(e){}
+ try{if(!best){const l=await ghList("");
+   for(const e of l)if(e.type==="dir"){const m=GH_RX.exec(e.name);if(m&&(!best||verCmp(m[1],best.ver)>0))best={ver:m[1],dir:e.name};}}
   gh=best;ghState=best?"ok":"none";}
  catch(e){ghState="fail";}
  ghAt=Date.now();renderGh();
 }
-function ghNewer(){const r=runningVer();return !!(gh&&r&&verCmp(gh.ver,r)>0);}
+function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(gh.built,lastS.built):NaN;}   // >0: GitHub's is newer
+function ghNewer(){return ghCmp()>0;}
 function renderGh(){
- const r=runningVer(),nw=ghNewer();
+ const c=ghCmp(),nw=c>0,inst=lastS?verText(runningVer(),lastS.built):"";
  set("ghVer",ghState==="busy"?"checking…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":gh.ver+(nw?(" — new version (installed: "+r+")"):verCmp(gh.ver,r)===0?" — latest version installed":(" — the installed version ("+r+") is newer")),
+  !gh?"–":verText(gh.ver,gh.built)+(nw?(" — new (installed: "+inst+")"):c===0?" — latest version installed":c<0?(" — the installed one ("+inst+") is newer"):""),
   nw?"ok":ghState==="fail"?"warn":"");
  $("ghInstall").disabled=!nw||busy;
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?("There is a new firmware version on GitHub: "+gh.ver+" (installed: "+r+"). Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("There is a new firmware on GitHub: "+verText(gh.ver,gh.built)+" (installed: "+inst+"). Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
 }
 async function ghInstall(){
  if(!ghNewer()||busy)return;
- const name=gh.dir+".hex";
- if(!confirm(("Install version "+gh.ver+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ const names=[gh.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
+ if(!confirm(("Install "+verText(gh.ver,gh.built)+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{
-  const f=(await ghList(gh.dir)).find(e=>e.type==="file"&&e.name===name);
-  if(!f)throw new Error(("the file "+name+" is not on GitHub"));
+  const l=await ghList(gh.dir),f=names.map(n=>l.find(e=>e.type==="file"&&e.name===n)).find(Boolean);
+  if(!f)throw new Error(("the file "+names[0]+" is not on GitHub"));
   const res=await fetch(f.download_url);if(!res.ok)throw new Error("GitHub: HTTP "+res.status);
   const rd=res.body.getReader(),parts=[];let got=0;
   for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;p.value=Math.round(got/f.size*45);}

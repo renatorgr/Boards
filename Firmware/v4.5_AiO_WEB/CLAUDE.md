@@ -299,11 +299,14 @@ The addresses must not move: settings must survive a firmware update.
    Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`: `OTA_MARKER_OLD` keeps the old name in the image
    (and accepted) so modules on older firmware still take the update. Drop it only in a later release, after
    every module runs a firmware that knows `OTA_MARKER`.
-8. **GitHub update check**: the web page (and the XIAO page) list `Firmware/` on GitHub, take the highest
-   folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, and download `<folder>.hex` from it (the XIAO:
-   `<folder>/vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `S3`). Do not rename these. Note: the Arduino
-   IDE exports `v4.5_AiO_WEB.ino.hex`, but the page looks for `v4.5_AiO_WEB.hex`, so publish the next version
-   under the `.hex` name the page looks for (or teach the page both names first).
+8. **GitHub update check**: the web page (and the XIAO page) fetch `https://renatorgr.github.io/Boards/firmware.json`
+   (written by `Firmware/simulator/build.py`, published with the simulator on every change on `main`): the newest
+   folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, its `.hex` and XIAO `.bin` files, and the `__DATE__ __TIME__`
+   each was compiled at, read from the file. Newer = a higher version number, or the same number compiled later
+   than the running program's `built`. Without firmware.json they list `Firmware/` on GitHub and compare the
+   folder number only. The Teensy page downloads `<folder>.hex` or `<folder>.ino.hex` (the Arduino IDE's name);
+   the XIAO `<folder>/vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `S3`. Do not rename these, and keep the
+   `built` field (`__DATE__ " " __TIME__`) in `/api/status` and the XIAO's `/api/state`.
 9. **Debug switches** at the top of `zHandlers.ino` (`FUSION_DEBUG`, `RAW_NMEA_DEBUG`, `SEND_TO_USB`) must
    be 0 in a published build.
 10. **Web page size**: `zWebPage.h` is one big string in flash; keep the JavaScript plain (no libraries).
@@ -311,8 +314,10 @@ The addresses must not move: settings must survive a firmware update.
 ## Version and Publishing
 
 - Version in `zVersion.h` (`FW_VERSION`). The XIAO program (`xVersion.h`) must have the same number.
-- A new version is a new folder: copy `v4.5_AiO_WEB` to `vX.Y_AiO_WEB`, rename the main `.ino` to the same
-  name, set `FW_VERSION`, build, put the `.hex` (named `vX.Y_AiO_WEB.hex`) and the XIAO `.bin` files in it.
+- A new build of the same version needs nothing by hand: Renato compiles and uploads the `.hex` (and the XIAO
+  `.bin` files) over the old ones; the build date in them makes it "new" for the pages (Common Gotchas, 8).
+- A new version number is a new folder: copy `v4.5_AiO_WEB` to `vX.Y_AiO_WEB`, rename the main `.ino` to the same
+  name, set `FW_VERSION`, build, put the `.hex` and the XIAO `.bin` files in it.
 - Add a "Version X.Y" section to the README.
 
 ## Code Style
