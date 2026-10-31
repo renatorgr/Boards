@@ -32,6 +32,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - Changed later on 20 Oct 2026: the page only in English, a light mode, and no repeated rows (the XIAO's version only in the header and the Firmware tab, the requested steer angle only in Program → module).
 - Fixes on 20 Oct 2026 (evening): the start-up reason and the USB help in English (`status | wifi-reset | restart`; the old Portuguese names still work); the page opens on the farm network under any name the router gives the XIAO (only requests on the XIAO's own network are sent to 192.168.4.1); a warning at the top of Status when the Teensy runs another version; "no heading (QF too low)" instead of "UM982 without a solution" (it is also the second F9P's reason).
 - **Link to the Teensy at 460800**, like the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
+- 31 Oct 2026: the GPS fix on Status is green whenever the receiver has a position and red only without one (it was red with a plain GPS fix, orange with DGPS or RTK float); **Download the report** on the Firmware tab: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file to send when something goes wrong.
 
 ## What it does
 
@@ -48,7 +49,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 
 | Tab | What it shows |
 |---|---|
-| **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network. |
+| **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network. The fix is green whenever the receiver has a position (GPS, DGPS, RTK float, RTK fixed: the name says which) and red only without one. |
 | | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, requested steer angle, autosteer on / off, sections (16 boxes), hydraulic lift (up / down), tramline, PGN 254 per second. |
 | | **XIAO**: uptime, start-up reason, WiFi, the link to the Teensy, memory (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
 | **Messages** | The module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates). |
@@ -57,7 +58,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
 | | **Module network**: the module's (Teensy's) Ethernet IP and its subnet. For a module on a network that is not 192.168.5.x: type that network's first three numbers (and the XIAO password); the Teensy saves it and restarts with the new IP. This page is on WiFi, so it works whatever the module's IP is. |
-| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. |
+| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - Typed once, it is filled in both tabs until the page is closed.
