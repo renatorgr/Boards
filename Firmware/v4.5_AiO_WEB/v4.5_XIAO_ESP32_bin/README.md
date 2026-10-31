@@ -5,7 +5,7 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
 **Built:** 31 Oct 2026, from the program as it is after pull request #77 (green GPS with any fix, Download the report, the Teensy module's address as a link).
-When the program in `v4.5_XIAO_ESP32` changes, these files must be compiled again and replaced, or **Install from GitHub** keeps giving the old program.
+When the program in `v4.5_XIAO_ESP32` changes, compile these files again and upload them over the old ones, with the same names. **Install from GitHub** on the XIAO page offers a file when it was compiled later than the program running on the XIAO (the date is read from the file).
 
 | File | What for |
 |---|---|

@@ -27,6 +27,8 @@ The choices are in the page address (`teensy/?gps=f9p&imu=bno&motor=keya&prog=ao
 
 `build.py` cuts the pages out of the newest `Firmware/vX.Y_AiO_WEB` folder, `Seeder/Seeder_ESP32` and `Sprayer/Sprayer_ESP32` exactly as the firmware serves them and puts the simulator scripts in their `<head>` (a module page also gets its implement, `window.SIM_IMPL`). The scripts answer the page's `/api/...` requests (and the firmware upload) instead of the module, so the page's own JavaScript is not changed: what you see is the page as it is in the firmware. The GitHub Action `.github/workflows/simulator.yml` runs on every change under `Firmware/`, `Seeder/Seeder_ESP32/` or `Sprayer/Sprayer_ESP32/`, opens every tab in a browser as a check (`smoke-test.js`), and publishes the result on GitHub Pages when the change reaches `main`. A pull request only builds and checks: the simulator shows the merged firmware.
 
+`build.py` also writes `firmware.json` at the top of the site: the Teensy `.hex` and the two XIAO `.bin` files of the newest version folder, each with the date and time it was compiled, read from the file itself (the `__DATE__ __TIME__` text every program carries). The Teensy page and the XIAO page fetch it from `https://renatorgr.github.io/Boards/firmware.json` for **Install from GitHub**, so a new build of the same version shows as new once its file is on `main` and the site is published again. The pretend Teensy and XIAO run those same builds.
+
 | File | What it does |
 |---|---|
 | `build.py` | builds the site: `python3 Firmware/simulator/build.py [folder]` (default `_site`) |

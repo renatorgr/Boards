@@ -1,6 +1,7 @@
 /* sim-xiao.js - the web page simulator: the XIAO page (xPage.h) with a pretend XIAO and module behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
+   2026-10-31 (Claude): the pretend XIAO was compiled when the .bin for its chip on main was (firmware.json).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -48,7 +49,7 @@ function state() {
  const tr = M.tractor(mt), eng = mod && M.engaged(), prog = mod && mt >= 6, n = Math.max(0, mt - 6);
  const w = {ap: X.ap, apCl: t > 8 ? 1 : 0, ch: 6, host: X.host, staOn: X.staOn && !!X.sta, sta: X.sta, st: staSt()};
  if (w.st === "ok") { w.ip = "192.168.1.57"; w.rssi = -61 + Math.round(S.wob(t, 3, 0.1)); }
- return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: S.BUILD.built || "Oct 25 2026 09:00:00",
+ return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: (S.BUILD.xiaoBuilt || {})[C3 ? "c3" : "s3"] || S.BUILD.built || "Oct 25 2026 09:00:00",
   up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412,
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
   link: {talking: mod && mt > 5.2, lastAgo: mod ? 0 : Math.floor((Date.now() - lostAt) / 1000), frames: Math.floor(mt * 12), crcErr: 0, cut: 0,

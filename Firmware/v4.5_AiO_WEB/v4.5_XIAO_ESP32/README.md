@@ -102,7 +102,7 @@ No other libraries are needed: everything is in the esp32 package.
 ## Update from GitHub
 
 - The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Firmware tab).
-- A newer one shows at the top of Status and in Firmware.
+- A newer one shows at the top of Status and in Firmware. **A new build of the same version counts as new**: the page compares when the `.bin` for this XIAO's chip (C3 or S3) on GitHub was compiled with this XIAO's **Built**. That date is read from the file each time it reaches `main` and published with the simulator (`https://renatorgr.github.io/Boards/firmware.json`); without it, the page compares the version number only.
 - **Install from GitHub** (with the password of the XIAO's network):
   - the browser downloads the `.bin` for this XIAO (in the version folder `vX.Y_AiO_WEB`: `vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `...S3.bin`, chosen from the chip it reports);
   - it checks that the file is for this chip and that its size matches GitHub;
