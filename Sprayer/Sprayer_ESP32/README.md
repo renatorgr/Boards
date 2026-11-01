@@ -1,6 +1,6 @@
 # Sprayer_ESP32
 
-Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
+Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOpenWeb** or
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
@@ -16,7 +16,7 @@ tested on the sprayer.
 Tablet (AgOpenWeb / AgOpenGPS)
    │  Wi-Fi (the tractor's router), UDP
    ▼
-ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 5 on this boom
+ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one per section
    ▲
    ├── pressure sensor (GPIO 34) + flow meter (GPIO 35)
    └── own Wi-Fi network "Sprayer-xxxx" + web page (phone)
@@ -48,7 +48,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► up to 8 solenoid valves (NC), 
 | Part | Notes |
 |---|---|
 | ESP32_Relay_X8 board (303E32DC810) | ESP32-WROOM-32E, 8 × SRD-05VDC relays (10 A), LM2596 on board, **5–30 V DC in** |
-| 5 × solenoid valve FPD-270A (up to 8, one per relay) | 12 V, 0.3 A, NC, 0.2–8 bar, G1/2 |
+| 8 × solenoid valve FPD-270A, one per section | 12 V, 0.3 A, NC, 0.2–8 bar, G1/2 |
 | Pressure sensor 0–10 bar | 0.5–4.5 V output, powered at 5 V |
 | YF-S201 flow meter | 5 V, about 450 pulses per litre, 1–30 L/min |
 | USB-serial adapter (CH340 or FTDI), 3.3 V | Only for the first upload; later updates go over Wi-Fi |
@@ -132,8 +132,8 @@ divider (to-GND ÷ total) in the page's calibration.
    ready for an 8-section boom. But AgOpenWeb sends its own pin config to the module at
    start and on profile load, and its default is pins 1–6 = sections 1–6, pins 7–8 =
    none. So in AgOpenWeb set *Tool → sections* to the number of sections on the boom
-   (5 now), and for more than 6 sections set *Machine → Pin config* pins 7 and 8 to
-   *Section 7* and *Section 8*. A relay that is not a section can be the hydraulic lift
+   (8, each 1 m wide), and set *Machine → Pin config* pins 7 and 8 to
+   *Section 7* and *Section 8*: without that, relays 7 and 8 never open. A relay that is not a section can be the hydraulic lift
    or the tramline instead. The page's *Relays* card shows what each relay does.
 7. **Sensors fitted.** In *Calibration*, tick *Pressure sensor fitted* and *Flow meter
    fitted* for the sensors on the machine (both on the sprayer, ticked by default), then

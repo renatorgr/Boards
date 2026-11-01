@@ -10,6 +10,7 @@
 // 2026-10-31 (Claude): the update check reads the site's own firmware.json: the same build says "latest version
 //                      installed", a newer build of the same version says "new" (Teensy page, XIAO C3 and S3).
 // 2026-11-01 (Claude): the "On GitHub" wording: "the one installed", "newer than the installed one".
+// 2026-11-01 (Claude): the sprayer has 8 sections of 1 m (was 5).
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -78,8 +79,8 @@ async function teensy(browser, port, q, name) {
  }
  await expect(pg, what, "#log", /\[boot\]/);
  const spr = /impl=sprayer/.test(q), ours = !/mach=(aog|v26|0)/.test(q);   // our module chosen (not the official one, the AiO v26, none)
- if (!/mach=0|park=1/.test(q)) {       // the seed drill's 19 sections (PGN 229 and its module's PGN 237), or the sprayer's 5 (parked: nothing asked yet, the tab draws 5)
-  const n = spr ? 5 : 19;
+ if (!/mach=0|park=1/.test(q)) {       // the seed drill's 19 sections (PGN 229 and its module's PGN 237), or the sprayer's 8 (parked: nothing asked yet)
+  const n = spr ? 8 : 19;
   if ((await pg.locator("#mSec span").count()) !== n) fail.push(what + ": the Machine tab does not show " + n + " sections");
   await expect(pg, what, "#mSecFrom", /mach=aog/.test(q) ? /^hello reply/ : /^PGN 237/);
   await expect(pg, what, "#mIp", /mach=two/.test(q) ? /^192\.168\.5\.123, 192\.168\.5\.124$/ : /^192\.168\.5\.123$/);
@@ -199,7 +200,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
   await pg.close();
  }
- // the sprayer module's page: 5 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the calibration
+ // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the calibration
  // saved, the total set to 0
  {
   const what = "Sprayer page";
@@ -210,7 +211,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#sub", /^on Farm WiFi as 192\.168\.5\.123 · program talking/);
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
   await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+ · ESP32_Relay_X8$/);
-  if ((await pg.locator("#secs span.on").count()) !== 5) fail.push(what + ": expected 5 sections open while spraying");
+  if ((await pg.locator("#secs span.on").count()) !== 8) fail.push(what + ": expected 8 sections open while spraying");
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
   await expect(pg, what, "#bar", /^[23]\.\dbar$/);
