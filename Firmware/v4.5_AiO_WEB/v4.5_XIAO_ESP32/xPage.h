@@ -7,6 +7,7 @@
    site), so a new build of the same version (4.5) shows as new.
    1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
    installed one; the Status note says which build this XIAO runs.
+   1 Nov 2026: the "Report for an analysis" card is the last one on the Firmware tab, as on the Teensy page.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -171,9 +172,6 @@ a{color:var(--acc)}
  <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
  <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
  <p class="note">It uses the password of the «Update or restart» card. The phone needs internet: on the XIAO's own network alone it usually has none. Connect the XIAO to the farm network or to the phone's hotspot and open the page over that network.</p></div>
-<div class="card"><h2>Report for an analysis</h2>
- <p class="note">Puts the XIAO's state and settings, the module status it receives and both message lists in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
- <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div></div>
 <div class="card"><h2>Update or restart</h2>
  <div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="binFile" accept=".bin" class="hidden"></label><span id="binName" class="note">no file</span></div>
  <label class="field"><span>XIAO network password (to confirm)</span><input type="password" id="pwP" maxlength="63"></label>
@@ -181,6 +179,9 @@ a{color:var(--acc)}
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
  <p class="note">If the installation fails, the current program keeps running.</p></div>
+<div class="card"><h2>Report for an analysis</h2>
+ <p class="note">Puts the XIAO's state and settings, the module status it receives and both message lists in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
+ <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div></div>
 </div>
 </section>
 </main>
