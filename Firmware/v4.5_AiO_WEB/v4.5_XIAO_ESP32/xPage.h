@@ -8,6 +8,7 @@
    1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
    installed one; the Status note says which build this XIAO runs.
    1 Nov 2026: the "Report for an analysis" card is the last one on the Firmware tab, as on the Teensy page.
+   1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -35,7 +36,8 @@ const char XIAO_PAGE[] PROGMEM = R"XIAOPAGE(<!doctype html>
 @media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);accent-color:var(--acc);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+#top{position:sticky;top:0;z-index:3}   /* header and tabs stay in view while the page scrolls (small windows, the program's web cards) */
 header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
@@ -94,8 +96,10 @@ a{color:var(--acc)}
 </style>
 </head>
 <body>
+<div id="top">
 <header><span class="dot" id="dot" title="link to the XIAO"></span><h1>XIAO · module</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
 <nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="wifi">WiFi</button><button data-t="prog">Firmware</button></nav>
+</div>
 <main>
 
 <section id="t-status">
