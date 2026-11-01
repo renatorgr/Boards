@@ -9,6 +9,7 @@
 // 2026-10-27 (Claude): the AiO v26's machine part and two of our modules on the Teensy's Machine tab.
 // 2026-10-31 (Claude): the update check reads the site's own firmware.json: the same build says "latest version
 //                      installed", a newer build of the same version says "new" (Teensy page, XIAO C3 and S3).
+// 2026-11-01 (Claude): the "On GitHub" wording: "the one installed", "newer than the installed one".
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -62,7 +63,7 @@ async function teensy(browser, port, q, name) {
  const what = "Teensy page " + (q || "(defaults)");
  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/" + q, what);
  await pg.waitForTimeout(2500);
- await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — latest version installed$/);
+ await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — the one installed$/);
  await expect(pg, what, "#hdr", /_AiO_WEB · 192\.168\.5\.126/);
  await expect(pg, what, "#simBar", /SIMULATOR/);
  if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
@@ -135,7 +136,7 @@ async function teensy(browser, port, q, name) {
   const what = "Teensy page, newer build on GitHub";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/", what, j => { j.teensy.built = LATER; });
   await pg.waitForTimeout(2500);
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — new \(installed: [\d.]+, built /);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   if (await pg.locator("#ghNote").isHidden()) fail.push(what + ": no note about the new firmware");
   await pg.close();
@@ -147,7 +148,7 @@ async function teensy(browser, port, q, name) {
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#hdr", /_XIAO_ESP32C3/);
   await expect(pg, what, "#mFw", /AiO/);
-  await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — latest version installed$/);
+  await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — the one installed$/);
   await shot(pg, "xiao-status");
   for (const t of ["log", "wifi", "prog"]) {
    await pg.click('nav button[data-t="' + t + '"]'); await pg.waitForTimeout(800);
@@ -163,7 +164,7 @@ async function teensy(browser, port, q, name) {
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?chip=s3", what, j => { if (j.xiao.S3) j.xiao.S3.built = LATER; });
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#hdr", /_XIAO_ESP32S3/);
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — new \(installed: /);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   await pg.close();
  }
