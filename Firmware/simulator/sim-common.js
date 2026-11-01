@@ -9,6 +9,7 @@
    drill module's PGN 237): cmd and sec as hex digits.
    2026-10-27 (Claude): the machine module can also be the AgOpenGPS AiO v26's machine part (PGN 237, sections 1-16), or two
    of our modules (.123 sections 1-16, .124 the rest), shown together as zMachine.ino does.
+   2026-11-01 (Claude): the sprayer boom is now 8 sections of 1 m (2 nozzles each), was 5 sections of 2-1-2-1-2 m.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -42,7 +43,7 @@ const CHOICES = {
  xiao:  {label: "XIAO", check: true, dflt: "1"},
  mach:  {label: "Machine module", dflt: "nano", options: [["nano", "our module (Sprayer_ESP32 or Seeder_ESP32)"], ["two", "two of our modules (.123 and .124)"],
   ["v26", "AgOpenGPS AiO v26 (its machine part)"], ["aog", "official Machine_UDP_v5"], ["0", "none"]]},
- impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "no-till seed drill, 19 sections"], ["sprayer", "sprayer, 8 m, 5 sections"]]},
+ impl:  {label: "Implement", dflt: "seeder", options: [["seeder", "no-till seed drill, 19 sections"], ["sprayer", "sprayer, 8 m, 8 sections"]]},
  park:  {label: "Tractor", dflt: "0", options: [["0", "driving, autosteer on"], ["1", "parked"]]},
  chip:  {label: "XIAO chip", dflt: "c3", options: [["c3", "ESP32-C3"], ["s3", "ESP32-S3"]]},
  wifi:  {label: "Wi-Fi", dflt: "sta", options: [["sta", "on the tractor network"], ["lost", "tractor network lost"], ["ap", "tractor network not set"]]},
@@ -75,7 +76,7 @@ const OFFLINE = {};
 // the implement the tractor pulls: a section of the machine module per row or per boom section, the width of a pass
 const IMPLEMENTS = {
  seeder:  {name: "seed drill", sections: 19, width: 19 * 0.18, nozzles: null},   // 19 sections (an actuator each), about 3.4 m (the 18 cm row width is a guess), no sprayer sensors
- sprayer: {name: "sprayer", sections: 5, width: 8, nozzles: [4, 2, 4, 2, 4]},     // 8 m boom, 5 sections with 4 2 4 2 4 nozzles
+ sprayer: {name: "sprayer", sections: 8, width: 8, nozzles: [2, 2, 2, 2, 2, 2, 2, 2]},   // 8 m boom, 8 sections of 1 m, 2 nozzles each
 };
 const IMPL = IMPLEMENTS[opt.impl], ALL_SECTIONS = 2 ** IMPL.sections - 1;    // up to 31 sections in a JS number's bit operations
 const nozzles = bits => IMPL.nozzles ? IMPL.nozzles.reduce((a, n, i) => a + ((bits >> i) & 1) * n, 0) : 0;   // nozzles open

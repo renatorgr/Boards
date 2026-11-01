@@ -11,7 +11,7 @@
 */
 // The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiCalibPost, apiTotalPost,
 // apiRestartPost, the program update on /api/update). The sections the program asks for and the sprayer's readings come
-// from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the 8 m sprayer's 5 sections
+// from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the 8 m sprayer's 8 sections
 // on the ESP32_Relay_X8 board (8 relays from the program's pin config, both sensors, on the tractor's Wi-Fi).
 // The own-network password is the module's default, agopengps.
 "use strict";
