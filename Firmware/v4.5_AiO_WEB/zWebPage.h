@@ -19,6 +19,8 @@
    31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed), red only without one.
    31 Oct 2026: the GitHub check also compares when the firmware was compiled (firmware.json on the simulator's site), so
    a new build of the same version (4.5) shows as new; Install from GitHub takes vX.Y_AiO_WEB.hex or .ino.hex.
+   1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
+   installed one; the Status note says which build this module runs.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -1207,7 +1209,9 @@ function verCmp(a,b){const x=String(a).split(".").map(Number),y=String(b).split(
 function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||"").trim()),i=m?MON.indexOf(m[1]):-1;   // "Oct 31 2026 19:28:53" -> "20261031192853"
  return i<0||i%3?"":m[3]+String(i/3+1).padStart(2,"0")+m[2].padStart(2,"0")+m[4]+m[5]+m[6];}
 function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0;}
-function verText(v,b){const k=builtKey(b);return v+(k?", built "+(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"");}
+function builtText(b){const k=builtKey(b);return k?(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"";}   // "31 Oct 2026 19:28"
+function verText(v,b){const t=builtText(b);return v+(t?", built "+t:"");}
+function runsText(){const t=lastS&&builtText(lastS.built);return t?"the build of "+t:"version "+runningVer();}   // what this module runs
 function runningVer(){const m=lastS&&/^v(\d+(?:\.\d+)*)_/.exec(lastS.fw);return m?m[1]:"";}
 async function ghList(path){const r=await fetch(GH_API+(path?"/"+path:"")+"?ref=main");/* a simple request: no CORS preflight */if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
 async function ghCheck(){
@@ -1225,13 +1229,13 @@ async function ghCheck(){
 function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(gh.built,lastS.built):NaN;}   // >0: GitHub's is newer
 function ghNewer(){return ghCmp()>0;}
 function renderGh(){
- const c=ghCmp(),nw=c>0,inst=lastS?verText(runningVer(),lastS.built):"";
+ const c=ghCmp(),nw=c>0;
  set("ghVer",ghState==="busy"?"checking…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":verText(gh.ver,gh.built)+(nw?(" — new (installed: "+inst+")"):c===0?" — latest version installed":c<0?(" — the installed one ("+inst+") is newer"):""),
+  !gh?"–":verText(gh.ver,gh.built)+(nw?" — newer than the installed one":c===0?" — the one installed":c<0?" — older than the installed one (the new .hex is not on GitHub yet)":""),
   nw?"ok":ghState==="fail"?"warn":"");
  $("ghInstall").disabled=!nw||busy;
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?("There is a new firmware on GitHub: "+verText(gh.ver,gh.built)+" (installed: "+inst+"). Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("New firmware on GitHub: "+verText(gh.ver,gh.built)+". This module runs "+runsText()+". Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
 }
 async function ghInstall(){

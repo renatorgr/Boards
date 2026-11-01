@@ -5,6 +5,8 @@
    only without one; a "Download the report" button on the Firmware tab, like the Teensy page's.
    31 Oct 2026: the GitHub check also compares when this XIAO's .bin was compiled (firmware.json on the simulator's
    site), so a new build of the same version (4.5) shows as new.
+   1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
+   installed one; the Status note says which build this XIAO runs.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -408,7 +410,9 @@ function verCmp(a,b){const x=String(a).split(".").map(Number),y=String(b).split(
 function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||"").trim()),i=m?MON.indexOf(m[1]):-1;   // "Oct 31 2026 19:27:45" -> "20261031192745"
  return i<0||i%3?"":m[3]+String(i/3+1).padStart(2,"0")+m[2].padStart(2,"0")+m[4]+m[5]+m[6];}
 function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0;}
-function verText(v,b){const k=builtKey(b);return v+(k?", built "+(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"");}
+function builtText(b){const k=builtKey(b);return k?(+k.slice(6,8))+" "+MON.substr(k.slice(4,6)*3-3,3)+" "+k.slice(0,4)+" "+k.slice(8,10)+":"+k.slice(10,12):"";}   // "31 Oct 2026 19:27"
+function verText(v,b){const t=builtText(b);return v+(t?", built "+t:"");}
+function runsText(){const t=lastState&&builtText(lastState.built);return t?"the build of "+t:"version "+runningVer();}   // what this XIAO runs
 function runningVer(){const m=lastState&&/^v(\d+(?:\.\d+)*)_/.exec(lastState.fw);return m?m[1]:"";}
 function myChip(){return chipName==="ESP32-S3"?"S3":chipName==="ESP32-C3"?"C3":"";}
 function ghBuilt(){const x=gh&&gh.xiao&&gh.xiao[myChip()];return x&&x.built||"";}   // when the .bin for this XIAO's chip was compiled
@@ -428,13 +432,13 @@ async function ghCheck(){
 function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(ghBuilt(),lastState.built):NaN;}   // >0: GitHub's is newer
 function ghNewer(){return ghCmp()>0;}
 function renderGh(){
- const c=ghCmp(),nw=c>0,inst=lastState?verText(runningVer(),lastState.built):"";
+ const c=ghCmp(),nw=c>0;
  set("ghVer",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":verText(gh.ver,ghBuilt())+(nw?(" — new (installed: "+inst+")"):c===0?" — latest version installed":c<0?(" — the installed one ("+inst+") is newer"):""),
+  !gh?"–":verText(gh.ver,ghBuilt())+(nw?" — newer than the installed one":c===0?" — the one installed":c<0?" — older than the installed one (the new .bin is not on GitHub yet)":""),
   nw?"ok":ghState==="fail"?"warn":"");
  $("ghInstall").disabled=!nw||busy;
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?("There is a new version on GitHub: "+verText(gh.ver,ghBuilt())+" (installed: "+inst+"). Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("New XIAO program on GitHub: "+verText(gh.ver,ghBuilt())+". This XIAO runs "+runsText()+". Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
 }
 async function ghInstall(){
