@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 1 Nov 2026 | Web page and XIAO page: the header and the tab bar stay at the top while the page scrolls, so the tabs are always at hand in a small window, such as a web card in AgOpenWeb. |
 | 1 Nov 2026 | XIAO page: the **Report for an analysis** card is the last one on the Firmware tab, as on the Teensy page. |
 | 1 Nov 2026 | Firmware tab, both pages: the **On GitHub** row says what is on GitHub and whether it is newer than, the same as, or older than the installed one (it mixed both in one sentence). The Status note for a new version says which build this module runs. |
 | 31 Oct 2026 | Web page and XIAO page: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed: the name says which) and red only without one; it was red with a plain GPS fix and orange with DGPS or RTK float. XIAO page: **Download the report** on its Firmware tab, like the Teensy page's. The compiled XIAO files (`v4.5_XIAO_ESP32_bin`) were rebuilt from this code (the old ones, from 21 Oct, showed the Teensy module's address as plain text, not as a link). **Install from GitHub** on both pages now also sees a new build of the same version (4.5): it compares when the file on GitHub was compiled with when the running program was, and the Teensy page takes the `.ino.hex` name the Arduino IDE gives. |
