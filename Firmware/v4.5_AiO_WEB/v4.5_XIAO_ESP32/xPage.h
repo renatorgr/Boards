@@ -12,6 +12,8 @@
    2 Nov 2026: the "Module (Teensy) firmware" card on the Firmware tab: a .hex (chosen, or from GitHub) sent to the
    Teensy over the link, and "Go back to the previous firmware" the Teensy keeps - for a module whose own page cannot
    be reached (POST /api/teensy-update, /api/teensy-revert).
+   2 Nov 2026 (later): error messages under the cards in red and bold, confirmations green, waits orange: the .note
+   rule came after the colour classes and painted every message grey (the Teensy page already had .note.bad etc.).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -65,6 +67,7 @@ dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:any
 .pill.bad{background:color-mix(in srgb,var(--bad) 16%,transparent)}
 .mono{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .note{color:var(--mute);font-size:13.5px;margin:6px 0 0}
+.note.bad{color:var(--bad);font-weight:600}.note.warn{color:var(--warn)}.note.ok{color:var(--ok)}   /* a refusal red (and bold), a wait orange, a success green: .note alone painted them all grey */
 .age{color:var(--mute);font-size:12.5px;font-weight:400;text-transform:none;letter-spacing:0;float:right}
 .secs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:8px}
 .secs span{height:22px;border-radius:5px;background:var(--soft);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--mute)}
