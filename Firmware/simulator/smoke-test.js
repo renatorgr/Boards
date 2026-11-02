@@ -15,6 +15,8 @@
 // spraying settings saved, the section widths from the program, the report downloaded.
 // 2026-11-02 (Claude): the sprayer page's Firmware tab: the .bin on main is the one installed; a wrong .bin (the
 // .merged.bin, another board) is refused; a newer build on GitHub is installed from GitHub, end to end.
+// 2026-11-02 (Claude): after a click, the answer and the module's events are waited for (up to 5 s) instead of a fixed
+// time: on GitHub's slower machines the event list (refreshed once a second) came after the check.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -62,6 +64,14 @@ const shot = async (pg, name) => { if (shots) await pg.screenshot({path: path.jo
 async function expect(pg, what, sel, re) {
  const t = (await pg.locator(sel).first().textContent() || "").trim();
  if (!re.test(t)) fail.push(what + ": " + sel + " shows «" + t + "», expected " + re);
+}
+// the same, for what comes a moment after a click (the module's answer, its events): waits up to ms for it
+async function expectSoon(pg, what, sel, re, ms = 5000) {
+ try {
+  await pg.waitForFunction(([s, src, fl]) => new RegExp(src, fl).test(((document.querySelector(s) || {}).textContent || "").trim()),
+   [sel, re.source, re.flags], {timeout: ms});
+ } catch (e) { /* reported by expect() below */ }
+ await expect(pg, what, sel, re);
 }
 
 async function teensy(browser, port, q, name) {
@@ -199,8 +209,8 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "seeder-status");
   await pg.fill("#first", "0");
   await pg.click("button[onclick='saveRelays()']"); await pg.waitForTimeout(1500);
-  await expect(pg, what, "#msgRelays", /done/);
-  await expect(pg, what, "#log", /relays follow the program's pin config/);
+  await expectSoon(pg, what, "#msgRelays", /done/);
+  await expectSoon(pg, what, "#log", /relays follow the program's pin config/);
   await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
   await pg.close();
  }
@@ -232,20 +242,21 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#tool", /^8 sections of 1\.00 m$/);
   await shot(pg, "sprayer-settings");
   await pg.click("button[onclick='saveCalib()']"); await pg.waitForTimeout(800);
-  await expect(pg, what, "#msgCalib", /done/);
-  await expect(pg, what, "#log", /saved: pressure sensor \+ flow meter, 450\.0 pulses\/L/);
+  await expectSoon(pg, what, "#msgCalib", /done/);
+  await expectSoon(pg, what, "#log", /saved: pressure sensor \+ flow meter, 450\.0 pulses\/L/);
   await pg.fill("#rate", "200");
   await pg.click("button[onclick='saveSpray()']"); await pg.waitForTimeout(800);
-  await expect(pg, what, "#msgSpray", /done/);
-  await expect(pg, what, "#log", /saved: target 200 L\/ha, nozzles every 0\.50 m, 0\.80 L\/min at 3\.0 bar, 1\.0-6\.0 bar, flow \+-20 %/);
+  await expectSoon(pg, what, "#msgSpray", /done/);
+  await expectSoon(pg, what, "#log", /saved: target 200 L\/ha, nozzles every 0\.50 m, 0\.80 L\/min at 3\.0 bar, 1\.0-6\.0 bar, flow \+-20 %/);
   await pg.fill("#pLow", "7");
   await pg.click("button[onclick='saveSpray()']"); await pg.waitForTimeout(800);
-  await expect(pg, what, "#msgSpray", /the minimum pressure must be below the maximum/);
+  await expectSoon(pg, what, "#msgSpray", /the minimum pressure must be below the maximum/);
   await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
-  await expect(pg, what, "#msgTotal", /done/);
-  await expect(pg, what, "#total", /^0\.\d L$/);
-  await expect(pg, what, "#log", /total set to 0 from the page/);
+  await expectSoon(pg, what, "#msgTotal", /done/);
+  await expectSoon(pg, what, "#total", /^0\.\d L$/);
+  await expectSoon(pg, what, "#log", /total set to 0 from the page/);
   await pg.click('nav button[data-t="work"]'); await pg.waitForTimeout(1200);
+  try { await pg.waitForSelector("#lha.off-target", {timeout: 5000}); } catch (e) { /* reported below */ }
   if (!(await pg.locator("#lha.off-target").count())) fail.push(what + ": the rate is not shown off target with a 200 L/ha target");
   await expect(pg, what, "#need", /^\d\.\d bar needed, slow down to \d\.\d km\/h$/);
   await pg.click('nav button[data-t="module"]'); await pg.waitForTimeout(700);
