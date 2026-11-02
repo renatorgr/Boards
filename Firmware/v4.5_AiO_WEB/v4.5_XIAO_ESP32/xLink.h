@@ -3,6 +3,8 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
    (AgOpenGPS-Official, GPL v3).
+   2 Nov 2026: PGN 145, a firmware update for the Teensy sent over the link from this page (fwBegin, fwBlock, fwSend,
+   the Teensy's answers), and "go back to the previous firmware".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -14,9 +16,14 @@
 //                    AgOpenGPS packets, its status and its messages
 //                    text lines ending in "\n": shown in the Teensy log as "[xiao] > ..."
 //                    PGN 143 (source 0x50): our state as a short JSON (program, WiFi), for the Teensy page
+//                    PGN 144 (source 0x50): a command: 1 = the module's subnet a.b.c
+//                    PGN 145 (source 0x50): a firmware update for the Teensy (2 Nov 2026): [1][flags][size LE32][name]
+//                    begins it, [2][block LE16][up to 252 bytes of the .hex] one block, [3] end, [4] cancel, [5] go
+//                    back to the previous firmware the Teensy keeps. Each one is answered before the next is sent.
 //   Teensy -> XIAO   AgOpenGPS packets from UDP 8888 (source 0x7F): PGN 254, 239, 229, 200, ...
 //                    PGN 141 (source 0x7E): the module status JSON, once a second, in pieces
 //                    PGN 142 (source 0x7E): one line of the module's [status] log
+//                    PGN 145 (source 0x7E): the answer to ours: [command][block LE16][0 ok / 1 refused][text]
 // Every frame: [0x80][0x81][source][pgn][length][data...][checksum = low 8 bits of the sum of the
 // bytes from source to the last data byte]. Frames with a wrong checksum are dropped.
 //
@@ -42,6 +49,8 @@
 #define LINK_PGN_LOG            142
 #define LINK_PGN_INFO           143
 #define LINK_PGN_CMD            144      // XIAO -> Teensy: a command, 1 = the module's subnet a.b.c (2026-10-24)
+#define LINK_PGN_FW             145      // both ways: a firmware update for the Teensy from this page (2026-11-02)
+#define LINK_FW_BLOCK           252      // bytes of the .hex file per frame (255 - command - block number)
 
 struct LinkLogLine
 {
@@ -125,6 +134,35 @@ public:
         sendFrame(LINK_SRC_XIAO, LINK_PGN_CMD, d, 4);
     }
 
+    // ---- a firmware update for the Teensy over the link (PGN 145, 2 Nov 2026): the .hex file in blocks, each
+    // answered by the Teensy before the next goes (the program waits for fwAck). The Teensy's last answer:
+    volatile bool fwAck = false;         // an answer arrived (the program clears it before each frame)
+    uint8_t  fwCmd = 0;                  // to which command
+    uint16_t fwSeq = 0;                  // which block
+    uint8_t  fwCode = 0;                 // 0 = ok, 1 = refused
+    char     fwText[160] = "";           // why, or the size the Teensy checked
+
+    void fwBegin(bool force, uint32_t size, const char* name)
+    {
+        uint8_t d[6 + 40];
+        d[0] = 1; d[1] = force ? 1 : 0;
+        memcpy(d + 2, &size, 4);                                   // little endian on both sides
+        size_t k = 0;
+        for (const char* p = name; *p && k < 40; p++) if ((uint8_t)*p >= 0x20 && (uint8_t)*p <= 0x7E) d[6 + k++] = (uint8_t)*p;
+        sendFrame(LINK_SRC_XIAO, LINK_PGN_FW, d, (uint8_t)(6 + k));
+    }
+    void fwBlock(uint16_t seq, const uint8_t* p, uint8_t n)      // n <= LINK_FW_BLOCK
+    {
+        uint8_t d[3 + LINK_FW_BLOCK];
+        d[0] = 2; d[1] = (uint8_t)seq; d[2] = (uint8_t)(seq >> 8);
+        memcpy(d + 3, p, n);
+        sendFrame(LINK_SRC_XIAO, LINK_PGN_FW, d, (uint8_t)(3 + n));
+    }
+    void fwSend(uint8_t cmd)                                     // 3 = end, 4 = cancel, 5 = the previous firmware back
+    {
+        sendFrame(LINK_SRC_XIAO, LINK_PGN_FW, &cmd, 1);
+    }
+
     void sendFrame(uint8_t src, uint8_t pgn, const uint8_t* data, uint8_t len)
     {
         uint8_t b[6 + 255];
@@ -177,6 +215,7 @@ private:
         lastFrameMs = now | 1;
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_STATUS && n >= 3) { statusPiece(d, n, now); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_LOG && n >= 8)     { logLine(d, n); return; }
+        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_FW && n >= 4)      { fwAnswer(d, n); return; }
         pgnCount[pgn]++;
         if (pgn == 254 && n >= 8)
         {
@@ -218,6 +257,18 @@ private:
             }
             else statusBroken++;
         }
+    }
+
+    // PGN 145 from the Teensy: [command][block LE16][code][text]
+    void fwAnswer(const uint8_t* d, uint8_t n)
+    {
+        fwCmd  = d[0];
+        fwSeq  = (uint16_t)(d[1] | (d[2] << 8));
+        fwCode = d[3];
+        size_t k = 0;
+        for (uint8_t i = 4; i < n && k < sizeof(fwText) - 1; i++) if (d[i] >= 0x20 && d[i] <= 0x7E) fwText[k++] = (char)d[i];
+        fwText[k] = '\0';
+        fwAck = true;
     }
 
     // PGN 142: [seq LE][ms LE][text]. The last LINK_LOG_LINES lines, by sequence number.

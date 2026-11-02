@@ -2,11 +2,14 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-31 (Claude): the pretend XIAO was compiled when the .bin for its chip on main was (firmware.json).
+   2026-11-02 (Claude): the module's firmware from this page: a .hex sent on to the Teensy over the link (POST
+   /api/teensy-update) and the Teensy's previous firmware put back (POST /api/teensy-revert).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The XIAO's answers (v4.5_XIAO_ESP32.ino apiState, apiTeensy, apiLog, apiSettings*, apiScan, apiSubnet,
-// apiRestart, the program update on /update), with the module's status from the pretend Teensy of
+// apiRestart, the program update on /update, the module's firmware over the link on /api/teensy-update and
+// /api/teensy-revert), with the module's status from the pretend Teensy of
 // sim-common.js (its short copy, as the Teensy sends it to the XIAO once a second). The XIAO network password
 // is the XIAO's default, agopengps.
 "use strict";
@@ -124,14 +127,38 @@ S.hook((method, path, q, body) => {
   if (b.pw !== X.pass) r = S.err(403, "wrong password");
   else { event("Restart requested from the page"); restart("restart requested", 3000); r = S.ok(); }
  }
+ else if (post && path === "/api/teensy-revert") {   // the Teensy's answer to our PGN 145 command 5 (zXiao.ino)
+  if (b.pw !== X.pass) r = S.err(403, "wrong password");
+  else if (M.offline()) r = S.err(409, "no data from the module: is the Teensy on and the link working?");
+  else {
+   r = M.revert("xiao");
+   event(r.code === 200 ? "Module firmware: the Teensy goes back to its previous firmware and restarts" : "Going back to the previous module firmware REFUSED: " + r.json.error);
+  }
+ }
  S.save(KEY, X); M.save();
  return r;
 });
-// the program update (POST /update?pw=, the file in a form): the password, and the chip it is made for
+// the program update (POST /update?pw=, the file in a form): the password, and the chip it is made for; the module's
+// firmware (POST /api/teensy-update?pw=&force=&size=): the .hex goes on to the pretend Teensy, which checks it as it does
+// a file from its own page (zXiao.ino, zOTA.ino), and answers over the link
 S.hookXhr(async (path, q, body) => {
  if (T() < 0) return S.OFFLINE;
- if (path !== "/update") return S.err(404, "Not found");
  const f = body instanceof FormData ? body.get("file") : null;
+ if (path === "/api/teensy-update") {
+  let r;
+  if (q.get("pw") !== X.pass) r = S.err(403, "wrong password");
+  else if (M.offline()) r = S.err(409, "no data from the module: is the Teensy on and the link working?");
+  else {
+   event("Module firmware: sending " + (f && f.name || "file") + " (" + Math.round((f ? f.size : 0) / 1024) + " kB) to the Teensy over the link");
+   r = await M.ota(new URLSearchParams("force=" + (q.get("force") || "0")), f, "xiao");
+   if (r.code === 200) event("Module firmware: " + r.json.size + " bytes checked by the Teensy, it is installing and restarting");
+   M.save();
+  }
+  if (r.code !== 200) event("Module firmware update REFUSED: " + r.json.error);
+  S.save(KEY, X);
+  return r;
+ }
+ if (path !== "/update") return S.err(404, "Not found");
  let e = "";
  if (q.get("pw") !== X.pass) e = "wrong password";
  else if (!f || !f.size) e = "no file";

@@ -3,11 +3,13 @@
    FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from the code of Niels A. Moseley and
    Frank Boesing (public domain, notes kept below).
    Change 2026 by Claude (Anthropic) for renatorgr: FLASH_RESERVE for the Teensy 4.1 (see below).
+   2 Nov 2026 (Claude for renatorgr): flash_keep_start / flash_keep_end, the sectors flash_move() leaves alone
+   (the copy of the previous firmware kept by zOTA.ino).
    Licence: public domain (FlasherX); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 //******************************************************************************
 // FlasherX (https://github.com/joepasquariello/FlasherX, public domain), used by zOTA.ino.
-// Only change: FLASH_RESERVE for Teensy 4.1 (see below).
+// Changes: FLASH_RESERVE for Teensy 4.1, and flash_keep_start / flash_keep_end (see below).
 //******************************************************************************
 // Flash write/erase functions (TLC/T3x/T4x/TMM), LMEM cache functions for T3.6
 //******************************************************************************
@@ -140,6 +142,9 @@ void eepromemu_flash_erase_64K_block(void *addr);
 
 // functions used to move code from buffer to program flash (must be in RAM)
 RAMFUNC void flash_move( uint32_t dst, uint32_t src, uint32_t size );
+// AiO_WEB (2 Nov 2026): flash_move() leaves the sectors in [flash_keep_start, flash_keep_end) alone when it erases
+// the rest of the flash after the copy (the copy of the previous firmware, zOTA.ino). Both 0 = erase everything.
+extern uint32_t flash_keep_start, flash_keep_end;
 
 // functions that can be in flash
 int  flash_write_block( uint32_t addr, char *data, uint32_t count );

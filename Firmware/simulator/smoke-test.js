@@ -18,6 +18,8 @@
 // 2026-11-02 (Claude): after a click, the answer and the module's events are waited for (up to 5 s) instead of a fixed
 // time: on GitHub's slower machines the event list (refreshed once a second) came after the check.
 // 2026-11-02 (Claude): "Search for networks" on the sprayer and seed drill pages (Sprayer_ESP32 v0.10.1, Seeder_ESP32 v0.2.1).
+// 2026-11-02 (Claude): the previous firmware the Teensy keeps: offered and put back after the update on the Teensy page;
+// the XIAO page installs the firmware's .hex on the parked module over the link and puts the previous one back.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -123,7 +125,10 @@ async function teensy(browser, port, q, name) {
   const pg = await teensy(browser, port, q, name);
   await pg.close();
  }
- // a parked tractor: the settings saved, a gyro calibration, the firmware's own .hex installed
+ // the firmware's own .hex, if the version folder has one (the Arduino IDE's export, vX.Y_AiO_WEB.ino.hex)
+ const hex = fs.readdirSync(path.join(__dirname, "..")).filter(d => /^v[\d.]+_AiO_WEB$/.test(d)).sort().map(d => path.join(__dirname, "..", d))
+  .map(d => fs.readdirSync(d).filter(f => f.endsWith(".hex")).map(f => path.join(d, f))).flat().pop();
+ // a parked tractor: the settings saved, a gyro calibration, the firmware's own .hex installed, the previous one put back
  {
   const what = "Teensy page, parked";
   const pg = await teensy(browser, port, "?park=1", "parked");
@@ -134,16 +139,22 @@ async function teensy(browser, port, q, name) {
   await pg.click('nav button[data-t="imu"]'); await pg.waitForTimeout(300);
   await pg.click("#tmCalBtn"); await pg.waitForTimeout(2500);
   await expect(pg, what, "#tmCal2", /in progress|starting/);
-  const hex = fs.readdirSync(path.join(__dirname, "..")).filter(d => /^v[\d.]+_AiO_WEB$/.test(d)).sort().map(d => path.join(__dirname, "..", d))
-   .map(d => fs.readdirSync(d).filter(f => f.endsWith(".hex")).map(f => path.join(d, f))).flat().pop();
   if (hex) {
    await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(300);
+   await expect(pg, what, "#prevFw", /^none kept yet/);
+   if (!(await pg.locator("#revert").isDisabled())) fail.push(what + ": Go back is offered with no previous firmware kept");
    await pg.setInputFiles("#hexFile", hex); await pg.waitForTimeout(1500);
    await expect(pg, what, "#hexInfo", /_AiO_WEB, built/);
    await pg.click("#install");
    await pg.waitForFunction(() => /Updated\. Running/.test(document.getElementById("fwMsg").textContent), null, {timeout: 60000}).catch(() => {});
    await expect(pg, what, "#fwMsg", /Updated\. Running/);
+   await expect(pg, what, "#prevFw", /_AiO_WEB, built/);   // the firmware that ran before is kept
    await shot(pg, "parked-updated");
+   await pg.click("#revert");
+   await pg.waitForFunction(() => /Going back/.test(document.getElementById("fwMsg").textContent), null, {timeout: 5000}).catch(() => {});
+   await pg.waitForFunction(() => /Updated\. Running/.test(document.getElementById("fwMsg").textContent), null, {timeout: 60000}).catch(() => {});
+   await expect(pg, what, "#fwMsg", /Updated\. Running/);
+   await expect(pg, what, "#prevFw", /^none kept yet/);    // used up by going back
   }
   await pg.close();
  }
@@ -172,6 +183,35 @@ async function teensy(browser, port, q, name) {
    if (t === "wifi") { await pg.click("#scan"); await pg.waitForTimeout(3500); await expect(pg, what, "#scanMsg", /networks/); }
    await shot(pg, "xiao-" + t);
   }
+  await pg.close();
+ }
+ // the XIAO page with the module parked: the firmware's own .hex installed on the module over the link, then the
+ // previous firmware put back (the XIAO password typed in the Update or restart card)
+ if (hex) {
+  const what = "XIAO page, module firmware over the link";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?park=1", what);
+  pg.on("dialog", d => d.accept());
+  await pg.waitForTimeout(2500);
+  await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(800);
+  await expect(pg, what, "#tFw", /_AiO_WEB/);
+  await expectSoon(pg, what, "#tGh", /the one the module runs$/);
+  await expect(pg, what, "#tPrev", /^none kept yet/);
+  if (!(await pg.locator("#tRevert").isDisabled())) fail.push(what + ": Go back is offered with no previous firmware kept");
+  if (!(await pg.locator("#tGhInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with the same build");
+  await pg.fill("#pwP", "agopengps");
+  await pg.setInputFiles("#tHexFile", hex); await pg.waitForTimeout(1500);
+  await expect(pg, what, "#tHexInfo", /_AiO_WEB, built/);
+  await pg.click("#tInstall");
+  await pg.waitForFunction(() => /^Done\./.test(document.getElementById("tMsg").textContent), null, {timeout: 60000}).catch(() => {});
+  await expect(pg, what, "#tMsg", /^Done\. The module runs/);
+  await expect(pg, what, "#tPrev", /_AiO_WEB, built/);
+  await expectSoon(pg, what, "#logX", /checked by the Teensy/, 8000);   // the XIAO's own messages (polled every few seconds on any tab)
+  await shot(pg, "xiao-module-updated");
+  await pg.click("#tRevert");
+  await pg.waitForFunction(() => /going back/.test(document.getElementById("tMsg").textContent), null, {timeout: 5000}).catch(() => {});
+  await pg.waitForFunction(() => /^Done\./.test(document.getElementById("tMsg").textContent), null, {timeout: 60000}).catch(() => {});
+  await expect(pg, what, "#tMsg", /^Done\. The module runs/);
+  await expect(pg, what, "#tPrev", /^none kept yet/);
   await pg.close();
  }
  // an S3 XIAO when only the S3's .bin on GitHub is a newer build: new for it (a C3 would stay "installed")

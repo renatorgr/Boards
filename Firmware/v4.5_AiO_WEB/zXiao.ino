@@ -7,6 +7,9 @@
    which notices a GNSS receiver on the port while it is set to the XIAO or off.
    2026-10-26 (Claude for renatorgr): the GPS2 port is automatic (zDualF9P.ino): the bridge is on while the
    port is not the second F9P's.
+   2026-11-02 (Claude for renatorgr): PGN 145, a firmware update for the Teensy from the XIAO page over the link
+   (the .hex in blocks, each answered; the same checks and install as from the module's own page, zOTA.ino), and
+   "go back to the previous firmware": for a module whose own page cannot be reached.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -49,8 +52,15 @@
 //   XIAO -> Teensy  PGN 144: a command for the Teensy, NOT sent to UDP 9999: data = [1][a][b][c] sets
 //                   the module's subnet to a.b.c (as AgIO's PGN 201; netSetSubnet, zEthernet.ino) and
 //                   restarts the Teensy (2026-10-24: from the XIAO page, for a module on another network).
+//   XIAO -> Teensy  PGN 145 (2026-11-02): a firmware update from the XIAO page, for a module whose own page cannot
+//                   be reached (NOT sent to UDP 9999): data = [1][flags][file size, 4 bytes LE][file name] begins it
+//                   (flags bit 0 = "other firmware", no family marker needed); [2][block number, 2 bytes LE][up to
+//                   252 bytes of the .hex file] one block, in order from 1; [3] the end (every check, install,
+//                   restart); [4] cancel; [5] go back to the previous firmware kept in the flash (zOTA.ino).
+//   Teensy -> XIAO  PGN 145: the answer to each of those, before the XIAO sends the next:
+//                   data = [command][block number, 2 bytes LE][0 = ok, 1 = refused][text: why, or the size].
 //   These go out only when Serial2's transmit buffer has room to spare (XIAO_TX_RESERVE), so the
-//   AgOpenGPS packets for the XIAO always come first.
+//   AgOpenGPS packets for the XIAO always come first (the PGN 145 answers wait for room instead).
 //
 // The XIAO is powered from the board's 3.3 V: never plug its USB-C (with 5 V) while it is on the board.
 // The Teensy cannot program the XIAO (its BOOT / RESET pins are not wired): program it over USB-C
@@ -76,6 +86,8 @@
 #define XIAO_PGN_LOG            142     // Teensy -> XIAO: one log line
 #define XIAO_PGN_INFO           143     // XIAO -> Teensy: XIAO info JSON (not sent to UDP)
 #define XIAO_PGN_CMD            144     // XIAO -> Teensy: a command (not sent to UDP): 1 = subnet a.b.c
+#define XIAO_PGN_FW             145     // both ways: a firmware update for the Teensy from the XIAO page (not sent to UDP)
+#define XIAO_FW_TIMEOUT_MS      15000   // nothing from the XIAO for this long during an update: given up
 #define XIAO_INFO_MAX           250
 
 static const char XIAO_HELLO[] = "ESP32-hello";
@@ -223,6 +235,172 @@ static void xiaoTakeCmd(const uint8_t* d, uint8_t n)
     StatusLog.line("[xiao] unknown command from the XIAO: PGN 144, command %u, %u bytes", n ? d[0] : 0, n);
 }
 
+// ---------------------------------------------------------------- the Teensy's firmware from the XIAO page
+// PGN 145 (2 Nov 2026): the XIAO page sends the .hex file over the link in blocks of up to 252 bytes, each one
+// answered before the XIAO sends the next (so nothing arrives while a flash sector is being written, when the
+// UART is not read), and the Teensy checks and installs it with the same code as a file from its own page
+// (zOTA.ino: otaBegin, otaFeed, otaFinish, otaInstall). For a module whose own page cannot be reached (its
+// Ethernet, its network, a bug in the page): the XIAO is on WiFi. While the file comes in the loop stops in
+// xiaoFwRun() with the steering off, as for an update from the page; a 2 MB .hex takes about a minute.
+// Command 5 puts the previous firmware kept in the flash back (zOTA.ino).
+struct XiaoFw
+{
+    bool        pending;       // a begin was accepted: xiaoProcess() runs xiaoFwRun()
+    bool        active;        // the blocks are coming (xiaoFwRun)
+    bool        force;         // "other firmware": no family marker needed
+    uint16_t    expect;        // the next block number
+    uint32_t    size, got, lastMs;
+    const char* err;
+    char        name[32];
+};
+static XiaoFw xfw;
+
+// The answer to the XIAO: [command][block number LE][0 ok / 1 refused][text]. Waits for room in the transmit
+// buffer (up to 100 ms, then write() waits itself): during an update the loop is stopped anyway, and a refusal
+// is a few bytes once.
+static void xiaoFwAnswer(uint8_t cmd, uint16_t seq, uint8_t code, const char* text)
+{
+    uint8_t d[4 + 160];
+    d[0] = cmd; d[1] = (uint8_t)seq; d[2] = (uint8_t)(seq >> 8); d[3] = code;
+    size_t t = text ? strlen(text) : 0;
+    if (t > sizeof(d) - 4) t = sizeof(d) - 4;
+    memcpy(d + 4, text, t);
+    const uint8_t len = (uint8_t)(4 + t);
+    const uint32_t t0 = millis();
+    while (SerialXIAO.availableForWrite() < (int)len + 6 && millis() - t0 < 100) { wdtFeed(); delayMicroseconds(200); }
+    uint8_t h[5] = {0x80, 0x81, XIAO_SRC_TEENSY, XIAO_PGN_FW, len};
+    uint8_t sum = XIAO_SRC_TEENSY + XIAO_PGN_FW + len;
+    for (uint8_t i = 0; i < len; i++) sum += d[i];
+    SerialXIAO.write(h, 5);
+    SerialXIAO.write(d, len);
+    SerialXIAO.write(&sum, 1);
+    xiao.txBytes += len + 6;
+}
+
+static const char* xiaoFwRefusal()                 // the checks an update from the page makes too (zWeb.ino)
+{
+    if (autosteerEngaged()) return "autosteer is engaged - disengage it first";
+    if (tractorMoving())    return "the tractor is moving - stop first (on a bench, switch simulator mode on)";
+    return nullptr;
+}
+
+// A PGN 145 frame from the XIAO (from xfScan)
+static void xiaoTakeFw(const uint8_t* d, uint8_t n)
+{
+    if (n < 1) return;
+    const uint8_t  cmd = d[0];
+    const uint16_t seq = n >= 3 ? (uint16_t)(d[1] | (d[2] << 8)) : 0;
+    if (cmd == 1)                                                   // begin: checked here, run by xiaoFwRun()
+    {
+        if (xfw.active || xfw.pending) { xiaoFwAnswer(1, 0, 1, "an update is already running"); return; }
+        uint32_t size = 0;
+        if (n >= 6) memcpy(&size, d + 2, 4);
+        const char* why = n < 6 ? "bad begin frame" : xiaoFwRefusal();
+        if (!why && (size < 1000 || size > 8000000)) why = "no file, or file size not plausible";
+        if (!why) why = otaBegin();
+        if (why)
+        {
+            StatusLog.line("[xiao] firmware update from the XIAO page REFUSED: %s (old firmware kept)", why);
+            xiaoFwAnswer(1, 0, 1, why);
+            return;
+        }
+        memset(&xfw, 0, sizeof(xfw));
+        xfw.force  = (d[1] & 1) != 0;
+        xfw.size   = size;
+        xfw.expect = 1;
+        uint8_t k = 0;
+        for (uint8_t i = 6; i < n && k < sizeof(xfw.name) - 1; i++) if (d[i] >= 0x20 && d[i] <= 0x7E) xfw.name[k++] = (char)d[i];
+        xfw.pending = true;                                         // xiaoProcess() takes it from here
+        return;
+    }
+    if (cmd == 5)                                                   // the previous firmware back (zOTA.ino)
+    {
+        const char* why = xiaoFwRefusal();
+        if (!why) why = otaRevertCheck();
+        if (why)
+        {
+            StatusLog.line("[xiao] going back to the previous firmware REFUSED: %s", why);
+            xiaoFwAnswer(5, 0, 1, why);
+            return;
+        }
+        const char *pf, *pb;
+        uint32_t ps;
+        otaPrevGet(&pf, &pb, &ps);
+        steerSafeOff();
+        StatusLog.line("[xiao] going back to the previous firmware from the XIAO page: %s, built %s (%lu bytes), installing and restarting, steering off",
+                       pf, pb, (unsigned long)ps);
+        xiaoFwAnswer(5, 0, 0, "");
+        SerialXIAO.flush();
+        delay(50);
+        otaRevertInstall();                                         // does not return
+    }
+    if (!xfw.active)
+    {
+        if (cmd == 2 || cmd == 3) xiaoFwAnswer(cmd, seq, 1, "no update running");
+        return;
+    }
+    xfw.lastMs = millis();
+    if (cmd == 2)                                                   // a block of the file
+    {
+        if (seq + 1 == xfw.expect) { xiaoFwAnswer(2, seq, 0, ""); return; }   // the last block again: its answer was lost
+        if (seq != xfw.expect) xfw.err = "blocks out of order (link error) - try again";
+        else                   xfw.err = otaFeed(d + 3, n - 3);
+        if (!xfw.err) { xfw.got += n - 3; xfw.expect++; xiaoFwAnswer(2, seq, 0, ""); return; }
+    }
+    else if (cmd == 3)                                              // the end: every check, then install
+    {
+        uint32_t size = 0;
+        xfw.err = otaFinish(xfw.force, &size);
+        if (!xfw.err)
+        {
+            StatusLog.line("[xiao] firmware update: %lu bytes checked, installing and restarting", (unsigned long)size);
+            char t[16];
+            snprintf(t, sizeof(t), "%lu", (unsigned long)size);
+            xiaoFwAnswer(3, 0, 0, t);
+            SerialXIAO.flush();
+            delay(50);
+            otaInstall(size);                                       // does not return
+        }
+    }
+    else if (cmd == 4) xfw.err = "cancelled from the XIAO page";
+    else return;
+    xiaoFwAnswer(cmd, seq, 1, xfw.err);                             // refused: the old firmware keeps running
+    xfw.active = false;
+}
+
+// The update takes over the loop (from xiaoProcess(), after an accepted begin): steering off, watchdog fed, the
+// network stack going on. Every byte from the XIAO goes through the frame reader, so the blocks reach
+// xiaoTakeFw(). Ends with the install (a restart) or an error; XIAO_FW_TIMEOUT_MS without a block = given up.
+static void xiaoFwRun()
+{
+    xfw.pending = false;
+    xfw.active  = true;
+    xfw.lastMs  = millis();
+    steerSafeOff();
+    StatusLog.line("[xiao] firmware update from the XIAO page: receiving %s (%lu bytes) over the XIAO link, steering off",
+                   xfw.name[0] ? xfw.name : "a .hex file", (unsigned long)xfw.size);
+    xiaoFwAnswer(1, 0, 0, "");
+    loopStep = 20;                                                  // for the watchdog report (zSafety.ino)
+    while (xfw.active)
+    {
+        wdtFeed();
+        netPoll();
+        while (xfw.active && SerialXIAO.available() > 0) xiaoByte((uint8_t)SerialXIAO.read());
+        if (xfw.active && millis() - xfw.lastMs > XIAO_FW_TIMEOUT_MS)
+        {
+            xfw.err = "upload stopped (timeout): nothing from the XIAO for 15 s";
+            xiaoFwAnswer(2, xfw.expect, 1, xfw.err);
+            xfw.active = false;
+        }
+        if (xfw.active) delayMicroseconds(50);
+    }
+    StatusLog.line("[xiao] firmware update REFUSED: %s (old firmware kept)", xfw.err ? xfw.err : "stopped");
+    xfLen = 0;
+    xtextLen = 0;
+    xtextBad = false;
+    loopStep = 7;
+}
+
 // one frame of the Teensy's own to the XIAO, only with room to spare in the transmit buffer
 static bool xiaoSendOwn(uint8_t pgn, const uint8_t* data, uint8_t len)
 {
@@ -314,6 +492,7 @@ static uint8_t xfScan()
             if (!xiaoDetected)                 xiao.beforeHello++;   // no hello yet (or not for 10 s): not sent
             else if (xf[3] == XIAO_PGN_INFO)   xiaoTakeInfo(xf + 5, xf[4]);   // kept here, not sent to UDP
             else if (xf[3] == XIAO_PGN_CMD)    xiaoTakeCmd(xf + 5, xf[4]);    // a command: the subnet (not sent to UDP)
+            else if (xf[3] == XIAO_PGN_FW)     xiaoTakeFw(xf + 5, xf[4]);     // a firmware update for the Teensy (not sent to UDP)
             else                               { xiaoSendFrame(xf, need); sent++; }
             xfShift(need);
         }
@@ -398,6 +577,8 @@ void xiaoProcess()
         frames += xiaoByte((uint8_t)SerialXIAO.read());
         xRxMs = now;
     }
+
+    if (xfw.pending) xiaoFwRun();              // a firmware update from the XIAO page: takes over the loop until done
 
     xiaoTxTick(now);                           // status and log lines to the XIAO
 }

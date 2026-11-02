@@ -22,6 +22,8 @@
    1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
    installed one; the Status note says which build this module runs.
    1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
+   2 Nov 2026: "Previous firmware" on the Firmware tab, with "Go back to the previous firmware" (POST /api/revert): the
+   firmware that ran before the last update, kept in the Teensy's flash; no file or internet needed.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -412,7 +414,9 @@ a{color:var(--acc)}
  <div class="row"><button class="act" id="install" data-lock="m" disabled>Install</button></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
- <p class="note">Only with autosteer off and the tractor stopped (on a bench, with the simulator mode on or no WAS, also while the program's simulator drives). The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation <b>do not switch the power off</b>. The saved settings are kept.</p></div>
+ <dl style="margin-top:8px"><dt>Previous firmware</dt><dd id="prevFw">–</dd></dl>
+ <div class="row"><button class="sec" id="revert" data-lock="m" disabled>Go back to the previous firmware</button></div>
+ <p class="note">Only with autosteer off and the tractor stopped (on a bench, with the simulator mode on or no WAS, also while the program's simulator drives). The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation <b>do not switch the power off</b>. The saved settings are kept. The firmware that ran before the last update is kept in the Teensy's flash: going back to it needs no file and no internet (also from the XIAO page). Nothing is kept until the first update made with this firmware.</p></div>
 <div class="card"><h2>Report for an analysis</h2>
  <p class="note">Puts the status, the messages, the settings, the GPS receiver and the Teensy's inner workings in one file, to send when something goes wrong. The file is downloaded by this browser.</p>
  <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div>
@@ -644,6 +648,7 @@ function render(s){
  renderGh();
  renderLock(s);
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
+ const pv=s.prev;set("prevFw",pv?pv.fw.split(" ")[0]+", built "+pv.built:"none kept yet (kept from the next update on)");if(!busy)$("revert").disabled=!pv;
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
@@ -1162,8 +1167,19 @@ $("install").addEventListener("click",()=>{
  if(!f.name.toLowerCase().endsWith(".hex")){fwMsg("Choose a .hex file.","bad");return;}
  const b=hexBuild&&hexBuild.fw?" ("+hexBuild.fw+", built "+hexBuild.built+")":"";
  if(!confirm(("Install "+f.name+b+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
- busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
+ busy=true;$("install").disabled=true;$("ghInstall").disabled=true;$("revert").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  sendHex(f,$("force").checked,0);
+});
+// The previous firmware back (POST /api/revert): the Teensy has it in its flash, nothing is sent
+$("revert").addEventListener("click",async()=>{
+ const pv=lastS&&lastS.prev;if(!pv||busy)return;
+ if(!confirm(("Go back to the previous firmware, "+pv.fw.split(" ")[0]+" built "+pv.built+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
+ busy=true;$("revert").disabled=true;$("install").disabled=true;$("ghInstall").disabled=true;fwMsg("Asking the Teensy…");
+ const back=()=>{busy=false;$("revert").disabled=false;$("install").disabled=!$("hexFile").files[0];renderGh();};
+ try{const j=await getJ("/api/revert",{method:"POST"});
+  if(j.ok){upBefore=lastUp;waitingBoot=true;setOnline(false);fwMsg(("Going back to "+pv.fw.split(" ")[0]+", built "+pv.built+". Installing and restarting — do not switch the power off…"),"warn");}
+  else{back();fwMsg("Not done: "+ptErr(j.error)+". The current firmware keeps running.","bad");}
+ }catch(e){back();fwMsg("The connection failed. The current firmware keeps running.","bad");}
 });
 // The .hex to the Teensy (a chosen file, or one downloaded from GitHub); progress from p0 to 95 %
 function sendHex(blob,force,p0){

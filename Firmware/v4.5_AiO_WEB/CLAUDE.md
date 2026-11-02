@@ -114,10 +114,10 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | File | Purpose |
 |------|---------|
 | `zEthernet.ino`, `zNet.h` | Ethernet start, IP, UDP sockets, mDNS (`aio.local`, `_http._tcp`: `mdnsStart`), the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
-| `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload |
+| `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload, back to the previous firmware |
 | `zWebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
 | `zWebJson.h` | Small JSON writer |
-| `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page (FlasherX) |
+| `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page and from the XIAO link (FlasherX, `otaBegin` / `otaFeed` / `otaFinish` / `otaInstall`); the previous firmware kept at 2-4 MB (`otaPrevSave` inside `otaInstall`, `otaRevertInstall`, `otaSetup` validates the copy at boot) |
 | `zStatus.ino`, `zStatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
 | `zLeds.ino` | The three two-colour LEDs on the board, with the AiO 26 meanings (link / program, fix quality + RTCM flick, steering state + button flick) |
 | `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200) |
@@ -125,7 +125,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Companion modules
 | File | Purpose |
 |------|---------|
-| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144, frames to and from UDP |
+| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144 / 145, frames to and from UDP; PGN 145 takes the loop over (`xiaoFwRun`, loop step 20) while a firmware comes over the link |
 | `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5, sprayer Nano / ESP32, seed drill ESP32) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160, plus the program's PGN 229 (sections 1-64), for the Machine tab (read only) |
 
 ## Architecture Overview
@@ -171,7 +171,7 @@ Browser ──► port 80 ──► webLoop() (zWeb.ino)
 | 15 | `machineLoop()` |
 | 13 | `receiverLoop()`, `rxCheckLoop()` |
 | 12 | `ledsUpdate()`: the three board LEDs (zLeds.ino) |
-| 20 | firmware update (zOTA.ino) |
+| 20 | firmware update (zOTA.ino; from the XIAO link: zXiao.ino `xiaoFwRun`) |
 
 There is no scheduler (AiO 26 has `SimpleScheduler`): every part runs each loop and keeps its own timers.
 
@@ -217,7 +217,11 @@ byte before it (low 8 bits).
 
 ### XIAO link only (Serial2, never on the network)
 141 status JSON (Teensy → XIAO), 142 log line (Teensy → XIAO), 143 XIAO info (XIAO → Teensy), 144 command
-(XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino).
+(XIAO → Teensy: 1 = the module's subnet a.b.c, saved and restart; `netSetSubnet`, zEthernet.ino), 145 firmware
+update (both ways: XIAO → Teensy `[1 begin][flags][size LE32][name]`, `[2][seq LE16][≤252 bytes of .hex text]`,
+`[3 end]`, `[4 cancel]`, `[5 revert]`; Teensy → XIAO `[cmd][seq LE16][0 ok / 1 refused][text]` for each one. Stop and
+wait: the XIAO sends a piece only after the answer to the one before, because the Teensy writes flash sectors with
+interrupts off and the LPUART FIFO is small; the Teensy answers a repeated `seq` again for a lost answer).
 
 ### Machine module (UDP 9999 in)
 123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B, the AiO v26 layout (sections 1-16 the module drives in bytes 5-6, lift, tramline, geo stop, status; Seeder_ESP32 adds sections 17-64 in bytes 13-18), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts. A module's sections come from its 237 when it sends one (the AiO v26 leaves them at 0 in its hello reply); up to 4 modules (IPs) are kept apart and their sections put together.
@@ -235,6 +239,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/gps` | GET / POST | receiver check and u-blox settings |
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
+| `/api/revert` | POST | `apiRevert`: back to the previous firmware kept in the flash (zOTA.ino) |
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
 
@@ -315,6 +320,14 @@ The addresses must not move: settings must survive a firmware update.
     never sets; FNET refuses the accept when that stack garbage is below 16, the one-place listen queue stays full
     and every later connection times out while UDP goes on (seen 2 Nov 2026 with the mDNS build). Any new TCP
     server in this firmware must accept the same way, with `fromLen = sizeof(from)`.
+12. **Flash layout** (Teensy 4.1, 8 MB): 0-2 MB the firmware; 2-4 MB the previous firmware (`OTA_PREV_ADDR`,
+    zOTA.ino: a header sector with magic, size, CRC-32, name and build date, then the image); 4-6 MB the update
+    buffer (`OTA_BUFFER_ADDR`); the top 256 KB the EEPROM emulation (`FLASH_RESERVE`). FlasherX's `flash_move()`
+    erases everything after the new firmware up to the EEPROM area, so `FlashTxx.c` has a keep window
+    (`flash_keep_start` / `flash_keep_end`) that `otaInstall` sets to the previous-firmware area; `otaRevertInstall`
+    sets it to 0 so the copy is consumed. A firmware larger than 2 MB would overlap the kept copy: `otaPrevSave`
+    skips the copy then (no previous firmware), and the hex parser refuses any address at or past 2 MB
+    (`OTA_BUFFER_SIZE`), so a firmware can never reach the kept copy.
 
 ## Version and Publishing
 

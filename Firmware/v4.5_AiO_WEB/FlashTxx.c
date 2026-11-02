@@ -2,9 +2,12 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    FlasherX by Joe Pasquariello (github.com/joepasquariello/FlasherX), from the code of Niels A. Moseley and
    Frank Boesing (public domain, notes kept below).
+   Changed 2 Nov 2026 by Claude (Anthropic) for renatorgr: flash_move() leaves the sectors between flash_keep_start
+   and flash_keep_end alone when it erases the rest of the flash after the copy (the copy of the previous firmware
+   that zOTA.ino keeps, so the module can go back to it). Nothing else was changed.
    Licence: public domain (FlasherX); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
-// FlasherX (https://github.com/joepasquariello/FlasherX, public domain), used by zOTA.ino. Unchanged.
+// FlasherX (https://github.com/joepasquariello/FlasherX, public domain), used by zOTA.ino. One change, see above.
 //******************************************************************************
 // Flash write/erase functions (TLC/T3x/T4x/TMM), LMEM cache functions for T3.6
 //******************************************************************************
@@ -28,6 +31,11 @@
 #include "FlashTxx.h"		// FLASH_BASE_ADDRESS, FLASH_SECTOR_SIZE, etc.
 
 static int leave_interrupts_disabled = 0;
+
+// AiO_WEB (2 Nov 2026): flash_move() does not erase the sectors in [flash_keep_start, flash_keep_end) after the
+// copy: the copy of the previous firmware kept by zOTA.ino. Both 0 (the default): everything above the new
+// program is erased, as before.
+uint32_t flash_keep_start = 0, flash_keep_end = 0;
 
 //******************************************************************************
 // compute addr/size for firmware buffer and return NO/RAM/FLASH_BUFFER_TYPE
@@ -307,6 +315,12 @@ RAMFUNC void flash_move( uint32_t dst, uint32_t src, uint32_t size )
     while (offset < (FLASH_SIZE - FLASH_RESERVE) && error == 0) {
       addr = dst + offset;
       if ((addr & (FLASH_SECTOR_SIZE - 1)) == 0) {
+        // AiO_WEB (2 Nov 2026): the sectors between flash_keep_start and flash_keep_end are left as they are
+        // (the copy of the previous firmware, zOTA.ino); both 0 = erase everything, as the original did
+        if (addr >= flash_keep_start && addr < flash_keep_end) {
+          offset += FLASH_SECTOR_SIZE;
+          continue;
+        }
         if (flash_sector_not_erased( addr )) {
           #if defined(__IMXRT1062__)
             eepromemu_flash_erase_sector( (void*)addr );

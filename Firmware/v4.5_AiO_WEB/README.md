@@ -27,6 +27,8 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 2 Nov 2026 | **Go back to the previous firmware** (Firmware tab, and on the XIAO page): at each update the module first copies the firmware it is running into free flash (2 to 4 MB); that copy can be put back with one button, no file and no internet needed, when a new build misbehaves in the field. The copy exists only after the first update made with this firmware, and going back uses it up. The flash copy at an update no longer erases the rest of the flash (FlasherX did, up to the EEPROM area). |
+| 2 Nov 2026 | **Firmware update from the XIAO page**, over the serial link: for when the module's own page does not open (its network, a fault in the page) and the box is closed. The XIAO page's Firmware tab shows the module's firmware and sends it a chosen `.hex`, or the one on GitHub, in pieces over the link (about a minute); the Teensy checks the file exactly as one from its own page, with autosteer off and the tractor stopped. PGN 145 on the link, both ways. |
 | 2 Nov 2026 | Web page: the server accepts its connections itself and no longer through NativeEthernet's `EthernetServer`, which hands the network stack an address length it never sets. With the mDNS build of 2 Nov the page stopped answering a few seconds after boot ("the connection has timed out") while GPS and steering over UDP went on; a restart helped for a few seconds only. Up to four connections can now wait to be served. |
 | 2 Nov 2026 | The module announces its web page by mDNS: `http://aio.local/` in a browser, and AgOpenWeb's web cards (**Search the network**) list it by name in a second, as they already did the XIAO, sprayer and seed drill pages; before, only the address sweep found it. FNET's own responder, run from the loop like the rest of the network stack. |
 | 1 Nov 2026 | Web page and XIAO page: the header and the tab bar stay at the top while the page scrolls, so the tabs are always at hand in a small window, such as a web card in AgOpenWeb. |
@@ -117,6 +119,24 @@ Web page → Firmware → choose the `.hex` → Install.
 - The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`, or `AOG-UM982-TM171-WEB-OTA-1` as the firmware before 22 Oct 2026 called it), reading back every sector. A new firmware carries both names for now, so a module still on an older firmware accepts it from the web page. **If anything fails, the running firmware stays** and the page says why.
 - Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).
 - "Other firmware" installs an image without the family marker; the next update is then over USB.
+
+### Going back to the previous firmware
+
+Web page → Firmware → **Go back to the previous firmware** (also on the XIAO page's Firmware tab).
+
+- At each update, before the new firmware is copied over the old one, the module copies the firmware it is running into free flash (from 2 MB to 4 MB, with its name, build date and a checksum). The Firmware tab shows it in the **Previous firmware** row; the Status JSON carries it as `prev`.
+- The button puts that copy back (a few seconds, then a restart), with the same conditions as an update: autosteer off, tractor stopped. The settings in the EEPROM are kept. No file, no computer and no internet are needed: it is for a new build that misbehaves in the field.
+- Going back uses the copy up: after it there is no previous firmware until the next update. The copy exists only after the first update made with a firmware of 2 Nov 2026 or later (the first install of that firmware is by USB or from the page, as any other); a copy whose checksum no longer matches is not offered.
+- "Other firmware" images are copied too, so an update with that box ticked still has a way back to this firmware.
+
+### Update from the XIAO page
+
+For a module whose own page cannot be reached (its network cable or network, a fault in the page, the box closed) while the XIAO on the GPS2 port still answers on WiFi.
+
+- XIAO page → Firmware → **Module (Teensy) firmware**: the firmware the module runs, the one on GitHub, the previous one kept; **Install from GitHub**, **Choose .hex** → **Install on the module**, and **Go back to the previous firmware**. The XIAO's network password (the one of the "Update or restart" card) is asked.
+- The `.hex` goes to the XIAO as its own update does, and on to the Teensy over the serial link in pieces of 252 bytes, each confirmed by the Teensy before the next one is sent (about a minute for the 2 MB file). The Teensy checks the file exactly as one from its own page (checksums, Teensy 4.1, the family marker unless "Other firmware" is ticked), refuses it with autosteer on or the tractor moving, and keeps autosteer off while it receives. The web page and UDP keep being served meanwhile. **If anything fails, the running firmware stays** and the XIAO page says why; without an answer from the Teensy for 15 s both sides give up.
+- The XIAO page then watches the module come back (its time on starts again, or another build runs) and says which firmware it runs.
+- It needs a Teensy firmware of 2 Nov 2026 or later (the first one with PGN 145) and the XIAO program compiled from the same date or later: an older Teensy does not answer, and the page says so.
 
 ### New versions from GitHub
 
@@ -489,7 +509,8 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 - XIAO → Teensy: `ESP32-hello` at least every 5 s (present for 10 s after each), AgOpenGPS frames sent on to UDP 9999, and text lines shown as `[xiao] > ...`.
 - Teensy → XIAO, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
 - XIAO → Teensy: PGN 143 (the XIAO's state, for its card); PGN 144 (a command: 1 = the module's subnet, which the Teensy saves and restarts with).
-- PGN 141-144 never go on the network.
+- Both ways: PGN 145 (the module's firmware from the XIAO page): the XIAO sends begin (size, name, "other firmware"), the `.hex` text in numbered pieces of 252 bytes, end, cancel, or "go back to the previous firmware"; the Teensy answers each one (ok, or the reason it refused) before the XIAO sends the next piece, so nothing arrives while a flash sector is written with interrupts off.
+- PGN 141-145 never go on the network.
 - Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).
 - At 460800, AgOpenWeb's 100 Hz steering packets use 6-10 % of the link.
 
