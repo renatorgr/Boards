@@ -42,6 +42,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - **Another WiFi network too** (optional): the farm WiFi or a phone hotspot. Then the page is also at **http://xiao.local/** (the name can be changed) or at the IP shown on the page.
   - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may lose the connection for a few seconds.
   - `xiao.local` works on iPhone, Mac, Windows 10/11 and Linux; on many Android phones use the IP instead.
+  - The XIAO announces its page by mDNS, so AgOpenWeb's web cards (⚙ › **Search the network**) list it by name in a second when the AgOpenWeb computer is on that network.
 - **The page**, in English, dark or light:
   - the button at the top (☀ / ☾) switches it, and the phone remembers the choice;
   - without a choice, the phone's setting (dark or light mode) decides;

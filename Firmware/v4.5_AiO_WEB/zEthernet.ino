@@ -7,6 +7,8 @@
    the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino);
    2026-10-24: the subnet changed from the XIAO page (netSetSubnet; the card on the module's own page was
    taken out again the same day: a mistake there would leave the page unreachable).
+   2026-11-02: the module announces its web page by mDNS (http://aio.local/, DNS-SD "_http._tcp"), so a browser
+   finds it by name and AgOpenWeb's "Search the network" (web cards) lists it at once (mdnsStart).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -51,6 +53,7 @@ void EthernetStart()
   Ethernet.setLocalIP(Eth_myip);  // Change IP address to IP set by user
 
   Ethernet_running = true;
+  mdnsStart();                    // http://aio.local/ (after the IP: the name is announced with it)
 
   Eth_ipDestination[0] = Eth_myip[0];
   Eth_ipDestination[1] = Eth_myip[1];
@@ -66,6 +69,24 @@ void EthernetStart()
                  portMy, gOk ? "" : " (FAILED)", AOGNtripPort, nOk ? "" : " (FAILED)", AOGAutoSteerPort, aOk ? "" : " (FAILED)",
                  portDestination, mOk ? "" : " (FAILED)");
  #endif
+}
+
+// ---------------------------------------------------------------- mDNS: the page by name
+// The module answers for the name MDNS_HOST.local (http://aio.local/ in a browser on the same network) and
+// announces its web page as a DNS-SD "_http._tcp" service, as the XIAO, sprayer and seed drill programs do, so
+// AgOpenWeb's web cards ("Search the network") list it in a second, by this name, without sweeping the
+// addresses. It is FNET's own responder (fnet_mdns, built into NativeEthernet), run from loop() by netPoll()
+// like the rest of the stack; it answers queries sent from any port by unicast (RFC 6762 6.7), which is how
+// AgOpenWeb asks. A name clash on the network is settled by FNET (it adds a number to the name).
+#define MDNS_HOST "aio"
+
+static void mdnsStart()
+{
+#ifdef ARDUINO_TEENSY41
+  MDNS.begin(MDNS_HOST, 1);                     // the host name and room for one service
+  MDNS.addService("_http._tcp", 80);            // the web page, instance "aio" (the host name)
+  StatusLog.line("[boot] mDNS: the page is also http://%s.local/ (AgOpenWeb's Search the network finds it by name)", MDNS_HOST);
+#endif
 }
 
 // ---------------------------------------------------------------- the network stack, from loop()

@@ -36,7 +36,7 @@ Each folder has its own README with the details.
 ### Teensy firmware
 
 1. **First install:** connect the Teensy over USB, open the `.hex` file from [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) in Teensy Loader, then press the button on the Teensy.
-2. **Web page:** open `http://192.168.5.126/` in a browser on the same network. The third number follows the subnet set in AgOpenWeb; it can also be changed from the XIAO's WiFi page (WiFi tab → Module network). To see the page before you have a module: the [simulator](https://renatorgr.github.io/Boards/).
+2. **Web page:** open `http://192.168.5.126/` (or `http://aio.local/`) in a browser on the same network. The third number follows the subnet set in AgOpenWeb; it can also be changed from the XIAO's WiFi page (WiFi tab → Module network). To see the page before you have a module: the [simulator](https://renatorgr.github.io/Boards/).
 3. **Updates:** on the web page, go to **Firmware** and choose a new `.hex` file, or click **Install from GitHub**. The page checks this repository for new versions.
 
 ### XIAO

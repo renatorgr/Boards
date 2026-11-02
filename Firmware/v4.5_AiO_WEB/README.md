@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 2 Nov 2026 | The module announces its web page by mDNS: `http://aio.local/` in a browser, and AgOpenWeb's web cards (**Search the network**) list it by name in a second, as they already did the XIAO, sprayer and seed drill pages; before, only the address sweep found it. FNET's own responder, run from the loop like the rest of the network stack. |
 | 1 Nov 2026 | Web page and XIAO page: the header and the tab bar stay at the top while the page scrolls, so the tabs are always at hand in a small window, such as a web card in AgOpenWeb. |
 | 1 Nov 2026 | XIAO page: the **Report for an analysis** card is the last one on the Firmware tab, as on the Teensy page. |
 | 1 Nov 2026 | Firmware tab, both pages: the **On GitHub** row says what is on GitHub and whether it is newer than, the same as, or older than the installed one (it mixed both in one sentence). The Status note for a new version says which build this module runs. |
@@ -63,7 +64,7 @@ Older changes are in the git history and at the top of each file.
 
 ## Web page
 
-Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb). There is no password: anyone on the module's network can open it.
+Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page by that name within a second, next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
 
 **Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
@@ -356,6 +357,8 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 
 NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
 
+The mDNS responder (`aio.local`, the `_http._tcp` announcement of the page) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling.
+
 ## Inputs
 
 - **GNSS receiver**: Serial7, 460800, 10 Hz. UM982: GGA + VTG + HPR. F9P / X20P: GGA + VTG (the HPR is not waited for). Dual F9P: GGA + VTG, and the second F9P's RELPOSNED.
@@ -453,7 +456,7 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 | `zImu.ino` / `.h`, `TM171.ino`, `BNO08x_AOG.*` | IMU detection and reading |
 | `KeyaCANBUS.ino` | Keya motor |
 | `zSafety.ino` / `.h` | WAS check, autosteer off, program's screen messages, watchdog, crash, start reason |
-| `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop |
+| `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop, mDNS (`aio.local`) |
 | `zRtcm.h` | RTCM counter |
 | `zStatus.ino`, `zStatusLog.h` | messages |
 | `zLeds.ino` | the three board LEDs |

@@ -48,7 +48,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
   with a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the
   tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`
-  (also as a web card in AgOpenWeb). It has four tabs:
+  (the module announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list
+  it by name in a second). It has four tabs:
   - **Spraying**: the rate in L/ha against the target (green within 10 %, orange outside),
     the pressure and the pressure that gives the target (or "slow down / speed up to …
     km/h" when the target needs a pressure outside the limits), the sections and the alarms.
