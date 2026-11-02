@@ -5,6 +5,10 @@
    26 Oct 2026: /api/status says whether the tractor is moving (steer.moving), so the page greys out the
    buttons this file would refuse. The GPS2 port setting is automatic or off (zDualF9P.ino); /api/status
    says what automatic found.
+   2 Nov 2026: the server listens and accepts its connections itself (webListenStart, webAccept), no longer
+   through NativeEthernet's EthernetServer, whose accept hands FNET an address length it never sets (see
+   webListen below). With the mDNS responder (zEthernet.ino, the same day) that stack garbage became small
+   and the page died seconds after boot ("the connection has timed out") while UDP went on.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -43,7 +47,16 @@
 #define WEB_FIRST_BYTE_MS 500    // a connection with no request yet (browser "preconnect") is closed after this
 #define OTA_MAX_KMH      1.0f    // no firmware update above this speed
 
-EthernetServer webServer(WEB_PORT);
+// The listening socket, FNET's own, accepted by webAccept(). NativeEthernet's EthernetServer is not used:
+// its poll() (NativeEthernetServer.cpp) calls fnet_socket_accept() with an address length it never sets
+// ("fnet_size_t fromlen;"). FNET checks that length before anything else and refuses the accept when the
+// stack garbage there is below 16 (fnet_socket.c, _fnet_socket_addr_check_len); the connection then stays
+// in the listen queue, which holds one, and every later SYN is dropped: the page times out while UDP goes
+// on, until a restart. What is on the stack there depends on what fnet_poll() ran just before; with the
+// mDNS responder (2 Nov 2026) it was the small numbers of its name parsing, so the page died a few seconds
+// after boot, with the first mDNS packet from the network.
+#define WEB_BACKLOG      4       // connections waiting to be accepted (a browser opens several at once)
+static fnet_socket_t webListen = FNET_NULL;
 static bool webRunning = false;
 
 static struct
@@ -945,11 +958,57 @@ static bool webParseHead(uint16_t headEnd)
     return true;
 }
 
+// ---------------------------------------------------------------- listening and accepting (see webListen)
+static bool webListenStart()
+{
+    webListen = fnet_socket(AF_INET, SOCK_STREAM, 0);
+    if (webListen == FNET_NULL) return false;
+    struct fnet_sockaddr_in a;
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_port = FNET_HTONS(WEB_PORT);
+    a.sin_addr.s_addr = INADDR_ANY;
+    // the options as NativeEthernet sets them (Nativesocket.cpp, socketBegin); the accepted connections inherit them
+    const fnet_uint32_t bufSize = NET_SOCKET_SIZE;
+    const fnet_int32_t  noDelay = 1;
+    struct fnet_linger linger;
+    linger.l_onoff = FNET_TRUE;
+    linger.l_linger = 4;                                // seconds the close waits for the browser's ACK
+    if (fnet_socket_bind(webListen, (struct fnet_sockaddr*)&a, sizeof(a)) == FNET_ERR ||
+        fnet_socket_setopt(webListen, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize)) == FNET_ERR ||
+        fnet_socket_setopt(webListen, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize)) == FNET_ERR ||
+        fnet_socket_setopt(webListen, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay)) == FNET_ERR ||
+        fnet_socket_setopt(webListen, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger)) == FNET_ERR ||
+        fnet_socket_listen(webListen, WEB_BACKLOG) == FNET_ERR)
+    {
+        fnet_socket_close(webListen);
+        webListen = FNET_NULL;
+        return false;
+    }
+    return true;
+}
+
+// A connection waiting on the listening socket, as an EthernetClient; an empty one when none is waiting
+static EthernetClient webAccept()
+{
+    if (webListen == FNET_NULL) return EthernetClient();
+    struct fnet_sockaddr from;
+    fnet_size_t fromLen = sizeof(from);                 // the length NativeEthernet's poll() leaves unset
+    fnet_socket_t s = fnet_socket_accept(webListen, &from, &fromLen);
+    if (s == FNET_NULL) return EthernetClient();        // nothing waiting
+    // a free place in NativeEthernet's socket table: EthernetClient reads, writes and closes it from there
+    // (MAX_SOCK_NUM places, as the firmware never calls Ethernet.setSocketNum; the UDP sockets hold four)
+    for (uint8_t i = 0; i < MAX_SOCK_NUM; i++)
+        if (Ethernet.socket_ptr[i] == nullptr) { Ethernet.socket_ptr[i] = s; return EthernetClient(i); }
+    fnet_socket_close(s);                               // no place: the browser tries again
+    return EthernetClient();
+}
+
 void webSetup()
 {
     if (!Ethernet_running) return;
-    webServer.begin();
-    webRunning = true;
+    webRunning = webListenStart();
+    if (!webRunning) StatusLog.println("[boot] web page: port 80 could not be opened (FAILED)");
     // (its address: the "[status] Ethernet: link up ..." line, zStatus.ino)
 }
 
@@ -959,7 +1018,7 @@ void webLoop()
     if (!webRunning) return;
     if (!rq.active)
     {
-        EthernetClient c = webServer.accept();
+        EthernetClient c = webAccept();
         if (!c) return;
         rq.client = c;
         rq.active = true;

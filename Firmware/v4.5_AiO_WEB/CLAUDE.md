@@ -310,6 +310,11 @@ The addresses must not move: settings must survive a firmware update.
 9. **Debug switches** at the top of `zHandlers.ino` (`FUSION_DEBUG`, `RAW_NMEA_DEBUG`, `SEND_TO_USB`) must
    be 0 in a published build.
 10. **Web page size**: `zWebPage.h` is one big string in flash; keep the JavaScript plain (no libraries).
+11. **No `EthernetServer`**: the web server listens and accepts with FNET directly (`zWeb.ino`, `webListenStart`,
+    `webAccept`). NativeEthernet's `EthernetServer::poll()` calls `fnet_socket_accept()` with an address length it
+    never sets; FNET refuses the accept when that stack garbage is below 16, the one-place listen queue stays full
+    and every later connection times out while UDP goes on (seen 2 Nov 2026 with the mDNS build). Any new TCP
+    server in this firmware must accept the same way, with `fromLen = sizeof(from)`.
 
 ## Version and Publishing
 
