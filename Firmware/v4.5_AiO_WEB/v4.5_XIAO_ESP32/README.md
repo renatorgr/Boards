@@ -19,21 +19,16 @@ The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is descri
 
 ## Versions
 
-### 4.5 (19 Oct 2026)
+Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB): everything in this README.
 
-Everything in this README is version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
-
-- Its own WiFi network with the page: the module status and messages, what the program sends to the module, WiFi settings, update over WiFi.
-- Runs on the **XIAO ESP32C3 and the XIAO ESP32S3**; the page refuses an update made for the other one.
-- The page in **English**, **dark or light** (the button at the top; without a choice, the phone's setting decides).
-- The module card names the program that talks to the module (AgOpenWeb or AgOpenGPS), the GPS receiver's model and the IMU the Teensy found (TM171 or BNO085).
-- The newest version on GitHub, with **Install from GitHub** (see "Update from GitHub" below); "latest version installed" when it is the one installed.
-- The page shows its cards in **three columns** on a wide screen (one column on a phone), and the tab with the version and the update is called **Firmware**.
-- Changed later on 20 Oct 2026: the page only in English, a light mode, and no repeated rows (the XIAO's version only in the header and the Firmware tab, the requested steer angle only in Program → module).
-- Fixes on 20 Oct 2026 (evening): the start-up reason and the USB help in English (`status | wifi-reset | restart`; the old Portuguese names still work); the page opens on the farm network under any name the router gives the XIAO (only requests on the XIAO's own network are sent to 192.168.4.1); a warning at the top of Status when the Teensy runs another version; "no heading (QF too low)" instead of "UM982 without a solution" (it is also the second F9P's reason).
-- **Link to the Teensy at 460800**, like the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
-- 31 Oct 2026: the GPS fix on Status is green whenever the receiver has a position and red only without one (it was red with a plain GPS fix, orange with DGPS or RTK float); **Download the report** on the Firmware tab: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file to send when something goes wrong.
-- 2 Nov 2026: **Module (Teensy) firmware** card on the Firmware tab: the module's firmware updated from this page over the link (a chosen `.hex`, or the one on GitHub), and **Go back to the previous firmware** the Teensy keeps, for a module whose own page cannot be reached (see "The module's firmware from this page"). Needs a Teensy firmware of 2 Nov 2026 or later. Later that day: the messages under the cards are red when something was refused or failed, green when it was done (they were all grey).
+| Date | Change |
+|---|---|
+| 2 Nov 2026 | **Module (Teensy) firmware** card on the Firmware tab: install the Teensy's firmware from this page over the link, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Messages under the cards in red when something failed, green when it was done. |
+| 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Report card last on the Firmware tab. Plainer **On GitHub** row. |
+| 31 Oct 2026 | GPS fix green whenever there is a position. **Download the report** on the Firmware tab. **Install from GitHub** also sees a new build of the same version. |
+| 24 Oct 2026 | The module's subnet changed from this page (WiFi tab). The module's page and this page as links at their real addresses. |
+| 20 Oct 2026 | English only, light mode, no repeated rows. The page opens on the farm network under any name. A warning when the Teensy runs another version. |
+| 19 Oct 2026 | **Version 4.5**: its own WiFi network and page (module status and messages, what the program sends, WiFi settings, update over WiFi and from GitHub), on the XIAO ESP32C3 and ESP32S3. Link to the Teensy at 460800, so the Teensy firmware must be 4.5 too. |
 
 ## What it does
 
