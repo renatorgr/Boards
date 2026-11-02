@@ -9,6 +9,8 @@
    through NativeEthernet's EthernetServer, whose accept hands FNET an address length it never sets (see
    webListen below). With the mDNS responder (zEthernet.ino, the same day) that stack garbage became small
    and the page died seconds after boot ("the connection has timed out") while UDP went on.
+   2 Nov 2026, later: /api/status says which previous firmware is kept in the flash (prev), and POST /api/revert
+   puts it back (zOTA.ino): "Go back to the previous firmware" on the Firmware tab, no file or internet needed.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -232,6 +234,12 @@ void statusJson(Json& j, uint32_t now, bool full)
         IPAddress a = Ethernet.localIP();
         snprintf(ip, sizeof(ip), "%u.%u.%u.%u", (unsigned)a[0], (unsigned)a[1], (unsigned)a[2], (unsigned)a[3]);
         j.str("ip", ip);
+    }
+    {   // the previous firmware kept in the flash (zOTA.ino): "Go back to it" on this page and on the XIAO page
+        const char *pf, *pb;
+        uint32_t ps;
+        if (otaPrevGet(&pf, &pb, &ps)) { j.obj("prev"); j.str("fw", pf); j.str("built", pb); j.u("size", ps); j.close(); }
+        else                           { j.key("prev"); j.raw("null"); }
     }
 
     j.obj("net");
@@ -868,6 +876,27 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
     otaInstall(size);                                      // does not return
 }
 
+// POST /api/revert: the previous firmware kept in the flash (zOTA.ino) back over the running one. The same
+// conditions as an update, and no file: the Teensy has it already.
+static void apiRevert(EthernetClient& c)
+{
+    if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
+    if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (on a bench, switch simulator mode on)"); return; }
+    const char* err = otaRevertCheck();
+    if (err) { StatusLog.line("[web] going back to the previous firmware REFUSED: %s", err); webSendError(c, 409, err); return; }
+    const char *pf, *pb;
+    uint32_t ps;
+    otaPrevGet(&pf, &pb, &ps);
+    steerSafeOff();
+    StatusLog.line("[web] going back to the previous firmware: %s, built %s (%lu bytes), installing and restarting, steering off",
+                   pf, pb, (unsigned long)ps);
+    webSendJson(c, 200, "{\"ok\":true}");
+    netDelay(400);                                         // let the answer leave
+    c.stop();
+    netDelay(100);
+    otaRevertInstall();                                    // does not return
+}
+
 // ---------------------------------------------------------------- request handling
 static void webFinish()
 {
@@ -931,6 +960,7 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/gps"))      apiGpsPost(c, body);
     else if (get  && !strcmp(rq.path, "/api/rxdump"))   apiRxDump(c);
     else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
+    else if (post && !strcmp(rq.path, "/api/revert"))   apiRevert(c);            // the previous firmware back (zOTA.ino)
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {
         StatusLog.line("[web] restart requested");

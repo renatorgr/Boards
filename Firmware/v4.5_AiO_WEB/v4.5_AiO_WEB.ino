@@ -11,6 +11,7 @@
    Keya, the dual F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack
    polled from loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
    by lansalot, zRxConfig.h) and the simulator mode setting.
+   2 Nov 2026: otaSetup() at start-up (the previous firmware kept in the flash, zOTA.ino).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -244,6 +245,7 @@ void setup()
     autosteerSetup();                   // ADS1115 (WAS), steer settings from the EEPROM (Autosteer.ino)
     EthernetStart();
     webSetup();                         // web page on port 80 (zWeb.ino)
+    otaSetup();                         // a previous firmware kept in the flash? one [boot] line (zOTA.ino)
     netPollFromLoop();                  // from now on the network stack runs from loop() (zNet.h)
 
     // zImu.ino: TM171 or BNO085 (RVC) on Serial5, else BNO085 on I2C. Roll always comes from

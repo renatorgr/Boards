@@ -4,6 +4,9 @@
    Link to the Teensy: same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO
    New Dawn"
    (AgOpenGPS-Official, GPL v3).
+   2 Nov 2026: the Teensy's firmware from this page, over the link (POST /api/teensy-update: the .hex goes to the Teensy
+   block by block, PGN 145; POST /api/teensy-revert: the Teensy puts its previous firmware back), for a module whose
+   own page cannot be reached.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -25,7 +28,9 @@
 //       Messages   the module's [status] messages, and the XIAO's own events
 //       WiFi       network settings (saved in the XIAO, applied after a restart), network scan;
 //                  the module's (Teensy's) Ethernet subnet, for a module on another network (2026-10-24)
-//       Firmware   version, program update over WiFi (.bin from the Arduino IDE), restart
+//       Firmware   version, program update over WiFi (.bin from the Arduino IDE), restart; the module's (Teensy's)
+//                  firmware too (2 Nov 2026): a .hex sent to the Teensy over the link, or its previous firmware
+//                  put back, for a module whose own page cannot be reached
 //     Changes (WiFi, update, restart) ask for the password of the XIAO's own WiFi network.
 //   - tells the Teensy its version and WiFi state (shown in the XIAO card of the Teensy page) and
 //     writes its events to the Teensy log ("[xiao] > ...")
@@ -597,6 +602,134 @@ static void apiSubnet()
     server.send(200, "application/json", "{\"ok\":true}");
 }
 
+// ---------------------------------------------------------------- the module's (Teensy's) firmware, over the link
+// 2 Nov 2026. For a module whose own page cannot be reached (its Ethernet, its network, a bug in the page): the
+// .hex comes from the browser as our own update does (POST /api/teensy-update, the file in a form) and goes on
+// to the Teensy over the link in blocks of LINK_FW_BLOCK bytes, each answered by the Teensy before the next
+// (PGN 145, zXiao.ino); the Teensy checks the file as it does one from its own page and installs it. About a
+// minute for a 2 MB .hex; the browser's upload goes at the link's pace. POST /api/teensy-revert asks the Teensy
+// to put back the previous firmware it keeps in its flash (nothing is sent).
+static String   tfwErr;
+static bool     tfwOk = false;
+static uint32_t tfwSize = 0;             // bytes the Teensy checked and is installing
+static uint16_t tfwSeq = 0;              // the last block number sent
+
+// Wait up to ms for the Teensy's answer to command cmd, block seq: 1 = ok, 0 = refused (tfwErr says why),
+// -1 = no answer (tfwErr = none). The link keeps being read (and the hello sent) meanwhile.
+static int tfwWait(uint8_t cmd, uint16_t seq, uint32_t ms, const char* none)
+{
+    const uint32_t t0 = millis();
+    while (millis() - t0 < ms)
+    {
+        teensy.poll(millis());
+        feedLoopWDT();
+        if (teensy.fwAck)
+        {
+            teensy.fwAck = false;
+            if (teensy.fwCmd == cmd && teensy.fwSeq == seq)
+            {
+                if (teensy.fwCode == 0) return 1;
+                tfwErr = teensy.fwText[0] ? teensy.fwText : "refused by the module";
+                return 0;
+            }
+        }
+        delay(1);
+    }
+    tfwErr = none;
+    return -1;
+}
+
+static const char* TFW_NO_ANSWER = "no answer from the module: is the Teensy on, with a firmware of 2 Nov 2026 or later (install that one from its own page or by USB once)?";
+
+static void teensyUpdateUpload()
+{
+    HTTPUpload& up = server.upload();
+    feedLoopWDT();
+    if (up.status == UPLOAD_FILE_START)
+    {
+        tfwOk = false;
+        tfwErr = "";
+        tfwSeq = 0;
+        tfwSize = 0;
+        if (server.arg("pw") != cfg.apPass) { tfwErr = "wrong password"; return; }
+        if (!teensy.teensyTalking(millis())) { tfwErr = "no data from the module: is the Teensy on and the link working?"; return; }
+        const uint32_t size = strtoul(server.arg("size").c_str(), nullptr, 10);
+        logEvent("Module firmware: sending %s (%lu kB) to the Teensy over the link", up.filename.c_str(), (unsigned long)(size / 1024));
+        teensy.fwAck = false;
+        teensy.fwBegin(server.arg("force") == "1", size, up.filename.c_str());
+        tfwWait(1, 0, 5000, TFW_NO_ANSWER);
+    }
+    else if (up.status == UPLOAD_FILE_WRITE)
+    {
+        if (tfwErr.length()) return;                                // refused: the rest of the file is read and dropped
+        for (size_t off = 0; off < up.currentSize && tfwErr.length() == 0; off += LINK_FW_BLOCK)
+        {
+            const size_t left = up.currentSize - off;
+            const uint8_t n = (uint8_t)(left < LINK_FW_BLOCK ? left : LINK_FW_BLOCK);
+            tfwSeq++;
+            for (int attempt = 0; attempt < 2; attempt++)          // once more when no answer came (a lost frame or answer)
+            {
+                teensy.fwAck = false;
+                teensy.fwBlock(tfwSeq, up.buf + off, n);
+                const int r = tfwWait(2, tfwSeq, 3000, "the module stopped answering during the transfer (link error) - try again");
+                if (r >= 0) break;
+                if (attempt == 0) tfwErr = "";
+            }
+        }
+    }
+    else if (up.status == UPLOAD_FILE_END)
+    {
+        if (tfwErr.length()) return;
+        teensy.fwAck = false;
+        teensy.fwSend(3);
+        if (tfwWait(3, 0, 15000, "no answer from the module after the last block") == 1)
+        {
+            tfwOk = true;
+            tfwSize = strtoul(teensy.fwText, nullptr, 10);
+        }
+    }
+    else if (up.status == UPLOAD_FILE_ABORTED)
+    {
+        if (tfwErr.length() == 0) { teensy.fwSend(4); tfwErr = "upload aborted"; }
+    }
+}
+
+static void teensyUpdateDone()
+{
+    if (tfwOk)
+    {
+        logEvent("Module firmware: %lu bytes checked by the Teensy, it is installing and restarting", (unsigned long)tfwSize);
+        char b[64];
+        snprintf(b, sizeof(b), "{\"ok\":true,\"size\":%lu}", (unsigned long)tfwSize);
+        server.send(200, "application/json", b);
+    }
+    else
+    {
+        if (tfwErr.length() == 0) tfwErr = "no file";
+        logEvent("Module firmware update REFUSED: %s", tfwErr.c_str());
+        sendError(tfwErr == "wrong password" ? 403 : 400, tfwErr.c_str());
+    }
+}
+
+// POST /api/teensy-revert: the Teensy puts back the previous firmware it keeps (PGN 145, command 5)
+static void apiTeensyRevert()
+{
+    if (!passwordOk()) return;
+    if (!teensy.teensyTalking(millis())) { sendError(409, "no data from the module: is the Teensy on and the link working?"); return; }
+    teensy.fwAck = false;
+    teensy.fwSend(5);
+    if (tfwWait(5, 0, 10000, TFW_NO_ANSWER) == 1)
+    {
+        logEvent("Module firmware: the Teensy goes back to its previous firmware and restarts");
+        server.send(200, "application/json", "{\"ok\":true}");
+    }
+    else
+    {
+        logEvent("Going back to the previous module firmware REFUSED: %s", tfwErr.c_str());
+        sendError(409, tfwErr.c_str());
+    }
+}
+
 static void apiRestart()
 {
     if (!passwordOk()) return;
@@ -620,6 +753,8 @@ static void webSetup()
     server.on("/api/scan", HTTP_GET, apiScan);
     server.on("/api/restart", HTTP_POST, apiRestart);
     server.on("/api/subnet", HTTP_POST, apiSubnet);
+    server.on("/api/teensy-update", HTTP_POST, teensyUpdateDone, teensyUpdateUpload);   // the Teensy's firmware over the link
+    server.on("/api/teensy-revert", HTTP_POST, apiTeensyRevert);
     server.on("/update", HTTP_POST, updateDone, updateUpload);
     server.onNotFound([]() {
         if (captiveRedirect()) return;

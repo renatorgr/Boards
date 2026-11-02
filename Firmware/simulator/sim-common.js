@@ -12,6 +12,9 @@
    2026-11-01 (Claude): the sprayer boom is now 8 sections of 1 m (2 nozzles each), was 5 sections of 2-1-2-1-2 m.
    2026-11-02 (Claude): the module pages' /aow/status goes to the pretend module too (Sprayer_ESP32 v0.10.0 report).
    2026-11-02 (Claude): an upload's file is found whatever its form field is called (the sprayer page sends "bin").
+   2026-11-02 (Claude): the Teensy keeps the firmware that ran before its last update ("prev" in /api/status) and goes
+   back to it (revert(), POST /api/revert on its page, /api/teensy-revert on the XIAO's); a .hex sent from the XIAO page
+   over the link is checked and installed as one from the Teensy's page (ota() with its tag "[xiao]").
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -258,7 +261,7 @@ function Module(key) {
   t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5",
   cfg: {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: h.gps2,
    wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50},
-  wdt: true, saved: true, fwOver: null,
+  wdt: true, saved: true, fwOver: null, prev: null, fwSize: 688128,
   log: [], logNext: 1, tlAt: -1,
   simSince: -1, heldBase: 0,
   id: {st: "done", at: 4.5},
@@ -492,7 +495,8 @@ function Module(key) {
   const rtcm = t >= 7.5 && t > 0, rtcmT = Math.max(0, t - 7.5);
   const wasRaw = Math.round(6805 + was * sc.counts / 2), wasV = wasRaw / 2668;
   const kick = sc.pressure || sc.current ? sc.kickMax : 0;
-  const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip()};
+  const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
+   prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
   j.net = {link: true, aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
    rtcm: rtcm, rtcmKB: r2(rtcmT * 1.31, 1), rtcmBps: rtcm ? Math.round(1310 + wob(t, 60, 0.2)) : 0, rtcmOk: Math.floor(rtcmT * 4.6), rtcmBad: t > 60 ? 1 : 0,
    rtcmTypes: rtcm ? (um ? "1006 1008 1033 1075 1085 1095 1125 1230" : "1005 1074 1084 1094 1124 1230") : "",
@@ -780,13 +784,14 @@ function Module(key) {
    loop: {n: Math.floor(t * 41000), maxUs: 2950, max5sUs: 610}, web: {req: Math.floor(t * 1.2), err: 0, drop: 0, lastErr: ""}, logLines: st.logNext - 1};
  }
 
- // ---- the firmware update (zWeb.ino apiOta, zOTA.ino): the file is read here as the Teensy checks it
- async function ota(query, blob) {
+ // ---- the firmware update (zWeb.ino apiOta, zOTA.ino): the file is read here as the Teensy checks it. From the Teensy's
+ // page (tag "web"), or the same file sent by the XIAO page over the link (zXiao.ino, tag "xiao")
+ async function ota(query, blob, from) {
   progress();
-  const force = query.get("force") === "1";
-  if (steering()) { line("[web] firmware update REFUSED: " + ENGAGED + " (old firmware kept)"); return err(409, ENGAGED); }
+  const force = query.get("force") === "1", tag = "[" + (from || "web") + "]";
+  if (steering()) { line(tag + " firmware update REFUSED: " + ENGAGED + " (old firmware kept)"); return err(409, ENGAGED); }
   const size = blob && blob.size !== undefined ? blob.size : 0;
-  if (size < 1000 || size > 8000000) { line("[web] firmware update REFUSED: no file, or file size not plausible (old firmware kept)"); return err(400, "no file, or file size not plausible"); }
+  if (size < 1000 || size > 8000000) { line(tag + " firmware update REFUSED: no file, or file size not plausible (old firmware kept)"); return err(400, "no file, or file size not plausible"); }
   const text = await blob.text();
   let data = "", e = "", n = 0;
   if (text[0] !== ":") e = "not an Intel HEX file";
@@ -801,14 +806,30 @@ function Module(key) {
    else if (!data.includes("fw_teensy41")) e = "not built for a Teensy 4.1 (fw_teensy41 missing)";
    else if (!force && !data.includes("AiO-WEB-OTA-1") && !data.includes("AOG-UM982-TM171-WEB-OTA-1")) e = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
   }
-  if (e) { line("[web] firmware update REFUSED: " + e + " (old firmware kept)"); return err(400, e); }
-  line("[web] firmware update: " + size + " bytes received, steering off");
-  line("[web] firmware update: " + n + " bytes checked, installing and restarting");
+  if (e) { line(tag + " firmware update REFUSED: " + e + " (old firmware kept)"); return err(400, e); }
+  line(tag + " firmware update: " + size + " bytes received, steering off");
+  line(tag + " firmware update: " + n + " bytes checked, installing and restarting");
+  // the firmware running now is kept as the previous one (zOTA.ino otaPrevSave, the flash from 2 MB to 4 MB)
+  st.prev = {fw: fwName() + " " + fwVer(), built: built(), size: st.fwSize || 688128};
+  st.fwSize = n;
   // the module then runs the version in the file (another firmware: the simulator keeps showing this one)
   const m = /\[boot\] (v[\w.]+_AiO_WEB), built ([A-Z][a-z]{2} [ \d]\d \d{4} \d\d:\d\d:\d\d)/.exec(data);
   st.fwOver = m ? {fw: m[1], built: m[2].replace("  ", " ")} : null;
   restart(5000);
   return ok({ok: true, size: n});
+ }
+ // back to the previous firmware (zWeb.ino apiRevert, zXiao.ino, zOTA.ino otaRevertInstall): the kept copy replaces the
+ // firmware running now, and is used up by it (no previous firmware until the next update)
+ function revert(from) {
+  progress();
+  const tag = "[" + (from || "web") + "]";
+  if (steering()) { line(tag + " going back to the previous firmware REFUSED: " + ENGAGED); return err(409, ENGAGED); }
+  if (!st.prev) { line(tag + " going back to the previous firmware REFUSED: no previous firmware kept"); return err(409, "no previous firmware kept (it is kept from the next update on)"); }
+  line(tag + " going back to the previous firmware: " + st.prev.fw + ", built " + st.prev.built + " - installing and restarting");
+  st.fwOver = {fw: st.prev.fw.split(" ")[0], built: st.prev.built};
+  st.fwSize = st.prev.size; st.prev = null;
+  restart(5000);
+  return ok();
  }
  // the Teensy restarts: offMs without an answer, then up again from 0 with a new log
  function restart(offMs) {
@@ -826,7 +847,7 @@ function Module(key) {
  return {
   st: st, T: T, line: line, progress: progress, save: () => save(key, st), offline: () => T() < 0,
   status: status, log: log, settingsJson: settingsJson, settingsPost: settingsPost, gps: gps, gpsPost: gpsPost, umPost: umPost, umGet: umGet,
-  imuPost: imuPost, diag: diag, ota: ota, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
+  imuPost: imuPost, diag: diag, ota: ota, revert: revert, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
   tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd & 0xFFFF, sprayerAt: sprayerAt,
  };
 }

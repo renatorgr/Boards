@@ -33,6 +33,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 - Fixes on 20 Oct 2026 (evening): the start-up reason and the USB help in English (`status | wifi-reset | restart`; the old Portuguese names still work); the page opens on the farm network under any name the router gives the XIAO (only requests on the XIAO's own network are sent to 192.168.4.1); a warning at the top of Status when the Teensy runs another version; "no heading (QF too low)" instead of "UM982 without a solution" (it is also the second F9P's reason).
 - **Link to the Teensy at 460800**, like the official firmware v26 and the second F9P that can take the same port. A Teensy with an earlier build (230400) does not talk to it: the Teensy firmware must be 4.5 too.
 - 31 Oct 2026: the GPS fix on Status is green whenever the receiver has a position and red only without one (it was red with a plain GPS fix, orange with DGPS or RTK float); **Download the report** on the Firmware tab: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file to send when something goes wrong.
+- 2 Nov 2026: **Module (Teensy) firmware** card on the Firmware tab: the module's firmware updated from this page over the link (a chosen `.hex`, or the one on GitHub), and **Go back to the previous firmware** the Teensy keeps, for a module whose own page cannot be reached (see "The module's firmware from this page"). Needs a Teensy firmware of 2 Nov 2026 or later.
 
 ## What it does
 
@@ -59,7 +60,7 @@ Everything in this README is version 4.5, the same number as the Teensy firmware
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
 | | **Module network**: the module's (Teensy's) Ethernet IP and its subnet. For a module on a network that is not 192.168.5.x: type that network's first three numbers (and the XIAO password); the Teensy saves it and restarts with the new IP. This page is on WiFi, so it works whatever the module's IP is. |
-| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
+| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. **Module (Teensy) firmware**: the module's firmware installed from this page over the link, and its previous firmware put back (see below). **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - Typed once, it is filled in both tabs until the page is closed.
@@ -122,6 +123,18 @@ No other libraries are needed: everything is in the esp32 package.
 
 If the update fails halfway (WiFi lost), the old program keeps running: just try again.
 
+## The module's firmware from this page
+
+For when the module's (Teensy's) own page does not open: its network cable or network, a fault in the page, the box closed, while this XIAO still answers on WiFi. Firmware tab → **Module (Teensy) firmware**.
+
+- The card shows the firmware the module runs and when it was built, the `.hex` on GitHub (newer, the same, or older than the module's), and the **previous firmware** the Teensy keeps (the one that ran before its last update; "none kept yet" until the module's first update with a firmware of 2 Nov 2026 or later).
+- **Install from GitHub** downloads the Teensy `.hex` of the newest version folder in the browser (the phone needs internet, as for the XIAO's own update), **Choose .hex** takes a file from the phone or PC; the page reads it first and says what is inside (version, build date, whether it is a Teensy 4.1 AiO_WEB firmware). **Install on the module** sends it to the XIAO with the network password, and the XIAO passes it on to the Teensy over the serial link in pieces, each one confirmed by the Teensy before the next: about a minute for the 2 MB file. The progress bar is the file leaving the phone; then the Teensy checks the whole file as it does one from its own page, installs it and restarts.
+- **Go back to the previous firmware** asks the Teensy to put its kept copy back: no file and no internet needed. The copy is used up by it.
+- Only with **autosteer off and the tractor stopped**: the Teensy refuses otherwise, and keeps autosteer off while it receives. If anything fails the module's current firmware keeps running and the card says why; a Teensy that does not answer (an older firmware, or the link down) is reported after a few seconds.
+- The card then waits for the module to come back (its time on starts again, or another build runs) and says which firmware it runs. The module's own messages are on the Messages tab.
+- **Other firmware** installs a `.hex` without the update page inside (another firmware for the Teensy 4.1); the next update is then by USB.
+- Not yet tried on a board (2 Nov 2026): try it first on the bench with the box open and the USB cable at hand.
+
 ## USB serial commands
 
 Serial Monitor at any speed, line ending "Newline" (or any):
@@ -161,7 +174,7 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
 | File | What it has |
 |---|---|
 | `v4.5_XIAO_ESP32.ino` | WiFi, web server, settings, update, USB commands, setup and loop |
-| `xLink.h` | the link to the Teensy (460800 baud, frames, status, log). Plain C++ so it can be tested on a PC |
+| `xLink.h` | the link to the Teensy (460800 baud, frames, status, log, the firmware pieces and the Teensy's answers, PGN 145). Plain C++ so it can be tested on a PC |
 | `xPage.h` | the web page (HTML, CSS and JavaScript in one text) |
 | `xVersion.h` | the version number and the board (C3 or S3, from the board chosen in the Arduino IDE). When the number changes, the folder and the `.ino` get the new name too |
 | `COPYING` | the licence: GNU GPL v3 |

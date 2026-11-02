@@ -2,6 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): the Machine tab links to the seed drill module's page or the sprayer module's page, by the implement.
+   2026-11-02 (Claude): POST /api/revert, back to the previous firmware the module keeps.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -46,6 +47,7 @@ S.hook((method, path, q, body) => {
  else if (post && path === "/api/um982") r = M.umPost(b);
  else if (post && path === "/api/imu") r = M.imuPost(b);
  else if (get && path === "/api/rxdump") r = {code: 404, text: "No settings read yet"};
+ else if (post && path === "/api/revert") r = M.revert("web");
  else if (post && path === "/api/reboot") { M.line("[web] restart requested"); M.restart(3000); r = S.ok(); }
  M.save();
  return r;

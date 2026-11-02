@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "../..,../..,../..,../..",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:XIAO_ESP32C3",
+  "hardwareFolders": "/root/.arduino15/packages",
+  "otherLibrariesFolders": "/root/Arduino/libraries",
+  "sketchLocation": "/home/user/boards/Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32"
+}
