@@ -9,6 +9,8 @@
    taken out again the same day: a mistake there would leave the page unreachable).
    2026-11-02: the module announces its web page by mDNS (http://aio.local/, DNS-SD "_http._tcp"), so a browser
    finds it by name and AgOpenWeb's "Search the network" (web cards) lists it at once (mdnsStart).
+   2026-11-02, later: the socket buffer size comes from zNet.h (NET_SOCKET_SIZE), shared with the web server's
+   own listening socket (zWeb.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -23,7 +25,7 @@ void EthernetStart()
   // 130 ms per answer, and the GPS serial buffer filled up ("reading the receiver late"). 8 sockets x
   // 2 x 8 KB + a 96 KB stack heap, in RAM2.
   Ethernet.setStackHeap(96 * 1024);
-  Ethernet.setSocketSize(8 * 1024);
+  Ethernet.setSocketSize(NET_SOCKET_SIZE);    // 8 KB (zNet.h; the web server's listening socket uses the same)
 
   // try to congifure using IP:
   Ethernet.begin(mac,0);          // Start Ethernet with IP 0.0.0.0

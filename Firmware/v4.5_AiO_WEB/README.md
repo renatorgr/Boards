@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 2 Nov 2026 | Web page: the server accepts its connections itself and no longer through NativeEthernet's `EthernetServer`, which hands the network stack an address length it never sets. With the mDNS build of 2 Nov the page stopped answering a few seconds after boot ("the connection has timed out") while GPS and steering over UDP went on; a restart helped for a few seconds only. Up to four connections can now wait to be served. |
 | 2 Nov 2026 | The module announces its web page by mDNS: `http://aio.local/` in a browser, and AgOpenWeb's web cards (**Search the network**) list it by name in a second, as they already did the XIAO, sprayer and seed drill pages; before, only the address sweep found it. FNET's own responder, run from the loop like the rest of the network stack. |
 | 1 Nov 2026 | Web page and XIAO page: the header and the tab bar stay at the top while the page scrolls, so the tabs are always at hand in a small window, such as a web card in AgOpenWeb. |
 | 1 Nov 2026 | XIAO page: the **Report for an analysis** card is the last one on the Firmware tab, as on the Teensy page. |

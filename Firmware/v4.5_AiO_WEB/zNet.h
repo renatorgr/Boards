@@ -21,6 +21,10 @@
 
 #include <NativeEthernet.h>
 
+// Socket buffers (send and receive), 8 KB: Ethernet.setSocketSize() for NativeEthernet's sockets
+// (zEthernet.ino) and the web server's own listening socket (zWeb.ino), so the two stay the same.
+#define NET_SOCKET_SIZE (8 * 1024)
+
 struct NetPollTimerTag { friend IntervalTimer* netPollTimer(NetPollTimerTag); };
 template <IntervalTimer* T> struct NetPollTimerAccess
 {
