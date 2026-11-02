@@ -4,6 +4,8 @@
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
    2026-10-28 (Claude): v0.2: the network chip of the board chosen in Seeder_ESP32.ino (RTL8201F on the
    Relay24_ESP32, LAN8720 on the KC868-A32), held in reset before a restart.
+   2026-11-02 (Claude): v0.2.1: GET /api/scan, the Wi-Fi networks the module hears, for "Search for networks" on the
+   page (as on the XIAO page).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -16,7 +18,8 @@
 // GET  /              the page                       GET  /api/status    everything the page shows
 // GET  /api/settings  network + relays settings      POST /api/wifi      network settings + subnet, then restart
 // POST /api/relays    the first section relay 1 follows (0 = the program's pin config)
-// POST /api/restart                                  POST /api/update    a new program (.bin), then restart
+// GET  /api/scan      the Wi-Fi networks around      POST /api/restart
+// POST /api/update    a new program (.bin), then restart
 // GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
 
 static bool updateAuth = false;
@@ -274,6 +277,42 @@ static void apiWifiPost()
     restartAtMs = millis() + 500;
 }
 
+// GET /api/scan: the Wi-Fi networks the module hears, as on the XIAO page. The first call starts a search in the
+// background and answers {"busy":true}; the page asks again until the list comes: {"busy":false,"list":[{"s":name,
+// "r":dBm,"c":channel,"open":true|false}]}, strongest first, each name once. No password: it changes nothing.
+static int8_t scanState = -2;             // -2 not started, -1 running
+
+static void apiScan()
+{
+    const int16_t n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING) { sendJson("{\"busy\":true}"); return; }
+    if (n >= 0 && scanState == -1)
+    {
+        String j = "{\"busy\":false,\"list\":[";
+        bool first = true;
+        for (int i = 0; i < n; i++)
+        {
+            const String ssid = WiFi.SSID(i);
+            if (ssid.length() == 0) continue;
+            bool dup = false;
+            for (int k = 0; k < i; k++) if (WiFi.SSID(k) == ssid) dup = true;   // strongest first (sorted)
+            if (dup) continue;
+            if (!first) j += ',';
+            first = false;
+            j += "{\"s\":" + jsonStr(ssid) + ",\"r\":" + String((int)WiFi.RSSI(i)) + ",\"c\":" + String((int)WiFi.channel(i)) +
+                 ",\"open\":" + String(WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "true" : "false") + "}";
+        }
+        j += "]}";
+        WiFi.scanDelete();
+        scanState = -2;
+        sendJson(j);
+        return;
+    }
+    WiFi.scanNetworks(true);              // in the background; the page asks again
+    scanState = -1;
+    sendJson("{\"busy\":true}");
+}
+
 // Relay 1 follows section "first", the next relays the next sections (0 = the program's pin config)
 static void apiRelaysPost()
 {
@@ -352,6 +391,7 @@ void webStart()
     server.on("/api/status", HTTP_GET, apiStatus);
     server.on("/api/settings", HTTP_GET, apiSettingsGet);
     server.on("/api/wifi", HTTP_POST, apiWifiPost);
+    server.on("/api/scan", HTTP_GET, apiScan);
     server.on("/api/relays", HTTP_POST, apiRelaysPost);
     server.on("/api/restart", HTTP_POST, apiRestartPost);
     server.on("/api/update", HTTP_POST, apiUpdateDone, apiUpdateUpload);

@@ -11,7 +11,7 @@
 //   flow meter pulses 0-5 V, 22k to GND (0.69)    ->  0-3.4 V on GPIO 35 (counted by an interrupt; the high
 //       level stays above the ESP32's 2.5 V threshold even if the meter has its own pull-up)
 // cfg.pressureDivider is that 0.5; change it on the web page if other resistors are used.
-// A sensor the page says is not fitted (cfg.sensors, a seed drill has none) reads 0: without the sensor and
+// A sensor the page says is not fitted (cfg.sensors) reads 0: without the sensor and
 // its divider the pin floats and would show made-up pressure or pulses.
 
 static volatile uint32_t flowPulses = 0;

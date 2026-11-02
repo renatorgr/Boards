@@ -6,7 +6,9 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.10.0 (2026-11-02), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.1 (2026-11-02), not yet tested on the sprayer.
+//   v0.10.1: the Wi-Fi settings on the Module tab are laid out as on the XIAO page, with "Search for networks": the
+//         module lists the networks it hears (GET /api/scan) and a tap on one chooses it.
 //   v0.10.0: the module works out the application rate (L/ha) from the flow, the speed (PGN 239) and the widths of the
 //         open sections (PGN 235 from the program, kept in flash), the pressure that gives the target rate, and the
 //         sprayer alarms (low / high pressure, flow outside the tolerance, flow with the sections closed). Target rate,
@@ -17,14 +19,12 @@
 //         GitHub and Install from GitHub, install a .bin, restart, "Download the report").
 //   v0.9.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
 //         status), so the AiO Teensy's Machine tab reads the sections of any module the same way.
-//   v0.9: the seed drill (KC868-A32) has its own folder, Seeder/Seeder_ESP32; this program is for the sprayer
-//         boards again (ESP32_Relay_X8, ESP32 dev module). It keeps reading PGN 229 in full and the module IP's
-//         last number.
-//   v0.8: more than 16 sections (PGN 229, up to 64) and the KinCony KC868-A32 board (32 relays, network
-//         cable): BOARD_KC868_A32, for the 19-section seed drill. Relays can follow the sections in a row
+//   v0.9: for the sprayer boards only (ESP32_Relay_X8, ESP32 dev module). It keeps reading PGN 229 in full and
+//         the module IP's last number.
+//   v0.8: more than 16 sections (PGN 229, up to 64). Relays can follow the sections in a row
 //         ("first section" on the page), the module's IP can end in another number than 123 (a second module).
-//   v0.7.2: the page says which sensors the machine has (pressure, flow, both or none). With none (a seed
-//           drill) the module sends no PGN 160, and its page, AgOpenWeb and the AiO page show no sprayer readings.
+//   v0.7.2: the page says which sensors the machine has (pressure, flow, both or none). With none the module
+//           sends no PGN 160, and its page, AgOpenWeb and the AiO page show no sprayer readings.
 //   v0.7.1: sensor dividers from a common resistor kit (no 15k): pressure 10k / 10k (0.5, the new
 //           default on the page), flow 10k / 22k.
 //   v0.7: also runs on a plain ESP32 dev module with relay modules (up to 16 relays): BOARD_RELAY_X8 0.
@@ -76,7 +76,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.0"
+#define FW_VERSION          "0.10.1"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -84,7 +84,6 @@
 //   BOARD_DEVKIT     any ESP32 dev module (30 or 38 pins) with one or two relay modules wired to the pins in
 //                    RELAY_PIN below: relay 1 is the first pin. Keep the list as long as the relays you have
 //                    (8 or 16)
-// (The seed drill's KinCony KC868-A32 has its own program: Seeder/Seeder_ESP32.)
 #define BOARD_RELAY_X8      1
 #define BOARD_DEVKIT        2
 #ifndef BOARD

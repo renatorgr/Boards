@@ -17,6 +17,7 @@
 // .merged.bin, another board) is refused; a newer build on GitHub is installed from GitHub, end to end.
 // 2026-11-02 (Claude): after a click, the answer and the module's events are waited for (up to 5 s) instead of a fixed
 // time: on GitHub's slower machines the event list (refreshed once a second) came after the check.
+// 2026-11-02 (Claude): "Search for networks" on the sprayer and seed drill pages (Sprayer_ESP32 v0.10.1, Seeder_ESP32 v0.2.1).
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -212,11 +213,24 @@ async function teensy(browser, port, q, name) {
   await expectSoon(pg, what, "#msgRelays", /done/);
   await expectSoon(pg, what, "#log", /relays follow the program's pin config/);
   await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
+  // the Wi-Fi settings as on the XIAO page: "Search for networks" lists what the module hears, strongest first, and a tap
+  // chooses one; Save wants the password typed in its card (nothing is saved here: the module would restart)
+  await pg.click("#scan");
+  await expectSoon(pg, what, "#scanMsg", /^4 networks · tap one to choose it$/);
+  if ((await pg.locator("#netList button").count()) !== 4) fail.push(what + ": expected 4 networks in the list");
+  await expect(pg, what, "#netList button:first-child", /^Farm WiFi-58 dBm · strong$/);
+  await pg.locator("#netList button", {hasText: "Phone hotspot"}).click();
+  if (await pg.inputValue("#staSsid") !== "Phone hotspot" || !(await pg.isChecked("#staOn"))) fail.push(what + ": a tap on a network does not choose it");
+  if ((await pg.locator("#netList button.sel").count()) !== 1) fail.push(what + ": the network chosen is not marked");
+  await pg.click("button[onclick='saveWifi()']");
+  await expectSoon(pg, what, "#msgWifi", /^Type the password of the own Wi-Fi network\.$/);
+  await shot(pg, "seeder-network");
   await pg.close();
  }
  // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the rate on target, the boom pressure;
  // Settings: the section widths from the program, calibration and spraying settings saved (a higher target asks to slow
- // down), the total set to 0; Module: the relays; Firmware: the program on GitHub, wrong files refused, the report downloaded
+ // down), the total set to 0; Module: the relays, the search for Wi-Fi networks; Firmware: the program on GitHub, wrong
+ // files refused, the report downloaded
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
@@ -263,6 +277,17 @@ async function teensy(browser, port, q, name) {
   if (!(await pg.locator("#t-module").isVisible())) fail.push(what + ": tab Module does not show");
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
+  // the Wi-Fi settings as on the XIAO page: "Search for networks" lists what the module hears, strongest first, and a tap
+  // chooses one; Save wants the password typed in its card (nothing is saved here: the module would restart)
+  await pg.click("#scan");
+  await expectSoon(pg, what, "#scanMsg", /^4 networks · tap one to choose it$/);
+  if ((await pg.locator("#netList button").count()) !== 4) fail.push(what + ": expected 4 networks in the list");
+  await expect(pg, what, "#netList button:first-child", /^Farm WiFi-58 dBm · strong$/);
+  await pg.locator("#netList button", {hasText: "Phone hotspot"}).click();
+  if (await pg.inputValue("#staSsid") !== "Phone hotspot" || !(await pg.isChecked("#staOn"))) fail.push(what + ": a tap on a network does not choose it");
+  if ((await pg.locator("#netList button.sel").count()) !== 1) fail.push(what + ": the network chosen is not marked");
+  await pg.click("button[onclick='saveWifi()']");
+  await expectSoon(pg, what, "#msgWifi", /^Type the password of the own Wi-Fi network\.$/);
   await shot(pg, "sprayer-module");
   await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(700);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": tab Firmware does not show");

@@ -2,19 +2,19 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): default pressure divider 0.5, as the module (10k / 10k).
-   2026-10-27 (Claude): the sensors fitted (v0.7.2): the sprayer has both, the seed drill none; ticked on the page.
-   2026-10-27 (Claude): v0.8: the seed drill is Renato's no-till drill, 19 sections, on a KC868-A32 (32 relays, network cable);
-   sections as hex digits, the first section the relays follow, the module IP's last number.
-   2026-10-27 (Claude): v0.9: the sprayer only, on the ESP32_Relay_X8 board; the seed drill has its own page (sim-seeder.js).
+   2026-10-27 (Claude): the sensors fitted (v0.7.2): the sprayer has both, ticked on the page.
+   2026-10-27 (Claude): v0.8: sections as hex digits, the first section the relays follow, the module IP's last number.
+   2026-10-27 (Claude): v0.9: the sprayer on the ESP32_Relay_X8 board.
    2026-11-02 (Claude): v0.10.0: the rate (L/ha), the pressure for the target and the alarms (zRate.ino), the spraying
    settings (POST /api/spray), the section widths from the program (PGN 235) and /aow/status.
    2026-11-02 (Claude): the Firmware tab: the pretend module runs the .bin on main (its build date from firmware.json);
    the update comes as an upload with progress, and after the restart the module runs what was sent (the program, version
    and build read from the .bin, as the page does).
+   2026-11-02 (Claude): v0.10.1: "Search for networks" on the Module tab (GET /api/scan).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiCalibPost, apiSprayPost, apiTotalPost,
+// The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiScan, apiCalibPost, apiSprayPost, apiTotalPost,
 // apiRestartPost, apiAowStatus, the program update on /api/update). The sections the program asks for and the sprayer's readings come
 // from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the 8 m sprayer's 8 sections
 // on the ESP32_Relay_X8 board (8 relays from the program's pin config, both sensors, on the tractor's Wi-Fi).
@@ -186,6 +186,16 @@ function wifiPost(b) {
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
+// "Search for networks" (GET /api/scan, zNet.ino apiScan): busy for 2 s, then the networks the pretend module hears
+let scanAt = -1;
+function scan() {
+ const t = T();
+ if (scanAt < 0 || t - scanAt > 10) { scanAt = t; return S.ok({busy: true}); }
+ if (t - scanAt < 2) return S.ok({busy: true});
+ scanAt = -1;
+ return S.ok({busy: false, list: [{s: "Farm WiFi", r: -58, c: 6, open: false}, {s: "Phone hotspot", r: -66, c: 1, open: false},
+  {s: "Workshop", r: -77, c: 11, open: false}, {s: "Guest", r: -84, c: 6, open: true}]});
+}
 function calibPost(b) {
  if (b.pw !== X.pass) return S.err(403, "wrong password");
  const ppl = parseFloat(b.ppl) || 0, pmax = parseFloat(b.pmax) || 0, pdiv = parseFloat(b.pdiv) || 0;
@@ -252,6 +262,7 @@ S.hook(async (method, path, q, body) => {
  if (get && path === "/api/status") r = S.ok(status());
  else if (get && path === "/api/settings") r = S.ok(settings());
  else if (post && path === "/api/wifi") r = wifiPost(b);
+ else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/calib") r = calibPost(b);
  else if (post && path === "/api/spray") r = sprayPost(b);
  else if (get && path === "/aow/status") r = S.ok(aowStatus());
