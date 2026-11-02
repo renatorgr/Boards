@@ -48,16 +48,22 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
   with a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the
   tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`
-  (also as a web card in AgOpenWeb). It has three tabs:
+  (also as a web card in AgOpenWeb). It has four tabs:
   - **Spraying**: the rate in L/ha against the target (green within 10 %, orange outside),
     the pressure and the pressure that gives the target (or "slow down / speed up to …
     km/h" when the target needs a pressure outside the limits), the sections and the alarms.
   - **Settings**: target rate, nozzles, pressure limits, flow tolerance; the section widths
     received from AgOpenWeb; the sensors fitted and their calibration. Saving needs the
     own network's password, so nothing changes by a touch while driving.
-  - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings, a program update,
-    the events, and **Download the report**: the module's state, settings and events in one
-    `.json` file to send when something goes wrong (no passwords in it).
+  - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings and the events.
+  - **Firmware**, as on the Teensy and XIAO pages: the program installed (version, build
+    date, board), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this folder;
+    checked when the page opens, every 6 hours and with *Check now*) with **Install from
+    GitHub**, install a chosen `.bin` with a progress bar, Restart, and **Download the
+    report**: the module's state, settings and events in one `.json` file to send when
+    something goes wrong (no passwords in it). The phone or tablet asks GitHub, so it needs
+    internet: open the page over the tractor network, not over the module's own Wi-Fi.
+    A `.bin` for another board, the seed drill's program or the `.merged.bin` is refused.
   Without the board, the page can be tried in the
   [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
@@ -170,8 +176,16 @@ divider (to-GND ÷ total) in the page's calibration.
    These used to be in AgOpenWeb (*Machine → Sprayer*); with this module AgOpenWeb hides
    them and shows what the module sends.
 
-Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
-page *Install a new program* and choose the `.bin`.
+Later program updates, on the page's **Firmware** tab:
+- **Install from GitHub** when it says "newer than the installed one": the page downloads
+  `Sprayer_ESP32.ino.bin` from this folder on GitHub and sends it to the module.
+- Or *Sketch → Export compiled binary* in the Arduino IDE, then *Choose .bin*
+  (`Sprayer_ESP32.ino.bin` in the sketch folder, not the `.merged.bin`) and *Install*.
+
+The page knows which version is on GitHub from the `.bin` itself (its version, board and
+build date, published in `firmware.json` with the simulator). So after a code change,
+export the binary again and put the new `.bin` files on GitHub with the code, or the page
+keeps offering the older program.
 
 ## Bench test (before the tractor, no water)
 

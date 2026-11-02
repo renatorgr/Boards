@@ -13,12 +13,17 @@
    flow tolerance, the section widths from the program, the sensors and their calibration. Module: AgOpenWeb, relays,
    Wi-Fi, program, events, and a "Download the report" button (state, settings and events in a .json file to send when
    something goes wrong), as on the Teensy and XIAO pages.
+   2026-11-02 (Claude): a fourth and last tab, Firmware, as on the Teensy and XIAO pages: the program installed, the
+   version on GitHub (asked by the browser when the page opens, every 6 hours and with "Check now"), Install from
+   GitHub, install a chosen .bin with a progress bar, Restart, and the report. A .bin for another board, the seed
+   drill's program or the .merged.bin is refused.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // One self-contained HTML file, no internet needed, made for a phone (and for an AgOpenWeb web card). Dark, or light
 // when the phone asks for it. It asks the module for /api/status once a second. The tab is in the address (#settings,
-// #module), so a reload or a web card keeps it.
+// #module, #firmware), so a reload or a web card keeps it. Only the update check needs internet: the browser asks
+// GitHub, never the module.
 #pragma once
 
 const char SPRAYER_PAGE[] PROGMEM = R"SPRAYERPAGE(<!doctype html>
@@ -42,6 +47,8 @@ header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:
 nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+nav button.new::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
+nav button.on.new::after{background:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
@@ -83,13 +90,15 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 .opt{display:flex;gap:10px;align-items:center;padding:5px 0}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute)}
 .msg{font-size:13.5px;margin-top:6px;min-height:1.2em}
+progress{width:100%;height:14px;margin-top:10px;accent-color:var(--acc)}
+a{color:var(--acc)}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <div id="top">
 <header><div class="dot" id="dot"></div><h1>Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
-<nav id="nav"><button data-t="work" class="on">Spraying</button><button data-t="settings">Settings</button><button data-t="module">Module</button></nav>
+<nav id="nav"><button data-t="work" class="on">Spraying</button><button data-t="settings">Settings</button><button data-t="module">Module</button><button data-t="firmware">Firmware</button></nav>
 </div>
 <main>
 
@@ -193,14 +202,31 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <div class="msg" id="msgWifi"></div>
 </div>
 
-<div class="card"><h2>Program</h2>
-<dl><dt>Version</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
-<div class="row"><label class="act">Install a new program (.bin)<input type="file" id="bin" accept=".bin" style="display:none" onchange="update()"></label><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
-<div class="msg" id="msgProg"></div>
-<p class="note">Arduino IDE: Sketch → Export compiled binary, then choose the .bin from the sketch folder. The sections close during the update.</p>
+<div class="card"><h2>Events</h2><div class="log" id="log"></div></div>
+
+</div>
+</section>
+
+<section id="t-firmware" hidden>
+<div class="grid">
+
+<div class="card"><h2>Program installed</h2>
+<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="board">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
 </div>
 
-<div class="card"><h2>Events</h2><div class="log" id="log"></div></div>
+<div class="card"><h2>Version on GitHub</h2>
+<dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
+<div class="row"><button class="act" id="ghInstall" onclick="ghInstall()" disabled>Install from GitHub</button><button class="sec" id="ghCheck" onclick="ghCheck()">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Sprayer/Sprayer_ESP32" target="_blank" rel="noopener">See on GitHub</a></div>
+<p class="note">This phone or tablet asks GitHub, so it needs internet: on the module's own Wi-Fi network alone it usually has none. Open this page over the tractor network (the router with internet). The module's own-network password confirms the installation.</p>
+</div>
+
+<div class="card"><h2>Update or restart</h2>
+<div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="bin" accept=".bin" style="display:none" onchange="binChosen()"></label><span id="binName" class="note">no file</span></div>
+<div class="row"><button class="act" id="install" onclick="installFile()" disabled>Install</button><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
+<progress id="prog" max="100" value="0" hidden></progress>
+<div class="msg" id="msgProg"></div>
+<p class="note">Arduino IDE: Sketch → Export compiled binary, then choose Sprayer_ESP32.ino.bin in the sketch folder (not the .merged.bin). The sections close during the update. If it fails, the current program keeps running.</p>
+</div>
 
 <div class="card"><h2>Report for an analysis</h2>
 <p class="note">Puts the module's state, its settings, the readings, the link to AgOpenWeb and the events in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
@@ -230,9 +256,9 @@ const f1=v=>v.toFixed(1);
 function fitted(pre,s){for(const e of document.querySelectorAll('.'+pre+'p'))e.hidden=!(s&1);for(const e of document.querySelectorAll('.'+pre+'f'))e.hidden=!(s&2)}
 function ticked(){return($('snP').checked?1:0)|($('snF').checked?2:0)}
 function showFitted(){const s=ticked();fitted('c',s);$('noSensors').hidden=s!==0}
-// tabs: the one in the address (#settings, #module), else Spraying
+// tabs: the one in the address (#settings, #module, #firmware), else Spraying
 function show(t){
-  if(!['work','settings','module'].includes(t))t='work';
+  if(!['work','settings','module','firmware'].includes(t))t='work';
   for(const b of document.querySelectorAll('nav button'))b.classList.toggle('on',b.dataset.t===t);
   for(const s of document.querySelectorAll('main>section'))s.hidden=s.id!=='t-'+t;
   history.replaceState(null,'',t==='work'?location.pathname:'#'+t);
@@ -248,6 +274,7 @@ function toolText(t){
 }
 let settingsLoaded=false;
 async function refresh(){
+  if(busy&&!waitBoot)return;   // sending a program: the module has no time for anything else
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
     $('dot').className='dot'+(d.aog.link?' on':'');
@@ -304,11 +331,13 @@ async function refresh(){
     $('sta').innerHTML=!d.wifi.staOn?'<span class="warn">not set</span>':d.wifi.up?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
-    $('ver').textContent=d.fw+' v'+d.ver+(d.board?' · '+d.board:'');$('built').textContent=d.built;$('up').textContent=Math.floor(d.up/60)+' min';
-    $('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     $('log').textContent=d.log.join('\n');
+    // Firmware tab
+    $('ver').textContent=d.fw+' v'+d.ver;$('built').textContent=builtText(d.built)||d.built;$('board').textContent=d.board||'–';
+    $('up').textContent=Math.floor(d.up/60)+' min';$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
+    running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
-  }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot'}
+  }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot';if(waitBoot)progMsg('The module is restarting…','warn')}
 }
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
@@ -345,13 +374,124 @@ async function report(){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
   m.className='note ok';m.textContent='Downloaded: '+name;b.disabled=false;
 }
-async function update(){
-  const f=$('bin').files[0];if(!f)return;const p=pw();if(p===null)return;
-  const m=$('msgProg');m.textContent='sending '+f.name+'…';
-  const fd=new FormData();fd.append('bin',f);
-  try{const r=await fetch('/api/update?pw='+encodeURIComponent(p),{method:'POST',body:fd});const d=await r.json();
-    m.innerHTML=d.ok?'<span class="ok">installed, restarting: reload this page in 15 s</span>':'<span class="bad">'+d.error+'</span>';
-  }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
+// ---- a new program: the one on GitHub, or a chosen .bin; both are checked here before they are sent
+// What a .bin is: an ESP32 program (first byte 0xE9, chip 0 = the plain ESP32 of these boards) and, from the text every
+// build carries (the start of its /api/status answer, zNet.ino), which program, version, board and build.
+async function binInfo(blob,name){
+  if(/merged|bootloader|partitions/i.test(name))return {error:'This is the wrong file: use Sprayer_ESP32.ino.bin, not the '+name+'.'};
+  const h=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+  if(h[0]!==0xE9)return {error:'This file is not an ESP32 program (wrong .bin).'};
+  if((h[12]|h[13]<<8)!==0)return {error:'This program is for another kind of ESP32 (S3, C3…), not for this module.'};
+  const t=new TextDecoder('latin1').decode(await blob.arrayBuffer());
+  const m=/\{"fw":"([^"]+)","ver":"([^"]*)","built":"([^"]*)"/.exec(t),b=/,"board":"([^"]+)"/.exec(t);
+  const i={fw:m?m[1]:'',ver:m?m[2]:'',built:m?m[3]:'',board:b?b[1]:''};
+  if(!fwNow)return i;
+  if(i.fw!==fwNow.fw)i.error=i.fw?'This is the program '+i.fw+', not this module\'s ('+fwNow.fw+').':'This file is not the '+fwNow.fw+' program.';
+  else if(i.board&&fwNow.board&&i.board!==fwNow.board)i.error='This program is for the '+i.board+' board, but this module is on the '+fwNow.board+' board (its relays are on other pins).';
+  return i;
+}
+function infoText(i){return i.fw+' '+verText(i.ver,i.built)+(i.board?' for the '+i.board:'')}
+function progMsg(t,c){const m=$('msgProg');m.className='msg'+(c?' '+c:'');m.textContent=t}
+let busy=false,waitBoot=false,upBefore=0,fwNow=null;
+// what the module runs; after an installation, the restart is seen when it is up again for less time than before
+function running(d){
+  const k=d.fw+' '+d.ver+' '+d.built+' '+d.board,was=fwNow&&fwNow.key;
+  fwNow={fw:d.fw,ver:d.ver,built:d.built,board:d.board,key:k};
+  if(waitBoot&&d.up<upBefore){waitBoot=false;busy=false;$('prog').hidden=true;
+    progMsg('Back: it runs '+infoText(fwNow)+'.','ok');$('install').disabled=!$('bin').files[0]}
+  upBefore=Math.max(upBefore,d.up);
+  if(k!==was)renderGh();
+  if(!busy&&(ghAt===0||Date.now()-ghAt>6*3600e3))ghCheck();   // GitHub, not waited for
+}
+function binChosen(){
+  const f=$('bin').files[0];$('binName').textContent=f?f.name+' ('+Math.round(f.size/1024)+' kB)':'no file';
+  $('install').disabled=!f||busy;progMsg('');
+}
+async function installFile(){
+  const f=$('bin').files[0];if(!f||busy)return;
+  if(!fwNow){progMsg('No answer from the module yet.','bad');return}
+  const i=await binInfo(f,f.name);
+  if(i.error){progMsg(i.error,'bad');return}
+  if(!confirm('Install '+infoText(i)+' on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const p=pw();if(p===null)return;
+  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  sendBin(f,f.name,p,0);
+}
+// the .bin to the module, progress from p0 to 95 %
+function sendBin(blob,name,pass,p0){
+  const g=$('prog');progMsg('Sending '+name+'…');
+  const fd=new FormData();fd.append('bin',blob,name);
+  const x=new XMLHttpRequest();x.open('POST','/api/update?pw='+encodeURIComponent(pass));
+  x.upload.onprogress=e=>{if(e.lengthComputable)g.value=p0+Math.round(e.loaded/e.total*(95-p0))};
+  const fail=t=>{busy=false;g.hidden=true;progMsg(t,'bad');$('install').disabled=!$('bin').files[0];renderGh()};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
+    if(x.status===200&&j.ok){g.value=100;waitBoot=true;progMsg('Installed. The module is restarting…','warn')}
+    else fail('Not installed: '+(j.error||('error '+x.status))+'. The current program keeps running.')};
+  x.onerror=()=>fail('The connection failed. The current program keeps running.');
+  x.send(fd);
+}
+
+// ---- a newer program on GitHub (renatorgr/Boards, Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin). firmware.json, written
+// by Firmware/simulator/build.py on every change on main and published with the simulator, says which version that .bin
+// is, for which board and when it was compiled (read from the .bin itself), so a new build of the same version shows as
+// new. Asked by this browser when the page opens, every 6 hours, and with "Check now".
+const GH_PUB='https://renatorgr.github.io/Boards/firmware.json',GH_API='https://api.github.com/repos/renatorgr/Boards/contents/';
+const GH_WEB='https://github.com/renatorgr/Boards/tree/main/',MON='JanFebMarAprMayJunJulAugSepOctNovDec';
+let gh=null,ghState='',ghAt=0;
+function verCmp(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d}return 0}
+function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||'').trim()),i=m?MON.indexOf(m[1]):-1;   // "Nov  2 2026 10:41:07" -> "20261102104107"
+  return i<0||i%3?'':m[3]+String(i/3+1).padStart(2,'0')+m[2].padStart(2,'0')+m[4]+m[5]+m[6]}
+function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0}
+function builtText(b){const k=builtKey(b);return k?(+k.slice(6,8))+' '+MON.substr(k.slice(4,6)*3-3,3)+' '+k.slice(0,4)+' '+k.slice(8,10)+':'+k.slice(10,12):''}   // "2 Nov 2026 10:41"
+function verText(v,b){const t=builtText(b);return (v?'v'+v:'')+(t?(v?', ':'')+'built '+t:'')}
+async function ghCheck(){
+  if(ghState==='busy')return;
+  ghState='busy';renderGh();
+  try{const r=await fetch(GH_PUB,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();gh=j.sprayer&&j.sprayer.file?j.sprayer:null;ghState=gh?'ok':'none'}
+  catch(e){ghState='fail'}
+  ghAt=Date.now();renderGh();
+}
+function ghBoardOk(){return !gh||!gh.board||!fwNow||!fwNow.board||gh.board===fwNow.board}
+function ghCmp(){return gh&&fwNow?(gh.version?verCmp(gh.version,fwNow.ver):0)||builtCmp(gh.built,fwNow.built):NaN}   // >0: GitHub's is newer
+function ghNewer(){return ghCmp()>0&&ghBoardOk()}
+function renderGh(){
+  const c=ghCmp(),nw=ghNewer(),e=$('ghVer');let t='–',cls='';
+  if(ghState==='busy')t='searching…';
+  else if(ghState==='fail'){t='no answer from GitHub (does this phone or tablet have internet?)';cls='warn'}
+  else if(ghState==='none')t='no sprayer program on GitHub';
+  else if(gh){t=verText(gh.version,gh.built)||'a program';
+    if(!ghBoardOk()){t+=' — for the '+gh.board+' board, but this module is on the '+fwNow.board+' board';cls='warn'}
+    else if(c>0){t+=' — newer than the installed one';cls='ok'}
+    else if(c===0)t+=' — the one installed';
+    else if(c<0)t+=' — older than the installed one (the new .bin is not on GitHub yet)'}
+  e.textContent=t;e.className=cls;
+  $('ghInstall').disabled=!nw||busy;
+  $('ghLink').href=GH_WEB+(gh?gh.file.replace(/\/[^/]*$/,''):'Sprayer/Sprayer_ESP32');
+  const b=document.querySelector('nav button[data-t="firmware"]');b.classList.toggle('new',nw);b.title=nw?'A newer program is on GitHub':'';
+}
+async function ghInstall(){
+  if(!ghNewer()||busy)return;
+  const name=gh.file.split('/').pop(),want=gh.size||0;
+  if(!confirm('Install '+(fwNow.fw+' '+verText(gh.version,gh.built))+' from GitHub on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const pass=pw();if(pass===null)return;
+  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  progMsg('Downloading from GitHub…');
+  try{
+    const dir=gh.file.replace(/\/[^/]*$/,''),r=await fetch(GH_API+dir+'?ref=main');if(!r.ok)throw new Error('GitHub: HTTP '+r.status);
+    const f=(await r.json()).find(e=>e.type==='file'&&e.name===name);
+    if(!f)throw new Error('the file '+name+' is not on GitHub');
+    if(want&&f.size!==want)throw new Error('GitHub is still publishing the new file: try again in a few minutes');
+    const res=await fetch(f.download_url);if(!res.ok)throw new Error('GitHub: HTTP '+res.status);
+    const rd=res.body.getReader(),parts=[];let got=0;
+    for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;g.value=Math.round(got/f.size*45)}
+    const blob=new Blob(parts);
+    if(blob.size!==f.size)throw new Error('file incomplete ('+blob.size+' of '+f.size+' bytes)');
+    const i=await binInfo(blob,name);if(i.error)throw new Error(i.error);
+    if(gh.built&&i.built!==gh.built)throw new Error('GitHub is still publishing the new file: try again in a few minutes');
+    sendBin(blob,name,pass,45);
+  }catch(e){busy=false;g.hidden=true;$('install').disabled=!$('bin').files[0];renderGh();
+    progMsg('Not downloaded: '+e.message+'. The current program keeps running.','bad')}
 }
 refresh();setInterval(refresh,1000);
 </script>

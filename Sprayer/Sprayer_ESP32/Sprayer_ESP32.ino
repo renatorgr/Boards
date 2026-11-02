@@ -11,9 +11,10 @@
 //         open sections (PGN 235 from the program, kept in flash), the pressure that gives the target rate, and the
 //         sprayer alarms (low / high pressure, flow outside the tolerance, flow with the sections closed). Target rate,
 //         nozzles, pressure limits and flow tolerance are set on the module's page. It sends all of it to the program
-//         once a second as ISOBUS process data (PGN 161, DDIs), next to PGN 160. The page has three tabs: Spraying
-//         (L/ha, pressure, sections), Settings (target, nozzles, alarms, sensor calibration) and Module (AgOpenWeb,
-//         relays, Wi-Fi, program, events, and a "Download the report" button as on the Teensy and XIAO pages).
+//         once a second as ISOBUS process data (PGN 161, DDIs), next to PGN 160. The page has four tabs: Spraying
+//         (L/ha, pressure, sections), Settings (target, nozzles, alarms, sensor calibration), Module (AgOpenWeb,
+//         relays, Wi-Fi, events) and Firmware as on the Teensy and XIAO pages (the program installed, the version on
+//         GitHub and Install from GitHub, install a .bin, restart, "Download the report").
 //   v0.9.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
 //         status), so the AiO Teensy's Machine tab reads the sections of any module the same way.
 //   v0.9: the seed drill (KC868-A32) has its own folder, Seeder/Seeder_ESP32; this program is for the sprayer
@@ -53,8 +54,9 @@
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
 //   - the page: Spraying tab with the L/ha (actual and target), the pressure (and what gives the target) and the
 //       sections; Settings tab with the target rate, nozzles, pressure limits, flow tolerance, the sensors fitted and
-//       their calibration; Module tab with the link to the program, the relays, the Wi-Fi settings and program subnet,
-//       a program update (.bin), a restart, the events and "Download the report" (a .json file to send when
+//       their calibration; Module tab with the link to the program, the relays, the Wi-Fi settings and program subnet
+//       and the events; Firmware tab with the program installed, the newest on GitHub (Install from GitHub, when the
+//       phone has internet), a program update (.bin), a restart and "Download the report" (a .json file to send when
 //       something goes wrong).
 //   - IO0 button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
 //   - serial monitor (115200): "status", "wifi-reset", "total-reset", "restart".

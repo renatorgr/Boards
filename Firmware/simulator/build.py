@@ -5,6 +5,8 @@
 # 2026-10-27 (Claude): the seed drill module's page (Seeder/Seeder_ESP32/dPage.h); each module page fixes its implement.
 # 2026-10-31 (Claude): firmware.json, the date and time the Teensy .hex and the XIAO .bin files on main were compiled
 #                      (the update check of both pages compares it with the running program's).
+# 2026-11-02 (Claude): firmware.json also has the sprayer module's .bin (Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin): its
+#                      version, board and build, read from the .bin (the sprayer page's Firmware tab compares them).
 # Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
@@ -26,7 +28,8 @@
 #                       with the date and time it was compiled, read from the file itself (the __DATE__ __TIME__ text
 #                       every program carries). The Teensy page and the XIAO page fetch it from
 #                       https://renatorgr.github.io/Boards/firmware.json, so a new build of the same version (4.5)
-#                       shows as new as soon as its file is on main.
+#                       shows as new as soon as its file is on main. Also the sprayer module's .bin ("sprayer"): its
+#                       version, board and build date, read from the text its /api/status answer starts with.
 
 import datetime
 import json
@@ -164,6 +167,24 @@ def published(fw, folder, version, bins):
     return {"version": version, "folder": folder, "teensy": teensy, "xiao": xiao}
 
 
+MODULE_RX = re.compile(rb'\{"fw":"([^"]+)","ver":"([^"]*)","built":"([^"]*)"')
+BOARD_RX = re.compile(rb',"board":"([^"]+)"')
+
+
+def module_bin(folder, name):
+    """A module program on main (Sprayer_ESP32.ino.bin, from the Arduino IDE's "Export compiled binary"): which version,
+    board and build it is, from the text its /api/status answer starts with (zNet.ino), or None without the file."""
+    p = os.path.join(folder, name + ".ino.bin")
+    if not os.path.isfile(p):
+        return None
+    with open(p, "rb") as f:
+        data = f.read()
+    m, b = MODULE_RX.search(data), BOARD_RX.search(data)
+    fw, ver, built = (g.decode() for g in m.groups()) if m else (name, "", built_in(data))
+    return {"file": os.path.relpath(p, ROOT).replace(os.sep, "/"), "name": fw, "version": ver, "built": built,
+            "board": b.group(1).decode() if b else "", "size": os.path.getsize(p)}
+
+
 def commit():
     sha = os.environ.get("GITHUB_SHA", "")
     if not sha:
@@ -198,6 +219,10 @@ def main():
     sha = commit()
     pub = published(fw, folder, version, bins)
     pub["commit"] = sha
+    spr_bin = module_bin(SPRAYER, sprayer["name"])
+    if spr_bin:
+        pub["sprayer"] = spr_bin
+        sprayer["built"] = spr_bin["built"]   # the pretend sprayer module runs the .bin that is on main, as an updated one does
     xiao_bin = {chip.lower(): x["size"] for chip, x in pub["xiao"].items()}
     xiao_built = {chip.lower(): x["built"] for chip, x in pub["xiao"].items() if x["built"]}
     if pub["teensy"] and pub["teensy"]["built"]:

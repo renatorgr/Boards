@@ -5,7 +5,8 @@
    2026-10-27 (Claude): the sensors fitted are saved with the calibration.
    2026-10-27 (Claude): the module IP's last number.
    2026-11-02 (Claude): v0.10.0: the spraying settings (POST /api/spray), the rate, pressure for the target and the
-   alarms in /api/status, the sprayer alarms in /aow/status.
+   alarms in /api/status, the sprayer alarms in /aow/status. The start of /api/status is read from the .bin by the
+   page's update check and by Firmware/simulator/build.py (firmware.json): keep it as it is.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -163,6 +164,8 @@ static void apiStatus()
     const uint32_t now = millis();
     String j;
     j.reserve(2000);
+    // one text in the program image: the page (before it installs a .bin) and build.py (firmware.json) find in it
+    // which program, version and build a .bin is, and the board in the line below; keep both as they are
     j += "{\"fw\":\"" FW_NAME "\",\"ver\":\"" FW_VERSION "\",\"built\":\"" __DATE__ " " __TIME__ "\"";
     j += ",\"board\":\"" BOARD_NAME "\"";
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());

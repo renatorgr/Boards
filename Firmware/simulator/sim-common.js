@@ -11,6 +11,7 @@
    of our modules (.123 sections 1-16, .124 the rest), shown together as zMachine.ino does.
    2026-11-01 (Claude): the sprayer boom is now 8 sections of 1 m (2 nozzles each), was 5 sections of 2-1-2-1-2 m.
    2026-11-02 (Claude): the module pages' /aow/status goes to the pretend module too (Sprayer_ESP32 v0.10.0 report).
+   2026-11-02 (Claude): an upload's file is found whatever its form field is called (the sprayer page sends "bin").
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -127,7 +128,7 @@ function hookXhr(upload) {
  P.setRequestHeader = function () { if (!this._sim) return header.apply(this, arguments); };
  P.send = function (body) {
   if (!this._sim) return send.apply(this, arguments);
-  const x = this, s = this._sim, f = body instanceof FormData ? body.get("file") : body;
+  const x = this, s = this._sim, f = body instanceof FormData ? [...body.values()].find(v => v instanceof Blob) : body;   // the file, whatever its field is called
   const total = f && f.size !== undefined ? f.size : String(body || "").length;
   const steps = Math.max(10, Math.round(total / 30000)), up = x.upload;
   let n = 0;

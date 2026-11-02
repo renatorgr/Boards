@@ -8,6 +8,9 @@
    2026-10-27 (Claude): v0.9: the sprayer only, on the ESP32_Relay_X8 board; the seed drill has its own page (sim-seeder.js).
    2026-11-02 (Claude): v0.10.0: the rate (L/ha), the pressure for the target and the alarms (zRate.ino), the spraying
    settings (POST /api/spray), the section widths from the program (PGN 235) and /aow/status.
+   2026-11-02 (Claude): the Firmware tab: the pretend module runs the .bin on main (its build date from firmware.json);
+   the update comes as an upload with progress, and after the restart the module runs what was sent (the program, version
+   and build read from the .bin, as the page does).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -128,7 +131,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
+ return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
@@ -226,15 +229,17 @@ function restartPost(b) {
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
-// a new program (.bin in a form, the password in the address): the Update library takes only an ESP32 image (first byte 0xE9)
+// a new program (.bin in a form, the password in the address): the Update library takes only an ESP32 image (first byte
+// 0xE9); after the restart the module runs it (which program, version and build: the text its /api/status starts with)
 async function updatePost(q, body) {
  if (q.get("pw") !== X.pass) return S.err(403, "wrong password");
  const f = body instanceof FormData ? body.get("bin") : null;
  event("program update: " + ((f && f.name) || "file"));
- if (f && f.size) await S.sleep(Math.min(4000, f.size / 300));         // about 300 kB/s over Wi-Fi
  const h = f && f.size ? new Uint8Array(await f.slice(0, 1).arrayBuffer()) : [];
  if (h[0] !== 0xE9) { event("update: failed"); return S.err(500, "update failed, the old program stays"); }
+ const m = /\{"fw":"([^"]+)","ver":"([^"]*)","built":"([^"]*)"/.exec(new TextDecoder("latin1").decode(await f.arrayBuffer()));
  event("update: " + f.size + " bytes written, restarting");
+ if (m && m[1] === FW) { X.ver = m[2]; X.built = m[3]; }
  restart(4000);
  return S.ok({ok: true, restart: true});
 }
@@ -252,7 +257,14 @@ S.hook(async (method, path, q, body) => {
  else if (get && path === "/aow/status") r = S.ok(aowStatus());
  else if (post && path === "/api/total") r = totalPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
- else if (post && path === "/api/update") r = await updatePost(q, body);
+ S.save(KEY, X);
+ return r;
+});
+// the program update comes as an upload with progress (XMLHttpRequest)
+S.hookXhr(async (path, q, body) => {
+ if (T() < 0) return S.OFFLINE;
+ if (path !== "/api/update") return S.err(404, "Not found");
+ const r = await updatePost(q, body);
  S.save(KEY, X);
  return r;
 });

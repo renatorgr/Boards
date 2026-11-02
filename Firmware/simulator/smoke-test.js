@@ -13,6 +13,8 @@
 // 2026-11-01 (Claude): the sprayer has 8 sections of 1 m (was 5).
 // 2026-11-02 (Claude): the sprayer page's three tabs (Spraying, Settings, Module): the rate against the target, the
 // spraying settings saved, the section widths from the program, the report downloaded.
+// 2026-11-02 (Claude): the sprayer page's Firmware tab: the .bin on main is the one installed; a wrong .bin (the
+// .merged.bin, another board) is refused; a newer build on GitHub is installed from GitHub, end to end.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -204,7 +206,7 @@ async function teensy(browser, port, q, name) {
  }
  // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the rate on target, the boom pressure;
  // Settings: the section widths from the program, calibration and spraying settings saved (a higher target asks to slow
- // down), the total set to 0; Module: the relays, the report downloaded
+ // down), the total set to 0; Module: the relays; Firmware: the program on GitHub, wrong files refused, the report downloaded
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
@@ -250,8 +252,27 @@ async function teensy(browser, port, q, name) {
   if (!(await pg.locator("#t-module").isVisible())) fail.push(what + ": tab Module does not show");
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
-  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+ · ESP32_Relay_X8$/);
   await shot(pg, "sprayer-module");
+  await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": tab Firmware does not show");
+  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+$/);
+  await expect(pg, what, "#board", /^ESP32_Relay_X8$/);
+  // the .bin on main: the one the pretend module runs (or an older one, when the code changed and the .bin did not yet)
+  await expect(pg, what, "#ghVer", /^v[\d.]+, built [^—]+ — (the one installed|older than the installed one \(the new \.bin is not on GitHub yet\))$/);
+  if (!(await pg.locator("#ghInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with nothing newer there");
+  if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
+  await shot(pg, "sprayer-firmware");
+  // wrong files: the .merged.bin, and a program for another board
+  const sprBin = (ver, built, board) => Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31),
+   Buffer.from('{"fw":"Sprayer_ESP32","ver":"' + ver + '","built":"' + built + '"\0,"board":"' + board + '"\0')]);
+  for (const [name, buf, re] of [["Sprayer_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^This is the wrong file: use Sprayer_ESP32\.ino\.bin/],
+   ["Sprayer_ESP32.ino.bin", sprBin("0.10.0", LATER, "ESP32 dev module"), /^This program is for the ESP32 dev module board, but this module is on the ESP32_Relay_X8 board/],
+   ["Seeder_ESP32.ino.bin", Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31), Buffer.from('{"fw":"Seeder_ESP32","ver":"0.2","built":"' + LATER + '"')]), /^This is the program Seeder_ESP32, not this module's/]]) {
+   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf});
+   await pg.click("#install"); await pg.waitForTimeout(500);
+   await expect(pg, what + " (" + name + ")", "#msgProg", re);
+  }
+  if (/program update/.test(await pg.locator("#log").textContent())) fail.push(what + ": a wrong file was sent to the module");
   try {
    const [dl] = await Promise.all([pg.waitForEvent("download", {timeout: 5000}), pg.click("#dumpBtn")]);
    const name = dl.suggestedFilename(), r = JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
@@ -261,6 +282,39 @@ async function teensy(browser, port, q, name) {
    if (JSON.stringify(r).includes("agopengps")) fail.push(what + ": the report has the password in it");
   } catch (e) { fail.push(what + ": no report downloaded (" + e.message + ")"); }
   await expect(pg, what, "#dumpMsg", /^Downloaded: Sprayer_ESP32_report_/);
+  await pg.close();
+ }
+ // a newer build of the sprayer program on GitHub: offered, marked on the Firmware tab, downloaded from GitHub (here: the
+ // .bin on main with the version running and a later build date) and sent to the module, which then runs it
+ {
+  const what = "Sprayer page, newer build on GitHub";
+  const html = fs.readFileSync(path.join(site, "sprayer", "index.html"), "utf8");
+  const running = JSON.parse(/window\.SIM_BUILD=(\{.*?\});<\/script>/.exec(html)[1]).sprayer.version;
+  const onMain = fs.readFileSync(path.join(__dirname, "..", "..", "Sprayer", "Sprayer_ESP32", "Sprayer_ESP32.ino.bin"));
+  const bin = Buffer.from(onMain.toString("latin1").replace(/\{"fw":"Sprayer_ESP32","ver":"[^"]*","built":"[^"]*"/,
+   '{"fw":"Sprayer_ESP32","ver":"' + running + '","built":"' + LATER + '"'), "latin1");
+  const raw = "https://raw.githubusercontent.com/renatorgr/Boards/main/Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/#firmware", what,
+   j => { Object.assign(j.sprayer, {version: running, built: LATER, size: bin.length}); });
+  const cors = {"Access-Control-Allow-Origin": "*"};
+  await pg.route("https://api.github.com/repos/renatorgr/Boards/contents/Sprayer/Sprayer_ESP32?ref=main", r => r.fulfill({status: 200,
+   contentType: "application/json", headers: cors, body: JSON.stringify([{type: "file", name: "Sprayer_ESP32.ino.bin", size: bin.length, download_url: raw}])}));
+  await pg.route(raw, r => r.fulfill({status: 200, contentType: "application/octet-stream", headers: cors, body: bin}));
+  pg.on("dialog", d => d.accept("agopengps"));
+  await pg.waitForTimeout(2500);
+  if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  if (!(await pg.locator('nav button[data-t="firmware"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
+  if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
+  else {
+   await pg.click("#ghInstall");
+   try { await pg.waitForFunction(() => /^Back:/.test(document.getElementById("msgProg").textContent), null, {timeout: 25000}); }
+   catch (e) { fail.push(what + ": the module did not come back with the new program (" + (await pg.locator("#msgProg").textContent()) + ")"); }
+   await expect(pg, what, "#msgProg", /^Back: it runs Sprayer_ESP32 v[\d.]+, built 31 Dec 2099 23:59 for the ESP32_Relay_X8\.$/);
+   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — the one installed$/);
+   if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is still marked new after the update");
+  }
+  await shot(pg, "sprayer-firmware-updated");
   await pg.close();
  }
  // the seed drill's module with the network cable unplugged: sections closed, the program's request still outlined
