@@ -56,7 +56,7 @@ Older changes are in the git history and at the top of each file.
 
 **Compiled on GitHub too:** every pull request and every change on `main` that touches the firmware is compiled by GitHub (Actions, "Teensy firmware") with Teensyduino 1.58 and the same board settings. A green tick on the pull request means it compiles; a red cross shows the error. The `.hex` (named `v4.5_AiO_WEB.hex`) is under **Artifacts** on the run's page, for 30 days. It is a check, not a test: the bench test is still needed.
 
-**Already compiled:** `v4.5_AiO_WEB.hex` (Teensyduino 1.58). The IDE ignores it and the XIAO folders.
+**Already compiled:** `v4.5_AiO_WEB.ino.hex` (Teensyduino 1.58, the name the Arduino IDE gives). The IDE ignores it and the XIAO folders.
 
 - From a firmware that already has this web page: web page → Firmware → choose the `.hex`.
 - From any other firmware: over USB, Teensy Loader → File → Open HEX File → press the button on the Teensy.
@@ -462,7 +462,7 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 | `zOTA.ino`, `FlashTxx.*` | firmware update |
 | `zXiao.ino` / `.h` | XIAO link |
 | `Autosteer.ino`, `AutosteerPID.ino`, `zUdpNtrip.ino`, `zADS1115.*`, `zNMEAParser.h` | from the AgOpenGPS / Gunics firmware, changed (each file says how) |
-| `v4.5_AiO_WEB.hex` | compiled firmware (Teensyduino 1.58) |
+| `v4.5_AiO_WEB.ino.hex` | compiled firmware (Teensyduino 1.58) |
 | `v4.5_XIAO_ESP32/`, `v4.5_XIAO_ESP32_bin/` | the XIAO program, and compiled for the C3 and S3 |
 | `COPYING` | GNU GPL v3 |
 
