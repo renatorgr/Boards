@@ -7,7 +7,7 @@ pressure and flow, and has its own web page.
 The 19-section no-till seed drill on a KinCony KC868-A32 has its own program since
 v0.9: [Seeder/Seeder_ESP32](../../Seeder/Seeder_ESP32).
 
-Version 0.9.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.0 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -28,18 +28,42 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   (PGN 239 / 229), machine config (238: relay polarity, lift times), pin functions
   (236: what each relay does), subnet (201), hello (200 → 123) and scan (202 → 203).
   Everything the program sends is kept in flash, so it survives a power cut.
-- Once a second it also sends the sprayer readings (PGN 160: pressure, flow, litres,
-  master switch, sections open), which the
+- It works out the **application rate (L/ha)** from the flow, the speed (PGN 239) and the
+  widths of the open sections (PGN 235, which AgOpenWeb sends; kept in flash), the
+  pressure that gives the **target rate** at this speed, and the **alarms**: low or high
+  pressure, flow outside the tolerance, flow with every section closed. The target rate,
+  nozzles, pressure limits and flow tolerance are set on the module's page (*Settings*);
+  the section widths stay in AgOpenWeb.
+- Once a second it sends all of it to the program: PGN 160 (pressure, flow, litres,
+  master switch, sections open) as before, and PGN 161 with the same readings plus the
+  rate, target, pressure for the target, pressure limits and alarms as **ISOBUS process
+  data** (DDIs, see *Messages*). The
   [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb) shows
-  above the section buttons. With no sensor ticked it sends none: see *Sensors fitted*
-  below.
+  them above the section buttons and sounds the alarms. With no sensor ticked it sends
+  neither: see *Sensors fitted* below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
   works even if the ESP32 or the tablet freezes.
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
   with a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the
-  tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`.
+  tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`
+  (also as a web card in AgOpenWeb). It has four tabs:
+  - **Spraying**: the rate in L/ha against the target (green within 10 %, orange outside),
+    the pressure and the pressure that gives the target (or "slow down / speed up to …
+    km/h" when the target needs a pressure outside the limits), the sections and the alarms.
+  - **Settings**: target rate, nozzles, pressure limits, flow tolerance; the section widths
+    received from AgOpenWeb; the sensors fitted and their calibration. Saving needs the
+    own network's password, so nothing changes by a touch while driving.
+  - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings and the events.
+  - **Firmware**, as on the Teensy and XIAO pages: the program installed (version, build
+    date, board), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this folder;
+    checked when the page opens, every 6 hours and with *Check now*) with **Install from
+    GitHub**, install a chosen `.bin` with a progress bar, Restart, and **Download the
+    report**: the module's state, settings and events in one `.json` file to send when
+    something goes wrong (no passwords in it). The phone or tablet asks GitHub, so it needs
+    internet: open the page over the tractor network, not over the module's own Wi-Fi.
+    A `.bin` for another board, the seed drill's program or the `.merged.bin` is refused.
   Without the board, the page can be tried in the
   [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
@@ -107,7 +131,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.9.1` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.0` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -135,16 +159,33 @@ divider (to-GND ÷ total) in the page's calibration.
    (8, each 1 m wide), and set *Machine → Pin config* pins 7 and 8 to
    *Section 7* and *Section 8*: without that, relays 7 and 8 never open. A relay that is not a section can be the hydraulic lift
    or the tramline instead. The page's *Relays* card shows what each relay does.
-7. **Sensors fitted.** In *Calibration*, tick *Pressure sensor fitted* and *Flow meter
+7. **Sensors fitted.** In *Settings → Sensors*, tick *Pressure sensor fitted* and *Flow meter
    fitted* for the sensors on the machine (both on the sprayer, ticked by default), then
    *Save*. The page only shows the readings and calibration fields of the sensors ticked;
    an unticked sensor reads 0 (its pin floats without it). With **neither ticked** the
-   *Sprayer* card goes away and the module stops sending PGN 160, so
+   rate and pressure go away and the module stops sending PGN 160 and 161, so
    AgOpenWeb's sprayer strip and the AiO module page's *Sprayer (PGN 160)* card do not
    show; the sections still reach them in the hello reply.
+8. **Section widths.** *Settings → Sections from AgOpenWeb* should say *8 sections of
+   1.00 m*. AgOpenWeb sends them (PGN 235) when it starts and when a tool profile is saved
+   or loaded; the module keeps them. If it says *not received yet*, save the tool profile
+   in AgOpenWeb with the module on the network. Without them there is no L/ha.
+9. **Spraying settings.** In *Settings → Spraying*: the target rate (L/ha), the nozzle
+   spacing (0.5 m: 2 nozzles per 1 m section), one nozzle's flow at a pressure from the
+   nozzle chart, the minimum and maximum pressure and the flow tolerance, then *Save*.
+   These used to be in AgOpenWeb (*Machine → Sprayer*); with this module AgOpenWeb hides
+   them and shows what the module sends.
 
-Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
-page *Install a new program* and choose the `.bin`.
+Later program updates, on the page's **Firmware** tab:
+- **Install from GitHub** when it says "newer than the installed one": the page downloads
+  `Sprayer_ESP32.ino.bin` from this folder on GitHub and sends it to the module.
+- Or *Sketch → Export compiled binary* in the Arduino IDE, then *Choose .bin*
+  (`Sprayer_ESP32.ino.bin` in the sketch folder, not the `.merged.bin`) and *Install*.
+
+The page knows which version is on GitHub from the `.bin` itself (its version, board and
+build date, published in `firmware.json` with the simulator). So after a code change,
+export the binary again and put the new `.bin` files on GitHub with the code, or the page
+keeps offering the older program.
 
 ## Bench test (before the tractor, no water)
 
@@ -162,7 +203,7 @@ page *Install a new program* and choose the `.bin`.
 
 With the pump running and one nozzle open, fill a 10 L bucket and note the litres the
 page counted. New pulses per litre = old value × (litres counted ÷ 10). Enter it under
-*Calibration* on the page (it needs the own network's password).
+*Settings → Sensors* on the page (it needs the own network's password).
 
 ## Forgotten Wi-Fi password
 
@@ -178,16 +219,39 @@ Monitor: `wifi-reset`.
 | 239 | program → module | sections 1–16 (bytes 11–12), hydraulic lift (7), tramline (8), geo stop (9), speed (6, km/h × 10) |
 | 229 | program → module | sections 1–64 (bytes 5–12, 8 per byte, section 1 = byte 5 bit 0), sent with every 239 when the tool has more than 16 sections. The relays here follow sections 1–16 only (the program's pin config) |
 | 238 | program → module | machine config: raise / lower time, lift enable, byte 8 bit 0 = outputs inverted. Saved |
+| 235 | program → module | section dimensions: widths of sections 1–16 in cm (uint16, bytes 5–36), number of sections (37). For the L/ha. Saved |
 | 236 | program → module | 24 output functions: 1–16 section, 17 lift lower, 18 lift raise, 19 tramline right, 20 tramline left, 21 geo stop. Saved |
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
 | 200 → 123 | hello / reply | reply carries the sections 1–16 really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
 | 237 | module → program | every 200 ms, in the layout of the AgOpenGPS AiO v26 firmware: sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives) |
 | 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
+| 161 | module → program | right after each 160: ISOBUS process data, 8 bytes per value (table below) |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts
 messages with a right checksum from source `0x7F` (the program).
+
+**PGN 161, ISOBUS process data.** As the Process Data Message of ISO 11783-10, which the
+AgOpenGPS ISOBUS group proposes for modules ("ISOBUS Data Everywhere"): each value is
+8 bytes, little-endian. Byte 0 = command 3 (*value*) in bits 0–3 and the element number's
+bits 0–3 in bits 4–7, byte 1 = the element number's bits 4–11, bytes 2–3 = the DDI,
+bytes 4–7 = the value (int32). Element 0 = the sprayer, element 1 = its boom. A value
+that is not known (sensor not fitted, tractor stopped, no target) is left out of that
+message.
+
+| DDI | What | Unit (value = ) | Element | Sent |
+|---|---|---|---|---|
+| 194 | actual pressure | 0.1 Pa (bar × 1 000 000) | 1 | pressure sensor fitted |
+| 37 | actual flow | mm³/s (L/min × 16 667) | 1 | flow meter fitted |
+| 351 | total volume | ml | 0 | flow meter fitted |
+| 141 | actual work state (master switch) | 1 on, 0 off | 1 | always |
+| 161 | actual condensed work state, sections 1–16 | 2 bits per section: 01 open, 00 closed, 11 not there | 1 | always |
+| 2 | actual rate | 0.01 mm³/m² (L/ha × 10 000) | 1 | moving, widths known, flow meter fitted |
+| 1 | target rate | 0.01 mm³/m² (L/ha × 10 000) | 1 | target set |
+| 193 | pressure that gives the target now | 0.1 Pa | 1 | moving with a target |
+| 195 / 196 | minimum / maximum pressure | 0.1 Pa | 1 | when set |
+| 57344 | sprayer alarms (proprietary DDI): 1 low pressure, 2 high pressure, 4 flow too low, 8 flow too high, 16 flow with the sections off | bits | 1 | always |
 
 ## A separate ESP32 with relay modules
 
@@ -212,7 +276,7 @@ config (AgOpenGPS: *Machine → Pin config*, default pins 1–16 = sections 1–
 makes relay n open with section n. The page's *Relays* card shows the result ("16 relays,
 8 of them sections"). A relay that is not a section can be the hydraulic lift or the
 tramline. The AgOpenWeb sprayer strip shows the first 8 sections; the module reports
-all 16 (PGN 160 byte 15).
+all 16 (PGN 160 byte 15, PGN 161 DDI 161).
 
 If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or tick
 "relay active high" in the program: the page's *Output polarity* line says which pin
@@ -228,6 +292,8 @@ level the module is using.
 - The FPD-270A valves and the YF-S201 are plastic and made for water. Rinse with clean
   water after each job. Fit a filter before the flow meter.
 - The ISOBUS group of AgOpenGPS is working on a standard way for modules to send such
-  readings (ISOBUS DDIs) and to show their own page in AgOpenWeb. This program keeps
-  PGN 160 until that is decided; the page already answers `GET /aow/status` and announces
-  itself as `_aow-ui._tcp` over mDNS as the proposal describes.
+  readings (ISOBUS DDIs) and to show their own page in AgOpenWeb. PGN 161 follows that
+  proposal; the PGN number itself is this project's choice until the group picks one. The
+  module keeps sending PGN 160 for the AiO module page and older AgOpenWeb builds. The page
+  answers `GET /aow/status` (with the sprayer alarms) and announces itself as `_aow-ui._tcp`
+  over mDNS as the proposal describes.

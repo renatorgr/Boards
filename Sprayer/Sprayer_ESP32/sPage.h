@@ -8,11 +8,22 @@
    Sprayer card, as on a seed drill).
    2026-10-27 (Claude): sections sized to the machine (up to 64), the module IP's last number. The seed drill has its
    own page now (Seeder/Seeder_ESP32/dPage.h).
+   2026-11-02 (Claude): v0.10.0: three tabs. Spraying: the L/ha (actual and target), the pressure and what gives the
+   target, the sections and the alarms, big enough to read in the cab. Settings: target rate, nozzles, pressure limits,
+   flow tolerance, the section widths from the program, the sensors and their calibration. Module: AgOpenWeb, relays,
+   Wi-Fi, program, events, and a "Download the report" button (state, settings and events in a .json file to send when
+   something goes wrong), as on the Teensy and XIAO pages.
+   2026-11-02 (Claude): a fourth and last tab, Firmware, as on the Teensy and XIAO pages: the program installed, the
+   version on GitHub (asked by the browser when the page opens, every 6 hours and with "Check now"), Install from
+   GitHub, install a chosen .bin with a progress bar, Restart, and the report. A .bin for another board, the seed
+   drill's program or the .merged.bin is refused.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// One self-contained HTML file, no internet needed, made for a phone. Dark, or light when the phone
-// asks for it. It asks the module for /api/status once a second.
+// One self-contained HTML file, no internet needed, made for a phone (and for an AgOpenWeb web card). Dark, or light
+// when the phone asks for it. It asks the module for /api/status once a second. The tab is in the address (#settings,
+// #module, #firmware), so a reload or a web card keeps it. Only the update check needs internet: the browser asks
+// GitHub, never the module.
 #pragma once
 
 const char SPRAYER_PAGE[] PROGMEM = R"SPRAYERPAGE(<!doctype html>
@@ -27,11 +38,17 @@ const char SPRAYER_PAGE[] PROGMEM = R"SPRAYERPAGE(<!doctype html>
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);accent-color:var(--acc);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:3}
+#top{position:sticky;top:0;z-index:3}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
 header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
+nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+nav button.new::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
+nav button.on.new::after{background:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
@@ -41,13 +58,22 @@ dt{color:var(--mute)}
 dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .big{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums}
 .big small{font-size:14px;color:var(--mute);font-weight:400;margin-left:4px}
-.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:0}
+.tile .lbl{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);font-weight:650}
+.huge{font-size:52px;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.huge small{font-size:18px;color:var(--mute);font-weight:400;margin-left:6px}
+.huge.on-target{color:var(--ok)}.huge.off-target{color:var(--warn)}
+.tile .hint{font-size:15px;min-height:1.45em}
+.alarm{background:var(--bad);color:#fff;border-radius:12px;padding:10px 14px;font-size:18px;font-weight:650;margin-top:12px}
+.silent{border:2px solid var(--bad);color:var(--bad);border-radius:12px;padding:8px 14px;font-weight:650;margin-top:12px}
 .pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:13px;font-weight:600;background:var(--soft)}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 .secs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}
 .secs span{height:26px;border-radius:5px;background:var(--soft);font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--mute)}
 .secs span.req{outline:2px solid var(--warn);outline-offset:-2px}
 .secs span.on{background:var(--ok);color:var(--accInk);font-weight:700}
+.secs.work span{height:48px;font-size:17px;border-radius:8px}
 .secs.rl span{height:38px;flex-direction:column;line-height:1.1;font-size:11.5px;white-space:nowrap;overflow:hidden}
 .secs.rl small{font-size:9.5px;font-weight:400;color:var(--mute)}
 .secs.rl span.on small{color:inherit;opacity:.8}
@@ -59,36 +85,80 @@ button.danger{border:1px solid var(--bad);background:transparent;color:var(--bad
 button:disabled{opacity:.45;cursor:default}
 .field{display:flex;flex-direction:column;gap:3px;margin:8px 0}
 .field span{color:var(--mute);font-size:13.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 input[type=text],input[type=password],input[type=number]{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
 .opt{display:flex;gap:10px;align-items:center;padding:5px 0}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute)}
 .msg{font-size:13.5px;margin-top:6px;min-height:1.2em}
+progress{width:100%;height:14px;margin-top:10px;accent-color:var(--acc)}
+a{color:var(--acc)}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
+<div id="top">
 <header><div class="dot" id="dot"></div><h1>Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
+<nav id="nav"><button data-t="work" class="on">Spraying</button><button data-t="settings">Settings</button><button data-t="module">Module</button><button data-t="firmware">Firmware</button></nav>
+</div>
 <main>
+
+<section id="t-work">
+<div class="tiles" id="sprCard">
+<div class="tile rf"><div class="lbl">Rate</div><div class="huge" id="lha">–<small>L/ha</small></div><div class="hint" id="target">–</div></div>
+<div class="tile rp"><div class="lbl">Pressure</div><div class="huge" id="bar">–<small>bar</small></div><div class="hint" id="need"></div></div>
+</div>
+<div class="alarm" id="alarms" hidden></div>
+<div class="silent" id="silent" hidden>No messages from AgOpenWeb: every section is closed.</div>
+<div class="card" style="margin-top:12px"><h2>Sections</h2>
+<div class="secs work" id="secs"></div>
+<p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent).</p>
+<p class="note" id="detail">–</p>
+</div>
+</section>
+
+<section id="t-settings" hidden>
 <div class="grid">
 
-<div class="card" id="sprCard"><h2>Sprayer</h2>
-<div class="row3">
-<div class="rp"><div class="big" id="bar">–<small>bar</small></div><div class="note">pressure</div></div>
-<div class="rf"><div class="big" id="lpm">–<small>L/min</small></div><div class="note">flow</div></div>
-<div class="rf"><div class="big" id="total">–<small>L</small></div><div class="note">applied</div></div>
+<div class="card"><h2>Spraying</h2>
+<div class="field"><span>Target rate (L/ha, 0 = none). Only shown and checked: the pressure is set by hand</span><input type="number" id="rate" step="5" min="0"></div>
+<div class="field"><span>Nozzle spacing (m): a section's nozzles = its width ÷ this</span><input type="number" id="nzSp" step="0.05" min="0"></div>
+<div class="two">
+<div class="field"><span>One nozzle (L/min, 0 = no flow alarm)</span><input type="number" id="nzFl" step="0.01" min="0"></div>
+<div class="field"><span>at (bar), from the nozzle chart</span><input type="number" id="nzBar" step="0.1" min="0.1"></div>
+<div class="field"><span>Minimum pressure (bar, 0 = off)</span><input type="number" id="pLow" step="0.1" min="0"></div>
+<div class="field"><span>Maximum pressure (bar, 0 = off)</span><input type="number" id="pHigh" step="0.1" min="0"></div>
 </div>
-<dl><dt>Master switch</dt><dd id="master">–</dd><dt class="rp">Sensor voltage</dt><dd class="rp" id="volts">–</dd><dt class="rf">Flow pulses</dt><dd class="rf" id="pulses">–</dd></dl>
-<div class="row rf"><button class="sec" onclick="post('/api/total',{},'msgTotal')">Total back to 0</button></div>
-<div class="msg" id="msgTotal"></div>
+<div class="field"><span>Flow tolerance (%): alarm when the flow is this far from what the open nozzles should give</span><input type="number" id="fTol" step="1" min="1" max="100"></div>
+<div class="row"><button class="act" onclick="saveSpray()">Save</button></div>
+<div class="msg" id="msgSpray"></div>
+<p class="note">An alarm comes on after 3 s: pressure below the minimum while spraying, above the maximum, flow outside the tolerance, or flow with every section closed. AgOpenWeb shows it and sounds it.</p>
 </div>
 
-<div class="card"><h2>Sections</h2>
-<div class="secs" id="secs"></div>
-<p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent).</p>
-<h2 style="margin-top:12px">Relays</h2>
-<div class="secs rl" id="relays"></div>
-<p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
+<div class="card"><h2>Sections from AgOpenWeb</h2>
+<p id="tool" class="big" style="font-size:20px">–</p>
+<p class="note" id="toolNote">The section widths come from AgOpenWeb (Tool → Sections) and are kept here. They give the open width for the L/ha.</p>
 </div>
+
+<div class="card"><h2>Sensors</h2>
+<div class="opt"><input type="checkbox" id="snP" onchange="showFitted()"><label for="snP">Pressure sensor fitted (G34)</label></div>
+<div class="opt"><input type="checkbox" id="snF" onchange="showFitted()"><label for="snF">Flow meter fitted (G35)</label></div>
+<p class="note" id="noSensors" hidden>No sensors: the module sends no sprayer readings (PGN 160 and 161), so AgOpenWeb and the AiO module page show none.</p>
+<div class="field cf"><span>Flow meter pulses per litre (YF-S201: about 450)</span><input type="number" id="ppl" step="0.1"></div>
+<div class="field cp"><span>Pressure sensor full scale (bar, at 4.5 V)</span><input type="number" id="pmax" step="0.1"></div>
+<div class="field cp"><span>Divider on the pressure signal (10k / (10k + 10k) = 0.5)</span><input type="number" id="pdiv" step="0.001"></div>
+<div class="row"><button class="act" onclick="saveCalib()">Save</button></div>
+<div class="msg" id="msgCalib"></div>
+<dl style="margin-top:8px"><dt class="rp">Sensor voltage</dt><dd class="rp" id="volts">–</dd><dt class="rf">Flow</dt><dd class="rf" id="lpm">–</dd><dt class="rf">Flow pulses</dt><dd class="rf" id="pulses">–</dd><dt class="rf">Applied</dt><dd class="rf" id="total">–</dd><dt>Master switch</dt><dd id="master">–</dd></dl>
+<div class="row rf"><button class="sec" onclick="post('/api/total',{},'msgTotal')">Total back to 0</button></div>
+<div class="msg" id="msgTotal"></div>
+<p class="note cf">Bucket test: with one nozzle open, fill 10 L and note the litres counted. New pulses per litre = old × (counted ÷ 10).</p>
+</div>
+
+</div>
+</section>
+
+<section id="t-module" hidden>
+<div class="grid">
 
 <div class="card"><h2>AgOpenWeb</h2>
 <dl>
@@ -101,6 +171,11 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <dt>Messages</dt><dd id="counts">–</dd>
 <dt>Output polarity</dt><dd id="invert">–</dd>
 </dl>
+</div>
+
+<div class="card"><h2>Relays</h2>
+<div class="secs rl" id="relays"></div>
+<p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
 </div>
 
 <div class="card"><h2>Wi-Fi</h2>
@@ -127,81 +202,142 @@ input[type=text],input[type=password],input[type=number]{font:inherit;padding:9p
 <div class="msg" id="msgWifi"></div>
 </div>
 
-<div class="card"><h2>Calibration</h2>
-<div class="opt"><input type="checkbox" id="snP" onchange="showFitted()"><label for="snP">Pressure sensor fitted (G34)</label></div>
-<div class="opt"><input type="checkbox" id="snF" onchange="showFitted()"><label for="snF">Flow meter fitted (G35)</label></div>
-<p class="note" id="noSensors" hidden>No sensors: the module sends no sprayer readings (PGN 160), so AgOpenWeb and the AiO module page show none.</p>
-<div class="field cf"><span>Flow meter pulses per litre (YF-S201: about 450)</span><input type="number" id="ppl" step="0.1"></div>
-<div class="field cp"><span>Pressure sensor full scale (bar, at 4.5 V)</span><input type="number" id="pmax" step="0.1"></div>
-<div class="field cp"><span>Divider on the pressure signal (10k / (10k + 10k) = 0.5)</span><input type="number" id="pdiv" step="0.001"></div>
-<div class="row"><button class="act" onclick="saveCalib()">Save</button></div>
-<div class="msg" id="msgCalib"></div>
-<p class="note cf">Bucket test: with one nozzle open, fill 10 L and note the litres counted. New pulses per litre = old × (counted ÷ 10).</p>
-</div>
-
-<div class="card"><h2>Program</h2>
-<dl><dt>Version</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
-<div class="row"><label class="act">Install a new program (.bin)<input type="file" id="bin" accept=".bin" style="display:none" onchange="update()"></label><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
-<div class="msg" id="msgProg"></div>
-<p class="note">Arduino IDE: Sketch → Export compiled binary, then choose the .bin from the sketch folder. The sections close during the update.</p>
-</div>
-
 <div class="card"><h2>Events</h2><div class="log" id="log"></div></div>
 
 </div>
+</section>
+
+<section id="t-firmware" hidden>
+<div class="grid">
+
+<div class="card"><h2>Program installed</h2>
+<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="board">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
+</div>
+
+<div class="card"><h2>Version on GitHub</h2>
+<dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
+<div class="row"><button class="act" id="ghInstall" onclick="ghInstall()" disabled>Install from GitHub</button><button class="sec" id="ghCheck" onclick="ghCheck()">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Sprayer/Sprayer_ESP32" target="_blank" rel="noopener">See on GitHub</a></div>
+<p class="note">This phone or tablet asks GitHub, so it needs internet: on the module's own Wi-Fi network alone it usually has none. Open this page over the tractor network (the router with internet). The module's own-network password confirms the installation.</p>
+</div>
+
+<div class="card"><h2>Update or restart</h2>
+<div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="bin" accept=".bin" style="display:none" onchange="binChosen()"></label><span id="binName" class="note">no file</span></div>
+<div class="row"><button class="act" id="install" onclick="installFile()" disabled>Install</button><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
+<progress id="prog" max="100" value="0" hidden></progress>
+<div class="msg" id="msgProg"></div>
+<p class="note">Arduino IDE: Sketch → Export compiled binary, then choose Sprayer_ESP32.ino.bin in the sketch folder (not the .merged.bin). The sections close during the update. If it fails, the current program keeps running.</p>
+</div>
+
+<div class="card"><h2>Report for an analysis</h2>
+<p class="note">Puts the module's state, its settings, the readings, the link to AgOpenWeb and the events in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
+<div class="row"><button class="sec" type="button" id="dumpBtn" onclick="report()">Download the report</button><span id="dumpMsg" class="note"></span></div>
+</div>
+
+</div>
+</section>
+
 </main>
 <script>
 const $=id=>document.getElementById(id);
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
+// the sprayer alarms (rate.alarms bits), as AgOpenWeb words them
+const ALARMS=[[1,'Low pressure'],[2,'High pressure'],[4,'Flow too low'],[8,'Flow too high'],[16,'Flow with the sections off']];
+const RATE_TOLERANCE=0.10;   // the rate is green within 10 % of the target, orange outside (as AgOpenWeb's strip)
 // sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
 function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
 function pw(){return prompt('Password of the own Wi-Fi network')}
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
 let nSecs=0,nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
+const f1=v=>v.toFixed(1);
 // show what belongs to the sensors fitted (1 pressure, 2 flow): class p = pressure, f = flow
 function fitted(pre,s){for(const e of document.querySelectorAll('.'+pre+'p'))e.hidden=!(s&1);for(const e of document.querySelectorAll('.'+pre+'f'))e.hidden=!(s&2)}
 function ticked(){return($('snP').checked?1:0)|($('snF').checked?2:0)}
 function showFitted(){const s=ticked();fitted('c',s);$('noSensors').hidden=s!==0}
+// tabs: the one in the address (#settings, #module, #firmware), else Spraying
+function show(t){
+  if(!['work','settings','module','firmware'].includes(t))t='work';
+  for(const b of document.querySelectorAll('nav button'))b.classList.toggle('on',b.dataset.t===t);
+  for(const s of document.querySelectorAll('main>section'))s.hidden=s.id!=='t-'+t;
+  history.replaceState(null,'',t==='work'?location.pathname:'#'+t);
+}
+$('nav').addEventListener('click',e=>{if(e.target.dataset.t)show(e.target.dataset.t)});
+show(location.hash.slice(1));
+// the tool's sections from AgOpenWeb (PGN 235): "8 sections of 1.00 m", or each width when they differ
+function toolText(t){
+  if(!t.n)return null;
+  const w=t.cm.map(c=>(c/100).toFixed(2));
+  if(w.length&&w.every(x=>x===w[0]))return t.n+' section'+(t.n>1?'s':'')+' of '+w[0]+' m';
+  return t.n+' sections: '+w.join(' · ')+' m';
+}
 let settingsLoaded=false;
 async function refresh(){
+  if(busy&&!waitBoot)return;   // sending a program: the module has no time for anything else
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
     $('dot').className='dot'+(d.aog.link?' on':'');
     $('sub').textContent=(d.wifi.up?'on '+d.wifi.sta+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
     const sn=d.cal.sensors===undefined?3:d.cal.sensors;$('sprCard').hidden=!sn;fitted('r',sn);
-    $('bar').innerHTML=d.spr.bar.toFixed(1)+'<small>bar</small>';
-    $('lpm').innerHTML=d.spr.lpm.toFixed(1)+'<small>L/min</small>';
-    $('total').innerHTML=d.spr.total.toFixed(1)+'<small>L</small>';
-    $('master').innerHTML=d.spr.master?'<span class="ok">on</span>':'<span class="bad">off</span>';
-    $('volts').textContent=d.spr.volts.toFixed(2)+' V';
-    $('pulses').textContent=d.spr.pulses;
+    // Spraying tab: rate against the target, pressure and what gives the target, alarms, sections
+    const ra=d.rate||{lha:-1,target:0,needBar:-1,hintKmh:-1,alarms:0,width:0,nozzles:0,expected:-1},tool=d.tool||{n:0,cm:[]};
+    const lha=$('lha');lha.innerHTML=(ra.lha>=0?Math.round(ra.lha):'–')+'<small>L/ha</small>';
+    const off=ra.target>0&&ra.lha>=0?Math.abs(ra.lha-ra.target)>ra.target*RATE_TOLERANCE:null;
+    lha.className='huge'+(off===null?'':off?' off-target':' on-target');
+    $('target').textContent=!tool.n?'no section widths from AgOpenWeb yet (Settings)':(ra.target>0?'target '+Math.round(ra.target)+' L/ha':'no target set (Settings)')+(ra.lha<0&&d.aog.link?' · stopped':'');
+    $('bar').innerHTML=f1(d.spr.bar)+'<small>bar</small>';
+    let need='';
+    if(ra.needBar>0&&ra.hintKmh>0)need=f1(ra.needBar)+' bar needed, '+(ra.needBar>ra.maxBar?'slow down':'speed up')+' to '+f1(ra.hintKmh)+' km/h';
+    else if(ra.needBar>0)need='set '+f1(ra.needBar)+' bar for the target';
+    $('need').textContent=need;
+    const al=ALARMS.filter(([b])=>ra.alarms&b).map(([,t])=>t);
+    $('alarms').hidden=!al.length;$('alarms').textContent=al.join(' · ');
+    $('silent').hidden=d.aog.link;
     // as many sections as the program has asked for (secTop), at least those the relays follow (up to 16)
     let mapped=0,nSec=0;for(const f of d.out.fn)if(f>=1&&f<=64){nSec++;mapped=Math.max(mapped,f)}
-    const n=Math.max(8,d.aog.secTop||0,Math.min(16,mapped));
-    if(nSecs!==n){nSecs=n;$('secs').innerHTML=cells('s',n,0)}
+    const n=Math.max(tool.n||8,d.aog.secTop||0,Math.min(16,mapped));
+    if(nSecs!==n){nSecs=n;$('secs').innerHTML=cells('s',n,0);$('secs').style.gridTemplateColumns='repeat('+Math.min(n,8)+',1fr)'}
     for(let i=0;i<nSecs;i++){const e=$('s'+i),on=bit(d.out.on,i);e.className=(on?'on':'')+(bit(d.aog.req,i)&&!on?' req':'')}
+    const det=[];
+    if(sn&2)det.push(f1(d.spr.lpm)+' L/min');
+    det.push(f1(d.aog.kmh)+' km/h');
+    if(tool.n)det.push(ra.width.toFixed(2)+' m open'+(ra.nozzles?' ('+ra.nozzles+' nozzles)':''));
+    if(ra.expected>=0&&ra.nozzles)det.push('expected '+f1(ra.expected)+' L/min');
+    if(sn&2)det.push(f1(d.spr.total)+' L applied');
+    if(!d.spr.master)det.push('master switch off');
+    $('detail').textContent=det.join(' · ');
+    // Settings tab
+    const tt=toolText(tool);$('tool').textContent=tt||'not received yet';$('tool').className='big'+(tt?'':' warn');
+    $('toolNote').textContent=tt?'From AgOpenWeb (Tool → Sections), kept here. They give the open width for the L/ha.'
+      :'AgOpenWeb sends the section widths when it starts and when a tool profile is saved or loaded. With the module on the network: in AgOpenWeb, save the tool profile (or restart AgOpenWeb). Until then there is no L/ha.';
+    $('volts').textContent=d.spr.volts.toFixed(2)+' V';
+    $('lpm').textContent=f1(d.spr.lpm)+' L/min';
+    $('pulses').textContent=d.spr.pulses;
+    $('total').innerHTML=f1(d.spr.total)+' L';
+    $('master').innerHTML=d.spr.master?'<span class="ok">on</span>':'<span class="bad">off</span>';
+    // Module tab
     if(nRelays!=d.out.fn.length){nRelays=d.out.fn.length;$('relays').innerHTML=cells('r',nRelays,0)}
     for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];e.innerHTML='<small>'+(i+1)+'</small>'+fnName(f);e.className=d.out.bits>>>i&1?'on':''}
     $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: what each relay does comes from the program (Tool → Machine → Pin config).';
     $('link').innerHTML=d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>';
     $('ago239').textContent=ago(d.aog.ago239);$('agoHello').textContent=ago(d.aog.agoHello);
-    $('kmh').textContent=d.aog.kmh.toFixed(1)+' km/h';
+    $('kmh').textContent=f1(d.aog.kmh)+' km/h';
     $('hyd').textContent=(d.aog.hydEn?'enabled, ':'disabled, ')+(d.aog.hyd==1?'lowering':d.aog.hyd==2?'raising':'idle')+' (raise '+d.aog.raise+' s, lower '+d.aog.lower+' s)';
     $('tram').textContent=(d.aog.tram&1?'right ':'')+(d.aog.tram&2?'left':'')||'off';
-    $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+d.aog.crcErr+' bad checksums';
+    $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+(tool.n235||0)+' section widths, '+d.aog.crcErr+' bad checksums';
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
     $('sta').innerHTML=!d.wifi.staOn?'<span class="warn">not set</span>':d.wifi.up?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
-    $('ver').textContent=d.fw+' v'+d.ver+(d.board?' · '+d.board:'');$('built').textContent=d.built;$('up').textContent=Math.floor(d.up/60)+' min';
-    $('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     $('log').textContent=d.log.join('\n');
+    // Firmware tab
+    $('ver').textContent=d.fw+' v'+d.ver;$('built').textContent=builtText(d.built)||d.built;$('board').textContent=d.board||'–';
+    $('up').textContent=Math.floor(d.up/60)+' min';$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
+    running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
-  }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot'}
+  }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot';if(waitBoot)progMsg('The module is restarting…','warn')}
 }
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
@@ -210,25 +346,152 @@ async function loadSettings(){
   $('staPass').placeholder=d.staPassSet?'(saved, leave empty to keep it)':'';
   $('ppl').value=d.ppl;$('pmax').value=d.pmax;$('pdiv').value=d.pdiv;
   const sn=d.sensors===undefined?3:d.sensors;$('snP').checked=!!(sn&1);$('snF').checked=!!(sn&2);showFitted();
+  for(const k of ['rate','nzSp','nzFl','nzBar','pLow','pHigh','fTol'])if(d[k]!==undefined)$(k).value=d[k];
 }
 async function post(url,fields,msgId){
   const p=pw();if(p===null)return;
   const body=new URLSearchParams(Object.assign({pw:p},fields));
   const m=$(msgId);m.textContent='…';
   try{const r=await fetch(url,{method:'POST',body});const d=await r.json();
+    // saved: the fields show what the module kept, before "done" (a restart: once it is back)
+    if(d.ok&&d.restart)settingsLoaded=false;
+    else if(d.ok)try{await loadSettings()}catch(e){}
     m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
-    if(d.ok)settingsLoaded=false;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
 function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi')}
 function saveCalib(){post('/api/calib',{sensors:ticked(),ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
-async function update(){
-  const f=$('bin').files[0];if(!f)return;const p=pw();if(p===null)return;
-  const m=$('msgProg');m.textContent='sending '+f.name+'…';
-  const fd=new FormData();fd.append('bin',f);
-  try{const r=await fetch('/api/update?pw='+encodeURIComponent(p),{method:'POST',body:fd});const d=await r.json();
-    m.innerHTML=d.ok?'<span class="ok">installed, restarting: reload this page in 15 s</span>':'<span class="bad">'+d.error+'</span>';
-  }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
+function saveSpray(){const f={};for(const k of ['rate','nzSp','nzFl','nzBar','pLow','pHigh','fTol'])f[k]=$(k).value.trim();post('/api/spray',f,'msgSpray')}
+// the report for an analysis: every answer of the module in one .json file, downloaded by this browser
+async function report(){
+  const b=$('dumpBtn'),m=$('dumpMsg');b.disabled=true;m.className='note';m.textContent='Gathering…';
+  const r={made:new Date().toString(),page:location.href,browser:navigator.userAgent};
+  for(const [k,u] of [['status','/api/status'],['settings','/api/settings'],['aow','/aow/status']]){
+    try{r[k]=await (await fetch(u,{cache:'no-store'})).json()}catch(e){r[k]={error:String(e)}}}
+  const d=new Date(),z=n=>String(n).padStart(2,'0'),fw=(r.status&&r.status.fw)||'Sprayer_ESP32';
+  const name=fw+'_report_'+d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.json';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,1)],{type:'application/json'}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+  m.className='note ok';m.textContent='Downloaded: '+name;b.disabled=false;
+}
+// ---- a new program: the one on GitHub, or a chosen .bin; both are checked here before they are sent
+// What a .bin is: an ESP32 program (first byte 0xE9, chip 0 = the plain ESP32 of these boards) and, from the text every
+// build carries (the start of its /api/status answer, zNet.ino), which program, version, board and build.
+async function binInfo(blob,name){
+  if(/merged|bootloader|partitions/i.test(name))return {error:'This is the wrong file: use Sprayer_ESP32.ino.bin, not the '+name+'.'};
+  const h=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+  if(h[0]!==0xE9)return {error:'This file is not an ESP32 program (wrong .bin).'};
+  if((h[12]|h[13]<<8)!==0)return {error:'This program is for another kind of ESP32 (S3, C3…), not for this module.'};
+  const t=new TextDecoder('latin1').decode(await blob.arrayBuffer());
+  const m=/\{"fw":"([^"]+)","ver":"([^"]*)","built":"([^"]*)"/.exec(t),b=/,"board":"([^"]+)"/.exec(t);
+  const i={fw:m?m[1]:'',ver:m?m[2]:'',built:m?m[3]:'',board:b?b[1]:''};
+  if(!fwNow)return i;
+  if(i.fw!==fwNow.fw)i.error=i.fw?'This is the program '+i.fw+', not this module\'s ('+fwNow.fw+').':'This file is not the '+fwNow.fw+' program.';
+  else if(i.board&&fwNow.board&&i.board!==fwNow.board)i.error='This program is for the '+i.board+' board, but this module is on the '+fwNow.board+' board (its relays are on other pins).';
+  return i;
+}
+function infoText(i){return i.fw+' '+verText(i.ver,i.built)+(i.board?' for the '+i.board:'')}
+function progMsg(t,c){const m=$('msgProg');m.className='msg'+(c?' '+c:'');m.textContent=t}
+let busy=false,waitBoot=false,upBefore=0,fwNow=null;
+// what the module runs; after an installation, the restart is seen when it is up again for less time than before
+function running(d){
+  const k=d.fw+' '+d.ver+' '+d.built+' '+d.board,was=fwNow&&fwNow.key;
+  fwNow={fw:d.fw,ver:d.ver,built:d.built,board:d.board,key:k};
+  if(waitBoot&&d.up<upBefore){waitBoot=false;busy=false;$('prog').hidden=true;
+    progMsg('Back: it runs '+infoText(fwNow)+'.','ok');$('install').disabled=!$('bin').files[0]}
+  upBefore=Math.max(upBefore,d.up);
+  if(k!==was)renderGh();
+  if(!busy&&(ghAt===0||Date.now()-ghAt>6*3600e3))ghCheck();   // GitHub, not waited for
+}
+function binChosen(){
+  const f=$('bin').files[0];$('binName').textContent=f?f.name+' ('+Math.round(f.size/1024)+' kB)':'no file';
+  $('install').disabled=!f||busy;progMsg('');
+}
+async function installFile(){
+  const f=$('bin').files[0];if(!f||busy)return;
+  if(!fwNow){progMsg('No answer from the module yet.','bad');return}
+  const i=await binInfo(f,f.name);
+  if(i.error){progMsg(i.error,'bad');return}
+  if(!confirm('Install '+infoText(i)+' on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const p=pw();if(p===null)return;
+  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  sendBin(f,f.name,p,0);
+}
+// the .bin to the module, progress from p0 to 95 %
+function sendBin(blob,name,pass,p0){
+  const g=$('prog');progMsg('Sending '+name+'…');
+  const fd=new FormData();fd.append('bin',blob,name);
+  const x=new XMLHttpRequest();x.open('POST','/api/update?pw='+encodeURIComponent(pass));
+  x.upload.onprogress=e=>{if(e.lengthComputable)g.value=p0+Math.round(e.loaded/e.total*(95-p0))};
+  const fail=t=>{busy=false;g.hidden=true;progMsg(t,'bad');$('install').disabled=!$('bin').files[0];renderGh()};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
+    if(x.status===200&&j.ok){g.value=100;waitBoot=true;progMsg('Installed. The module is restarting…','warn')}
+    else fail('Not installed: '+(j.error||('error '+x.status))+'. The current program keeps running.')};
+  x.onerror=()=>fail('The connection failed. The current program keeps running.');
+  x.send(fd);
+}
+
+// ---- a newer program on GitHub (renatorgr/Boards, Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin). firmware.json, written
+// by Firmware/simulator/build.py on every change on main and published with the simulator, says which version that .bin
+// is, for which board and when it was compiled (read from the .bin itself), so a new build of the same version shows as
+// new. Asked by this browser when the page opens, every 6 hours, and with "Check now".
+const GH_PUB='https://renatorgr.github.io/Boards/firmware.json',GH_API='https://api.github.com/repos/renatorgr/Boards/contents/';
+const GH_WEB='https://github.com/renatorgr/Boards/tree/main/',MON='JanFebMarAprMayJunJulAugSepOctNovDec';
+let gh=null,ghState='',ghAt=0;
+function verCmp(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d}return 0}
+function builtKey(b){const m=/^([A-Z][a-z]{2}) +(\d{1,2}) (\d{4}) (\d\d):(\d\d):(\d\d)$/.exec(String(b||'').trim()),i=m?MON.indexOf(m[1]):-1;   // "Nov  2 2026 10:41:07" -> "20261102104107"
+  return i<0||i%3?'':m[3]+String(i/3+1).padStart(2,'0')+m[2].padStart(2,'0')+m[4]+m[5]+m[6]}
+function builtCmp(a,b){a=builtKey(a);b=builtKey(b);return a&&b?(a>b)-(a<b):0}
+function builtText(b){const k=builtKey(b);return k?(+k.slice(6,8))+' '+MON.substr(k.slice(4,6)*3-3,3)+' '+k.slice(0,4)+' '+k.slice(8,10)+':'+k.slice(10,12):''}   // "2 Nov 2026 10:41"
+function verText(v,b){const t=builtText(b);return (v?'v'+v:'')+(t?(v?', ':'')+'built '+t:'')}
+async function ghCheck(){
+  if(ghState==='busy')return;
+  ghState='busy';renderGh();
+  try{const r=await fetch(GH_PUB,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();gh=j.sprayer&&j.sprayer.file?j.sprayer:null;ghState=gh?'ok':'none'}
+  catch(e){ghState='fail'}
+  ghAt=Date.now();renderGh();
+}
+function ghBoardOk(){return !gh||!gh.board||!fwNow||!fwNow.board||gh.board===fwNow.board}
+function ghCmp(){return gh&&fwNow?(gh.version?verCmp(gh.version,fwNow.ver):0)||builtCmp(gh.built,fwNow.built):NaN}   // >0: GitHub's is newer
+function ghNewer(){return ghCmp()>0&&ghBoardOk()}
+function renderGh(){
+  const c=ghCmp(),nw=ghNewer(),e=$('ghVer');let t='–',cls='';
+  if(ghState==='busy')t='searching…';
+  else if(ghState==='fail'){t='no answer from GitHub (does this phone or tablet have internet?)';cls='warn'}
+  else if(ghState==='none')t='no sprayer program on GitHub';
+  else if(gh){t=verText(gh.version,gh.built)||'a program';
+    if(!ghBoardOk()){t+=' — for the '+gh.board+' board, but this module is on the '+fwNow.board+' board';cls='warn'}
+    else if(c>0){t+=' — newer than the installed one';cls='ok'}
+    else if(c===0)t+=' — the one installed';
+    else if(c<0)t+=' — older than the installed one (the new .bin is not on GitHub yet)'}
+  e.textContent=t;e.className=cls;
+  $('ghInstall').disabled=!nw||busy;
+  $('ghLink').href=GH_WEB+(gh?gh.file.replace(/\/[^/]*$/,''):'Sprayer/Sprayer_ESP32');
+  const b=document.querySelector('nav button[data-t="firmware"]');b.classList.toggle('new',nw);b.title=nw?'A newer program is on GitHub':'';
+}
+async function ghInstall(){
+  if(!ghNewer()||busy)return;
+  const name=gh.file.split('/').pop(),want=gh.size||0;
+  if(!confirm('Install '+(fwNow.fw+' '+verText(gh.version,gh.built))+' from GitHub on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const pass=pw();if(pass===null)return;
+  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  progMsg('Downloading from GitHub…');
+  try{
+    const dir=gh.file.replace(/\/[^/]*$/,''),r=await fetch(GH_API+dir+'?ref=main');if(!r.ok)throw new Error('GitHub: HTTP '+r.status);
+    const f=(await r.json()).find(e=>e.type==='file'&&e.name===name);
+    if(!f)throw new Error('the file '+name+' is not on GitHub');
+    if(want&&f.size!==want)throw new Error('GitHub is still publishing the new file: try again in a few minutes');
+    const res=await fetch(f.download_url);if(!res.ok)throw new Error('GitHub: HTTP '+res.status);
+    const rd=res.body.getReader(),parts=[];let got=0;
+    for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;g.value=Math.round(got/f.size*45)}
+    const blob=new Blob(parts);
+    if(blob.size!==f.size)throw new Error('file incomplete ('+blob.size+' of '+f.size+' bytes)');
+    const i=await binInfo(blob,name);if(i.error)throw new Error(i.error);
+    if(gh.built&&i.built!==gh.built)throw new Error('GitHub is still publishing the new file: try again in a few minutes');
+    sendBin(blob,name,pass,45);
+  }catch(e){busy=false;g.hidden=true;$('install').disabled=!$('bin').files[0];renderGh();
+    progMsg('Not downloaded: '+e.message+'. The current program keeps running.','bad')}
 }
 refresh();setInterval(refresh,1000);
 </script>
