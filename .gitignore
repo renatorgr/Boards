@@ -8,3 +8,6 @@ node_modules/
 fp-info-cache
 Relay24_ESP32/drc.rpt
 __pycache__/
+
+# Arduino IDE "Export compiled binary" and arduino-cli output inside a sketch folder (got into main once, 2 Nov 2026)
+build/
