@@ -324,8 +324,10 @@ async function post(url,fields,msgId){
   const body=new URLSearchParams(Object.assign({pw:p},fields));
   const m=$(msgId);m.textContent='…';
   try{const r=await fetch(url,{method:'POST',body});const d=await r.json();
+    // saved: the fields show what the module kept, before "done" (a restart: once it is back)
+    if(d.ok&&d.restart)settingsLoaded=false;
+    else if(d.ok)try{await loadSettings()}catch(e){}
     m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
-    if(d.ok)settingsLoaded=false;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
 function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi')}
