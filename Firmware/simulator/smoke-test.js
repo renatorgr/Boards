@@ -11,6 +11,8 @@
 //                      installed", a newer build of the same version says "new" (Teensy page, XIAO C3 and S3).
 // 2026-11-01 (Claude): the "On GitHub" wording: "the one installed", "newer than the installed one".
 // 2026-11-01 (Claude): the sprayer has 8 sections of 1 m (was 5).
+// 2026-11-02 (Claude): the sprayer page's three tabs (Spraying, Settings, Module): the rate against the target, the
+// spraying settings saved, the section widths from the program, the report downloaded.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)
@@ -200,8 +202,9 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
   await pg.close();
  }
- // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the boom pressure and flow, the calibration
- // saved, the total set to 0
+ // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the rate on target, the boom pressure;
+ // Settings: the section widths from the program, calibration and spraying settings saved (a higher target asks to slow
+ // down), the total set to 0; Module: the relays, the report downloaded
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
@@ -210,21 +213,54 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "h1", /^Sprayer module$/);
   await expect(pg, what, "#sub", /^on Farm WiFi as 192\.168\.5\.123 · program talking/);
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
-  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+ · ESP32_Relay_X8$/);
+  if (!(await pg.locator("#t-work").isVisible())) fail.push(what + ": the Spraying tab does not show first");
   if ((await pg.locator("#secs span.on").count()) !== 8) fail.push(what + ": expected 8 sections open while spraying");
-  if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
-  await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
   await expect(pg, what, "#bar", /^[23]\.\dbar$/);
-  if (!(await pg.locator("#sprCard").isVisible())) fail.push(what + ": the Sprayer card is missing with both sensors");
-  if (!(await pg.locator("#ppl").isVisible()) || !(await pg.locator("#pmax").isVisible())) fail.push(what + ": Calibration fields missing with both sensors");
+  await expect(pg, what, "#lha", /^1[0-4]\dL\/ha$/);
+  if (!(await pg.locator("#lha.on-target").count())) fail.push(what + ": the rate is not shown on target");
+  await expect(pg, what, "#target", /^target 120 L\/ha$/);
+  await expect(pg, what, "#need", /^set [23]\.\d bar for the target$/);
+  if (await pg.locator("#alarms").isVisible()) fail.push(what + ": an alarm shows while spraying as it should");
+  await expect(pg, what, "#detail", /L\/min · [\d.]+ km\/h · 8\.00 m open \(16 nozzles\)/);
+  if (!(await pg.locator("#sprCard").isVisible())) fail.push(what + ": the rate and pressure are missing with both sensors");
   await shot(pg, "sprayer-status");
+  await pg.click('nav button[data-t="settings"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-settings").isVisible())) fail.push(what + ": tab Settings does not show");
+  if (!(await pg.locator("#ppl").isVisible()) || !(await pg.locator("#pmax").isVisible())) fail.push(what + ": calibration fields missing with both sensors");
+  await expect(pg, what, "#tool", /^8 sections of 1\.00 m$/);
+  await shot(pg, "sprayer-settings");
   await pg.click("button[onclick='saveCalib()']"); await pg.waitForTimeout(800);
   await expect(pg, what, "#msgCalib", /done/);
   await expect(pg, what, "#log", /saved: pressure sensor \+ flow meter, 450\.0 pulses\/L/);
+  await pg.fill("#rate", "200");
+  await pg.click("button[onclick='saveSpray()']"); await pg.waitForTimeout(800);
+  await expect(pg, what, "#msgSpray", /done/);
+  await expect(pg, what, "#log", /saved: target 200 L\/ha, nozzles every 0\.50 m, 0\.80 L\/min at 3\.0 bar, 1\.0-6\.0 bar, flow \+-20 %/);
+  await pg.fill("#pLow", "7");
+  await pg.click("button[onclick='saveSpray()']"); await pg.waitForTimeout(800);
+  await expect(pg, what, "#msgSpray", /the minimum pressure must be below the maximum/);
   await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
   await expect(pg, what, "#msgTotal", /done/);
-  await expect(pg, what, "#total", /^0\.\dL$/);
+  await expect(pg, what, "#total", /^0\.\d L$/);
   await expect(pg, what, "#log", /total set to 0 from the page/);
+  await pg.click('nav button[data-t="work"]'); await pg.waitForTimeout(1200);
+  if (!(await pg.locator("#lha.off-target").count())) fail.push(what + ": the rate is not shown off target with a 200 L/ha target");
+  await expect(pg, what, "#need", /^\d\.\d bar needed, slow down to \d\.\d km\/h$/);
+  await pg.click('nav button[data-t="module"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-module").isVisible())) fail.push(what + ": tab Module does not show");
+  if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
+  await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
+  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+ · ESP32_Relay_X8$/);
+  await shot(pg, "sprayer-module");
+  try {
+   const [dl] = await Promise.all([pg.waitForEvent("download", {timeout: 5000}), pg.click("#dumpBtn")]);
+   const name = dl.suggestedFilename(), r = JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
+   if (!/^Sprayer_ESP32_report_\d{4}-\d\d-\d\d_\d{4}\.json$/.test(name)) fail.push(what + ": the report is called " + name);
+   if (!r.status || !r.status.rate || !r.settings || r.settings.rate !== 200 || !r.aow || !Array.isArray(r.aow.alarms))
+    fail.push(what + ": the report misses the status, the settings or the alarms");
+   if (JSON.stringify(r).includes("agopengps")) fail.push(what + ": the report has the password in it");
+  } catch (e) { fail.push(what + ": no report downloaded (" + e.message + ")"); }
+  await expect(pg, what, "#dumpMsg", /^Downloaded: Sprayer_ESP32_report_/);
   await pg.close();
  }
  // the seed drill's module with the network cable unplugged: sections closed, the program's request still outlined

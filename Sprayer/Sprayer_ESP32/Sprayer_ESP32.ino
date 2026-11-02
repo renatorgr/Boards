@@ -6,7 +6,14 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.9.1 (2026-10-27), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.0 (2026-11-02), not yet tested on the sprayer.
+//   v0.10.0: the module works out the application rate (L/ha) from the flow, the speed (PGN 239) and the widths of the
+//         open sections (PGN 235 from the program, kept in flash), the pressure that gives the target rate, and the
+//         sprayer alarms (low / high pressure, flow outside the tolerance, flow with the sections closed). Target rate,
+//         nozzles, pressure limits and flow tolerance are set on the module's page. It sends all of it to the program
+//         once a second as ISOBUS process data (PGN 161, DDIs), next to PGN 160. The page has three tabs: Spraying
+//         (L/ha, pressure, sections), Settings (target, nozzles, alarms, sensor calibration) and Module (AgOpenWeb,
+//         relays, Wi-Fi, program, events, and a "Download the report" button as on the Teensy and XIAO pages).
 //   v0.9.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
 //         status), so the AiO Teensy's Machine tab reads the sections of any module the same way.
 //   v0.9: the seed drill (KC868-A32) has its own folder, Seeder/Seeder_ESP32; this program is for the sprayer
@@ -34,17 +41,21 @@
 //       AgOpenWeb when the tool has more than 16 sections),
 //       238 machine config (relay polarity, lift times), 236 pin functions (which relay does what),
 //       201 subnet, 200 hello, 202 scan. The config, pin functions and subnet are kept in flash.
+//       235 section widths (kept in flash, for the L/ha).
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
-//       237 every 200 ms (what the outputs do, as the AiO v26 sends it), plus 160 once a second with the
-//       sprayer readings
-//       (pressure, flow, litres, master switch, sections open) for the AgOpenWeb fork's sprayer strip;
-//       with no sensor ticked on the page it sends no 160.
+//       237 every 200 ms (what the outputs do, as the AiO v26 sends it), plus once a second
+//       160 with the sprayer readings (pressure, flow, litres, master switch, sections open) for the AgOpenWeb
+//       fork's sprayer strip and the AiO module page, and 161 with ISOBUS process data (DDIs: pressure, flow, total,
+//       sections, actual and target L/ha, the pressure for the target, pressure limits, alarms);
+//       with no sensor ticked on the page it sends neither.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
-//   - the page shows pressure, flow, L applied (only for the sensors fitted), sections asked for and open,
-//       the link to the program, and has the Wi-Fi settings and program subnet, the sensors fitted and their
-//       calibration, a program update (.bin) and a restart.
+//   - the page: Spraying tab with the L/ha (actual and target), the pressure (and what gives the target) and the
+//       sections; Settings tab with the target rate, nozzles, pressure limits, flow tolerance, the sensors fitted and
+//       their calibration; Module tab with the link to the program, the relays, the Wi-Fi settings and program subnet,
+//       a program update (.bin), a restart, the events and "Download the report" (a .json file to send when
+//       something goes wrong).
 //   - IO0 button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
 //   - serial monitor (115200): "status", "wifi-reset", "total-reset", "restart".
 //
@@ -63,7 +74,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.9.1"
+#define FW_VERSION          "0.10.0"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -105,6 +116,14 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define SENSOR_PRESSURE     1
 #define SENSOR_FLOW         2
 
+// Sprayer alarms (sprayAlarms, PGN 161 DDI 57344): the same bits as SprayerAlarms in the AgOpenWeb fork
+#define ALARM_PRESSURE_LOW  1       // a section sprays and the pressure is below the minimum
+#define ALARM_PRESSURE_HIGH 2       // the pressure is above the maximum
+#define ALARM_FLOW_LOW      4       // less flow than the open nozzles should give at this pressure
+#define ALARM_FLOW_HIGH     8       // more flow than that
+#define ALARM_FLOW_CLOSED   16      // flow while every section is closed (valve stuck open)
+#define ALARM_CONFIRM_S     3       // seconds in a row before an alarm comes on, and after the sections change
+
 // ---------------------------------------------------------------- settings you may want to change
 #define USE_MASTER_SWITCH   0       // 1 = MASTER_PIN reads the master switch. 0 = the switch cuts the valves' 12 V in the wiring
 #define NO_DATA_TIMEOUT_MS  2000    // no message from the program for this long: close every section
@@ -114,6 +133,8 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define LISTEN_PORT         8888
 #define SEND_PORT           9999
 #define SPRAYER_PGN         0xA0    // 160: sprayer readings for the AgOpenWeb fork (Docs/PGN.md there)
+#define PROCESS_DATA_PGN    0xA1    // 161: ISOBUS process data (DDI values) for the AgOpenWeb fork (Docs/PGN.md there)
+#define MAX_TOOL_SECTIONS   16      // PGN 235 has the widths of sections 1-16
 
 // Output functions in the program's pin config (PGN 236), as the official Machine_UDP_v5 maps them:
 //   0 nothing, 1-16 section 1-16, 17 hydraulic lower, 18 hydraulic raise, 19 tramline right,
@@ -145,6 +166,17 @@ struct Settings
     float   pulsesPerLitre = 450.0f;        // YF-S201: about 450. Calibrate with a bucket (README)
     float   pressureMaxBar = 10.0f;         // 0-10 bar sensor, 0.5 V = 0 bar, 4.5 V = full scale
     float   pressureDivider = 0.5f;         // the divider on the pressure signal: 10k / (10k + 10k)
+    // the spraying, set on the page (Settings tab): the defaults are AgOpenWeb's
+    float   targetRate = 0;                 // L/ha, 0 = no target
+    float   nozzleSpacing = 0.5f;           // m between nozzles: a section's nozzles = its width / spacing
+    float   nozzleFlow = 1.6f;              // L/min of one nozzle at nozzleBar, from the nozzle chart; 0 = no flow check
+    float   nozzleBar = 3.0f;               // bar of that chart value
+    float   minBar = 1.0f;                  // alarm below this while spraying, 0 = off
+    float   maxBar = 6.0f;                  // alarm above this, 0 = off
+    uint8_t flowTolerance = 20;             // %: flow alarm outside expected +- this
+    // the tool's sections from the program (PGN 235): how many, and the widths of 1-16 in cm
+    uint8_t  toolSections = 0;              // 0 = not heard yet
+    uint16_t sectionCm[MAX_TOOL_SECTIONS] = {};
 } cfg;
 
 // ---------------------------------------------------------------- state
@@ -172,6 +204,16 @@ float    pressureBar = 0, sensorVolts = 0;
 float    flowLpm = 0, totalLitres = 0;
 uint32_t totalPulses = 0;
 
+// worked out once a second from the readings (zRate.ino); -1 = none
+float    openWidthM = 0;        // width of the open sections, m (from PGN 235)
+uint8_t  openNozzles = 0;       // nozzles on the open sections
+float    expectedLpm = -1;      // the flow the open nozzles should give at this pressure
+float    rateLha = -1;          // actual application rate, L/ha (not while stopped or without the widths)
+float    needBar = -1;          // the pressure that gives the target rate at this speed
+float    hintKmh = -1;          // the speed that gives the target at the pressure limit, when the target needs more / less
+uint8_t  sprayAlarms = 0;       // ALARM_* bits, on once they have lasted ALARM_CONFIRM_S
+uint32_t count235 = 0;
+
 bool     staWasUp = false;
 uint32_t restartAtMs = 0;       // the web page asked for a restart
 char     eventLog[12][96];      // the last events, for the page and the serial monitor
@@ -189,6 +231,8 @@ void udpStart();
 void udpPoll();
 void sendSignOfLife();
 void sendReadings();
+void sendProcessData();
+void rateTick();
 void outputsInit();
 void outputsAllOff();
 void hydTick();
@@ -336,7 +380,9 @@ void loop()
     {
         last1000 = now;
         updateFlow();
+        rateTick();                 // L/ha, pressure for the target, alarms
         sendReadings();
+        sendProcessData();
         wifiWatch();
     }
 

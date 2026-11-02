@@ -4,6 +4,8 @@
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
    2026-10-27 (Claude): the sensors fitted are saved with the calibration.
    2026-10-27 (Claude): the module IP's last number.
+   2026-11-02 (Claude): v0.10.0: the spraying settings (POST /api/spray), the rate, pressure for the target and the
+   alarms in /api/status, the sprayer alarms in /aow/status.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -15,6 +17,7 @@
 // GET  /              the page                       GET  /api/status    everything the page shows
 // GET  /api/settings  Wi-Fi + sensors + calibration  POST /api/wifi      Wi-Fi settings + subnet, then restart
 // POST /api/calib     sensors fitted + calibration   POST /api/total     total litres back to 0
+// POST /api/spray     target rate, nozzles, pressure limits, flow tolerance
 // POST /api/restart                                  POST /api/update    a new program (.bin), then restart
 // GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
 
@@ -104,6 +107,27 @@ static String jsonHex(uint64_t v)
     return String(b);
 }
 
+// A number for the JSON with d decimals; -1 for "none" (a NaN would break the JSON)
+static String jsonNum(float v, uint8_t d)
+{
+    return isfinite(v) && v >= 0 ? String(v, (unsigned int)d) : String("-1");
+}
+
+// A number lo..hi in the request (digits and one dot), else false
+static bool argFloat(const char* name, float lo, float hi, float& out)
+{
+    const String a = server.arg(name);
+    if (a.length() < 1 || a.length() > 8) return false;
+    uint8_t dots = 0;
+    for (size_t i = 0; i < a.length(); i++)
+    {
+        if (a[i] == '.') { if (++dots > 1) return false; }
+        else if (a[i] < '0' || a[i] > '9') return false;
+    }
+    out = a.toFloat();
+    return out >= lo && out <= hi;
+}
+
 // A whole number lo..hi in the request (only digits), else false
 static bool argNumber(const char* name, long lo, long hi, long& out)
 {
@@ -172,6 +196,15 @@ static void apiStatus()
 
     j += ",\"cal\":{\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1) + ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
 
+    // the rate and the alarms (zRate.ino; -1 = none), the spraying settings, the tool's sections (PGN 235)
+    j += ",\"rate\":{\"lha\":" + jsonNum(rateLha, 1) + ",\"target\":" + jsonNum(cfg.targetRate, 0);
+    j += ",\"needBar\":" + jsonNum(needBar, 2) + ",\"hintKmh\":" + jsonNum(hintKmh, 1);
+    j += ",\"width\":" + String(openWidthM, 2) + ",\"nozzles\":" + String(openNozzles) + ",\"expected\":" + jsonNum(expectedLpm, 2);
+    j += ",\"alarms\":" + String(sprayAlarms) + ",\"minBar\":" + String(cfg.minBar, 1) + ",\"maxBar\":" + String(cfg.maxBar, 1) + "}";
+    j += ",\"tool\":{\"n\":" + String(cfg.toolSections) + ",\"n235\":" + String(count235) + ",\"cm\":[";
+    for (uint8_t i = 0; i < MAX_TOOL_SECTIONS && i < cfg.toolSections; i++) { if (i) j += ","; j += String(cfg.sectionCm[i]); }
+    j += "]}";
+
     j += ",\"log\":[";
     bool first = true;
     for (uint8_t k = 0; k < 12; k++)
@@ -193,7 +226,10 @@ static void apiSettingsGet()
     j += ",\"host\":" + jsonStr(cfg.host) + ",\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1);
     j += ",\"ipLast\":" + String(cfg.ipLast);
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"";
-    j += ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
+    j += ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3);
+    j += ",\"rate\":" + String(cfg.targetRate, 0) + ",\"nzSp\":" + String(cfg.nozzleSpacing, 2) + ",\"nzFl\":" + String(cfg.nozzleFlow, 2);
+    j += ",\"nzBar\":" + String(cfg.nozzleBar, 1) + ",\"pLow\":" + String(cfg.minBar, 1) + ",\"pHigh\":" + String(cfg.maxBar, 1);
+    j += ",\"fTol\":" + String(cfg.flowTolerance) + "}";
     sendJson(j);
 }
 
@@ -260,6 +296,32 @@ static void apiCalibPost()
     sendJson("{\"ok\":true}");
 }
 
+// The spraying settings (Settings tab): target rate, nozzles, pressure limits, flow tolerance
+static void apiSprayPost()
+{
+    if (!passwordOk()) return;
+    float rate, nzSp, nzFl, nzBar, pLow, pHigh, fTol;
+    if (!argFloat("rate", 0, 2000, rate))     { sendError(400, "target rate: 0 to 2000 L/ha"); return; }
+    if (!argFloat("nzSp", 0, 5, nzSp))        { sendError(400, "nozzle spacing: 0 to 5 m"); return; }
+    if (!argFloat("nzFl", 0, 50, nzFl))       { sendError(400, "nozzle flow: 0 to 50 L/min"); return; }
+    if (!argFloat("nzBar", 0.1f, 50, nzBar))  { sendError(400, "chart pressure: 0.1 to 50 bar"); return; }
+    if (!argFloat("pLow", 0, 50, pLow))       { sendError(400, "minimum pressure: 0 to 50 bar"); return; }
+    if (!argFloat("pHigh", 0, 50, pHigh))     { sendError(400, "maximum pressure: 0 to 50 bar"); return; }
+    if (pHigh > 0 && pLow >= pHigh)           { sendError(400, "the minimum pressure must be below the maximum"); return; }
+    if (!argFloat("fTol", 1, 100, fTol))      { sendError(400, "flow tolerance: 1 to 100 %"); return; }
+    cfg.targetRate = rate;
+    cfg.nozzleSpacing = nzSp;
+    cfg.nozzleFlow = nzFl;
+    cfg.nozzleBar = nzBar;
+    cfg.minBar = pLow;
+    cfg.maxBar = pHigh;
+    cfg.flowTolerance = (uint8_t)lroundf(fTol);
+    settingsSave();
+    logEvent("saved: target %.0f L/ha, nozzles every %.2f m, %.2f L/min at %.1f bar, %.1f-%.1f bar, flow +-%u %%",
+             rate, nzSp, nzFl, nzBar, pLow, pHigh, cfg.flowTolerance);
+    sendJson("{\"ok\":true}");
+}
+
 static void apiTotalPost()
 {
     if (!passwordOk()) return;
@@ -281,7 +343,17 @@ static void apiRestartPost()
 static void apiAowStatus()
 {
     String j = "{\"v\":1,\"name\":" + jsonStr(moduleName()) + ",\"alarms\":[";
-    if (!linkOk) j += "{\"id\":\"no-program\",\"priority\":\"medium\",\"text\":\"No messages from AgOpenWeb\"}";
+    static const char* const ALARM_ID[] = { "pressure-low", "pressure-high", "flow-low", "flow-high", "flow-closed" };
+    static const char* const ALARM_TEXT[] = { "Low pressure", "High pressure", "Flow too low", "Flow too high", "Flow with the sections off" };
+    bool first = true;
+    if (!linkOk) { j += "{\"id\":\"no-program\",\"priority\":\"medium\",\"text\":\"No messages from AgOpenWeb\"}"; first = false; }
+    for (uint8_t b = 0; b < 5; b++)
+    {
+        if (!(sprayAlarms & (1 << b))) continue;
+        if (!first) j += ",";
+        first = false;
+        j += String("{\"id\":\"") + ALARM_ID[b] + "\",\"priority\":\"high\",\"text\":\"" + ALARM_TEXT[b] + "\"}";
+    }
     j += "]}";
     sendJson(j);
 }
@@ -334,6 +406,7 @@ void webStart()
     server.on("/api/settings", HTTP_GET, apiSettingsGet);
     server.on("/api/wifi", HTTP_POST, apiWifiPost);
     server.on("/api/calib", HTTP_POST, apiCalibPost);
+    server.on("/api/spray", HTTP_POST, apiSprayPost);
     server.on("/api/total", HTTP_POST, apiTotalPost);
     server.on("/api/restart", HTTP_POST, apiRestartPost);
     server.on("/api/update", HTTP_POST, apiUpdateDone, apiUpdateUpload);

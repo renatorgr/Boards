@@ -6,19 +6,37 @@
    2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
    2026-10-27 (Claude): PGN 229 read in full (sections 1-64).
    2026-10-27 (Claude): v0.9.1: PGN 237 in the AiO v26 layout (sections, lift, tramline, geo stop, status).
+   2026-11-02 (Claude): v0.10.0: PGN 235 (section widths, kept in flash) read; PGN 161 sent, ISOBUS process data with
+   the readings, the actual and target rate, the pressure for the target, the pressure limits and the alarms.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // Received on port 8888, source 0x7F (the program):
 //   239 machine data (sections 1-16), 229 sections 1-64 (bytes 5-12, 8 per byte, section 1 = byte 5 bit 0;
 //   sent with every 239 when the tool has more than 16 sections), 238 machine config, 236 output functions,
-//   201 subnet, 200 hello, 202 scan
+//   235 section dimensions (widths of sections 1-16 in cm, uint16, bytes 5-36; number of sections in byte 37;
+//   sent at the program's start and when the tool's sections change), 201 subnet, 200 hello, 202 scan
 // Sent to <subnet>.255 port 9999, source 0x7B (machine module), checksum = sum of bytes 2..n-2:
 //   123 hello reply (sections 1-16 open), 203 scan reply (to 255.255.255.255),
 //   237 every 200 ms, as the AgOpenGPS AiO v26 sends it:
 //       80 81 7B ED 08 | sections 1-16 open (2) | lift (0 off, 1 down, 2 up) | tramline | geo stop | status | 0 | 0 | CRC
 //   160 sprayer readings once a second (sections 1-8 in byte 14, 9-16 in byte 15), only when the machine has
 //       a pressure sensor or a flow meter (page setting)
+//   161 ISOBUS process data once a second, right after the 160 (and only with it): 8 bytes per value, as the
+//       ISO 11783-10 Process Data Message (the "ISOBUS Data Everywhere" proposal of the AgOpenGPS ISOBUS group):
+//       byte 0 = command 3 ("value") in bits 0-3 + element number bits 0-3 in bits 4-7, byte 1 = element number
+//       bits 4-11, bytes 2-3 = DDI, bytes 4-7 = value, int32; all little-endian. Element 0 = the sprayer, 1 = its boom.
+//       A value that is not known (no sensor, stopped, no target) is left out of that message.
+//         DDI   194 actual pressure, 0.1 Pa (bar x 1 000 000)       element 1, pressure sensor fitted
+//               37 actual flow, mm3/s (L/min x 16 667)                element 1, flow meter fitted
+//              351 total volume, ml                                   element 0, flow meter fitted
+//              141 actual work state: master switch, 1 on, 0 off      element 1
+//              161 actual condensed work state 1-16: 2 bits per section (01 open, 00 closed, 11 not there)  element 1
+//                2 actual rate, 0.01 mm3/m2 (L/ha x 10 000)           element 1, while moving with the widths known
+//                1 target rate, same unit                             element 1, when a target is set
+//              193 the pressure that gives the target now, 0.1 Pa     element 1
+//              195 minimum pressure, 196 maximum pressure, 0.1 Pa     element 1, when set
+//            57344 (proprietary range) sprayer alarms: the ALARM_* bits, always sent  element 1
 
 static uint8_t rx[300];
 
@@ -70,6 +88,56 @@ void sendReadings()
                       masterOn, lowByte(sectionsOn), highByte(sectionsOn),
                       0 };
     sendPgn(msg, sizeof(msg), broadcastIp());
+}
+
+// One process data value (8 bytes) into msg at n, n moved on
+static void pdValue(uint8_t* msg, size_t& n, uint16_t element, uint16_t ddi, int32_t value)
+{
+    msg[n++] = 3 | (uint8_t)((element & 0x0F) << 4);        // command 3 = value
+    msg[n++] = (uint8_t)(element >> 4);
+    msg[n++] = lowByte(ddi);
+    msg[n++] = highByte(ddi);
+    for (uint8_t b = 0; b < 4; b++) msg[n++] = (uint8_t)((uint32_t)value >> (8 * b));
+}
+
+static int32_t barToPd(float bar) { return (int32_t)lroundf(bar * 1000000.0f); }       // 0.1 Pa
+static int32_t lhaToPd(float lha) { return (int32_t)lroundf(lha * 10000.0f); }         // 0.01 mm3/m2
+
+// The sections the boom has: those of the program's tool (PGN 235), else the highest section a relay follows
+static uint8_t boomSections()
+{
+    if (cfg.toolSections) return cfg.toolSections > MAX_TOOL_SECTIONS ? MAX_TOOL_SECTIONS : cfg.toolSections;
+    uint8_t top = 0;
+    for (uint8_t i = 0; i < NUM_RELAYS; i++) { const uint8_t f = relayFn(i); if (f >= 1 && f <= MAX_TOOL_SECTIONS && f > top) top = f; }
+    return top;
+}
+
+// Once a second, PGN 161: the sprayer's values as ISOBUS process data (layout above). Sent with the 160.
+void sendProcessData()
+{
+    if (!cfg.sensors) return;
+    uint8_t msg[5 + 8 * 13 + 1] = { 0x80, 0x81, 0x7B, PROCESS_DATA_PGN, 0 };
+    size_t n = 5;
+    if (cfg.sensors & SENSOR_PRESSURE) pdValue(msg, n, 1, 194, barToPd(pressureBar));
+    if (cfg.sensors & SENSOR_FLOW)
+    {
+        pdValue(msg, n, 1, 37, (int32_t)lroundf(flowLpm * 1000000.0f / 60.0f));
+        pdValue(msg, n, 0, 351, (int32_t)lroundf(totalLitres * 1000.0f));
+    }
+    pdValue(msg, n, 1, 141, masterOn ? 1 : 0);
+    uint32_t condensed = 0;
+    const uint8_t boom = boomSections();
+    for (uint8_t i = 0; i < 16; i++)
+        condensed |= (uint32_t)(i >= boom ? 3 : ((sectionsOn >> i) & 1) ? 1 : 0) << (2 * i);
+    pdValue(msg, n, 1, 161, (int32_t)condensed);
+    if (rateLha >= 0) pdValue(msg, n, 1, 2, lhaToPd(rateLha));
+    if (cfg.targetRate > 0) pdValue(msg, n, 1, 1, lhaToPd(cfg.targetRate));
+    if (needBar > 0) pdValue(msg, n, 1, 193, barToPd(needBar));
+    if (cfg.minBar > 0) pdValue(msg, n, 1, 195, barToPd(cfg.minBar));
+    if (cfg.maxBar > 0) pdValue(msg, n, 1, 196, barToPd(cfg.maxBar));
+    pdValue(msg, n, 1, 57344, sprayAlarms);
+    msg[4] = n - 5;
+    sendPgn(msg, n + 1, broadcastIp());
 }
 
 static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddress from)
@@ -136,6 +204,26 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         logEvent("output functions from the program: relays %u %u %u %u %u %u %u %u",
                  cfg.pin[0], cfg.pin[1], cfg.pin[2], cfg.pin[3], cfg.pin[4], cfg.pin[5], cfg.pin[6], cfg.pin[7]);
         break;
+
+    case 235:                                               // section dimensions: the widths for the L/ha
+    {
+        if (dataLength < 33) return;
+        uint16_t cm[MAX_TOOL_SECTIONS];
+        bool same = d[37] == cfg.toolSections;
+        for (uint8_t i = 0; i < MAX_TOOL_SECTIONS; i++)
+        {
+            cm[i] = d[5 + 2 * i] | (uint16_t)d[6 + 2 * i] << 8;
+            if (cm[i] != cfg.sectionCm[i]) same = false;
+        }
+        count235++;
+        if (same) break;                                    // nothing new: the flash is left alone
+        memcpy(cfg.sectionCm, cm, sizeof(cm));
+        cfg.toolSections = d[37];
+        settingsSave();
+        logEvent("sections from the program: %u, %u %u %u %u %u %u %u %u cm", cfg.toolSections,
+                 cm[0], cm[1], cm[2], cm[3], cm[4], cm[5], cm[6], cm[7]);
+        break;
+    }
 
     case 201:                                               // subnet: save and restart with the new IP
         if (dataLength == 5 && d[5] == 201 && d[6] == 201)

@@ -2,7 +2,7 @@
 
 Try the module's web pages without a module: **https://renatorgr.github.io/Boards/**
 
-These are the real pages of the firmware, the Teensy page (`zWebPage.h`), the XIAO Wi-Fi page (`xPage.h`), the seed drill module's page (`Seeder/Seeder_ESP32/dPage.h`) and the sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`), with pretend modules behind them instead of the boards. A tractor drives up and down a field with autosteer on; the GPS gets its RTK fix, the IMU aligns, the machine module opens the 19 sections of the no-till seed drill (or, with the sprayer chosen, its 5 sections, measuring the boom's pressure and flow). Nothing is real, but what the pages show and how they behave is what you see on the tractor.
+These are the real pages of the firmware, the Teensy page (`zWebPage.h`), the XIAO Wi-Fi page (`xPage.h`), the seed drill module's page (`Seeder/Seeder_ESP32/dPage.h`) and the sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`), with pretend modules behind them instead of the boards. A tractor drives up and down a field with autosteer on; the GPS gets its RTK fix, the IMU aligns, the machine module opens the 19 sections of the no-till seed drill (or, with the sprayer chosen, its 8 sections, measuring the boom's pressure and flow and working out the L/ha). Nothing is real, but what the pages show and how they behave is what you see on the tractor.
 
 A strip at the top of each page chooses the set-up:
 

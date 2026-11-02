@@ -3,12 +3,15 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): also keeps which sensors the machine has.
    2026-10-27 (Claude): also the module IP's last number.
+   2026-11-02 (Claude): also the spraying settings (target rate, nozzles, pressure limits, flow tolerance) and the
+   tool's section widths from the program (PGN 235).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // What is kept: the two Wi-Fi networks, the host name, the program's subnet (PGN 201) and the module IP's
 // last number, the machine config (PGN 238), the output functions (PGN 236), the sensors fitted and their
-// calibration. Anything missing in flash keeps the default from the Settings struct in Sprayer_ESP32.ino.
+// calibration, the spraying settings and the tool's section widths (PGN 235). Anything missing in flash keeps the
+// default from the Settings struct in Sprayer_ESP32.ino.
 
 String defaultApSsid()
 {
@@ -52,6 +55,15 @@ void settingsLoad()
     cfg.pulsesPerLitre  = prefs.getFloat("ppl", d.pulsesPerLitre);
     cfg.pressureMaxBar  = prefs.getFloat("pmax", d.pressureMaxBar);
     cfg.pressureDivider = prefs.getFloat("pdiv", d.pressureDivider);
+    cfg.targetRate      = prefs.getFloat("rate", d.targetRate);
+    cfg.nozzleSpacing   = prefs.getFloat("nzSp", d.nozzleSpacing);
+    cfg.nozzleFlow      = prefs.getFloat("nzFl", d.nozzleFlow);
+    cfg.nozzleBar       = prefs.getFloat("nzBar", d.nozzleBar);
+    cfg.minBar          = prefs.getFloat("pLow", d.minBar);
+    cfg.maxBar          = prefs.getFloat("pHigh", d.maxBar);
+    cfg.flowTolerance   = prefs.getUChar("fTol", d.flowTolerance);
+    cfg.toolSections    = prefs.getUChar("secN", 0);
+    if (prefs.getBytesLength("secCm") == sizeof(cfg.sectionCm)) prefs.getBytes("secCm", cfg.sectionCm, sizeof(cfg.sectionCm));
     prefs.end();
 
     // never let a bad value through
@@ -62,6 +74,13 @@ void settingsLoad()
     if (!(cfg.pressureMaxBar > 0.5f && cfg.pressureMaxBar < 100))  cfg.pressureMaxBar = d.pressureMaxBar;
     if (!(cfg.pressureDivider > 0.1f && cfg.pressureDivider <= 1)) cfg.pressureDivider = d.pressureDivider;
     if (cfg.ipLast < 2 || cfg.ipLast > 254) cfg.ipLast = d.ipLast;
+    if (!(cfg.targetRate >= 0 && cfg.targetRate <= 2000))  cfg.targetRate = d.targetRate;
+    if (!(cfg.nozzleSpacing >= 0 && cfg.nozzleSpacing <= 5)) cfg.nozzleSpacing = d.nozzleSpacing;
+    if (!(cfg.nozzleFlow >= 0 && cfg.nozzleFlow <= 50))    cfg.nozzleFlow = d.nozzleFlow;
+    if (!(cfg.nozzleBar > 0 && cfg.nozzleBar <= 50))       cfg.nozzleBar = d.nozzleBar;
+    if (!(cfg.minBar >= 0 && cfg.minBar <= 50))            cfg.minBar = d.minBar;
+    if (!(cfg.maxBar >= 0 && cfg.maxBar <= 50))            cfg.maxBar = d.maxBar;
+    if (cfg.flowTolerance < 1 || cfg.flowTolerance > 100)  cfg.flowTolerance = d.flowTolerance;
     cfg.sensors &= SENSOR_PRESSURE | SENSOR_FLOW;
     for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > PIN_GEO_STOP) cfg.pin[i] = 0;
 }
@@ -90,6 +109,15 @@ void settingsSave()
     prefs.putFloat("ppl", cfg.pulsesPerLitre);
     prefs.putFloat("pmax", cfg.pressureMaxBar);
     prefs.putFloat("pdiv", cfg.pressureDivider);
+    prefs.putFloat("rate", cfg.targetRate);
+    prefs.putFloat("nzSp", cfg.nozzleSpacing);
+    prefs.putFloat("nzFl", cfg.nozzleFlow);
+    prefs.putFloat("nzBar", cfg.nozzleBar);
+    prefs.putFloat("pLow", cfg.minBar);
+    prefs.putFloat("pHigh", cfg.maxBar);
+    prefs.putUChar("fTol", cfg.flowTolerance);
+    prefs.putUChar("secN", cfg.toolSections);
+    prefs.putBytes("secCm", cfg.sectionCm, sizeof(cfg.sectionCm));
     prefs.end();
 }
 
