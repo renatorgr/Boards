@@ -3,10 +3,11 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    2026-10-27 (Claude): made from sim-sprayer.js (Sprayer_ESP32 v0.8) when the seed drill got its own program, Seeder_ESP32 v0.1.
    2026-10-28 (Claude): Seeder_ESP32 v0.2: the Relay24_ESP32 board (24 relays) instead of the KC868-A32 (32).
+   2026-11-02 (Claude): v0.2.1: "Search for networks" in the network settings (GET /api/scan).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// The seed drill module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiRelaysPost, apiRestartPost, the
+// The seed drill module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiScan, apiRelaysPost, apiRestartPost, the
 // program update on /api/update). The sections the program asks for come from the pretend tractor of sim-common.js, the
 // same the Teensy page's Machine tab shows: Renato's no-till seed drill, 19 sections on the Relay24_ESP32 board (24 relays,
 // relay 1 follows section 1 and so on), on the network cable. No pressure or flow sensor.
@@ -123,6 +124,16 @@ function wifiPost(b) {
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
+// "Search for networks" (GET /api/scan, zNet.ino apiScan): busy for 2 s, then the networks the pretend module hears
+let scanAt = -1;
+function scan() {
+ const t = T();
+ if (scanAt < 0 || t - scanAt > 10) { scanAt = t; return S.ok({busy: true}); }
+ if (t - scanAt < 2) return S.ok({busy: true});
+ scanAt = -1;
+ return S.ok({busy: false, list: [{s: "Farm WiFi", r: -58, c: 6, open: false}, {s: "Phone hotspot", r: -66, c: 1, open: false},
+  {s: "Workshop", r: -77, c: 11, open: false}, {s: "Guest", r: -84, c: 6, open: true}]});
+}
 function relaysPost(b) {
  if (b.pw !== X.pass) return S.err(403, "wrong password");
  if (!number(b.first, 0, 64)) return S.err(400, "first section: 0 to 64");
@@ -157,6 +168,7 @@ S.hook(async (method, path, q, body) => {
  if (get && path === "/api/status") r = S.ok(status());
  else if (get && path === "/api/settings") r = S.ok(settings());
  else if (post && path === "/api/wifi") r = wifiPost(b);
+ else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/relays") r = relaysPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
  else if (post && path === "/api/update") r = await updatePost(q, body);

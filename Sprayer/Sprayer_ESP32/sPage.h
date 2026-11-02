@@ -5,9 +5,8 @@
    2026-10-26 (Claude): relay cells show the relay number above its function; 16 relays were cramped.
    2026-10-27 (Claude): the divider field is for the pressure signal only (10k / 10k = 0.5).
    2026-10-27 (Claude): the sensors fitted are ticked in Calibration; readings and fields only for those (none: no
-   Sprayer card, as on a seed drill).
-   2026-10-27 (Claude): sections sized to the machine (up to 64), the module IP's last number. The seed drill has its
-   own page now (Seeder/Seeder_ESP32/dPage.h).
+   Sprayer card).
+   2026-10-27 (Claude): sections sized to the machine (up to 64), the module IP's last number.
    2026-11-02 (Claude): v0.10.0: three tabs. Spraying: the L/ha (actual and target), the pressure and what gives the
    target, the sections and the alarms, big enough to read in the cab. Settings: target rate, nozzles, pressure limits,
    flow tolerance, the section widths from the program, the sensors and their calibration. Module: AgOpenWeb, relays,
@@ -15,8 +14,10 @@
    something goes wrong), as on the Teensy and XIAO pages.
    2026-11-02 (Claude): a fourth and last tab, Firmware, as on the Teensy and XIAO pages: the program installed, the
    version on GitHub (asked by the browser when the page opens, every 6 hours and with "Check now"), Install from
-   GitHub, install a chosen .bin with a progress bar, Restart, and the report. A .bin for another board, the seed
-   drill's program or the .merged.bin is refused.
+   GitHub, install a chosen .bin with a progress bar, Restart, and the report. A .bin for another board, another
+   module's program or the .merged.bin is refused.
+   2026-11-02 (Claude): v0.10.1: the Wi-Fi settings as on the XIAO page: own network, tractor network with "Search for
+   networks" (a tap on a network chooses it), program network, and a Save card with the password typed in it.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -88,6 +89,15 @@ button:disabled{opacity:.45;cursor:default}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 input[type=text],input[type=password],input[type=number]{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
 .opt{display:flex;gap:10px;align-items:center;padding:5px 0}
+label.opt{align-items:flex-start}
+label.opt input{margin-top:4px}
+.opt small{display:block;color:var(--mute)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+.nets{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
+.nets button{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:8px 10px;font:inherit;cursor:pointer}
+.nets button.sel{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.nets .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nets .r{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute)}
 .msg{font-size:13.5px;margin-top:6px;min-height:1.2em}
 progress{width:100%;height:14px;margin-top:10px;accent-color:var(--acc)}
@@ -189,17 +199,31 @@ a{color:var(--acc)}
 <p class="note">The program looks for the machine module at &lt;subnet&gt;.123 on the tractor network. The subnet comes from the program (PGN 201), or is set below.</p>
 </div>
 
-<div class="card"><h2>Wi-Fi settings</h2>
-<div class="field"><span>Own network name</span><input type="text" id="apSsid" maxlength="32"></div>
-<div class="field"><span>New own-network password (leave empty to keep it)</span><input type="password" id="apPass" maxlength="63"></div>
-<div class="opt"><input type="checkbox" id="staOn"><label for="staOn">Join the tractor network (the router the tablet uses)</label></div>
-<div class="field"><span>Tractor network name</span><input type="text" id="staSsid" maxlength="32"></div>
-<div class="field"><span>Tractor network password</span><input type="password" id="staPass" maxlength="63"></div>
-<div class="field"><span>Module name (http://name.local/)</span><input type="text" id="host" maxlength="24"></div>
-<div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5"></div>
+<div class="card"><h2>Own Wi-Fi network</h2>
+<div class="field"><span>Network name</span><input type="text" id="apSsid" maxlength="32"></div>
+<div class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" id="apPass" maxlength="63"></div>
+<p class="note">Always on, at 192.168.4.1. Its password is also the one for changing the settings and the firmware.</p>
+</div>
+
+<div class="card"><h2>Tractor Wi-Fi network</h2>
+<label class="opt"><input type="checkbox" id="staOn"><span>Join the tractor network<small>The router the tablet uses. The page is then also at http://<b id="hostShow">sprayer</b>.local/ or at the module's IP on that network.</small></span></label>
+<div class="field"><span>Network name</span><input type="text" id="staSsid" maxlength="32"></div>
+<div class="row" style="margin:2px 0"><button class="sec" type="button" id="scan" onclick="scanNets()">Search for networks</button><span id="scanMsg" class="note"></span></div>
+<div id="netList" class="nets"></div>
+<div class="field"><span>That network's password (blank: keeps the current one; for a new network, blank = open network)</span><input type="password" id="staPass" maxlength="63"></div>
+<div class="field"><span>Module name on that network</span><input type="text" id="host" maxlength="24" oninput="$('hostShow').textContent=this.value||'sprayer'"></div>
+</div>
+
+<div class="card"><h2>Program network</h2>
+<div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5" inputmode="decimal"></div>
 <div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
-<div class="row"><button class="act" onclick="saveWifi()">Save and restart</button></div>
+</div>
+
+<div class="card"><h2>Save</h2>
+<div class="field"><span>Current password of the own Wi-Fi network (to confirm)</span><input type="password" id="pwW" maxlength="63"></div>
+<div class="row"><button class="act" type="button" onclick="saveWifi()">Save and restart the module</button></div>
 <div class="msg" id="msgWifi"></div>
+<p class="note">The module restarts to apply them: every section closes for a few seconds. If you change the name or the password of the own network, connect the phone to the new network again. Forgot the password? Hold the IO0 button 5 s, or in the serial monitor (USB): <span class="mono">wifi-reset</span>.</p>
 </div>
 
 <div class="card"><h2>Events</h2><div class="log" id="log"></div></div>
@@ -342,14 +366,14 @@ async function refresh(){
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
   $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;$('subnetIn').value=d.subnet;
-  $('ipLast').value=d.ipLast||123;
-  $('staPass').placeholder=d.staPassSet?'(saved, leave empty to keep it)':'';
+  $('hostShow').textContent=d.host;$('ipLast').value=d.ipLast||123;
+  $('apPass').value='';$('staPass').value='';$('staPass').placeholder=d.staPassSet?'(saved)':'';
   $('ppl').value=d.ppl;$('pmax').value=d.pmax;$('pdiv').value=d.pdiv;
   const sn=d.sensors===undefined?3:d.sensors;$('snP').checked=!!(sn&1);$('snF').checked=!!(sn&2);showFitted();
   for(const k of ['rate','nzSp','nzFl','nzBar','pLow','pHigh','fTol'])if(d[k]!==undefined)$(k).value=d[k];
 }
-async function post(url,fields,msgId){
-  const p=pw();if(p===null)return;
+async function post(url,fields,msgId,pass){
+  const p=pass!==undefined?pass:pw();if(p===null)return;
   const body=new URLSearchParams(Object.assign({pw:p},fields));
   const m=$(msgId);m.textContent='…';
   try{const r=await fetch(url,{method:'POST',body});const d=await r.json();
@@ -359,7 +383,31 @@ async function post(url,fields,msgId){
     m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
-function saveWifi(){post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi')}
+// Wi-Fi settings, as on the XIAO page: the password typed in the Save card, a question before the restart
+function saveWifi(){const m=$('msgWifi');
+  if($('apPass').value&&$('apPass').value.length<8){m.innerHTML='<span class="bad">The password must have 8 characters or more.</span>';return}
+  if(!$('pwW').value){m.innerHTML='<span class="bad">Type the password of the own Wi-Fi network.</span>';$('pwW').focus();return}
+  if(!confirm('Save and restart the module? Its Wi-Fi goes off for a few seconds and every section closes.'))return;
+  post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi',$('pwW').value)}
+// "Search for networks": the networks the module hears (GET /api/scan, asked again until the list comes), one per
+// line, strongest first; a tap chooses one (as on the XIAO page)
+function sig(r){return r>=-60?'strong':r>=-72?'medium':'weak'}
+function showNets(list){const box=$('netList');box.textContent='';
+  for(const n of list){const b=document.createElement('button');b.type='button';b.classList.toggle('sel',n.s===$('staSsid').value);
+    const a=document.createElement('span');a.className='n';a.textContent=n.s;b.appendChild(a);
+    const r=document.createElement('span');r.className='r';r.textContent=n.r+' dBm · '+sig(n.r)+(n.open?' · open':'');b.appendChild(r);
+    b.addEventListener('click',()=>{const same=$('staSsid').value===n.s;$('staSsid').value=n.s;$('staOn').checked=true;
+      for(const o of box.children)o.classList.toggle('sel',o===b);
+      if(!same){$('staPass').value='';$('staPass').placeholder=n.open?'(open network)':'';if(!n.open)$('staPass').focus()}});
+    box.appendChild(b)}}
+async function scanNets(){const m=$('scanMsg'),b=$('scan');m.textContent='searching…';m.className='note';$('netList').textContent='';b.disabled=true;
+  try{for(let i=0;i<20;i++){
+      try{const j=await (await fetch('/api/scan',{cache:'no-store'})).json();
+        if(j.list){j.list.sort((x,y)=>y.r-x.r);showNets(j.list);const n=j.list.length;
+          m.textContent=n?(n===1?'1 network':n+' networks')+' · tap one to choose it':'no network found';return}}catch(e){}
+      await new Promise(r=>setTimeout(r,800))}
+    m.textContent='no answer'}
+  finally{b.disabled=false}}
 function saveCalib(){post('/api/calib',{sensors:ticked(),ppl:$('ppl').value,pmax:$('pmax').value,pdiv:$('pdiv').value},'msgCalib')}
 function saveSpray(){const f={};for(const k of ['rate','nzSp','nzFl','nzBar','pLow','pHigh','fTol'])f[k]=$(k).value.trim();post('/api/spray',f,'msgSpray')}
 // the report for an analysis: every answer of the module in one .json file, downloaded by this browser

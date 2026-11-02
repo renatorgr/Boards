@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
-   2026-10-27 (Claude): no PGN 160 from a machine without sensors (a seed drill).
+   2026-10-27 (Claude): no PGN 160 when no sensor is fitted.
    2026-10-27 (Claude): PGN 229 read in full (sections 1-64).
    2026-10-27 (Claude): v0.9.1: PGN 237 in the AiO v26 layout (sections, lift, tramline, geo stop, status).
    2026-11-02 (Claude): v0.10.0: PGN 235 (section widths, kept in flash) read; PGN 161 sent, ISOBUS process data with
@@ -73,7 +73,7 @@ void sendSignOfLife()
 
 // Once a second, PGN 160: the sprayer readings for the AgOpenWeb fork's sprayer strip. Sections 1-8 in
 // byte 14 as the fork reads them; sections 9-16 in byte 15 (the fork and the Teensy accept the longer
-// message and still read byte 14). A machine without sensors (a seed drill) has nothing to report: no PGN 160,
+// message and still read byte 14). With no sensor fitted there is nothing to report: no PGN 160,
 // so the program and the AiO page show no sprayer readings; its sections still go out in the hello reply
 void sendReadings()
 {

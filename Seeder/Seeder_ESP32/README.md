@@ -10,7 +10,7 @@ by a 12 V DPDT relay. Two boards:
 - a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an
   external DPDT relay.
 
-Version 0.2, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
+Version 0.2.1, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
 got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
 not run on either board yet.
 
@@ -25,7 +25,8 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
 
 - The board is the standard AgOpenGPS **machine module**, IP `<subnet>.123`
   (192.168.5.123 until the program, or the page, says otherwise), on the **network
-  cable**. No Wi-Fi to set up; the page can switch it to the tractor's Wi-Fi instead.
+  cable**. No Wi-Fi to set up; the page can switch it to the tractor's Wi-Fi instead
+  (with *Search for networks*, as on the XIAO page).
 - It speaks the same messages as the official `Machine_UDP_v5` module: sections
   (PGN 239 for 1–16, PGN 229 for 1–64), machine config (238), pin functions (236),
   subnet (201), hello (200 → 123) and scan (202 → 203). Everything the program sends is
@@ -98,7 +99,7 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
 4. Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be
    powered or not). KC868-A32: power it with 12 V and plug its USB socket in, as in
    KinCony's guide. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.1` and `ready`.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
 page *Install a new program* and choose the `.bin`.
@@ -108,8 +109,8 @@ page *Install a new program* and choose the `.bin`.
 1. Plug the network cable into the RUT901's `LAN2` and the board. The page's *Network* card shows
    *Network cable: connected*.
 2. **Program subnet**: the module and the tablet must be on the same subnet (the first
-   three numbers of the tablet's IP). If it is not 192.168.5, set it in *Network settings*
-   on the page, or let AgOpenWeb send it (PGN 201).
+   three numbers of the tablet's IP). If it is not 192.168.5, set it in the *Program network*
+   card on the page (then *Save and restart the module*), or let AgOpenWeb send it (PGN 201).
 3. Open AgOpenWeb: the page's dot turns green (*program talking*). Leave
    **"relay active high" unticked** in its machine settings: the page shows
    *Output polarity: normal*.

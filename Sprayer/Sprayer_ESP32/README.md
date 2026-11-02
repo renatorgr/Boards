@@ -4,10 +4,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOp
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-The 19-section no-till seed drill on a KinCony KC868-A32 has its own program since
-v0.9: [Seeder/Seeder_ESP32](../../Seeder/Seeder_ESP32).
-
-Version 0.10.0 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## How it works
@@ -56,7 +53,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   - **Settings**: target rate, nozzles, pressure limits, flow tolerance; the section widths
     received from AgOpenWeb; the sensors fitted and their calibration. Saving needs the
     own network's password, so nothing changes by a touch while driving.
-  - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings and the events.
+  - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings (laid out as on the XIAO
+    page, with *Search for networks*) and the events.
   - **Firmware**, as on the Teensy and XIAO pages: the program installed (version, build
     date, board), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this folder;
     checked when the page opens, every 6 hours and with *Check now*) with **Install from
@@ -64,7 +62,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
     report**: the module's state, settings and events in one `.json` file to send when
     something goes wrong (no passwords in it). The phone or tablet asks GitHub, so it needs
     internet: open the page over the tractor network, not over the module's own Wi-Fi.
-    A `.bin` for another board, the seed drill's program or the `.merged.bin` is refused.
+    A `.bin` for another board, another module's program or the `.merged.bin` is refused.
   Without the board, the page can be tried in the
   [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
@@ -132,7 +130,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.0` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.1` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -140,13 +138,14 @@ divider (to-GND ÷ total) in the page's calibration.
 
 1. On a phone, join the Wi-Fi network **Sprayer-xxxx**, password **agopengps**. The
    page opens by itself (or open `http://192.168.4.1/`).
-2. **Wi-Fi settings**: tick *Join the tractor network*, enter the name and password of
-   the router the tablet uses, *Save and restart*. The header then shows
-   `on <network> as 192.168.5.123`.
+2. **Module** tab, card *Tractor Wi-Fi network*: tap *Search for networks* and then the
+   router the tablet uses (that ticks *Join the tractor network*), and type its password.
+   In the *Save* card type the own network's password (**agopengps**), *Save and restart
+   the module*. The header then shows `on <network> as 192.168.5.123`.
 3. **Program subnet**: the module and the tablet must be on the same subnet, which is
    the first three numbers of the tablet's IP on that network (Wi-Fi settings on the
    tablet; a Starlink router gives 192.168.1.x, for example). If it is not 192.168.5,
-   type it in *Program subnet* on the page, *Save and restart*: the header then shows
+   type it in the *Program network* card, then *Save and restart the module*: the header then shows
    `as 192.168.1.123`. In AgOpenWeb set the module subnet to the same three numbers.
    AgOpenWeb can also send its subnet to the module (PGN 201) once it sees it.
 4. Open AgOpenWeb. The machine module shows up at `<subnet>.123`, and the page's dot
