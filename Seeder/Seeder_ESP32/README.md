@@ -39,8 +39,9 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
 - No pressure or flow sensor: no PGN 160 (that is the sprayer's).
 - Its **own Wi-Fi network** is always on: join `Seeder-xxxx` (password `agopengps`) with
   a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the tractor
-  network the same page is at `http://192.168.5.123/` or `http://seeder.local/`. Without
-  the board, the page can be tried in the
+  network the same page is at `http://192.168.5.123/` or `http://seeder.local/` (the module
+  announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list it by name
+  in a second). Without the board, the page can be tried in the
   [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on every
   change.
 

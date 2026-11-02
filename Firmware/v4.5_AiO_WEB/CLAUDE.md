@@ -113,7 +113,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Network and web (AiO 26: `aio_system`)
 | File | Purpose |
 |------|---------|
-| `zEthernet.ino`, `zNet.h` | Ethernet start, IP, UDP sockets, the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
+| `zEthernet.ino`, `zNet.h` | Ethernet start, IP, UDP sockets, mDNS (`aio.local`, `_http._tcp`: `mdnsStart`), the FNET stack polled from `loop()` (`netPoll`, `netDelay`) |
 | `zWeb.ino` | Web server: one request at a time, `/api/*` endpoints, OTA upload |
 | `zWebPage.h` | The whole page (HTML / CSS / JS) as one `PROGMEM` string |
 | `zWebJson.h` | Small JSON writer |
