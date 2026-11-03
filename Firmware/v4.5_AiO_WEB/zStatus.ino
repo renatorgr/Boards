@@ -2,6 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    24 Oct 2026: statusProgramTalking / statusRtcmLastMs for the LEDs (zLeds.ino).
+   3 Nov 2026: the Dual message names the RELPOSNED flags: no corrections from the first F9P, heading not valid.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -291,8 +292,17 @@ static void statusNoDualWhy(bool force, const char* meanwhile)   // meanwhile: n
     if (!force && why == noDualWhyReported) return;
     noDualWhyReported = why;
 
-    char b[340];
-    if (why == NODUAL_QF && dualSrc == 'F')
+    char b[400];
+    if (why == NODUAL_QF && dualSrc == 'F' && dualF9pRefMiss)
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the second F9P gets no corrections from the first one "
+                               "(RELPOSNED refPosMiss / refObsMiss, carrSoln %u): the RTCM goes from the first F9P's UART2 to the "
+                               "second one's UART2 - see both receiver checks on the GPS tab (RTCM out on the first, in on the second)",
+                 dualF9pCarr);
+    else if (why == NODUAL_QF && dualSrc == 'F' && dualF9pCarr == 2 && !dualF9pHeadingValid)
+        snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the second F9P has RTK fixed but flags its heading as not "
+                               "valid (relPosHeadingValid 0, baseline %.1f cm): antennas too close, or the same antenna twice?",
+                 (double)dualF9pBaseline);
+    else if (why == NODUAL_QF && dualSrc == 'F')
         snprintf(b, sizeof(b), "[status] Dual: no dual-antenna heading - the second F9P has no RTK fixed solution between "
                                "the antennas (carrSoln %u%s): antennas, cables, the RTCM from the first F9P", dualF9pCarr,
                  dualF9pCarr == 1 ? ", float" : "");

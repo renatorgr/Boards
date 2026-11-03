@@ -27,6 +27,8 @@
    3 Nov 2026: Steering card: the distance to the guidance line (PGN 254 byte 10). Steering settings card: the program's
    maximum wheel angle (PGN 247) and minimum steering speed (PGN 251), shown only. The kickout delay setting also
    covers the pressure sensor. A chosen .hex is an AiO_WEB one by the marker of 22 Oct 2026 only.
+   3 Nov 2026: the dual-antenna card says when the second F9P gets no corrections from the first one, or flags its
+   heading as not valid (the RELPOSNED flags, dual.f9p2.refMiss / headingValid).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -509,7 +511,8 @@ function render(s){
  set("qf",d.hpr?String(d.lastQf):"–");set("antRoll",d.hpr?fmt(d.antRoll,2,"°"):"–");
  set("dualBase",f9&&f2&&f2.frames?fmt(f2.baseline,1," cm")+" · carrSoln "+(f2.carr===2?"fixed":f2.carr===1?"float":"no solution"):"–",f9&&f2&&f2.frames&&f2.carr!==2?"warn":"");
  const W=f9?WHYF:WHY,nmeaOnly=!!(f9&&f2&&f2.nmea&&!f2.frames);   /* the F9P sends NMEA: not set up as the second F9P */
- $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?(W[d.why])+"\n":"")+(d.raw||(f9?"no RELPOSNED received"+(f2&&f2.bytes?" ("+f2.bytes+" bytes, "+f2.bad+" with errors)":"")+(nmeaOnly?"\nIt sends NMEA sentences instead: not set up as the second F9P yet.":""):"no HPR received"));
+ const fd=f9&&f2&&d.why===3?(f2.refMiss?"The second F9P gets no corrections from the first one (refPosMiss / refObsMiss): the RTCM from the first F9P's UART2 to the second one's. See both receiver checks on the GPS tab (RTCM out on the first, in on the second).\n":(f2.carr===2&&!f2.headingValid)?"RTK fixed, but the F9P flags its heading as not valid (relPosHeadingValid 0): antennas too close, or the same antenna twice?\n":""):"";
+ $("hprRaw").textContent=d.ok?(d.raw||"–"):(W[d.why]?(W[d.why])+"\n":"")+fd+(d.raw||(f9?"no RELPOSNED received"+(f2&&f2.bytes?" ("+f2.bytes+" bytes, "+f2.bad+" with errors)":"")+(nmeaOnly?"\nIt sends NMEA sentences instead: not set up as the second F9P yet.":""):"no HPR received"));
  // the second F9P itself: its data, model and firmware, and whether it has what the Teensy needs (zRxCheck.ino's summary)
  const c2=f9&&f2&&f2.on?d.ck2:null;
  for(const id of ["f2T","f2","f2SetT","f2Set","f2Go"])$(id).classList.toggle("hidden",!c2);

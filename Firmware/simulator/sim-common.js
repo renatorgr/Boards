@@ -17,6 +17,8 @@
    over the link is checked and installed as one from the Teensy's page (ota() with its tag "[xiao]").
    2026-11-03 (Claude): /api/status carries steer.line (the lightbar byte) and steerCfg.aowMaxDeg / aowMinKmhX10 (the
    program's steering limits); a .hex is this firmware by the marker of 22 Oct 2026 only, as zOTA.ino since today.
+   2026-11-03 (Claude): dual.f9p2.refMiss / headingValid, the RELPOSNED flags the Teensy keeps since today; the flags
+   value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -516,7 +518,7 @@ function Module(key) {
   j.dual = {hpr: d.hpr, ok: d.ok, qf: d.ok ? d.qf : 0, lastQf: d.qf, heading: hdgStr, why: d.ok ? 0 : d.hpr ? (d.why || 3) : 1, antRoll: d.hpr ? r2(roll + wob(t, 0.1, 0.7), 2) : 0};
   if (full) {
    if (rx.dual === "um982" && d.hpr) j.dual.raw = nmea("GNHPR," + utc() + "," + (hdgStr || "000.0000") + "," + (pitch).toFixed(4) + "," + (roll).toFixed(4) + "," + d.qf + "," + f.sats + "," + (f.age || "0.0") + ",0000");
-   else if (rx.dual === "f9p" && d.hpr) j.dual.raw = "RELPOSNED iTOW " + Math.floor(Date.now() % 604800000) + ", heading " + wrap360(tr.hdg + 90).toFixed(2) + ", baseline 121.4 cm, down " + (roll * 2.1).toFixed(1) + " cm, carrSoln " + (d.ok ? 2 : 1) + ", flags 0x" + (d.ok ? "13F" : "0BF");
+   else if (rx.dual === "f9p" && d.hpr) j.dual.raw = "RELPOSNED iTOW " + Math.floor(Date.now() % 604800000) + ", heading " + wrap360(tr.hdg + 90).toFixed(2) + ", baseline 121.4 cm, down " + (roll * 2.1).toFixed(1) + " cm, carrSoln " + (d.ok ? 2 : 1) + ", flags 0x" + (d.ok ? "137" : "0AF");
    else j.dual.raw = "";
   }
   j.dual.late = 0;
@@ -525,7 +527,8 @@ function Module(key) {
    const on = f9pOn() && t > 1.6, here = on && t > 5;
    j.dual.f9p2 = {on: on, ago: here ? 0 : -1, frames: here ? Math.floor((t - 5) * 10) : 0, bad: 0, bytes: here ? Math.floor((t - 5) * 720) : 0, nmea: 0, nmeaAgo: -1,
     port: cfg.xiaoOff === 1 ? "off" : on ? "F9P" : h.xiao && t > 5.2 ? "XIAO" : "auto", seen: cfg.xiaoOff === 1 && f9p2Here() && t > 5,
-    heading: here ? r2(wrap360(tr.hdg + 90), 2) : 0, baseline: here ? 121.4 : 0, roll: here ? r2(roll, 2) : 0, carr: here ? (d.ok ? 2 : 1) : 0, flags: here ? (d.ok ? 0x13F : 0x0BF) : 0};
+    heading: here ? r2(wrap360(tr.hdg + 90), 2) : 0, baseline: here ? 121.4 : 0, roll: here ? r2(roll, 2) : 0, carr: here ? (d.ok ? 2 : 1) : 0, flags: here ? (d.ok ? 0x137 : 0x0AF) : 0,
+    refMiss: here && !d.ok, headingValid: here && d.ok};   // the RELPOSNED flags: not ok = the first F9P's corrections missing
    j.dual.ck2 = ckStatus(1, t);
   }
   j.tm = {type: imuOk ? h.imu : "", port: imuOk ? h.imuPort : "", ok: imuOk, seen: imuOk,
