@@ -14,6 +14,7 @@
    be reached (POST /api/teensy-update, /api/teensy-revert).
    2 Nov 2026 (later): error messages under the cards in red and bold, confirmations green, waits orange: the .note
    rule came after the colour classes and painted every message grey (the Teensy page already had .note.bad etc.).
+   3 Nov 2026: a dropped upload says so (weak Wi-Fi?) and how to get round it, instead of "The connection failed".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -414,7 +415,7 @@ function sendBin(blob,name,p0){
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
   else fail("Not installed: "+(j.error||("error "+x.status))+". The current program keeps running.");};
- x.onerror=()=>fail("The connection failed. The current program keeps running.");
+ x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current program keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/) with a downloaded .bin.");
  x.send(fd);}
 
 // ---- a newer version on GitHub (renatorgr/Boards, folder Firmware, one folder per version:
@@ -552,7 +553,7 @@ function sendTeensyHex(blob,name,force,p0){
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;busy=false;tWaitStart("Checked ("+Math.round(j.size/1024)+" kB). The module is installing and restarting — do not switch the power off…");}
   else fail("Not installed: "+(j.error||("error "+x.status))+". The module's current firmware keeps running.");};
- x.onerror=()=>fail("The connection to the XIAO failed. The module's current firmware keeps running.");
+ x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The module's current firmware keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/).");
  x.send(fd);
 }
 // After the module said yes: wait for it to come back (its time on goes back, or another build runs), through /api/teensy

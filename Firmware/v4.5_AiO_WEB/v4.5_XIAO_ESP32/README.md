@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB):
 
 | Date | Change |
 |---|---|
+| 3 Nov 2026 | An update over a weak Wi-Fi link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
 | 2 Nov 2026 | **Module (Teensy) firmware** card on the Firmware tab: install the Teensy's firmware from this page over the link, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Messages under the cards in red when something failed, green when it was done. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Report card last on the Firmware tab. Plainer **On GitHub** row. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Download the report** on the Firmware tab. **Install from GitHub** also sees a new build of the same version. |
@@ -116,7 +117,7 @@ No other libraries are needed: everything is in the esp32 package.
 3. Phone or PC on the XIAO's network → page → **Firmware** → choose the file → password → **Install**.
 4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings are kept.
 
-If the update fails halfway (WiFi lost), the old program keeps running: just try again.
+If the update fails halfway (WiFi lost), the old program keeps running: just try again. Messages then shows "Program update STOPPED after … kB: the browser's connection dropped". With a weak signal, connect the phone or PC to the XIAO's own network and install from http://192.168.4.1/: download the `.bin` first (Install from GitHub needs internet, and the XIAO's own network has none).
 
 ## The module's firmware from this page
 
