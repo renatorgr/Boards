@@ -4,6 +4,7 @@
    26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
    3 Nov 2026: currentKickX10ms is the kickout delay of the pressure sensor too (Autosteer.ino).
    3 Nov 2026: steerLoop100, the steering loop at 100 Hz instead of 40 (was reserved[0]; Autosteer.ino steerLoopApply).
+   3 Nov 2026: the installation note, free text kept in the EEPROM at NOTE_EEPROM_ADDR (cfgNote, noteLoad / noteSave).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -84,5 +85,15 @@ extern WebSettings cfg;          // defined in zSettings.ino
 extern bool        cfgFromEeprom; // true: cfg came from the EEPROM (else defaults)
 extern bool        settingsAutoSetNow; // this start switched older settings to the automatic mode
 void settingsSave();             // zSettings.ino
+
+// AiO_WEB, 3 Nov 2026: a free-text note about this installation (wiring, calibration values, what was changed and when),
+// typed on the web page (Settings tab) and kept in the EEPROM away from the settings block:
+// [magic, 2 bytes][length, 2 bytes][the text]. Shown on the page and in the diagnostic report (/api/note, zWeb.ino).
+#define NOTE_EEPROM_ADDR  1024
+#define NOTE_MAGIC        0x4E54      // "NT"
+#define NOTE_MAX          1200        // bytes of text (UTF-8: an accented letter takes 2); the page allows 1000 characters
+extern char cfgNote[NOTE_MAX + 1];    // the note, '\0' ended (zSettings.ino)
+void noteLoad();                      // from settingsLoad()
+bool noteSave(const char* text, size_t n);   // false: too long, or characters that cannot be kept (nothing written)
 
 #endif

@@ -32,6 +32,8 @@
    3 Nov 2026: Steering settings card: the steering loop, 40 Hz (default) or 100 Hz (steerLoop100); the Steering card
    shows the loop rate set and measured (steer.loopMs / loopHz).
    3 Nov 2026: a frozen IMU (roll and heading unchanged while driving, tm.frozen): FROZEN on the IMU card, a warning at the top.
+   3 Nov 2026: "Notes about this installation" on the Settings tab (GET / POST /api/note, plain text, kept in the EEPROM),
+   also in the report.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -128,6 +130,7 @@ input[type=text]{font:inherit;font-family:var(--mono);padding:9px 10px;border:1p
 .opt input{margin-top:4px}
 .opt small{display:block;color:var(--mute)}
 .opt small.warn{color:var(--warn)}
+textarea{width:100%;box-sizing:border-box;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);resize:vertical;min-height:7em}
 select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:6.2em;margin-top:0!important}
 .pair{display:flex;gap:6px;align-items:center;white-space:nowrap}
@@ -268,6 +271,11 @@ a{color:var(--acc)}
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
+<div class="card"><h2>Notes about this installation</h2>
+ <p class="note">Wiring, calibration values, what was changed and when: whatever the next person at this module should know. Kept in the Teensy (EEPROM) through firmware updates, and put in the diagnostic report.</p>
+ <textarea id="noteTxt" maxlength="1000" rows="6" spellcheck="false" placeholder="e.g. WAS: 3-wire sensor, Single input, zero 2550. Pressure sensor 0-100 bar on A10, reads 25 at rest. TM171 on Serial5, TX5 wire fitted 23 Oct."></textarea>
+ <div class="row"><button class="act" type="button" id="noteSave">Save the notes</button><span id="noteMsg" class="note"></span></div>
+</div>
 </section>
 
 <section id="t-gps" class="hidden">
@@ -1103,7 +1111,7 @@ $("ck0Um").addEventListener("change",async()=>{     /* UM982 antennas: a setting
 function show(t){
  tab=t;for(const b of document.querySelectorAll("nav button"))b.classList.toggle("on",b.dataset.t===t);
  for(const s of document.querySelectorAll("main>section"))s.classList.toggle("hidden",s.id!=="t-"+t);
- if(t==="settings")loadSettings();
+ if(t==="settings"){loadSettings();if(!noteLoaded)loadNote();}
  if(t==="gps")pollGps();
  if(t==="log"){const b=$("log");b.scrollTop=b.scrollHeight;}
 }
@@ -1219,11 +1227,25 @@ function sendHex(blob,force,p0){
  x.send(blob);
 }
 
+// ---- the installation note (Settings tab): plain text, GET / POST /api/note, kept in the Teensy's EEPROM. Loaded once (not
+// again at every visit of the tab: typed text would be lost) and after a save; the module counts bytes, the box characters.
+let noteLoaded=false,noteMax=1200;
+function noteBytes(s){return new TextEncoder().encode(s).length;}
+function noteCount(){const t=$("noteTxt"),m=$("noteMsg"),n=noteBytes(t.value);m.className="note"+(n>noteMax?" bad":"");
+ m.textContent=t.value.length+" / 1000 characters"+(n>noteMax?" · too long for the module: "+n+" bytes of "+noteMax+" (an accented letter counts 2)":"");}
+async function loadNote(){try{const j=await getJ("/api/note");if(j.ok){$("noteTxt").value=j.note||"";if(j.max)noteMax=j.max;noteLoaded=true;noteCount();}}catch(e){}}
+$("noteTxt").addEventListener("input",noteCount);
+$("noteSave").addEventListener("click",async()=>{const t=$("noteTxt"),m=$("noteMsg");if(noteBytes(t.value)>noteMax){noteCount();return;}
+ m.className="note";m.textContent="Saving…";
+ try{const j=await getJ("/api/note",{method:"POST",headers:{"Content-Type":"text/plain; charset=utf-8"},body:t.value});
+  if(j.ok){t.value=j.note||"";noteCount();m.className="note ok";m.textContent="Saved. "+t.value.length+" / 1000 characters";}else{m.className="note bad";m.textContent="Error: "+ptErr(j.error);}
+ }catch(e){m.className="note bad";m.textContent="No connection to the module.";}});
+
 // ---- the report for an analysis: every answer of the module in one .json file, downloaded by this browser
 $("dumpBtn").addEventListener("click",async()=>{
  const b=$("dumpBtn"),m=$("dumpMsg");b.disabled=true;m.className="note";m.textContent="Gathering…";
  const r={made:new Date().toString(),page:location.href,browser:navigator.userAgent};
- for(const [k,u] of [["diag","/api/diag"],["status","/api/status"],["settings","/api/settings"],["gps","/api/gps"]]){try{r[k]=await getJ(u);}catch(e){r[k]={error:String(e)};}}
+ for(const [k,u] of [["diag","/api/diag"],["status","/api/status"],["settings","/api/settings"],["gps","/api/gps"],["note","/api/note"]]){try{r[k]=await getJ(u);}catch(e){r[k]={error:String(e)};}}
  const log=[];let after=0;
  for(let i=0;i<30;i++){let j;try{j=await getJ("/api/log?after="+after);}catch(e){break;}
   if(!j.lines||!j.lines.length)break;for(const l of j.lines)log.push(dur(Math.floor(l.t/1000))+"  "+l.x);
