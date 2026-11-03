@@ -860,8 +860,9 @@ void ReceiveUdp()
 
 				steerConfig.PulseCountMax = autoSteerUdpData[6];
 
-				//was speed
-				//autoSteerUdpData[7];
+				// byte 7: the program's minimum steering speed (x 0.1 km/h). AiO_WEB: shown on the web page's
+				// Steering settings card only; the speed below which the wheels are not turned stays the page setting
+				aowMinKmhX10 = autoSteerUdpData[7];
 
 				sett = autoSteerUdpData[8]; //setting1 - Danfoss valve etc
 

@@ -178,7 +178,9 @@ a{color:var(--acc)}
   <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
    <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
    <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
-   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd></dl></div>
+   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd>
+   <dt>Max wheel angle</dt><dd id="scMaxDeg">–</dd><dt>Min steer speed</dt><dd id="scMinKmh">–</dd></dl>
+  <p class="note">Max wheel angle and min steer speed are the program's own limits (AgOpenWeb sends them), shown only: the firmware cuts beyond ±50° and uses the speeds of its Settings.</p></div>
  <div class="card"><h2>Connections</h2>
   <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd>
    <dt>Up for</dt><dd id="up">–</dd></dl>
@@ -584,6 +586,9 @@ function render(s){
   set("scSens",[sc.pressure?"pressure":"",sc.current?"current":"",sc.encoder?"encoder":""].filter(x=>x).join(" · ")||"none");
   set("scKick",sc.pressure||sc.current?pct255(sc.kickMax):sc.encoder?sc.kickMax+" pulses":"–");
   set("scAxis",sc.yAxis?"Y":"X");
+  // the program's own limits, shown only: the firmware cuts beyond ±50° and below / above the speeds in Settings
+  set("scMaxDeg",sc.aowMaxDeg?sc.aowMaxDeg+"°":"not sent");
+  set("scMinKmh",sc.aowMinKmhX10?fmt(sc.aowMinKmhX10/10,1," km/h"):"off");
  }
  const al=[];
  if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");

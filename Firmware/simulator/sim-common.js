@@ -545,7 +545,8 @@ function Module(key) {
    : {found: false, lost: false, block: false, lostCount: 0, ago: -1, pos: 0, speed: 0, set: 0, current: 0, slip: 0, faults: "", gpsWas: 0, gpsWasOk: false};
   if (full) {
    const got = t >= 6.5 ? Math.floor(t - 6.5) : -1;
-   j.steerCfg = Object.assign({got252: got, got251: got, got247: hostName === "AgOpenWeb" ? got : -1, wheelbase: hostName === "AgOpenWeb" && got >= 0 ? 2.85 : 3.2}, sc);
+   j.steerCfg = Object.assign({got252: got, got251: got, got247: hostName === "AgOpenWeb" ? got : -1, wheelbase: hostName === "AgOpenWeb" && got >= 0 ? 2.85 : 3.2,
+    aowMaxDeg: hostName === "AgOpenWeb" && got >= 0 ? 40 : 0, aowMinKmhX10: got >= 0 ? 5 : 0}, sc);
    j.boot = {why: st.boot, srsr: st.boot === "restart" ? "0x10" : "0x01", addr: "", step: "", wdt: st.wdt, wdtOff: !!cfg.wdtOff, hwMsgs: 0, hwMsg: ""};
   }
   const dualNow = dualRx();

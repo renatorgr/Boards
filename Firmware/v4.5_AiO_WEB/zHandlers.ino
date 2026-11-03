@@ -21,6 +21,7 @@
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
    AiO_WEB 4.5, 24 Oct 2026: the GPS LED is driven by zLeds.ino (fix quality), no longer from here.
+   AiO_WEB 4.5, 3 Nov 2026: PGN 247 byte 23, the program's maximum wheel angle, kept for the web page (aowMaxSteerDeg).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -700,6 +701,7 @@ void vehicleGeometry(const uint8_t* p, int n)
     if (cm < 50 || cm > 1500) return;                // 0.5 to 15 m, else keep the old value
     wheelbaseM = cm / 100.0f;
     pgn247Ms   = millis();
+    if (p[4] >= 19) aowMaxSteerDeg = p[23];         // layout version 1: byte 23 = the maximum wheel angle (deg), page only
 }
 
 // ---------------------------------------------------------------- output

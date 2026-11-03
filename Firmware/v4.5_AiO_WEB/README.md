@@ -321,6 +321,8 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
+AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering settings card shows them next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
+
 At the top of `Autosteer.ino`:
 
 - `PWM_Frequency` 1 = **122 Hz** (0 = 490 Hz, 2 = 3921 Hz). On a proportional valve 122 Hz acts as dither; a DC motor runs smoother at 490 Hz.
