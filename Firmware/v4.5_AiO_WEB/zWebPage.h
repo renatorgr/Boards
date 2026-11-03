@@ -24,6 +24,9 @@
    1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
    2 Nov 2026: "Previous firmware" on the Firmware tab, with "Go back to the previous firmware" (POST /api/revert): the
    firmware that ran before the last update, kept in the Teensy's flash; no file or internet needed.
+   3 Nov 2026: Steering card: the distance to the guidance line (PGN 254 byte 10). Steering settings card: the program's
+   maximum wheel angle (PGN 247) and minimum steering speed (PGN 251), shown only. The kickout delay setting also
+   covers the pressure sensor. A chosen .hex is an AiO_WEB one by the marker of 22 Oct 2026 only.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -169,7 +172,7 @@ a{color:var(--acc)}
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
  <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
-  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
+  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
    <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
    <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
    <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
@@ -178,7 +181,9 @@ a{color:var(--acc)}
   <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
    <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
    <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
-   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd></dl></div>
+   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd>
+   <dt>Max wheel angle</dt><dd id="scMaxDeg">–</dd><dt>Min steer speed</dt><dd id="scMinKmh">–</dd></dl>
+  <p class="note">Max wheel angle and min steer speed are the program's own limits (AgOpenWeb sends them), shown only: the firmware cuts beyond ±50° and uses the speeds of its Settings.</p></div>
  <div class="card"><h2>Connections</h2>
   <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd>
    <dt>Up for</dt><dd id="up">–</dd></dl>
@@ -253,7 +258,7 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Minimum speed<small>Below it (the program's speed) the wheels are not turned. Default 0.2 km/h.</small></span><select name="steerMinKmhX10"><option value="1">0.1 km/h</option><option value="2">0.2 km/h</option><option value="3">0.3 km/h</option><option value="5">0.5 km/h</option><option value="10">1.0 km/h</option><option value="15">1.5 km/h</option><option value="20">2.0 km/h</option><option value="30">3.0 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
- <div class="opt"><span style="flex:1">Current kickout delay<small>Current sensor only (not the Keya): autosteer switches off only when the current stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once, as before.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
+ <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor (not the Keya's slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
@@ -432,6 +437,9 @@ const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).to
 // The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
 // module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
 const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
+// PGN 254 byte 10, the lightbar byte: 127 on the line, 2 cm per step (under 127 = left of it), 255 no line
+const lineText=v=>{if(v===null||v===undefined)return "–";if(v===255)return "no line";const cm=(v-127)*2,a=Math.abs(cm);
+ return cm===0?"on the line":(a>=254?"254+ cm":a+" cm")+(cm>0?" right":" left");};
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
 // a value with a link after it (the XIAO's page, the module's page at its real IP): url "" = text only
 function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
@@ -549,6 +557,7 @@ function render(s){
  set("sign",(t.sign>0?"+1":"−1")+" ("+(t.locked?"fixed":"learning")+")");
  const st=s.steer;
  set("was",fmt(st.was,1,"°"));set("setp",fmt(st.set,1,"°"));set("pwm",String(st.pwm));
+ set("lineDist",lineText(st.line));
  pill("active",(st.active?"steering":"off"),st.active?"ok":"");
  set("sw",(st.switchOn?"on":"off"));set("aogKmh",fmt(st.aogKmh,1," km/h"));
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top
@@ -580,6 +589,9 @@ function render(s){
   set("scSens",[sc.pressure?"pressure":"",sc.current?"current":"",sc.encoder?"encoder":""].filter(x=>x).join(" · ")||"none");
   set("scKick",sc.pressure||sc.current?pct255(sc.kickMax):sc.encoder?sc.kickMax+" pulses":"–");
   set("scAxis",sc.yAxis?"Y":"X");
+  // the program's own limits, shown only: the firmware cuts beyond ±50° and below / above the speeds in Settings
+  set("scMaxDeg",sc.aowMaxDeg?sc.aowMaxDeg+"°":"not sent");
+  set("scMinKmh",sc.aowMinKmhX10?fmt(sc.aowMinKmhX10/10,1," km/h"):"off");
  }
  const al=[];
  if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
@@ -1147,7 +1159,7 @@ function hexRead(text){
  let s="";
  for(const ln of text.split("\n")){if(ln.charCodeAt(0)!==58||ln.substr(7,2)!=="00")continue;const n=parseInt(ln.substr(1,2),16);let o="";for(let i=0;i<n;i++)o+=String.fromCharCode(parseInt(ln.substr(9+2*i,2),16));s+=o;}
  const m=/\[boot\] (v[\w.]+_AiO_WEB), built ([A-Z][a-z]{2} [ \d]\d \d{4} \d\d:\d\d:\d\d)/.exec(s);
- return {fw:m?m[1]:"",built:m?m[2].replace("  "," "):"",t41:s.includes("fw_teensy41"),marker:s.includes("AiO-WEB-OTA-1")||s.includes("AOG-UM982-TM171-WEB-OTA-1")};
+ return {fw:m?m[1]:"",built:m?m[2].replace("  "," "):"",t41:s.includes("fw_teensy41"),marker:s.includes("AiO-WEB-OTA-1")};
 }
 $("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];hexBuild=null;
  $("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");

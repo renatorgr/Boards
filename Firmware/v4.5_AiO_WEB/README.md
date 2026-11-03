@@ -14,7 +14,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **IMU** | BNO085 | TM171 or BNO085 (RVC or I2C), found at start-up. TM171: gyro and new-install calibration, set-up check with one-click fix, and its settings, all from the page. |
 | **Output to the program** | `$PAOGI` / `$PANDA` | the same, plus the standard sentence set AgOpenWeb reads (`GGA`, `VTG`, `THS`, `HPR`), chosen automatically from the program's hello. |
 | **Autosteer safety** | kickouts | WAS voltage check (broken wire = autosteer blocked), Keya heartbeat lost = autosteer off, outputs off at once on a crash or a watchdog restart, and the reason autosteer went off on the program's screen. |
-| **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, current kickout delay. The wheelbase comes from AgOpenWeb. |
+| **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, kickout delay (pressure or current sensor). The wheelbase comes from AgOpenWeb; its maximum wheel angle and minimum steering speed are shown. |
 | **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
 | **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. |
 | 2 Nov 2026 | Firmware update from the XIAO page, over the serial link, for when the module's own page does not open. **Go back to the previous firmware** on both pages: the module keeps the firmware it ran before its last update. Fix: the web page stopped answering a few seconds after start-up. The page is also at `http://aio.local/`. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Install from GitHub** also sees a new build of the same version. |
@@ -72,7 +73,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 | Tab | |
 |---|---|
-| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate). GNSS, dual heading (not with one antenna), IMU, steering, the steering settings from the program, network and corrections, the XIAO. |
+| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate). GNSS, dual heading (not with one antenna), IMU, steering (with the distance to the guidance line the program sends), the steering settings from the program (with its maximum wheel angle and minimum steering speed, shown only: the firmware keeps its own limits), network and corrections, the XIAO. |
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below. |
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
@@ -82,7 +83,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
 
-The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
+The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running. Opening the page does not hold the steering either (since 3 Nov 2026; before, a page load held the loop for about 0.1 s): the browser keeps the page of each build and only asks whether it changed, and when it has to be sent the module sends it in small pieces between steering loops.
 
 ### Settings
 
@@ -103,7 +104,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
 | Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
 | Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
-| Current kickout delay (Steering) | 0.5 s | 0 (at once, as before), 0.25, 0.5 or 1 s. Current sensor only, not the Keya: the current must stay above the limit this long. |
+| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor (not the Keya): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). |
 
 ### Firmware update over the network
 
@@ -111,7 +112,7 @@ Web page → Firmware → choose the `.hex` → Install.
 
 - Once chosen, the page reads the file in the browser and shows what is inside, next to its name: the version and the build date and time (the `[boot] … built …` line the firmware prints at start-up), "the firmware running now" when it is the same build as the module's, a warning when it is not a Teensy 4.1 firmware, not an AiO_WEB one, or has no update page inside. Nothing is sent until Install.
 - Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h). On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
-- The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`, or `AOG-UM982-TM171-WEB-OTA-1` as the firmware before 22 Oct 2026 called it), reading back every sector. A new firmware carries both names for now, so a module still on an older firmware accepts it from the web page. **If anything fails, the running firmware stays** and the page says why.
+- The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`), reading back every sector. Since 3 Nov 2026 the image carries only that name: a module still on a firmware from before 22 Oct 2026 (which looks for `AOG-UM982-TM171-WEB-OTA-1`) takes a build from 22 Oct to 2 Nov 2026 first, or this one over USB. **If anything fails, the running firmware stays** and the page says why.
 - Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).
 - "Other firmware" installs an image without the family marker; the next update is then over USB.
 
@@ -320,6 +321,8 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 - **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts); until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m). The Steering settings card shows which one is in use.
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
+
+AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering settings card shows them next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
 
 At the top of `Autosteer.ino`:
 

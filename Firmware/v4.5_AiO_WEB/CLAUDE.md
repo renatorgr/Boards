@@ -197,10 +197,10 @@ byte before it (low 8 bits).
 ### In (UDP 8888, source 0x7F)
 | PGN | Name | Where |
 |-----|------|-------|
-| 254 (0xFE) | Steer data: speed, guidance status, set angle, sections | Autosteer.ino |
+| 254 (0xFE) | Steer data: speed, guidance status, set angle, sections; byte 10 the distance to the guidance line (the lightbar byte: 127 on the line, 2 cm per step, 255 none), `lineDist`, for the page only | Autosteer.ino |
 | 252 (0xFC) | Steer settings: gains, PWM, WAS offset / counts | Autosteer.ino, EEPROM 10 |
-| 251 (0xFB) | Steer config: invert, relay, motor driver, sensors | Autosteer.ino, EEPROM 40 |
-| 247 (0xF7) | Vehicle geometry (AgOpenWeb): wheelbase | zHandlers.ino `vehicleGeometry()` |
+| 251 (0xFB) | Steer config: invert, relay, motor driver, sensors; byte 7 the program's minimum steering speed (`aowMinKmhX10`, for the page only) | Autosteer.ino, EEPROM 40 |
+| 247 (0xF7) | Vehicle geometry (AgOpenWeb): wheelbase; byte 23 the maximum wheel angle (`aowMaxSteerDeg`, for the page only, the firmware cuts at ±50°) | zHandlers.ino `vehicleGeometry()` |
 | 229 (0xE5) | Sections 1-64 (bytes 5-12), with every 239 on a tool of 17+ sections; only for the Machine tab | zMachine.ino `machineNote229()` |
 | 200 | Hello: answers 126 (steer) and 121 (IMU); tells AgOpenWeb from AgOpenGPS | Autosteer.ino, zStatus.ino |
 | 201 | Subnet change → EEPROM 60, restart | Autosteer.ino |
@@ -243,7 +243,11 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
 
-The page never makes the loop wait for a browser for more than 3 s. Large replies are written in pieces.
+The page never makes the loop wait for a browser for more than 3 s. The page itself (`WEB_PAGE`, about 120 KB) and the
+JSON answers built in `webBuf` go out in pieces from `webLoop()` (`webTxStep`: up to 4 KB per call and never more than
+the socket takes, so `client.write` never spins), so a page load does not hold the 40 Hz loop. The page carries an
+ETag made of the build date and `Cache-Control: no-cache`: a browser that has this build's page sends `If-None-Match`
+and gets a 304 (`webSendPage`). Short literal replies are written at once.
 
 **Simulator** (`Firmware/simulator`, published at https://renatorgr.github.io/Boards/ by
 `.github/workflows/simulator.yml`): the page above and the XIAO page with a pretend module answering these
@@ -301,9 +305,9 @@ The addresses must not move: settings must survive a firmware update.
 6. **EEPROM**: addresses fixed, write only when a value changes.
 7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AiO-WEB-OTA-1`) must stay the same, or modules in the field
    refuse the new firmware from the web page. The running firmware refuses a .hex without the marker it knows.
-   Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`: `OTA_MARKER_OLD` keeps the old name in the image
-   (and accepted) so modules on older firmware still take the update. Drop it only in a later release, after
-   every module runs a firmware that knows `OTA_MARKER`.
+   Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`; the old name was carried in the image (and accepted)
+   until 2 Nov 2026 and dropped on 3 Nov 2026 (both boards ran newer builds). A module still on a firmware from
+   before 22 Oct 2026 takes a build from 22 Oct to 2 Nov 2026 first, or the new one over USB.
 8. **GitHub update check**: the web page (and the XIAO page) fetch `https://renatorgr.github.io/Boards/firmware.json`
    (written by `Firmware/simulator/build.py`, published with the simulator on every change on `main`): the newest
    folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, its `.hex` and XIAO `.bin` files, and the `__DATE__ __TIME__`

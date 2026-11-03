@@ -22,6 +22,9 @@
    AiO_WEB 4.5, 27 Oct 2026: PGN 229 (sections 1-64) handed to zMachine.ino for the web page's Machine tab.
    AiO_WEB 4.5, 27 Oct 2026: steerOffByProgram tells zSafety.ino whether the program's on-screen button or the
    physical button turned autosteer off (Button mode), so the reason reads "by the program", not "steer button".
+   AiO_WEB 4.5, 3 Nov 2026: the pressure sensor kickout waits the kickout delay of the web page, as the current
+   sensor does; PGN 254 byte 10 kept as the distance to the guidance line (lineDist, was "tram") and PGN 251 byte 7
+   as the program's minimum steering speed (aowMinKmhX10), both for the web page only.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -53,7 +56,7 @@
 #define STEER_MIN_KMH_X10   2     // below 0.2 km/h (the program's speed) the wheels are not turned (was fixed)
 #define STEER_MAX_KMH       25    // above 25 km/h autosteer is cut (was fixed)
 #define SOFT_START_X10MS    0     // soft start (x 10 ms): 0 = off, as before; the AiO 26 firmware uses 500 ms
-#define CURRENT_KICK_X10MS  50    // current sensor kickout: the current must stay high 0.5 s (AiO 26: 1 s)
+#define CURRENT_KICK_X10MS  50    // pressure / current sensor kickout: the reading must stay high 0.5 s (AiO 26: 1 s for the current)
 
 /////////////////////////////////////////////
 
@@ -151,7 +154,10 @@ int16_t EEread = 0;
 //Relays
 bool isRelayActiveHigh = true;
 uint8_t relay = 0, relayHi = 0, uTurn = 0;
-uint8_t tram = 0;
+// AiO_WEB: PGN 254 byte 10 is the distance to the guidance line, as AgOpenGPS's lightbar byte (the AiO
+// firmware called it "tram"): 127 = on the line, 2 cm per step, under 127 = left of the line, 255 = no line
+// (autosteer off, or no line). Shown on the web page's Steering card only.
+uint8_t lineDist = 255;
 
 //Switches
 uint8_t remoteSwitch = 0, workSwitch = 0, steerSwitch = 1, switchByte = 0;
@@ -407,13 +413,22 @@ void autosteerLoop()
 			sensorSample = (float)analogRead(PRESSURE_SENSOR_PIN);
 			sensorSample *= 0.25;
 			sensorReading = sensorReading * 0.6 + sensorSample * 0.4;
+
+			// AiO_WEB (3 Nov 2026): the same delay as the current sensor below (Settings > Steering, kickout delay):
+			// the pressure must stay above the limit that long; a short peak (the valve opening, a bump) is not a kickout
+			static uint32_t pressureHighMs = 0;   // when it went above the limit (0 = below)
 			if (sensorReading >= steerConfig.PulseCountMax)
 			{
-				steerSwitch = 1; // reset values like it turned off
-				currentState = 1;
-				previous = 0;
-				steerKick(SO_PRESSURE, (int)sensorReading);
+				if (pressureHighMs == 0) pressureHighMs = currentTime | 1;
+				if (currentTime - pressureHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+				{
+					steerSwitch = 1; // reset values like it turned off
+					currentState = 1;
+					previous = 0;
+					steerKick(SO_PRESSURE, (int)sensorReading);
+				}
 			}
+			else pressureHighMs = 0;
 		}
 
 		// Current sensor?
@@ -742,8 +757,8 @@ void ReceiveUdp()
 					watchdogTimer = 0;  //reset watchdog
 				}
 
-				//Bit 10 Tram
-				tram = autoSteerUdpData[10];
+				//Byte 10: the distance to the guidance line (see lineDist), for the web page
+				lineDist = autoSteerUdpData[10];
 
 				//Bit 11
 				relay = autoSteerUdpData[11];
@@ -857,8 +872,9 @@ void ReceiveUdp()
 
 				steerConfig.PulseCountMax = autoSteerUdpData[6];
 
-				//was speed
-				//autoSteerUdpData[7];
+				// byte 7: the program's minimum steering speed (x 0.1 km/h). AiO_WEB: shown on the web page's
+				// Steering settings card only; the speed below which the wheels are not turned stays the page setting
+				aowMinKmhX10 = autoSteerUdpData[7];
 
 				sett = autoSteerUdpData[8]; //setting1 - Danfoss valve etc
 

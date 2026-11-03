@@ -12,6 +12,7 @@
    polled from loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
    by lansalot, zRxConfig.h) and the simulator mode setting.
    2 Nov 2026: otaSetup() at start-up (the previous firmware kept in the flash, zOTA.ino).
+   3 Nov 2026: aowMaxSteerDeg / aowMinKmhX10, the program's steering limits for the web page (shown only).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -165,6 +166,10 @@ elapsedMillis TM171lastData;
 #define WHEELBASE_M     3.20            // metres (the AiO firmware's wheelBase), until AgOpenWeb sends PGN 247
 float   wheelbaseM      = WHEELBASE_M;  // metres, from PGN 247 vehicle geometry (zHandlers.ino)
 uint32_t pgn247Ms       = 0;            // last PGN 247 (millis; 0 = never)
+// AiO_WEB (3 Nov 2026): the program's own steering limits, shown on the web page's Steering settings card only.
+// The firmware keeps its own cut-offs (the WAS map ends, +-50 deg; the speeds in Settings): Renato's choice.
+uint8_t  aowMaxSteerDeg = 0;            // maximum wheel angle, degrees (PGN 247 byte 23, AgOpenWeb; 0 = not sent)
+uint8_t  aowMinKmhX10   = 0;            // minimum steering speed, x 0.1 km/h (PGN 251 byte 7; 0 = off in the program)
 float   wheelAngleGPS   = 0;            // degrees
 bool    wheelAngleGPSOk = false;        // moving above 1 km/h with a heading that turns believably
 float   headingRateDps  = 0;            // degrees / second

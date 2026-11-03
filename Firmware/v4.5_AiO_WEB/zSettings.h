@@ -2,6 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
+   3 Nov 2026: currentKickX10ms is the kickout delay of the pressure sensor too (Autosteer.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -69,8 +70,9 @@ struct WebSettings
     uint8_t  steerMaxKmh;         // above this speed (km/h) autosteer is cut (default 25)
     uint8_t  softStartX10ms;      // soft start of the valve / motor (x 10 ms; 0 = off, the default): the output rises over
                                   //       this time when autosteer engages, and over half of it on a hard step or a reversal
-    uint8_t  currentKickX10ms;    // current sensor kickout only after the current is high this long (x 10 ms; 0 = at once;
-                                  //       default 50 = 0.5 s), so a short peak does not switch autosteer off
+    uint8_t  currentKickX10ms;    // pressure / current sensor kickout only after the reading is high this long (x 10 ms;
+                                  //       0 = at once; default 50 = 0.5 s), so a short peak does not switch autosteer off
+                                  //       (the pressure sensor since 3 Nov 2026; the name stays, it is the EEPROM field)
     uint8_t  reserved[1];         // room for later settings
     uint8_t  checksum;
 };

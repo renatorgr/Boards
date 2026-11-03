@@ -15,6 +15,8 @@
    2026-11-02 (Claude): the Teensy keeps the firmware that ran before its last update ("prev" in /api/status) and goes
    back to it (revert(), POST /api/revert on its page, /api/teensy-revert on the XIAO's); a .hex sent from the XIAO page
    over the link is checked and installed as one from the Teensy's page (ota() with its tag "[xiao]").
+   2026-11-03 (Claude): /api/status carries steer.line (the lightbar byte) and steerCfg.aowMaxDeg / aowMinKmhX10 (the
+   program's steering limits); a .hex is this firmware by the marker of 22 Oct 2026 only, as zOTA.ino since today.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -535,6 +537,7 @@ function Module(key) {
   if (isTm) j.tm.set = tmSetJson(t);
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
    switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
+   line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
    sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
@@ -544,7 +547,8 @@ function Module(key) {
    : {found: false, lost: false, block: false, lostCount: 0, ago: -1, pos: 0, speed: 0, set: 0, current: 0, slip: 0, faults: "", gpsWas: 0, gpsWasOk: false};
   if (full) {
    const got = t >= 6.5 ? Math.floor(t - 6.5) : -1;
-   j.steerCfg = Object.assign({got252: got, got251: got, got247: hostName === "AgOpenWeb" ? got : -1, wheelbase: hostName === "AgOpenWeb" && got >= 0 ? 2.85 : 3.2}, sc);
+   j.steerCfg = Object.assign({got252: got, got251: got, got247: hostName === "AgOpenWeb" ? got : -1, wheelbase: hostName === "AgOpenWeb" && got >= 0 ? 2.85 : 3.2,
+    aowMaxDeg: hostName === "AgOpenWeb" && got >= 0 ? 40 : 0, aowMinKmhX10: got >= 0 ? 5 : 0}, sc);
    j.boot = {why: st.boot, srsr: st.boot === "restart" ? "0x10" : "0x01", addr: "", step: "", wdt: st.wdt, wdtOff: !!cfg.wdtOff, hwMsgs: 0, hwMsg: ""};
   }
   const dualNow = dualRx();
@@ -804,7 +808,7 @@ function Module(key) {
    if (!/:00000001FF/.test(text)) e = "file incomplete (no end record)";
    else if (n < 16384) e = "file too small to be a Teensy firmware";
    else if (!data.includes("fw_teensy41")) e = "not built for a Teensy 4.1 (fw_teensy41 missing)";
-   else if (!force && !data.includes("AiO-WEB-OTA-1") && !data.includes("AOG-UM982-TM171-WEB-OTA-1")) e = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
+   else if (!force && !data.includes("AiO-WEB-OTA-1")) e = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
   }
   if (e) { line(tag + " firmware update REFUSED: " + e + " (old firmware kept)"); return err(400, e); }
   line(tag + " firmware update: " + size + " bytes received, steering off");
