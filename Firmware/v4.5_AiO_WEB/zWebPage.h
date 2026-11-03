@@ -31,6 +31,7 @@
    heading as not valid (the RELPOSNED flags, dual.f9p2.refMiss / headingValid).
    3 Nov 2026: Steering settings card: the steering loop, 40 Hz (default) or 100 Hz (steerLoop100); the Steering card
    shows the loop rate set and measured (steer.loopMs / loopHz).
+   3 Nov 2026: a frozen IMU (roll and heading unchanged while driving, tm.frozen): FROZEN on the IMU card, a warning at the top.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -532,7 +533,7 @@ function render(s){
  if(c1){const u=ckSetup(c1);set("g1Set",u[0],u[1]);}
  const t=s.tm;
  set("tmHdg",t.ok?fmt(t.out,2,"°"):"–",t.ok?"":"bad");
- pill("tmState",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");
+ pill("tmState",t.frozen?"FROZEN":t.ok?"OK":t.seen?"no data":"not detected",t.frozen?"bad":t.ok?"ok":"bad");
  set("imuType",t.type?t.type+" · "+t.port:"not detected",t.type?"":"bad");
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
@@ -604,6 +605,7 @@ function render(s){
  if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
  else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
  if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
+ if(s.tm&&s.tm.frozen)al.push("IMU frozen: its roll and heading have not changed for 3 s while driving. Check the IMU (power, cable; restart the module). The roll sent to the program is stale."+(s.tm.frozenN>1?" ("+s.tm.frozenN+"× since start-up)":""));
  if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
  if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
@@ -742,7 +744,7 @@ function addLines(box,lines,withTime){
  for(const l of lines){const d=document.createElement("div");d.className="ll";
   if(withTime){const t=document.createElement("span");t.className="t";t.textContent=dur(Math.floor(l.t/1000));d.appendChild(t);}
   const x=document.createElement("span");x.textContent=withTime?l.x:l;
-  if(withTime&&/NO DATA|REFUSED|no dual|NOT detected|bad checksum|late|unplugged|silent|stopped|no GGA|dropped|OFF|WATCHDOG|CRASH|blocked|out of range|no whole/.test(l.x))x.className="warn";
+  if(withTime&&/NO DATA|REFUSED|no dual|NOT detected|bad checksum|late|unplugged|silent|stopped|no GGA|dropped|OFF|WATCHDOG|CRASH|blocked|out of range|no whole|FROZEN/.test(l.x))x.className="warn";
   d.appendChild(x);box.appendChild(d);}
  while(box.childElementCount>400)box.removeChild(box.firstChild);
  if(near)box.scrollTop=box.scrollHeight;

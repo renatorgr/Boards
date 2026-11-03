@@ -73,5 +73,8 @@ void        imuProcess();
 const char* imuName();      // "TM171", "BNO085", "IMU" (none found)
 const char* imuWhere();     // "Serial5", "Serial5 (RVC)", "I2C 0x4A", ""
 uint32_t    imuErrors();    // bad packets (TM171 CRC, BNO085 RVC checksum) or BNO085 restarts (I2C)
+// AiO_WEB, 3 Nov 2026: an IMU that keeps sending the same roll and heading while the tractor drives (zImu.ino imuFreezeCheck)
+extern bool     imuFrozen;        // roll and heading unchanged for IMU_FREEZE_MS while moving (web page, zWeb.ino)
+extern uint32_t imuFrozenCount;   // how many times since start-up
 
 #endif

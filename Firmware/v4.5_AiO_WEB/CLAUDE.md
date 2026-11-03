@@ -106,7 +106,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### IMU
 | File | Purpose |
 |------|---------|
-| `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading |
+| `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading; frozen-IMU check (`imuFreezeCheck`: the same roll and heading for 3 s while driving → PGN 221 warning, `imuFrozen`) |
 | `TM171.ino` | TM171 on Serial5: reading, and the gyro calibration from the web page (commands on TX5, pin 20: needs a wire to the TM171 RXD) |
 | `BNO08x_AOG.cpp` / `.h` | SparkFun BNO080 library (MIT), AgOpenGPS version |
 

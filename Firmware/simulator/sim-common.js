@@ -21,6 +21,7 @@
    value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
    2026-11-03 (Claude): /api/diag loop.hz and loop.steps (loops per second, the time of each part of the Teensy loop).
    2026-11-03 (Claude): steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz), steer.loopMs / loopHz in /api/status.
+   2026-11-03 (Claude): tm.frozen / tm.frozenN in /api/status (a frozen IMU, zImu.ino imuFreezeCheck); the pretend IMU never freezes.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -535,7 +536,7 @@ function Module(key) {
   }
   j.tm = {type: imuOk ? h.imu : "", port: imuOk ? h.imuPort : "", ok: imuOk, seen: imuOk,
    roll: imuOk ? r2(roll, 2) : 0, pitch: imuOk ? r2(pitch, 2) : 0, yaw: imuOk ? r2(yaw, 2) : 0, out: imuOk ? r2(outH, 2) : 0,
-   sign: cfg.tm171YawSign || 1, locked: locked, aligned: aligned, offset: aligned ? IMU_OFF : 0, crcErr: 0};
+   sign: cfg.tm171YawSign || 1, locked: locked, aligned: aligned, offset: aligned ? IMU_OFF : 0, crcErr: 0, frozen: false, frozenN: 0};
   const tm = st.tm, busy = ["starting", "running", "finishing"].includes(tm.calib);
   Object.assign(j.tm, {calib: tm.calib, calibKind: tm.kind, calibLeft: tm.calib === "running" ? Math.max(0, Math.ceil(tm.end - t)) : -1,
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});

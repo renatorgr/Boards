@@ -19,6 +19,7 @@
    3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
    3 Nov 2026: steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz); steer.loopMs / steer.loopHz (the loop
    time set and the steering loops per second measured) for the Steering card and the report.
+   3 Nov 2026: tm.frozen / tm.frozenN in /api/status (roll and heading unchanged while driving, zImu.ino imuFreezeCheck).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -432,6 +433,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.bo("aligned", offsetSeeded);
     j.num("offset", yawOffset, 2);
     j.u("crcErr", imuErrors());
+    j.bo("frozen", imuFrozen);                      // AiO_WEB: roll and heading unchanged while driving (zImu.ino imuFreezeCheck)
+    j.u("frozenN", imuFrozenCount);
     // AiO_WEB: the TM171 gyro calibration (TM171.ino)
     j.str("calib", tmCalibName(tmCalibState));
     j.str("calibKind", tmCalibKind == TMC_KIND_INSTALL ? "install" : "gyro");
