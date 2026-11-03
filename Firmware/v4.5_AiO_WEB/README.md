@@ -27,7 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
-| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. Dual F9P: the page and the messages say when the first F9P's corrections are not reaching the second one, or its heading is flagged not valid. The Teensy now reads everything the receiver has sent at each turn of its loop (it read one byte per turn: with an RTK fix an F9P at 10 Hz sends more bytes than the loop turned on a board with a BNO085 and a second F9P, the buffer filled up and the GGA sentences were cut, so the position came and went and the dual heading was never used). |
+| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. Dual F9P: the page and the messages say when the first F9P's corrections are not reaching the second one, or its heading is flagged not valid. A BNO085 on I2C is no longer started again for nothing right after boot, and one that answers on I2C but not as a BNO085 (it kept running while the Teensy restarted) gets 3 more tries from the loop. The Teensy now reads everything the receiver has sent at each turn of its loop (it read one byte per turn: with an RTK fix an F9P at 10 Hz sends more bytes than the loop turned on a board with a BNO085 and a second F9P, the buffer filled up and the GGA sentences were cut, so the position came and went and the dual heading was never used). |
 | 2 Nov 2026 | Firmware update from the XIAO page, over the serial link, for when the module's own page does not open. **Go back to the previous firmware** on both pages: the module keeps the firmware it ran before its last update. Fix: the web page stopped answering a few seconds after start-up. The page is also at `http://aio.local/`. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Install from GitHub** also sees a new build of the same version. |
@@ -202,12 +202,12 @@ The NMEA version shows in the receiver card. Other sentences the UM982 sends are
 At start-up the firmware looks for:
 
 1. **Serial5** at 115200 for 1.5 s: a **TM171** or a **BNO085 in RVC mode** (jumper SJ1).
-2. Then a **BNO085 on I2C** (pins 18 / 19), at 0x4A or 0x4B; up to 3 tries.
+2. Then a **BNO085 on I2C** (pins 18 / 19), at 0x4A or 0x4B; up to 3 tries. When something answers there but not as a BNO085 (a BNO085 that kept running while the Teensy restarted by software), 3 more tries from the loop, 10 s apart, with autosteer off (since 3 Nov 2026).
 3. Nothing: `[boot] IMU NOT detected`. Serial5 is still listened to, so an IMU that starts later is picked up then.
 
 - All give the same roll, pitch and yaw, with the AiO firmware's conventions. "Use Y axis" in the program, or "Swap roll and pitch" on the page, swaps roll and pitch; "Roll invert" / "Roll zero" in the program.
 - RVC or I2C is chosen on the BNO085 module (its PS0 / PS1 pins).
-- A BNO085 on I2C silent for 3 s is started again (only with autosteer off).
+- A BNO085 on I2C silent for 3 s is started again (only with autosteer off). Counted from its own start since 3 Nov 2026: before, it was started again once at every boot for nothing ("silent for 3 s" right after being found), which held the loop for up to 1.5 s.
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
 
 ### TM171 gyro calibration from the page

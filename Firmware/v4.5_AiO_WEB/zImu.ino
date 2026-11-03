@@ -5,6 +5,9 @@
    first in RVC mode on Serial5 (BNO_RVC.cpp, frame format of the Adafruit BNO08x RVC library), then
    on I2C with the BNO08x_AOG library (SparkFun BNO080 library), with the same roll / pitch / heading
    conventions.
+   3 Nov 2026: the I2C BNO085 counts "silent" from its own start (it was started again for nothing at every
+   boot, 0.5-1.5 s of loop); its product ID may come in a later packet after begin(); when something answers
+   on I2C but not as a BNO085 (it kept running while the Teensy restarted), 3 more tries from the loop.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -43,6 +46,9 @@ static uint8_t  rvcBuf[19];
 static uint8_t  rvcPos = 0;
 static BNO080   bno08x;
 static uint32_t bnoReadMs = 0, bnoRestartMs = 0, bnoRestarts = 0;
+static uint8_t  bnoProbeAddr = 0, bnoRetries = 0;      // I2C address that answered at boot but not as a BNO085; tries from the loop
+static uint32_t bnoRetryMs = 0;
+#define BNO_RETRIES        3       // ...this many, BNO_RESTART_EVERY apart, autosteer off
 
 const char* imuName()
 {
@@ -105,6 +111,14 @@ static bool bnoStart(uint8_t addr)
     {
         if (t) { wdtFeed(); delay(200); wdtFeed(); }
         ok = bno08x.begin(addr, Wire);
+        // begin() reads one packet after asking for the product ID. A BNO085 that was running on sends
+        // what it had queued first (a report, its reset notice): the product ID comes in a later packet.
+        for (uint8_t k = 0; k < 6 && !ok; k++)
+        {
+            wdtFeed();
+            if (!bno08x.receivePacket()) break;             // nothing more within the library's timeout
+            ok = bno08x.shtpData[0] == SHTP_REPORT_PRODUCT_ID_RESPONSE;
+        }
     }
     if (!ok) return false;
     Wire.setClock(400000);
@@ -112,6 +126,7 @@ static bool bnoStart(uint8_t addr)
     delay(300);
     wdtFeed();
     bno08x.enableGameRotationVector(BNO_REPORT_MS);
+    TM171lastData = 0;              // "silent for 3 s" counts from now, not from the Teensy's start (bnoWatch)
     return true;
 }
 
@@ -124,9 +139,34 @@ static bool bnoProbe()
         Wire.beginTransmission(a);
         if (Wire.endTransmission() != 0) continue;          // nothing answers there
         if (bnoStart(a)) { imuType = IMU_BNO_I2C; imuBnoAddr = a; return true; }
-        StatusLog.line("[boot] IMU: something answers on I2C 0x%02X (pins 18 / 19), but not as a BNO085", a);
+        bnoProbeAddr = a;                                   // tried again from the loop (bnoRetry)
+        bnoRetryMs = millis() | 1;
+        StatusLog.line("[boot] IMU: something answers on I2C 0x%02X (pins 18 / 19), but not as a BNO085: %u more tries, %u s apart", a,
+                       (unsigned)BNO_RETRIES, (unsigned)(BNO_RESTART_EVERY / 1000));
     }
     return false;
+}
+
+// No IMU found, but something answered on I2C at boot: a BNO085 that kept running while the Teensy
+// restarted (a software restart, an update) can be out of step with begin() for a while. Tried again
+// from loop() a few times, with autosteer off (bnoStart holds the loop up to about 1.5 s).
+static void bnoRetry()
+{
+    if (!bnoProbeAddr || bnoRetries >= BNO_RETRIES || watchdogTimer < WATCHDOG_THRESHOLD) return;
+    const uint32_t now = millis();
+    if (now - bnoRetryMs < BNO_RESTART_EVERY) return;
+    bnoRetryMs = now | 1;
+    bnoRetries++;
+    if (bnoStart(bnoProbeAddr))
+    {
+        imuType = IMU_BNO_I2C;
+        imuBnoAddr = bnoProbeAddr;
+        bnoReadMs = now;
+        StatusLog.line("[status] IMU: BNO085 on I2C 0x%02X answers now (try %u of %u)", imuBnoAddr, (unsigned)bnoRetries, (unsigned)BNO_RETRIES);
+    }
+    else if (bnoRetries >= BNO_RETRIES)
+        StatusLog.line("[status] IMU: I2C 0x%02X still does not answer as a BNO085 after %u more tries: no roll and no IMU heading until the next start (power off and on, or Serial5)",
+                       bnoProbeAddr, (unsigned)BNO_RETRIES);
 }
 
 // Game rotation vector (quaternion) -> roll, pitch, yaw in degrees, as in the AiO firmware
@@ -227,10 +267,11 @@ void imuProcess()
             if (millis() - bnoReadMs >= BNO_READ_MS) { bnoReadMs = millis(); bnoRead(); }
             bnoWatch();
             break;
-        default:                                            // none yet: one may start later on Serial5
+        default:                                            // none yet: one may start later on Serial5, or answer on I2C
             imuListen();
             if (imuType != IMU_NONE)
                 StatusLog.line("[status] IMU: %s found on %s (it started after the Teensy)", imuName(), imuWhere());
+            else bnoRetry();
             break;
     }
 }
