@@ -25,10 +25,12 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 ## Changelog
 
-| Date | Change |
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+
+| Date | What changed |
 |---|---|
-| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. Dual F9P: the page and the messages say when the first F9P's corrections are not reaching the second one, or its heading is flagged not valid. The automatic receiver set-up checked the whole settings file of both F9Ps at every turn of the loop (1 ms, the loop ran 850 times a second on the two-F9P board): now once a second. A BNO085 on I2C is no longer started again for nothing right after boot, and one that answers on I2C but not as a BNO085 (it kept running while the Teensy restarted) gets 3 more tries from the loop. The Teensy now reads everything the receiver has sent at each turn of its loop (it read one byte per turn: with an RTK fix an F9P at 10 Hz sends more bytes than the loop turned on a board with a BNO085 and a second F9P, the buffer filled up and the GGA sentences were cut, so the position came and went and the dual heading was never used). **Steering loop at 100 Hz** as a choice on the Settings tab (Steering card; 40 Hz stays the default): the wheel angle is read and the valve / motor output updated every 10 ms instead of 25, the WAS at 250 samples a second instead of 128; the watchdog, the WAS check, the kickout filters and the encoder debounce now count time, so they behave the same at both rates; the Steering card shows the rate set and measured. **IMU frozen** warning: roll and heading exactly the same for 3 s while driving above 2 km/h (a hung IMU that still sends packets) gives a message on the program's screen every 8 s, a warning on the Status tab and a `[status]` line; nothing is cut. **Notes about this installation** on the Settings tab: free text (up to 1000 characters) saved in the Teensy's EEPROM, kept through updates, in the report. |
-| 2 Nov 2026 | Firmware update from the XIAO page, over the serial link, for when the module's own page does not open. **Go back to the previous firmware** on both pages: the module keeps the firmware it ran before its last update. Fix: the web page stopped answering a few seconds after start-up. The page is also at `http://aio.local/`. |
+| 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
+| 2 Nov 2026 | [Update from the XIAO page](#update-from-the-xiao-page). [Go back to the previous firmware](#going-back-to-the-previous-firmware), on both pages. The page is also at `http://aio.local/`. Fix: the page stopped answering seconds after start-up. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Install from GitHub** also sees a new build of the same version. |
 | 27 Oct 2026 | A clearer reason when the program's screen button turns autosteer off. The WAS check flags a 3-wire sensor set to Differential. Machine tab: up to 64 sections, several machine modules together. |
@@ -39,8 +41,6 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 | 22 Oct 2026 | Update marker renamed `AiO-WEB-OTA-1` (the old name is still accepted). Machine tab sections as coloured squares. |
 | 21 Oct 2026 | Compiled on GitHub at every change. Machine tab (sprayer PGN 160). Wheelbase from AgOpenWeb (PGN 247). |
 | 20 Oct 2026 | **Version 4.5**, from the AiO v4 firmware of 27 Apr 2025 and parts of the AiO 26 firmware: Keya, dual F9P, steering settings, the network crash fixed, pages in English. |
-
-The details are in the sections below; older changes are in the git history and at the top of each file.
 
 ## Compiling and first install
 
@@ -380,6 +380,16 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
 
 The mDNS responder (`aio.local`, the `_http._tcp` announcement of the page) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling.
+
+## Main loop
+
+Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second (850 before 3 Nov 2026). The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
+
+- **GNSS receiver**: each pass reads everything the receiver has sent (up to 512 bytes, about one GGA). Until 3 Nov 2026 it read one byte per pass: with an RTK fix an F9P at 10 Hz sends about 1300 bytes a second, more than a slow loop took, so the 2 KB serial buffer overflowed, GGA sentences were cut, the position came and went and the dual heading was never used.
+- **Receiver set-up check** (both F9Ps): once a second. Before 3 Nov 2026 it walked the whole settings file at every pass (1 ms each time, most of the loop on that board).
+- **Steering**: on its own timer, 40 or 100 Hz (Settings), whatever else the loop does.
+- **Web page**: never waits for a browser for more than 3 s, and the page goes out in small pieces between steering loops (see Web page).
+- **BNO085 on I2C**: found at start-up (up to 1.5 s of waiting, before the loop starts); from then on it is started again only after 3 s of silence, with autosteer off (see IMU).
 
 ## Inputs
 

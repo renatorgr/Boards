@@ -14,6 +14,16 @@ Version 0.2.1, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when 
 got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
 not run on either board yet.
 
+## Changelog
+
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+
+| Date | What changed |
+|---|---|
+| 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
+| 28 Oct 2026 | **0.2**: runs on the [Relay24_ESP32](#hardware-relay24_esp32) board of this repository, now the default; the [KC868-A32](#hardware-kc868-a32) stays as a choice. |
+| 27 Oct 2026 | **0.1**: the seed drill part of Sprayer_ESP32 0.8 in its own folder: KC868-A32, 19 sections, no sensors, no PGN 160. **0.1.1**: PGN 237 in the AiO v26 layout, the sections above 16 after it, so the [AiO module page](#what-the-aio-module-page-shows) shows them all. |
+
 ## How it works
 
 ```
