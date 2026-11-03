@@ -305,9 +305,9 @@ The addresses must not move: settings must survive a firmware update.
 6. **EEPROM**: addresses fixed, write only when a value changes.
 7. **OTA marker**: `OTA_MARKER` in `zOTA.ino` (`AiO-WEB-OTA-1`) must stay the same, or modules in the field
    refuse the new firmware from the web page. The running firmware refuses a .hex without the marker it knows.
-   Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`: `OTA_MARKER_OLD` keeps the old name in the image
-   (and accepted) so modules on older firmware still take the update. Drop it only in a later release, after
-   every module runs a firmware that knows `OTA_MARKER`.
+   Renamed on 22 Oct 2026 from `AOG-UM982-TM171-WEB-OTA-1`; the old name was carried in the image (and accepted)
+   until 2 Nov 2026 and dropped on 3 Nov 2026 (both boards ran newer builds). A module still on a firmware from
+   before 22 Oct 2026 takes a build from 22 Oct to 2 Nov 2026 first, or the new one over USB.
 8. **GitHub update check**: the web page (and the XIAO page) fetch `https://renatorgr.github.io/Boards/firmware.json`
    (written by `Firmware/simulator/build.py`, published with the simulator on every change on `main`): the newest
    folder matching `^v(\d+(\.\d+)*)_AiO_WEB$`, its `.hex` and XIAO `.bin` files, and the `__DATE__ __TIME__`

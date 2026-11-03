@@ -806,7 +806,7 @@ function Module(key) {
    if (!/:00000001FF/.test(text)) e = "file incomplete (no end record)";
    else if (n < 16384) e = "file too small to be a Teensy firmware";
    else if (!data.includes("fw_teensy41")) e = "not built for a Teensy 4.1 (fw_teensy41 missing)";
-   else if (!force && !data.includes("AiO-WEB-OTA-1") && !data.includes("AOG-UM982-TM171-WEB-OTA-1")) e = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
+   else if (!force && !data.includes("AiO-WEB-OTA-1")) e = "not this firmware (no web update in it) - tick 'other firmware' to install it anyway";
   }
   if (e) { line(tag + " firmware update REFUSED: " + e + " (old firmware kept)"); return err(400, e); }
   line(tag + " firmware update: " + size + " bytes received, steering off");
