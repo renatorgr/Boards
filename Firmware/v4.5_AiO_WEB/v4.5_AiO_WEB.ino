@@ -13,6 +13,8 @@
    by lansalot, zRxConfig.h) and the simulator mode setting.
    2 Nov 2026: otaSetup() at start-up (the previous firmware kept in the flash, zOTA.ino).
    3 Nov 2026: aowMaxSteerDeg / aowMinKmhX10, the program's steering limits for the web page (shown only).
+   3 Nov 2026: loop() reads everything the receiver has sent, up to one GGA per pass (was one byte per loop:
+   with an RTK fix an F9P at 10 Hz sent more bytes than the loop ran times, the buffer filled, GGAs were cut).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -120,6 +122,8 @@ IPAddress Eth_ipDestination;
 // Serial buffers
 constexpr int serial_buffer_size = 512;
 uint8_t GPSrxbuffer[2048];                 // the receiver: 2048 so a long loop (about 1 s of a UM982 at 10 Hz) loses nothing
+constexpr int GNSS_READ_MAX = 512;         // receiver bytes read per loop at most (an epoch of a UM982 is about 200)
+uint32_t ggaCount = 0;                     // GGA sentences parsed (GGA_Handler, zHandlers.ino): loop() reads up to one per pass
 uint8_t GPStxbuffer[serial_buffer_size];
 uint8_t RTKrxbuffer[serial_buffer_size];
 
@@ -379,18 +383,20 @@ void loop()
         }
     }
 
-    // Read NMEA from the receiver (GGA, VTG, HPR)
+    // Read NMEA from the receiver (GGA, VTG, HPR): everything waiting, up to GNSS_READ_MAX bytes and one
+    // GGA per loop (so gnssProcess() sees every epoch). Until 3 Nov 2026 this read ONE byte per loop: with
+    // an RTK fix an F9P at 10 Hz sends about 1300 bytes/s (long GGA), more than loop() ran times on a board
+    // with a BNO085 and a second F9P (about 850/s), the 2 KB buffer filled up and sentences were cut.
     loopStep = 3;
     gnssNoteRxBacklog();                          // [status] warns if bytes pile up (Teensy reading too slowly)
-    if (!rxCkOwns(RXCK_GPS) && SerialGPS->available())    // (the receiver check reads it while it searches for its baud rate)
+    if (!rxCkOwns(RXCK_GPS))                      // (the receiver check reads it while it searches for its baud rate)
     {
-        if (passThroughGPS)
+        const uint32_t ggaBefore = ggaCount;
+        int budget = GNSS_READ_MAX;
+        while (budget-- > 0 && ggaCount == ggaBefore && SerialGPS->available())
         {
-            SerialAOG.write(SerialGPS->read());
-        }
-        else
-        {
-            uint8_t gc = SerialGPS->read();
+            const uint8_t gc = (uint8_t)SerialGPS->read();
+            if (passThroughGPS) { SerialAOG.write(gc); continue; }
             rxCkBytes[RXCK_GPS]++;                // the data at 460800 (zRxCheck.ino)
             if (!ubxFeed(gc))                     // u-blox UBX frames are taken out (zReceiver.ino)
             {
