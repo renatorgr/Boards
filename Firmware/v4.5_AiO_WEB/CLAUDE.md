@@ -343,6 +343,10 @@ The addresses must not move: settings must survive a firmware update.
 - A new version number is a new folder: copy `v4.5_AiO_WEB` to `vX.Y_AiO_WEB`, rename the main `.ino` to the same
   name, set `FW_VERSION`, build, put the `.hex` and the XIAO `.bin` files in it.
 - Add a "Version X.Y" section to the README.
+- README `## Changelog`: one row per day, newest first, a summary of at most 240 visible characters, with links to
+  the sections that hold the details; the details themselves go in those sections (a new section when none fits),
+  never in the row. `.github/scripts/check_changelog.py` runs on every pull request that touches a README
+  (Actions, "Docs") and fails on a long row, a date out of order or a link to a heading that does not exist.
 
 ## Code Style
 

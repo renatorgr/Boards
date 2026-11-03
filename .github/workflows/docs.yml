@@ -1,0 +1,36 @@
+# Docs check.
+# Keeps the README changelogs readable: one short row per day, the details in the sections the row links to.
+# .github/scripts/check_changelog.py does the work (plain Python 3, no packages) and prints what is wrong, with
+# the file and the line, so the pull request shows it before it is merged. It runs only when a README, the
+# script or this file changes; the firmware and simulator checks skip README changes.
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Docs
+
+on:
+  pull_request:
+    paths:
+      - '**/README.md'
+      - '.github/scripts/check_changelog.py'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/README.md'
+      - '.github/scripts/check_changelog.py'
+      - '.github/workflows/docs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    name: changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the README changelogs
+        run: python3 .github/scripts/check_changelog.py
