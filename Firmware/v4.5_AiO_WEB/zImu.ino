@@ -8,6 +8,10 @@
    3 Nov 2026: the I2C BNO085 counts "silent" from its own start (it was started again for nothing at every
    boot, 0.5-1.5 s of loop); its product ID may come in a later packet after begin(); when something answers
    on I2C but not as a BNO085 (it kept running while the Teensy restarted), 3 more tries from the loop.
+   3 Nov 2026: imuFreezeCheck(): roll and heading exactly the same for 3 s while the tractor drives above 2 km/h = a frozen
+   IMU (a hung sensor that still sends packets): a message on the program's screen (PGN 221) every 8 s, a [status] line and
+   the Status card say so; nothing is cut, the program decides. The idea comes from NikName227's AOG_v4_Firmware_WebConfig
+   firmware (no licence there), written anew here.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -49,6 +53,18 @@ static uint32_t bnoReadMs = 0, bnoRestartMs = 0, bnoRestarts = 0;
 static uint8_t  bnoProbeAddr = 0, bnoRetries = 0;      // I2C address that answered at boot but not as a BNO085; tries from the loop
 static uint32_t bnoRetryMs = 0;
 #define BNO_RETRIES        3       // ...this many, BNO_RESTART_EVERY apart, autosteer off
+
+// AiO_WEB: a frozen IMU (imuFreezeCheck)
+#define IMU_FREEZE_MS      3000    // roll and heading unchanged this long while driving = frozen
+#define IMU_FREEZE_KMH     2.0f    // ...driving: above this speed (the program's, or the receiver's with RTK)
+#define IMU_FREEZE_REPEAT  8000    // the message on the program's screen again this often while it stays frozen
+#define IMU_FREEZE_POLL    100     // the values are compared this often
+#define IMU_FRESH_MS       500     // packets must be arriving (a silent IMU is another fault: "no data")
+bool     imuFrozen      = false;
+uint32_t imuFrozenCount = 0;
+static uint32_t frzPollMs = 0, frzSameMs = 0, frzMsgMs = 0;
+static float    frzRoll = 0, frzYaw = 0;
+static bool     frzInit = false;
 
 const char* imuName()
 {
@@ -209,6 +225,56 @@ static void bnoWatch()
                    ok ? "it answers" : "NO ANSWER (wire? power?)");
 }
 
+// ---------------------------------------------------------------- frozen IMU
+// A sensor can hang and keep sending the same packet: the "no data" checks do not see it, and the roll sent to
+// the program stays at an old value. Driving above IMU_FREEZE_KMH the roll and heading change with every packet
+// (the vibration alone does it), so values exactly the same for IMU_FREEZE_MS mean a frozen IMU. Only a warning
+// (the program's screen, PGN 221, and the web page): the program decides what it does with the roll, autosteer
+// goes on. Standing still nothing is counted and the state stays. On a bench with the program's simulator
+// driving and the IMU lying still the warning shows: that is the test; move the IMU and it clears.
+static void imuFreezeCheck()
+{
+    const uint32_t now = millis();
+    if (now - frzPollMs < IMU_FREEZE_POLL) return;
+    frzPollMs = now;
+    if (imuType == IMU_NONE || !TM171DataSeen || TM171lastData >= IMU_FRESH_MS)   // no IMU, or silent: the other checks say so
+    {
+        frzInit = false;
+        if (imuFrozen) { imuFrozen = false; StatusLog.line("[status] IMU: %s stopped sending while frozen", imuName()); }
+        return;
+    }
+    const float r = RollV.fValue, y = YawV.fValue;
+    const bool changed = !frzInit || r != frzRoll || y != frzYaw;
+    frzRoll = r; frzYaw = y; frzInit = true;
+    if (changed)
+    {
+        frzSameMs = now;
+        if (imuFrozen)
+        {
+            imuFrozen = false;
+            StatusLog.line("[status] IMU: %s OK again, roll and heading change", imuName());
+            hwMessage("IMU OK again", 5, false);
+        }
+        return;
+    }
+    const bool rtk    = fixQuality[0] == '4' || fixQuality[0] == '5';
+    const bool moving = gpsSpeed > IMU_FREEZE_KMH || (rtk && lastSpeedKmh > IMU_FREEZE_KMH);
+    if (!moving) { frzSameMs = now; return; }                 // standing still the values may well stay the same
+    if (!imuFrozen && now - frzSameMs >= IMU_FREEZE_MS)
+    {
+        imuFrozen = true;
+        imuFrozenCount++;
+        frzMsgMs = now - IMU_FREEZE_REPEAT;                     // the first message at once
+        StatusLog.line("[status] IMU: %s FROZEN - roll %.2f and heading %.2f unchanged for %u s at %.1f km/h: check the IMU (power, cable, a restart); the roll sent to the program is stale",
+                       imuName(), r, y, (unsigned)(IMU_FREEZE_MS / 1000), gpsSpeed > IMU_FREEZE_KMH ? gpsSpeed : lastSpeedKmh);
+    }
+    if (imuFrozen && now - frzMsgMs >= IMU_FREEZE_REPEAT)
+    {
+        frzMsgMs = now;
+        hwMessage("IMU frozen: roll/heading unchanged 3 s - check the IMU", 10, true);
+    }
+}
+
 // ---------------------------------------------------------------- detection
 // Serial5 bytes to both parsers until one of them is sure
 static void imuListen()
@@ -274,4 +340,5 @@ void imuProcess()
             else bnoRetry();
             break;
     }
+    imuFreezeCheck();
 }

@@ -19,6 +19,8 @@
    3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
    3 Nov 2026: steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz); steer.loopMs / steer.loopHz (the loop
    time set and the steering loops per second measured) for the Steering card and the report.
+   3 Nov 2026: tm.frozen / tm.frozenN in /api/status (roll and heading unchanged while driving, zImu.ino imuFreezeCheck).
+   3 Nov 2026: GET / POST /api/note, the installation note (zSettings.ino); the request buffers grew for its text.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -53,8 +55,8 @@
 #include "zVersion.h"            // FW_NAME, FW_VERSION (also included by the main .ino)
 
 #define WEB_PORT         80
-#define WEB_HEAD_MAX     2048    // request line + headers + small body (settings, UM982 command)
-#define WEB_BODY_MAX     512
+#define WEB_HEAD_MAX     3072    // request line + headers + small body (settings, UM982 command, the installation note)
+#define WEB_BODY_MAX     1300    // the installation note: NOTE_MAX bytes (zSettings.h) and a margin
 #define WEB_TIMEOUT_MS   3000
 #define WEB_FIRST_BYTE_MS 500    // a connection with no request yet (browser "preconnect") is closed after this
 #define OTA_MAX_KMH      1.0f    // no firmware update above this speed
@@ -432,6 +434,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.bo("aligned", offsetSeeded);
     j.num("offset", yawOffset, 2);
     j.u("crcErr", imuErrors());
+    j.bo("frozen", imuFrozen);                      // AiO_WEB: roll and heading unchanged while driving (zImu.ino imuFreezeCheck)
+    j.u("frozenN", imuFrozenCount);
     // AiO_WEB: the TM171 gyro calibration (TM171.ino)
     j.str("calib", tmCalibName(tmCalibState));
     j.str("calibKind", tmCalibKind == TMC_KIND_INSTALL ? "install" : "gyro");
@@ -1068,6 +1072,28 @@ static void apiDiag(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
+// GET /api/note: the installation note (zSettings.ino, EEPROM). POST /api/note: the body is the new text itself (plain
+// text, not a form), up to NOTE_MAX bytes; control characters other than tabs and line breaks are refused.
+static void apiNoteGet(EthernetClient& c)
+{
+    Json j(webBuf, sizeof(webBuf));
+    j.raw("{");
+    j.bo("ok", true);
+    j.str("note", cfgNote);
+    j.u("max", NOTE_MAX);
+    j.raw("}");
+    webSendJson(c, 200, webBuf);
+}
+
+static void apiNotePost(EthernetClient& c, const char* body)
+{
+    const size_t n = rq.contentLength;
+    if (n > NOTE_MAX) { webSendError(c, 413, "the note is too long (the limit counts bytes: an accented letter is 2)"); return; }
+    if (!noteSave(body, n)) { webSendError(c, 400, "the note has characters that cannot be kept"); return; }
+    StatusLog.line("[web] installation note saved (%u bytes)", (unsigned)n);
+    apiNoteGet(c);
+}
+
 static void webDispatch()
 {
     webReqN++;
@@ -1087,6 +1113,8 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/gps"))      apiGpsPost(c, body);
     else if (get  && !strcmp(rq.path, "/api/rxdump"))   apiRxDump(c);
     else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
+    else if (get  && !strcmp(rq.path, "/api/note"))     apiNoteGet(c);           // the installation note (zSettings.ino)
+    else if (post && !strcmp(rq.path, "/api/note"))     apiNotePost(c, body);
     else if (post && !strcmp(rq.path, "/api/revert"))   apiRevert(c);            // the previous firmware back (zOTA.ino)
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {

@@ -3,6 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
    3 Nov 2026: steerLoop100 (the steering loop at 100 Hz), default 40 Hz.
+   3 Nov 2026: the installation note (noteLoad / noteSave), EEPROM address 1024, up to NOTE_MAX bytes.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -140,6 +141,7 @@ void settingsLoad()
         cfgFromEeprom = false;
     }
     settingsApply(true);
+    noteLoad();                       // the installation note, its own place in the EEPROM
 }
 
 void settingsSave()
@@ -149,4 +151,40 @@ void settingsSave()
     cfg.checksum = settingsChecksum(cfg);
     EEPROM.put(SETTINGS_EEPROM_ADDR, cfg);
     cfgFromEeprom = true;
+}
+
+// ---------------------------------------------------------------- the installation note (zSettings.h)
+char cfgNote[NOTE_MAX + 1] = "";
+
+// Only text is kept (tabs and line breaks too): a blank EEPROM, or one written by another firmware, gives an empty note.
+static bool noteCharOk(uint8_t c) { return c >= 0x20 || c == '\n' || c == '\r' || c == '\t'; }
+
+void noteLoad()
+{
+    cfgNote[0] = '\0';
+    uint16_t magic = 0, len = 0;
+    EEPROM.get(NOTE_EEPROM_ADDR, magic);
+    EEPROM.get(NOTE_EEPROM_ADDR + 2, len);
+    if (magic != NOTE_MAGIC || len > NOTE_MAX) return;
+    for (uint16_t i = 0; i < len; i++)
+    {
+        const uint8_t c = EEPROM.read(NOTE_EEPROM_ADDR + 4 + i);
+        if (!noteCharOk(c)) { cfgNote[0] = '\0'; return; }
+        cfgNote[i] = (char)c;
+    }
+    cfgNote[len] = '\0';
+}
+
+// The text as typed, n bytes. EEPROM.update writes only the bytes that change (the EEPROM wears with writes).
+bool noteSave(const char* text, size_t n)
+{
+    if (n > NOTE_MAX) return false;
+    for (size_t i = 0; i < n; i++) if (!noteCharOk((uint8_t)text[i])) return false;
+    const uint16_t magic = NOTE_MAGIC, len = (uint16_t)n;
+    EEPROM.put(NOTE_EEPROM_ADDR, magic);
+    EEPROM.put(NOTE_EEPROM_ADDR + 2, len);
+    for (size_t i = 0; i < n; i++) EEPROM.update(NOTE_EEPROM_ADDR + 4 + i, (uint8_t)text[i]);
+    memcpy(cfgNote, text, n);
+    cfgNote[n] = '\0';
+    return true;
 }

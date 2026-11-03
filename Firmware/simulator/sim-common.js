@@ -21,6 +21,8 @@
    value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
    2026-11-03 (Claude): /api/diag loop.hz and loop.steps (loops per second, the time of each part of the Teensy loop).
    2026-11-03 (Claude): steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz), steer.loopMs / loopHz in /api/status.
+   2026-11-03 (Claude): tm.frozen / tm.frozenN in /api/status (a frozen IMU, zImu.ino imuFreezeCheck); the pretend IMU never freezes.
+   2026-11-03 (Claude): GET / POST /api/note, the installation note, kept with the pretend module's state (st.note).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -535,7 +537,7 @@ function Module(key) {
   }
   j.tm = {type: imuOk ? h.imu : "", port: imuOk ? h.imuPort : "", ok: imuOk, seen: imuOk,
    roll: imuOk ? r2(roll, 2) : 0, pitch: imuOk ? r2(pitch, 2) : 0, yaw: imuOk ? r2(yaw, 2) : 0, out: imuOk ? r2(outH, 2) : 0,
-   sign: cfg.tm171YawSign || 1, locked: locked, aligned: aligned, offset: aligned ? IMU_OFF : 0, crcErr: 0};
+   sign: cfg.tm171YawSign || 1, locked: locked, aligned: aligned, offset: aligned ? IMU_OFF : 0, crcErr: 0, frozen: false, frozenN: 0};
   const tm = st.tm, busy = ["starting", "running", "finishing"].includes(tm.calib);
   Object.assign(j.tm, {calib: tm.calib, calibKind: tm.kind, calibLeft: tm.calib === "running" ? Math.max(0, Math.ceil(tm.end - t)) : -1,
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});
@@ -782,6 +784,17 @@ function Module(key) {
   return ok(settingsJson());
  }
 
+ // ---- /api/note (zWeb.ino apiNoteGet / apiNotePost, zSettings.ino): the installation note, plain text in the POST body
+ const noteJson = () => ({ok: true, note: st.note || "", max: 1200});
+ function notePost(text) {
+  const n = new TextEncoder().encode(text).length;
+  if (n > 1200) return err(413, "the note is too long (the limit counts bytes: an accented letter is 2)");
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) return err(400, "the note has characters that cannot be kept");
+  st.note = text;
+  line("[web] installation note saved (" + n + " bytes)");
+  return ok(noteJson());
+ }
+
  // ---- /api/log (zWeb.ino apiLog)
  function log(after) {
   const lines = st.log.filter(l => l.s > after);
@@ -861,6 +874,7 @@ function Module(key) {
   st: st, T: T, line: line, progress: progress, save: () => save(key, st), offline: () => T() < 0,
   status: status, log: log, settingsJson: settingsJson, settingsPost: settingsPost, gps: gps, gpsPost: gpsPost, umPost: umPost, umGet: umGet,
   imuPost: imuPost, diag: diag, ota: ota, revert: revert, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
+  noteJson: noteJson, notePost: notePost,
   tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd & 0xFFFF, sprayerAt: sprayerAt,
  };
 }

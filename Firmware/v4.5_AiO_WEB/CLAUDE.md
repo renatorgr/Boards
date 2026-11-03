@@ -106,7 +106,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### IMU
 | File | Purpose |
 |------|---------|
-| `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading |
+| `zImu.ino` / `.h` | Which IMU is there (TM171, BNO085 RVC, BNO085 I2C), BNO085 reading; frozen-IMU check (`imuFreezeCheck`: the same roll and heading for 3 s while driving → PGN 221 warning, `imuFrozen`) |
 | `TM171.ino` | TM171 on Serial5: reading, and the gyro calibration from the web page (commands on TX5, pin 20: needs a wire to the TM171 RXD) |
 | `BNO08x_AOG.cpp` / `.h` | SparkFun BNO080 library (MIT), AgOpenGPS version |
 
@@ -120,7 +120,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page and from the XIAO link (FlasherX, `otaBegin` / `otaFeed` / `otaFinish` / `otaInstall`); the previous firmware kept at 2-4 MB (`otaPrevSave` inside `otaInstall`, `otaRevertInstall`, `otaSetup` validates the copy at boot) |
 | `zStatus.ino`, `zStatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
 | `zLeds.ino` | The three two-colour LEDs on the board, with the AiO 26 meanings (link / program, fix quality + RTCM flick, steering state + button flick) |
-| `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200) |
+| `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200); the installation note (address 1024, `cfgNote`, `noteLoad` / `noteSave`) |
 
 ### Companion modules
 | File | Purpose |
@@ -239,6 +239,7 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/gps` | GET / POST | receiver check and u-blox settings |
 | `/api/um982` | GET / POST | UM982 console |
 | `/api/diag` | GET | diagnostic report |
+| `/api/note` | GET / POST | `apiNoteGet` / `apiNotePost`: the installation note (POST body = the text itself, up to `NOTE_MAX` bytes) |
 | `/api/revert` | POST | `apiRevert`: back to the previous firmware kept in the flash (zOTA.ino) |
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
@@ -264,6 +265,7 @@ there; the Action only checks that the pages open without errors. Its README say
 | 40 | `steerConfig` | PGN 251 |
 | 60 | `networkAddress` (first three IP numbers) | PGN 201 |
 | 200 | `WebSettings cfg` (magic 0x5A17, version 2, checksum) | web page |
+| 1024 | the installation note: magic 0x4E54, length (2 bytes), up to 1200 bytes of text (`cfgNote`, zSettings.ino) | web page (`/api/note`) |
 
 The addresses must not move: settings must survive a firmware update.
 
