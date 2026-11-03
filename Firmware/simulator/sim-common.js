@@ -15,6 +15,8 @@
    2026-11-02 (Claude): the Teensy keeps the firmware that ran before its last update ("prev" in /api/status) and goes
    back to it (revert(), POST /api/revert on its page, /api/teensy-revert on the XIAO's); a .hex sent from the XIAO page
    over the link is checked and installed as one from the Teensy's page (ota() with its tag "[xiao]").
+   2026-11-03 (Claude): /api/status carries steer.line (the lightbar byte) and steerCfg.aowMaxDeg / aowMinKmhX10 (the
+   program's steering limits); a .hex is this firmware by the marker of 22 Oct 2026 only, as zOTA.ino since today.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

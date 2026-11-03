@@ -27,6 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
+| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. |
 | 2 Nov 2026 | Firmware update from the XIAO page, over the serial link, for when the module's own page does not open. **Go back to the previous firmware** on both pages: the module keeps the firmware it ran before its last update. Fix: the web page stopped answering a few seconds after start-up. The page is also at `http://aio.local/`. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Install from GitHub** also sees a new build of the same version. |
@@ -72,7 +73,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 | Tab | |
 |---|---|
-| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate). GNSS, dual heading (not with one antenna), IMU, steering, the steering settings from the program, network and corrections, the XIAO. |
+| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate). GNSS, dual heading (not with one antenna), IMU, steering (with the distance to the guidance line the program sends), the steering settings from the program (with its maximum wheel angle and minimum steering speed, shown only: the firmware keeps its own limits), network and corrections, the XIAO. |
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below. |
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |

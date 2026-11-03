@@ -22,6 +22,9 @@
    AiO_WEB 4.5, 27 Oct 2026: PGN 229 (sections 1-64) handed to zMachine.ino for the web page's Machine tab.
    AiO_WEB 4.5, 27 Oct 2026: steerOffByProgram tells zSafety.ino whether the program's on-screen button or the
    physical button turned autosteer off (Button mode), so the reason reads "by the program", not "steer button".
+   AiO_WEB 4.5, 3 Nov 2026: the pressure sensor kickout waits the kickout delay of the web page, as the current
+   sensor does; PGN 254 byte 10 kept as the distance to the guidance line (lineDist, was "tram") and PGN 251 byte 7
+   as the program's minimum steering speed (aowMinKmhX10), both for the web page only.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

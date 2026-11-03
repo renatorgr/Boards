@@ -197,10 +197,10 @@ byte before it (low 8 bits).
 ### In (UDP 8888, source 0x7F)
 | PGN | Name | Where |
 |-----|------|-------|
-| 254 (0xFE) | Steer data: speed, guidance status, set angle, sections | Autosteer.ino |
+| 254 (0xFE) | Steer data: speed, guidance status, set angle, sections; byte 10 the distance to the guidance line (the lightbar byte: 127 on the line, 2 cm per step, 255 none), `lineDist`, for the page only | Autosteer.ino |
 | 252 (0xFC) | Steer settings: gains, PWM, WAS offset / counts | Autosteer.ino, EEPROM 10 |
-| 251 (0xFB) | Steer config: invert, relay, motor driver, sensors | Autosteer.ino, EEPROM 40 |
-| 247 (0xF7) | Vehicle geometry (AgOpenWeb): wheelbase | zHandlers.ino `vehicleGeometry()` |
+| 251 (0xFB) | Steer config: invert, relay, motor driver, sensors; byte 7 the program's minimum steering speed (`aowMinKmhX10`, for the page only) | Autosteer.ino, EEPROM 40 |
+| 247 (0xF7) | Vehicle geometry (AgOpenWeb): wheelbase; byte 23 the maximum wheel angle (`aowMaxSteerDeg`, for the page only, the firmware cuts at ±50°) | zHandlers.ino `vehicleGeometry()` |
 | 229 (0xE5) | Sections 1-64 (bytes 5-12), with every 239 on a tool of 17+ sections; only for the Machine tab | zMachine.ino `machineNote229()` |
 | 200 | Hello: answers 126 (steer) and 121 (IMU); tells AgOpenWeb from AgOpenGPS | Autosteer.ino, zStatus.ino |
 | 201 | Subnet change → EEPROM 60, restart | Autosteer.ino |

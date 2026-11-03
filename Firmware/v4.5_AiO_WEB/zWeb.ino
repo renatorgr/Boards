@@ -11,6 +11,11 @@
    and the page died seconds after boot ("the connection has timed out") while UDP went on.
    2 Nov 2026, later: /api/status says which previous firmware is kept in the flash (prev), and POST /api/revert
    puts it back (zOTA.ino): "Go back to the previous firmware" on the Firmware tab, no file or internet needed.
+   3 Nov 2026: the page and the JSON answers go out in pieces from webLoop() (webTxStep), so a browser never
+   holds the loop up: the page (~120 KB) used to stop the steering for 100 ms and more while the 8 KB socket
+   buffer drained. The page carries an ETag (its build date): a browser that has it gets "304 Not Modified".
+   /api/status: the program's maximum wheel angle and minimum steering speed (steerCfg), the distance to the
+   guidance line (steer.line), for the Steering cards.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

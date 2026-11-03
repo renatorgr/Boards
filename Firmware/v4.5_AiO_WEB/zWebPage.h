@@ -24,6 +24,9 @@
    1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
    2 Nov 2026: "Previous firmware" on the Firmware tab, with "Go back to the previous firmware" (POST /api/revert): the
    firmware that ran before the last update, kept in the Teensy's flash; no file or internet needed.
+   3 Nov 2026: Steering card: the distance to the guidance line (PGN 254 byte 10). Steering settings card: the program's
+   maximum wheel angle (PGN 247) and minimum steering speed (PGN 251), shown only. The kickout delay setting also
+   covers the pressure sensor. A chosen .hex is an AiO_WEB one by the marker of 22 Oct 2026 only.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
