@@ -7,6 +7,17 @@ pressure and flow, and has its own web page.
 Version 0.10.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
+## Changelog
+
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+
+| Date | What changed |
+|---|---|
+| 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
+| 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
+| 26 Oct 2026 | **0.6**: all 8 relays are sections by default. **0.7**: also a plain ESP32 with [relay modules](#a-separate-esp32-with-relay-modules), up to 16 relays. The relay number above its function on the page. |
+| 25 Oct 2026 | **0.4**, first version on the ESP32 8-relay board (after Sprayer_Nano 0.3): sections from the program, pressure and flow, readings to the program (PGN 160), [its own page](#how-it-works). **0.5**: program subnet set on the page. The page in the simulator. |
+
 ## How it works
 
 ```

@@ -17,19 +17,19 @@ Program for a Seeed **XIAO ESP32C3** or **XIAO ESP32S3** on the GPS2 port of the
 
 The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is described in the README of the Teensy firmware.
 
-## Versions
+## Changelog
 
-Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB): everything in this README.
+Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
 
-| Date | Change |
+| Date | What changed |
 |---|---|
-| 3 Nov 2026 | An update over a weak Wi-Fi link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
-| 2 Nov 2026 | **Module (Teensy) firmware** card on the Firmware tab: install the Teensy's firmware from this page over the link, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Messages under the cards in red when something failed, green when it was done. |
+| 3 Nov 2026 | An [update over Wi-Fi](#update-over-wifi-from-a-file) on a weak link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
+| 2 Nov 2026 | [Module (Teensy) firmware](#the-modules-firmware-from-this-page) card on the Firmware tab: install the Teensy's firmware from this page, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Red / green messages under the cards. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Report card last on the Firmware tab. Plainer **On GitHub** row. |
-| 31 Oct 2026 | GPS fix green whenever there is a position. **Download the report** on the Firmware tab. **Install from GitHub** also sees a new build of the same version. |
+| 31 Oct 2026 | GPS fix green whenever there is a position. **Download the report** on the Firmware tab. [Install from GitHub](#update-from-github) also sees a new build of the same version. |
 | 24 Oct 2026 | The module's subnet changed from this page (WiFi tab). The module's page and this page as links at their real addresses. |
 | 20 Oct 2026 | English only, light mode, no repeated rows. The page opens on the farm network under any name. A warning when the Teensy runs another version. |
-| 19 Oct 2026 | **Version 4.5**: its own WiFi network and page (module status and messages, what the program sends, WiFi settings, update over WiFi and from GitHub), on the XIAO ESP32C3 and ESP32S3. Link to the Teensy at 460800, so the Teensy firmware must be 4.5 too. |
+| 19 Oct 2026 | **Version 4.5**: its own WiFi network and [page](#what-it-does) (module status and messages, what the program sends, WiFi settings, update over WiFi and from GitHub), on the XIAO ESP32C3 and ESP32S3. Link to the Teensy at 460800. |
 
 ## What it does
 

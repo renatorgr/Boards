@@ -5,6 +5,15 @@ Section control for a 5-section, 8 m sprayer boom, driven by **AgOpenWeb** or
 
 Version 0.3: compiles (about 10.7 kB of 30 kB), not yet tested on the sprayer.
 
+## Changelog
+
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+
+| Date | What changed |
+|---|---|
+| 24 Oct 2026 | **0.3**: for the red DEWIN 12 V relay board (jumpers on High, relays on with HIGH); the relays fed with 12 V, the Nano from an LM2596 ([Power and wiring](#power-and-wiring)). |
+| 22 Oct 2026 | **0.2**, the first on GitHub: Arduino Nano + ENC28J60, 5 sections on an 8-relay board, pressure and flow sensors, the readings to the program in a [message of its own](#sprayer-readings-message-pgn-0xa0). Replaced by Sprayer_ESP32 on 25 Oct 2026. |
+
 ## How it works
 
 ```
