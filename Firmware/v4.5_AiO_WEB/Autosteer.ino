@@ -25,6 +25,9 @@
    AiO_WEB 4.5, 3 Nov 2026: the pressure sensor kickout waits the kickout delay of the web page, as the current
    sensor does; PGN 254 byte 10 kept as the distance to the guidance line (lineDist, was "tram") and PGN 251 byte 7
    as the program's minimum steering speed (aowMinKmhX10), both for the web page only.
+   AiO_WEB 4.5, 3 Nov 2026: the steering loop runs at 40 Hz (default) or 100 Hz, chosen on the web page (steerLoopApply:
+   the loop time, the ADS1115 rate, the kickout filters); the watchdog counts milliseconds instead of loops and the
+   encoder debounce is 25 ms, so both are the same at either rate.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -57,6 +60,7 @@
 #define STEER_MAX_KMH       25    // above 25 km/h autosteer is cut (was fixed)
 #define SOFT_START_X10MS    0     // soft start (x 10 ms): 0 = off, as before; the AiO 26 firmware uses 500 ms
 #define CURRENT_KICK_X10MS  50    // pressure / current sensor kickout: the reading must stay high 0.5 s (AiO 26: 1 s for the current)
+#define STEER_LOOP_100      0     // 1 = steering loop at 100 Hz (the AiO 26 firmware, AgOpenWeb's 100 Hz steering packets); 0 = 40 Hz as before
 
 /////////////////////////////////////////////
 
@@ -104,14 +108,22 @@ ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);     // Use this for the 16-bit versio
 uint8_t autoSteerUdpData[UDP_TX_PACKET_MAX_SIZE];  // Buffer For Receiving UDP Data
 #endif
 
-//loop time variables in microseconds
-const uint16_t LOOP_TIME = 25;  //40Hz
-uint32_t autsteerLastTime = LOOP_TIME;
-uint32_t currentTime = LOOP_TIME;
+// AiO_WEB (3 Nov 2026): the steering loop time in milliseconds, 25 (40 Hz, the default) or 10 (100 Hz), from the
+// web page (Settings > Steering, steerLoopApply); it was the constant LOOP_TIME = 25
+uint16_t loopTimeMs = 25;
+uint32_t autsteerLastTime = 0;
+uint32_t currentTime = 0;
+uint32_t steerLoopN = 0;        // steering loops run, for the loops per second in the report (zSafety.ino loopTick)
+// The kickout sensor filters keep their time constant at both rates: 0.6 / 0.7 of the old reading per 25 ms loop
+// (steerLoopApply; pressureFiltered() in zSafety.ino uses the pressure one too)
+float kickKeepPressure = 0.6f, kickKeepCurrent = 0.7f;
 
-const uint16_t WATCHDOG_THRESHOLD = 100;
-const uint16_t WATCHDOG_FORCE_VALUE = WATCHDOG_THRESHOLD + 2; // Should be greater than WATCHDOG_THRESHOLD
-uint8_t watchdogTimer = WATCHDOG_FORCE_VALUE;
+// AiO_WEB (3 Nov 2026): the watchdog counts milliseconds since the last valid steering packet (it counted loops:
+// 100 = 2.5 s at 40 Hz, which would be 1 s at 100 Hz). 0 = a packet just came; at the threshold or above autosteer
+// is off; WATCHDOG_FORCE_VALUE = off now (switch, kickout, WAS check, the program's button...)
+const uint16_t WATCHDOG_THRESHOLD = 2500;                       // ms
+const uint16_t WATCHDOG_FORCE_VALUE = WATCHDOG_THRESHOLD + 2;   // Should be greater than WATCHDOG_THRESHOLD
+uint16_t watchdogTimer = WATCHDOG_FORCE_VALUE;
 
 //Heart beat hello AgIO
 uint8_t helloFromIMU[] = { 128, 129, 121, 121, 5, 0, 0, 0, 0, 0, 71 };
@@ -187,6 +199,8 @@ uint8_t currentState = 1, reading, previous = 0;
 bool steerOffByProgram = false;   // Button mode: the last off came from the program's on-screen button, not the physical one (zSafety.ino)
 uint8_t pulseCount = 0; // Steering Wheel Encoder
 bool encEnable = false; //debounce flag
+#define ENC_DEBOUNCE_MS 25      // AiO_WEB: one encoder pulse per 25 ms at most, at both loop rates (it was one per loop)
+uint32_t encPulseMs = 0;        // when the last pulse was counted (EncoderFunc)
 uint8_t thisEnc = 0, lastEnc = 0;
 
 //Variables for settings
@@ -297,6 +311,8 @@ void autosteerSetup()
 	steerSettingsInit();
 	steerConfigInit();
 
+	steerLoopApply();                   // the loop time, the ADS1115 rate and the kickout filters from the web page's setting
+
 	if (Autosteer_running)
 	{
 		StatusLog.line("[boot] Autosteer: ADS1115 (WAS) found, waiting for the program");
@@ -308,10 +324,22 @@ void autosteerSetup()
 		return;
 	}
 
-	adc.setSampleRate(ADS1115_REG_CONFIG_DR_128SPS); //128 samples per second
-	adc.setGain(ADS1115_REG_CONFIG_PGA_6_144V);
+	adc.setGain(ADS1115_REG_CONFIG_PGA_6_144V);   // (the sample rate: steerLoopApply above)
 
 }// End of Setup
+
+// AiO_WEB (3 Nov 2026): the steering loop rate from the web page (Settings > Steering), at start and when it is
+// changed. 40 Hz = a 25 ms loop and the WAS (ADS1115) at 128 samples a second, as before. 100 Hz = 10 ms and 250
+// samples a second (a reading takes 4 ms, well inside the loop, and is quieter than at 475). The gains come from the
+// program per degree, not per loop, so they are the same at both rates; the watchdog and the WAS check count time
+// (above, zSafety.ino) and the kickout filters are scaled here, so they behave the same too.
+void steerLoopApply()
+{
+	loopTimeMs = cfg.steerLoop100 ? 10 : 25;
+	kickKeepPressure = powf(0.6f, loopTimeMs / 25.0f);   // 0.6 per 25 ms = 0.815 per 10 ms
+	kickKeepCurrent  = powf(0.7f, loopTimeMs / 25.0f);   // 0.7 per 25 ms = 0.867 per 10 ms
+	if (Autosteer_running) adc.setSampleRate(cfg.steerLoop100 ? ADS1115_REG_CONFIG_DR_250SPS : ADS1115_REG_CONFIG_DR_128SPS);
+}
 
 void autosteerLoop()
 {
@@ -323,15 +351,18 @@ void autosteerLoop()
 	// Loop triggers every 100 msec and sends back gyro heading, and roll, steer angle etc
 	currentTime = systick_millis_count;
 
-	if (currentTime - autsteerLastTime >= LOOP_TIME)
+	if (currentTime - autsteerLastTime >= loopTimeMs)
 	{
+		const uint32_t elapsedMs = currentTime - autsteerLastTime;   // 25 or 10 ms; more when something held the loop
 		autsteerLastTime = currentTime;
+		steerLoopN++;
 
-		//reset debounce
-		encEnable = true;
+		//reset debounce (AiO_WEB: one pulse per ENC_DEBOUNCE_MS at most, it was one per loop)
+		if (!encEnable && currentTime - encPulseMs >= ENC_DEBOUNCE_MS) encEnable = true;
 
-		//If connection lost to AgOpenGPS, the watchdog will count up and turn off steering
-		if (watchdogTimer++ > 250) watchdogTimer = WATCHDOG_FORCE_VALUE;
+		//If connection lost to AgOpenGPS, the watchdog will count up and turn off steering (AiO_WEB: in milliseconds)
+		if (watchdogTimer < WATCHDOG_FORCE_VALUE)
+			watchdogTimer = elapsedMs < (uint32_t)(WATCHDOG_FORCE_VALUE - watchdogTimer) ? watchdogTimer + elapsedMs : WATCHDOG_FORCE_VALUE;
 
 		//read all the switches
 		workSwitch = digitalRead(WORKSW_PIN);  // read work switch
@@ -412,7 +443,7 @@ void autosteerLoop()
 		{
 			sensorSample = (float)analogRead(PRESSURE_SENSOR_PIN);
 			sensorSample *= 0.25;
-			sensorReading = sensorReading * 0.6 + sensorSample * 0.4;
+			sensorReading = sensorReading * kickKeepPressure + sensorSample * (1 - kickKeepPressure);   // 0.6 / 0.4 per 25 ms (steerLoopApply)
 
 			// AiO_WEB (3 Nov 2026): the same delay as the current sensor below (Settings > Steering, kickout delay):
 			// the pressure must stay above the limit that long; a short peak (the valve opening, a bump) is not a kickout
@@ -448,7 +479,7 @@ void autosteerLoop()
 			else {
 				sensorSample = (float)analogRead(CURRENT_SENSOR_PIN);
 				sensorSample = (abs(775 - sensorSample)) * 0.5;
-				sensorReading = sensorReading * 0.7 + sensorSample * 0.3;
+				sensorReading = sensorReading * kickKeepCurrent + sensorSample * (1 - kickKeepCurrent);   // 0.7 / 0.3 per 25 ms (steerLoopApply)
 				sensorReading = min(sensorReading, 255);
 
 				// AiO_WEB, as in the AiO 26 firmware: only a current that stays high for the time set on the web page
@@ -988,5 +1019,6 @@ void EncoderFunc()
 	{
 		pulseCount++;
 		encEnable = false;
+		encPulseMs = millis();   // AiO_WEB: the next pulse counts after ENC_DEBOUNCE_MS
 	}
 }

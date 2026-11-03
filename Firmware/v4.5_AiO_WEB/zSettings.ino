@@ -2,6 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
+   3 Nov 2026: steerLoop100 (the steering loop at 100 Hz), default 40 Hz.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -39,6 +40,7 @@ static void settingsDefaults(WebSettings& s)
     s.steerMaxKmh        = STEER_MAX_KMH;
     s.softStartX10ms     = SOFT_START_X10MS;
     s.currentKickX10ms   = CURRENT_KICK_X10MS;
+    s.steerLoop100       = STEER_LOOP_100;
 }
 
 static uint8_t settingsChecksumN(const uint8_t* p, size_t n)
@@ -90,6 +92,7 @@ static void settingsSanitize(WebSettings& s)
     if (s.steerMaxKmh < 5 || s.steerMaxKmh > 40)                     s.steerMaxKmh = d.steerMaxKmh;
     if (s.softStartX10ms > 100)                                      s.softStartX10ms = d.softStartX10ms;
     if (s.currentKickX10ms > 200)                                    s.currentKickX10ms = d.currentKickX10ms;
+    if (s.steerLoop100 > 1)                                          s.steerLoop100 = d.steerLoop100;
 }
 
 // Side effects of the settings on the running firmware. yawChanged: the TM171 yaw direction

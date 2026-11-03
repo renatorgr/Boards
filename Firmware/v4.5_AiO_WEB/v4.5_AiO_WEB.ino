@@ -25,6 +25,7 @@
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
    AiO_WEB 4.5, 24 Oct 2026: the board LEDs are driven from one place, zLeds.ino (ledsUpdate in loop).
+   AiO_WEB 4.5, 3 Nov 2026: the [boot] Steering line says the loop rate (40 or 100 Hz, Autosteer.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -236,9 +237,9 @@ void setup()
                    cfg.outputMode == OUT_CLASSIC ? "classic $PAOGI/$PANDA" : "standard set",
                    settingsAutoSetNow ? " (set to automatic by this version, once; can be changed on the web page)" : "",
                    gps2Name());
-    StatusLog.line("[boot] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), current kickout delay %u ms",
+    StatusLog.line("[boot] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), current kickout delay %u ms, loop %u Hz",
                    cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
-                   (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10);
+                   (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10, cfg.steerLoop100 ? 100u : 40u);
     if (cfg.wasCheckOff) StatusLog.line("[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer");
     if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program");
 

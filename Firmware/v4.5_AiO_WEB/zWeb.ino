@@ -17,6 +17,8 @@
    /api/status: the program's maximum wheel angle and minimum steering speed (steerCfg), the distance to the
    guidance line (steer.line), for the Steering cards.
    3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
+   3 Nov 2026: steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz); steer.loopMs / steer.loopHz (the loop
+   time set and the steering loops per second measured) for the Steering card and the report.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -450,6 +452,8 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.num("aogKmh", gpsSpeed, 1);
     j.i("guidance", guidanceStatus);
     j.i("line", lineDist);             // distance to the guidance line, the lightbar byte (Autosteer.ino)
+    j.u("loopMs", loopTimeMs);        // AiO_WEB: the steering loop set, 25 ms (40 Hz) or 10 ms (100 Hz), and
+    j.u("loopHz", steerLoopHz);       //   the loops per second measured (zSafety.ino)
     // zSafety.ino: the WAS reading and its check, the kickout sensor, why it last went off
     j.bo("adc", Autosteer_running);
     j.i("wasRaw", wasRaw);
@@ -612,6 +616,7 @@ static void settingsJson(Json& j)
     j.i("steerMaxKmh", cfg.steerMaxKmh);
     j.i("softStartX10ms", cfg.softStartX10ms);
     j.i("currentKickX10ms", cfg.currentKickX10ms);
+    j.i("steerLoop100", cfg.steerLoop100);
     j.close();
     j.bo("saved", cfgFromEeprom);
     j.bo("wdt", wdtRunning);
@@ -650,6 +655,7 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
             {"steerMaxKmh",        5, 40,  &s.steerMaxKmh,        false},
             {"softStartX10ms",     0, 100, &s.softStartX10ms,     false},
             {"currentKickX10ms",   0, 200, &s.currentKickX10ms,   false},
+            {"steerLoop100",       0, 1,   &s.steerLoop100,       false},   // steering loop 40 / 100 Hz (steerLoopApply)
         };
         for (const Field& f : fields)
         {
@@ -672,11 +678,13 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
     const bool wdtChanged  = s.wdtOff != cfg.wdtOff;
     const bool umChanged   = s.umSingle != cfg.umSingle;
     const bool simChanged  = s.simMode != cfg.simMode;
+    const bool loopChanged = s.steerLoop100 != cfg.steerLoop100;
     const bool steerChanged = s.steerMinKmhX10 != cfg.steerMinKmhX10 || s.steerMaxKmh != cfg.steerMaxKmh ||
-                              s.softStartX10ms != cfg.softStartX10ms || s.currentKickX10ms != cfg.currentKickX10ms;
+                              s.softStartX10ms != cfg.softStartX10ms || s.currentKickX10ms != cfg.currentKickX10ms || loopChanged;
     cfg = s;
     settingsSave();
     settingsApply(yawChanged);
+    if (loopChanged) steerLoopApply();   // Autosteer.ino: the loop time, the ADS1115 rate, the kickout filters
     if (xiaoChanged) { gps2Begin(); xiaoSettingsChanged(); }   // AiO_WEB: Serial2 at the new speed (zDualF9P.ino)
     // zSafety.ino
     if (wasChanged)
@@ -701,9 +709,9 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
         StatusLog.line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program"
                                    : "[web] Simulator mode off: the GPS goes to the program again");
     if (steerChanged)
-        StatusLog.line("[web] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), kickout delay %u ms",
+        StatusLog.line("[web] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), kickout delay %u ms, loop %u Hz",
                        cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
-                       (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10);
+                       (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10, cfg.steerLoop100 ? 100u : 40u);
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
     j.bo("ok", true);

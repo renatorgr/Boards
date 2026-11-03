@@ -8,6 +8,8 @@
    reads the same way ("AiO Board Msgs").
    24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
    3 Nov 2026: loopAt(step): the time of each part of loop() for the report (loopStepAvgUs / loopStepMaxUs, loopHz).
+   3 Nov 2026: the WAS check counts time (75 ms / 1 s) instead of loops, the same with the steering loop at 40 or 100 Hz;
+   steerLoopHz (the steering loops per second) for the report; pressureFiltered() follows the kickout filter's rate.
    27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
    (AmpSeal pin 3), and the message says to choose Single in the program (a 3-wire sensor).
    27 Oct 2026: autosteer turned off by the program's on-screen button in Button mode reads "by the program
@@ -68,17 +70,17 @@ void hwMessage(const char* text, uint8_t seconds, bool warning)
 #define WAS_LOW_V        0.20f
 #define WAS_HIGH_V       4.80f
 #define WAS_DIFF_LOW_V  -0.50f                 // differential input: WAS_H under WAS_L = nothing on WAS_L (AmpSeal pin 3)
-#define WAS_BAD_LOOPS    4                     // out of range 4 steering loops in a row (100 ms) = fault
-#define WAS_GOOD_LOOPS   40                    // back in range for 1 s = fault over
+#define WAS_BAD_MS       75                    // out of range for 75 ms (4 readings in a row at 40 Hz, 8 at 100 Hz) = fault
+#define WAS_GOOD_MS      1000                  // back in range for 1 s = fault over
 
 int16_t  wasRaw    = 0;          // ADS1115 reading >> 1, before the offset (about 2722 per volt)
 float    wasVolts  = 0;
 bool     wasOut    = false;      // out of range now
 bool     wasBlock  = false;      // autosteer blocked by it (check on)
 uint32_t wasFaults = 0;
-static uint8_t wasBadN = 0, wasGoodN = 0;
+static uint32_t wasBadMs = 0, wasGoodMs = 0;   // since when out of range / in range (0 = not now)
 
-// Called with every WAS reading (40 Hz). True: autosteer must stay off.
+// Called with every WAS reading (40 or 100 Hz, Autosteer.ino). True: autosteer must stay off.
 bool wasCheck(int16_t raw)
 {
     wasRaw   = raw;
@@ -90,10 +92,11 @@ bool wasCheck(int16_t raw)
     // That is a 3-wire sensor (signal on pin 2, ground on pin 4) with the program's A/D converter set to
     // Differential: the hint names the setting to change (Single), or the other wiring (ground to pin 3 too).
     const bool noLow = !single && wasVolts < WAS_DIFF_LOW_V;
-    if (bad) { wasGoodN = 0; if (wasBadN < 255) wasBadN++; }
-    else     { wasBadN = 0;  if (wasGoodN < 255) wasGoodN++; }
+    const uint32_t now = millis();
+    if (bad) { wasGoodMs = 0; if (!wasBadMs) wasBadMs = now | 1; }
+    else     { wasBadMs = 0;  if (!wasGoodMs) wasGoodMs = now | 1; }
 
-    if (!wasOut && wasBadN >= WAS_BAD_LOOPS)
+    if (!wasOut && wasBadMs && now - wasBadMs >= WAS_BAD_MS)
     {
         wasOut = true;
         wasFaults++;
@@ -123,7 +126,7 @@ bool wasCheck(int16_t raw)
         wasBlock = true;
         StatusLog.line("[status] WAS: %.2f V, out of range - autosteer blocked", wasVolts);
     }
-    else if (wasOut && wasGoodN >= WAS_GOOD_LOOPS)
+    else if (wasOut && wasGoodMs && now - wasGoodMs >= WAS_GOOD_MS)
     {
         wasOut = false;
         const bool switchStillOn = steerConfig.SteerSwitch && digitalRead(STEERSW_PIN) == LOW;
@@ -151,7 +154,7 @@ bool wasBenchZero()
 // glitches, its own message, and not at all with the check off on the bench).
 bool wasVoltsOk()
 {
-    return wasBadN == 0;
+    return wasBadMs == 0;
 }
 
 // ---------------------------------------------------------------- pressure / current value for the page
@@ -162,7 +165,7 @@ static float    pressFilt = 0;
 
 float pressureFiltered(float sample)  // the pressure input with the same filter as the kickout (Autosteer.ino)
 {
-    pressFilt = pressFilt * 0.6f + sample * 0.4f;
+    pressFilt = pressFilt * kickKeepPressure + sample * (1 - kickKeepPressure);   // 0.6 / 0.4 per 25 ms (Autosteer.ino steerLoopApply)
     return pressFilt;
 }
 
@@ -241,7 +244,7 @@ static void offText(char* b, size_t n, uint8_t c, int v)
     }
 }
 
-// Called at the end of every steering loop (40 Hz) with "steering now"
+// Called at the end of every steering loop (40 or 100 Hz) with "steering now"
 void steerOnNote(bool on)
 {
     if (on == steerWasOn) return;
@@ -426,6 +429,7 @@ void wdtFeed()
 // longest time per loop in the last whole 5 s window, with the loops per second (loopHz). On the board with
 // two F9Ps and a BNO085 the loop ran 850 times a second against 24 000 on the bench board, nobody knew why.
 uint32_t loopCount = 0, loopMaxUs = 0, loopMax5Us = 0, loopHz = 0;
+uint32_t steerLoopHz = 0;                                       // the steering loops per second (steerLoopN, Autosteer.ino)
 uint32_t loopStepAvgUs[LOOP_STEPS] = {}, loopStepMaxUs[LOOP_STEPS] = {};
 static uint32_t loopLastUs = 0, loopWinMaxUs = 0, loopWinMs = 0, loopWinCount = 0, stepT0Us = 0;
 static uint32_t stepSumUs[LOOP_STEPS] = {}, stepWinMaxUs[LOOP_STEPS] = {};
@@ -464,6 +468,8 @@ void loopTick()
     if (ms - loopWinMs >= 5000)
     {
         loopHz = loopWinCount * 1000UL / (ms - loopWinMs);
+        steerLoopHz = steerLoopN * 1000UL / (ms - loopWinMs);
+        steerLoopN = 0;
         for (uint8_t k = 0; k < LOOP_STEPS; k++)
         {
             loopStepAvgUs[k] = stepSumUs[k] / loopWinCount;
