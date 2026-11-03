@@ -169,7 +169,7 @@ a{color:var(--acc)}
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
  <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
-  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
+  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
    <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
    <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
    <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
@@ -432,6 +432,9 @@ const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).to
 // The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
 // module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
 const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
+// PGN 254 byte 10, the lightbar byte: 127 on the line, 2 cm per step (under 127 = left of it), 255 no line
+const lineText=v=>{if(v===null||v===undefined)return "–";if(v===255)return "no line";const cm=(v-127)*2,a=Math.abs(cm);
+ return cm===0?"on the line":(a>=254?"254+ cm":a+" cm")+(cm>0?" right":" left");};
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
 // a value with a link after it (the XIAO's page, the module's page at its real IP): url "" = text only
 function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
@@ -549,6 +552,7 @@ function render(s){
  set("sign",(t.sign>0?"+1":"−1")+" ("+(t.locked?"fixed":"learning")+")");
  const st=s.steer;
  set("was",fmt(st.was,1,"°"));set("setp",fmt(st.set,1,"°"));set("pwm",String(st.pwm));
+ set("lineDist",lineText(st.line));
  pill("active",(st.active?"steering":"off"),st.active?"ok":"");
  set("sw",(st.switchOn?"on":"off"));set("aogKmh",fmt(st.aogKmh,1," km/h"));
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top

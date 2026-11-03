@@ -535,6 +535,7 @@ function Module(key) {
   if (isTm) j.tm.set = tmSetJson(t);
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
    switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
+   line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
    sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};

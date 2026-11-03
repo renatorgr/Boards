@@ -443,6 +443,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.str("motor", isKeya ? "Keya" : steerConfig.IsDanfoss ? "Danfoss" : steerConfig.CytronDriver ? "Cytron" : "IBT2");
     j.num("aogKmh", gpsSpeed, 1);
     j.i("guidance", guidanceStatus);
+    j.i("line", lineDist);             // distance to the guidance line, the lightbar byte (Autosteer.ino)
     // zSafety.ino: the WAS reading and its check, the kickout sensor, why it last went off
     j.bo("adc", Autosteer_running);
     j.i("wasRaw", wasRaw);

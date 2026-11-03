@@ -151,7 +151,10 @@ int16_t EEread = 0;
 //Relays
 bool isRelayActiveHigh = true;
 uint8_t relay = 0, relayHi = 0, uTurn = 0;
-uint8_t tram = 0;
+// AiO_WEB: PGN 254 byte 10 is the distance to the guidance line, as AgOpenGPS's lightbar byte (the AiO
+// firmware called it "tram"): 127 = on the line, 2 cm per step, under 127 = left of the line, 255 = no line
+// (autosteer off, or no line). Shown on the web page's Steering card only.
+uint8_t lineDist = 255;
 
 //Switches
 uint8_t remoteSwitch = 0, workSwitch = 0, steerSwitch = 1, switchByte = 0;
@@ -742,8 +745,8 @@ void ReceiveUdp()
 					watchdogTimer = 0;  //reset watchdog
 				}
 
-				//Bit 10 Tram
-				tram = autoSteerUdpData[10];
+				//Byte 10: the distance to the guidance line (see lineDist), for the web page
+				lineDist = autoSteerUdpData[10];
 
 				//Bit 11
 				relay = autoSteerUdpData[11];
