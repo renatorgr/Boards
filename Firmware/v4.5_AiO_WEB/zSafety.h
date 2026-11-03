@@ -43,6 +43,9 @@ extern volatile uint8_t loopStep;     // which part of loop() runs (for the watc
 void  wdtFeed();
 void  loopTick();                     // top of loop(): how long the loops take (the report, web page Firmware tab)
 extern uint32_t loopCount, loopMaxUs, loopMax5Us;
+#define LOOP_STEPS 16                 // buckets 0..15 for the parts of loop() (stepName; 20 = firmware update lands in 0)
+void  loopAt(uint8_t step);           // loop(): the part that starts now (the time of each part, for the report)
+extern uint32_t loopHz, loopStepAvgUs[LOOP_STEPS], loopStepMaxUs[LOOP_STEPS];
 void  wdtStart();
 // C linkage declared here, before the prototypes the Arduino IDE adds. The IDE writes its own
 // prototype of wdtWarnC without extern "C" (it only sees extern "C" { } blocks), and a C++ declaration
