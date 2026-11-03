@@ -21,6 +21,7 @@
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
    UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13; X20P.txt
    for HPG 2.11.
+   2026-11-03: ckAutoStart asks ckAutoNeeded once a second, not at every loop (two F9P files = 1 ms per loop).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -859,7 +860,14 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
     if (port == RXCK_GPS && !um && rxKind != RX_UBLOX) return false;
     if (um && ckRunBaud[port] && umTeensyPort() < 0) return false;    // at its own speed: the load must know which COM port to switch
     if (!um && !(k.essMs && k.essRole == ckUbxRole(port) && ckHasSet(port))) return false;   // a ZED-F9P or ZED-X20P, checked
-    if (!ckAutoNeeded(port)) return false;
+    // ckAutoNeeded() walks the whole settings file of the role for each essential key (about 0.5 ms per port
+    // with the F9P files, from flash): once a second is plenty. Until 3 Nov 2026 it ran for both ports at
+    // every loop, which held the loop of a board with two F9Ps at about 850 turns a second.
+    static uint32_t needMs[2] = {};
+    static bool     need[2]   = {};
+    const uint32_t now = millis();
+    if (!needMs[port] || now - needMs[port] >= 1000) { needMs[port] = now | 1; need[port] = ckAutoNeeded(port); }
+    if (!need[port]) return false;
     ckAutoTried[port] |= 2;
     if (um) ckLoadBeginUm(cfg.umSingle != 0, true);
     else    ckLoadBegin(port, true);
