@@ -27,7 +27,7 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 | Date | Change |
 |---|---|
-| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. |
+| 3 Nov 2026 | Opening the page no longer holds the steering loop: the browser keeps the page and the module sends it in small pieces. Status tab: the distance to the guidance line, and the program's maximum wheel angle and minimum steering speed (shown only). The **kickout delay** also covers the pressure sensor. The update marker's old name is gone: a module on a firmware from before 22 Oct 2026 takes a build from 22 Oct to 2 Nov first, or this one over USB. Dual F9P: the page and the messages say when the first F9P's corrections are not reaching the second one, or its heading is flagged not valid. |
 | 2 Nov 2026 | Firmware update from the XIAO page, over the serial link, for when the module's own page does not open. **Go back to the previous firmware** on both pages: the module keeps the firmware it ran before its last update. Fix: the web page stopped answering a few seconds after start-up. The page is also at `http://aio.local/`. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
 | 31 Oct 2026 | GPS fix green whenever there is a position. **Install from GitHub** also sees a new build of the same version. |
@@ -283,6 +283,7 @@ wire is needed; without it the page can only warn.
 
 - **First F9P** (GPS1, Serial7, 460800): GGA + VTG at 10 Hz, and its corrections to the second F9P over UART2.
 - **Second F9P** (GPS2, Serial2, pins 7 / 8, 460800): **UBX-NAV-RELPOSNED** every epoch.
+- The heading is used only with an RTK fixed carrier solution and the flags `gnssFixOK`, `diffSoln`, `relPosValid` and `relPosHeadingValid` set. When there is no heading, the dual-antenna card and `[status]` say why: no corrections from the first F9P (`refPosMiss` / `refObsMiss`: the RTCM over UART2, see both receiver checks on the GPS tab), or a heading the F9P flags as not valid (antennas too close).
 - The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
 - Web page: Settings → **GPS2 port: automatic** (the default). The second F9P is found by itself at every start: its valid UBX or NMEA data, or, when only bytes with nothing valid arrive at 460800 and no XIAO says hello, a search for its baud rate at start-up (a new F9P sends at 38400); no u-blox receiver found there, the port goes back to listening. A XIAO's hello gives the port back to the XIAO. The port only changes hands with autosteer off.
 - **Status tab**, dual-antenna heading card: the second F9P's model and firmware, its data at 460800 (valid,

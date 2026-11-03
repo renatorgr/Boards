@@ -14,6 +14,9 @@
    when valid UBX or NMEA arrives on the port, or on trial at start-up when only junk arrives at 460800
    (a receiver at another baud rate: the receiver check searches for it); a XIAO hello gives the port back
    to the XIAO. Decided again at each start, and only with autosteer off. The setting keeps "off".
+   2026-11-03 (Claude for renatorgr): the RELPOSNED flags refPosMiss / refObsMiss (the first F9P's corrections are
+   not reaching the second one) and relPosHeadingValid are kept (dual.f9p2.refMiss / headingValid) and explain a missing
+   heading on the page and in [status]; the heading also needs relPosHeadingValid now.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -36,8 +39,9 @@
 // (hprTake() in zHandlers.ino), so everything after it is the same for both receivers:
 //   heading = relPosHeading + DUALF9P_HEADING_OFFSET (90 deg: antennas left and right)
 //   roll    = asin(relPosD / relPosLength), sign as in the AiO firmware (used when there is no IMU)
-//   QF      = 4 with an RTK fixed carrier solution, 5 float, 0 otherwise; gnssFixOK, diffSoln and
-//             relPosValid must be set (else QF 0). A float heading is never used with the F9P
+//   QF      = 4 with an RTK fixed carrier solution, 5 float, 0 otherwise; gnssFixOK, diffSoln,
+//             relPosValid and relPosHeadingValid must be set (else QF 0). refPosMiss / refObsMiss say the
+//             first F9P's corrections are not reaching the second one (dualF9pRefMiss: the page and [status]). A float heading is never used with the F9P
 //             (as in the AiO firmware), whatever the "float heading" setting says.
 //   time    = iTOW (GPS time of week) - DUALF9P_LEAP_S, as hhmmss.ss, matched to the GGA time like
 //             the HPR's.
@@ -57,6 +61,8 @@ float    dualF9pBaseline = 0;             // cm
 float    dualF9pRoll     = 0;             // degrees
 uint8_t  dualF9pCarr     = 0;             // carrSoln: 0 none, 1 float, 2 fixed
 uint16_t dualF9pFlags    = 0;
+bool     dualF9pRefMiss  = false;         // refPosMiss / refObsMiss: the first F9P's corrections (RTCM over UART2) do not reach the second
+bool     dualF9pHeadingValid = false;     // relPosHeadingValid
 uint32_t dualF9pBytes    = 0;             // bytes from the second F9P
 uint32_t dualF9pNmea     = 0;             // NMEA sentences with a valid checksum (a fresh F9P sends NMEA, not RELPOSNED)
 uint32_t dualF9pNmeaMs   = 0;             // last one (millis, 0 = never)
@@ -232,17 +238,21 @@ static void relPosNed(const uint8_t* p, uint16_t len)
     const uint32_t flags  = (uint32_t)le32(p + 60);
     const bool fixOk      = flags & 1, diffSoln = flags & 2, relPosValid = flags & 4;
     const uint8_t carr    = (flags >> 3) & 3;
+    const bool refMiss    = (flags & 0xC0) != 0;                   // bit 6 refPosMiss, bit 7 refObsMiss
+    const bool headingValid = (flags & 0x100) != 0;                // bit 8 relPosHeadingValid
 
     dualF9pFrames++;
     dualF9pMs       = millis() | 1;
     dualF9pFlags    = (uint16_t)flags;
     dualF9pCarr     = carr;
+    dualF9pRefMiss  = refMiss;
+    dualF9pHeadingValid = headingValid;
     dualF9pBaseline = (float)baseline;
     dualF9pHeading  = (float)heading;
     if (baseline > 0.5 && fabs(down) <= baseline) dualF9pRoll = (float)(asin(down / baseline) * -RAD_TO_DEG);
 
     int qf = 0;
-    if (fixOk && diffSoln && relPosValid) qf = carr == 2 ? 4 : carr == 1 ? 5 : 0;
+    if (fixOk && diffSoln && relPosValid && headingValid) qf = carr == 2 ? 4 : carr == 1 ? 5 : 0;
 
     // UTC time of the epoch in the form of the GGA time, hhmmss.ss x 100 (utcCs() in zHandlers.ino)
     const uint32_t ms = (iTow % 86400000UL + 86400000UL - DUALF9P_LEAP_S * 1000UL) % 86400000UL;
@@ -344,5 +354,7 @@ void dualF9pJson(Json& j)
     j.num("roll", dualF9pRoll, 2);
     j.i("carr", dualF9pCarr);
     j.i("flags", dualF9pFlags);
+    j.bo("refMiss", dualF9pRefMiss);                       // no corrections from the first F9P (refPosMiss / refObsMiss)
+    j.bo("headingValid", dualF9pHeadingValid);             // relPosHeadingValid
     j.close();
 }
