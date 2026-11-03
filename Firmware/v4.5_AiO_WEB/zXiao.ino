@@ -324,7 +324,7 @@ static void xiaoTakeFw(const uint8_t* d, uint8_t n)
             return;
         }
         const char *pf, *pb;
-        uint32_t ps;
+        uint32_t ps = 0;
         otaPrevGet(&pf, &pb, &ps);
         steerSafeOff();
         StatusLog.line("[xiao] going back to the previous firmware from the XIAO page: %s, built %s (%lu bytes), installing and restarting, steering off",

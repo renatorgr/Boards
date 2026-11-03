@@ -988,7 +988,7 @@ static void apiRevert(EthernetClient& c)
     const char* err = otaRevertCheck();
     if (err) { StatusLog.line("[web] going back to the previous firmware REFUSED: %s", err); webSendError(c, 409, err); return; }
     const char *pf, *pb;
-    uint32_t ps;
+    uint32_t ps = 0;
     otaPrevGet(&pf, &pb, &ps);
     steerSafeOff();
     StatusLog.line("[web] going back to the previous firmware: %s, built %s (%lu bytes), installing and restarting, steering off",
