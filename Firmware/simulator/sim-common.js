@@ -19,6 +19,7 @@
    program's steering limits); a .hex is this firmware by the marker of 22 Oct 2026 only, as zOTA.ino since today.
    2026-11-03 (Claude): dual.f9p2.refMiss / headingValid, the RELPOSNED flags the Teensy keeps since today; the flags
    value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
+   2026-11-03 (Claude): /api/diag loop.hz and loop.steps (loops per second, the time of each part of the Teensy loop).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -788,7 +789,10 @@ function Module(key) {
  function diag() {
   const t = Math.max(0, T());
   return {fw: fwName() + " " + fwVer(), built: built(), teensyduino: 158, upMs: Math.round(t * 1000), ram: {heapFree: 412640, stackFree: 238112},
-   loop: {n: Math.floor(t * 41000), maxUs: 2950, max5sUs: 610}, web: {req: Math.floor(t * 1.2), err: 0, drop: 0, lastErr: ""}, logLines: st.logNext - 1};
+   loop: {n: Math.floor(t * 41000), maxUs: 2950, max5sUs: 610, hz: 41000,
+    steps: [{s: 14, name: "Ethernet stack", avgUs: 9, maxUs: 410}, {s: 3, name: "receiver", avgUs: 2, maxUs: 95}, {s: 6, name: "IMU", avgUs: 1, maxUs: 180},
+     {s: 7, name: "GPS2 port (second F9P / XIAO)", avgUs: 1, maxUs: 60}, {s: 8, name: "GNSS output", avgUs: 1, maxUs: 120}, {s: 10, name: "web page", avgUs: 3, maxUs: 610},
+     {s: 11, name: "steering", avgUs: 4, maxUs: 300}, {s: 13, name: "GPS receiver", avgUs: 1, maxUs: 40}]}, web: {req: Math.floor(t * 1.2), err: 0, drop: 0, lastErr: ""}, logLines: st.logNext - 1};
  }
 
  // ---- the firmware update (zWeb.ino apiOta, zOTA.ino): the file is read here as the Teensy checks it. From the Teensy's

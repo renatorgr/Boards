@@ -7,6 +7,7 @@
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb
    reads the same way ("AiO Board Msgs").
    24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
+   3 Nov 2026: loopAt(step): the time of each part of loop() for the report (loopStepAvgUs / loopStepMaxUs, loopHz).
    27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
    (AmpSeal pin 3), and the message says to choose Single in the program (a 3-wire sensor).
    27 Oct 2026: autosteer turned off by the program's on-screen button in Button mode reads "by the program
@@ -420,9 +421,30 @@ void wdtFeed()
 
 // ---------------------------------------------------------------- loop time (the report, web page Firmware tab)
 // The time between two starts of loop(): the longest since start-up and in the last 5 s window (a firmware
-// update or a slow browser show up here too).
-uint32_t loopCount = 0, loopMaxUs = 0, loopMax5Us = 0;
-static uint32_t loopLastUs = 0, loopWinMaxUs = 0, loopWinMs = 0;
+// update or a slow browser show up here too). Since 3 Nov 2026 also where the time goes: loop() calls
+// loopAt(step) before each of its parts (stepName), and for each part the report gets the average and the
+// longest time per loop in the last whole 5 s window, with the loops per second (loopHz). On the board with
+// two F9Ps and a BNO085 the loop ran 850 times a second against 24 000 on the bench board, nobody knew why.
+uint32_t loopCount = 0, loopMaxUs = 0, loopMax5Us = 0, loopHz = 0;
+uint32_t loopStepAvgUs[LOOP_STEPS] = {}, loopStepMaxUs[LOOP_STEPS] = {};
+static uint32_t loopLastUs = 0, loopWinMaxUs = 0, loopWinMs = 0, loopWinCount = 0, stepT0Us = 0;
+static uint32_t stepSumUs[LOOP_STEPS] = {}, stepWinMaxUs[LOOP_STEPS] = {};
+
+// The part that was running (loopStep) ends now: its time goes to its bucket
+static void stepAccount(uint32_t us)
+{
+    const uint8_t p = loopStep < LOOP_STEPS ? loopStep : 0;
+    const uint32_t d = us - stepT0Us;
+    stepSumUs[p] += d;
+    if (d > stepWinMaxUs[p]) stepWinMaxUs[p] = d;
+    stepT0Us = us;
+}
+
+void loopAt(uint8_t step)
+{
+    stepAccount(micros());
+    loopStep = step;
+}
 
 void loopTick()
 {
@@ -432,11 +454,25 @@ void loopTick()
         const uint32_t d = us - loopLastUs;
         if (d > loopMaxUs)    loopMaxUs = d;
         if (d > loopWinMaxUs) loopWinMaxUs = d;
+        stepAccount(us);                                    // the last part of the previous loop (the LEDs)
     }
+    else stepT0Us = us;
     loopLastUs = us;
     loopCount++;
+    loopWinCount++;
     const uint32_t ms = millis();
-    if (ms - loopWinMs >= 5000) { loopWinMs = ms; loopMax5Us = loopWinMaxUs; loopWinMaxUs = 0; }
+    if (ms - loopWinMs >= 5000)
+    {
+        loopHz = loopWinCount * 1000UL / (ms - loopWinMs);
+        for (uint8_t k = 0; k < LOOP_STEPS; k++)
+        {
+            loopStepAvgUs[k] = stepSumUs[k] / loopWinCount;
+            loopStepMaxUs[k] = stepWinMaxUs[k];
+            stepSumUs[k] = 0;
+            stepWinMaxUs[k] = 0;
+        }
+        loopWinMs = ms; loopMax5Us = loopWinMaxUs; loopWinMaxUs = 0; loopWinCount = 0;
+    }
 }
 
 // Valve / motor driver outputs off at once (Cytron: PWM 0 and the valve relay off; IBT2: both PWM 0

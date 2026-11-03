@@ -15,6 +15,7 @@
    3 Nov 2026: aowMaxSteerDeg / aowMinKmhX10, the program's steering limits for the web page (shown only).
    3 Nov 2026: loop() reads everything the receiver has sent, up to one GGA per pass (was one byte per loop:
    with an RTK fix an F9P at 10 Hz sent more bytes than the loop ran times, the buffer filled, GGAs were cut).
+   3 Nov 2026: loopAt(step) before each part of loop(): the report says how long each part takes (zSafety.ino).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -293,21 +294,22 @@ void setup()
 }
 
 // ----- Main Loop -----
-// loopStep says which part is running, for the watchdog report (zSafety.ino, stepName)
+// loopAt(step) says which part is running, for the watchdog report and the time of each part in the
+// diagnostic report (zSafety.ino, stepName)
 void loop()
 {
     wdtFeed();                                    // hardware watchdog (zSafety.ino)
     loopTick();                                   // how long the loops take, for the report (zSafety.ino)
 
     // the network stack: TCP timers, the web page's connections, link (zNet.h, zEthernet.ino)
-    loopStep = 14;
+    loopAt(14);
     netPoll();
 
-    loopStep = 1;
+    loopAt(1);
     KeyaBus_Receive();
 
     // Forward incoming bytes from AgIO/NTRIP to the receiver (RTCM corrections)
-    loopStep = 2;
+    loopAt(2);
     if (SerialAOG.available())
     {
         uint8_t incoming_char = SerialAOG.read();
@@ -387,7 +389,7 @@ void loop()
     // GGA per loop (so gnssProcess() sees every epoch). Until 3 Nov 2026 this read ONE byte per loop: with
     // an RTK fix an F9P at 10 Hz sends about 1300 bytes/s (long GGA), more than loop() ran times on a board
     // with a BNO085 and a second F9P (about 850/s), the 2 KB buffer filled up and sentences were cut.
-    loopStep = 3;
+    loopAt(3);
     gnssNoteRxBacklog();                          // [status] warns if bytes pile up (Teensy reading too slowly)
     if (!rxCkOwns(RXCK_GPS))                      // (the receiver check reads it while it searches for its baud rate)
     {
@@ -406,12 +408,12 @@ void loop()
         }
     }
 
-    loopStep = 4;
+    loopAt(4);
     udpNtrip();
 
     // Forward RTK radio (XBee LR) corrections to the receiver: everything that has arrived, at once (was
     // one byte per loop), counted for the web page and the [status] messages (zStatus.ino)
-    loopStep = 5;
+    loopAt(5);
     {
         int n = SerialRTK.available();
         if (n > 0)
@@ -425,40 +427,40 @@ void loop()
     }
 
     // IMU (TM171 / BNO085) - roll at all times, heading when single antenna
-    loopStep = 6;
+    loopAt(6);
     imuProcess();
 
     // GPS2 port (Serial2): the second F9P of a dual F9P (zDualF9P.ino), or the XIAO ESP32: its hello,
     // its PGNs to UDP 9999, its text lines to the log (zXiao.ino) - one of them, chosen on the web page
-    loopStep = 7;
+    loopAt(7);
     dualF9pProcess();
     xiaoProcess();
 
     // Per GGA epoch: $GNGGA, $GNVTG, $GNTHS (dual heading), $INHPR (TM171) to AgOpenWeb
-    loopStep = 8;
+    loopAt(8);
     gnssProcess();
 
     // [status] messages on the serial monitor when Ethernet / AgOpenWeb / GPS / dual change (zStatus.ino)
-    loopStep = 9;
+    loopAt(9);
     statusUpdate();
 
     // Web page (zWeb.ino): one request at a time, never waits long for the browser
-    loopStep = 10;
+    loopAt(10);
     webLoop();
 
-    loopStep = 11;
+    loopAt(11);
     if (Autosteer_running) autosteerLoop();
     else ReceiveUdp();
 
     // the machine module's PGNs on UDP 9999, for the web page's Machine tab (zMachine.ino)
-    loopStep = 15;
+    loopAt(15);
     machineLoop();
 
     // the receiver's model, the u-blox settings from the web page (zReceiver.ino)
-    loopStep = 13;
+    loopAt(13);
     receiverLoop();
     rxCheckLoop();                                // the receiver check: data, baud rate, settings (zRxCheck.ino)
 
-    loopStep = 12;
+    loopAt(12);
     ledsUpdate();                                 // the three LEDs on the board (zLeds.ino)
 }

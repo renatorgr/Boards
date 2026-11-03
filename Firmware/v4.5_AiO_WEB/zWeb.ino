@@ -16,6 +16,7 @@
    buffer drained. The page carries an ETag (its build date): a browser that has it gets "304 Not Modified".
    /api/status: the program's maximum wheel angle and minimum steering speed (steerCfg), the distance to the
    guidance line (steer.line), for the Steering cards.
+   3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -1039,6 +1040,14 @@ static void apiDiag(EthernetClient& c)
     j.u("n", loopCount);
     j.u("maxUs", loopMaxUs);
     j.u("max5sUs", loopMax5Us);
+    j.u("hz", loopHz);                                         // loops per second, last whole 5 s window
+    j.arr("steps");                                            // where the time goes (zSafety.ino loopAt)
+    for (uint8_t k = 0; k < LOOP_STEPS; k++)
+    {
+        if (loopStepAvgUs[k] == 0 && loopStepMaxUs[k] == 0) continue;
+        j.open(); j.u("s", k); j.str("name", k ? stepName(k) : "other"); j.u("avgUs", loopStepAvgUs[k]); j.u("maxUs", loopStepMaxUs[k]); j.close();
+    }
+    j.closeArr();
     j.close();
     j.obj("web");
     j.u("req", webReqN);
