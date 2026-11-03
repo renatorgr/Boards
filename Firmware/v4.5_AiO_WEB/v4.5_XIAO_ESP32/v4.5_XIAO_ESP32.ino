@@ -7,6 +7,8 @@
    2 Nov 2026: the Teensy's firmware from this page, over the link (POST /api/teensy-update: the .hex goes to the Teensy
    block by block, PGN 145; POST /api/teensy-revert: the Teensy puts its previous firmware back), for a module whose
    own page cannot be reached.
+   3 Nov 2026: an upload (this program, or the module's firmware) waits up to 20 s for data from a slow Wi-Fi link
+   instead of the web server's 5 s, and an upload cut off halfway is written in Messages (it was silent).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -524,6 +526,11 @@ static void apiScan()
 static bool    updOk = false;
 static String  updErr;
 
+// How long an upload may wait for the next data from the browser (3 Nov 2026). The web server gives up after 5 s
+// (HTTP_MAX_SEND_WAIT), and a weak Wi-Fi link can pause longer than that: the upload was then cut off with nothing
+// in Messages and only "The connection failed" on the page.
+#define UPLOAD_WAIT_MS 20000
+
 static void updateUpload()
 {
     HTTPUpload& up = server.upload();
@@ -533,6 +540,7 @@ static void updateUpload()
     {
         updOk = false;
         updErr = "";
+        server.client().setTimeout(UPLOAD_WAIT_MS);
         if (server.arg("pw") != cfg.apPass) { updErr = "wrong password"; return; }
         logEvent("Program update: receiving %s", up.filename.c_str());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) updErr = Update.errorString();
@@ -559,9 +567,12 @@ static void updateUpload()
         }
         else Update.abort();
     }
-    else if (up.status == UPLOAD_FILE_ABORTED)
+    else if (up.status == UPLOAD_FILE_ABORTED)                      // the browser's connection dropped or stalled
     {
         Update.abort();
+        if (updErr != "wrong password")
+            logEvent("Program update STOPPED after %u kB: the browser's connection dropped (weak Wi-Fi?), old program kept",
+                     (unsigned)(up.totalSize / 1024));
         updErr = "upload aborted";
     }
 }
@@ -651,6 +662,7 @@ static void teensyUpdateUpload()
         tfwErr = "";
         tfwSeq = 0;
         tfwSize = 0;
+        server.client().setTimeout(UPLOAD_WAIT_MS);
         if (server.arg("pw") != cfg.apPass) { tfwErr = "wrong password"; return; }
         if (!teensy.teensyTalking(millis())) { tfwErr = "no data from the module: is the Teensy on and the link working?"; return; }
         const uint32_t size = strtoul(server.arg("size").c_str(), nullptr, 10);
@@ -688,9 +700,15 @@ static void teensyUpdateUpload()
             tfwSize = strtoul(teensy.fwText, nullptr, 10);
         }
     }
-    else if (up.status == UPLOAD_FILE_ABORTED)
+    else if (up.status == UPLOAD_FILE_ABORTED)                      // the browser's connection dropped or stalled
     {
-        if (tfwErr.length() == 0) { teensy.fwSend(4); tfwErr = "upload aborted"; }
+        if (tfwErr.length() == 0)
+        {
+            teensy.fwSend(4);
+            logEvent("Module firmware update STOPPED after %u kB: the browser's connection dropped (weak Wi-Fi?), firmware kept",
+                     (unsigned)(up.totalSize / 1024));
+            tfwErr = "upload aborted";
+        }
     }
 }
 
