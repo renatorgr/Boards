@@ -82,7 +82,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
 
-The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
+The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running. Opening the page does not hold the steering either (since 3 Nov 2026; before, a page load held the loop for about 0.1 s): the browser keeps the page of each build and only asks whether it changed, and when it has to be sent the module sends it in small pieces between steering loops.
 
 ### Settings
 

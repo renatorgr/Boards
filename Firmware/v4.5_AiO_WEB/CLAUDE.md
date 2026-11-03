@@ -243,7 +243,11 @@ One page (`/`) with tabs, drawn by JavaScript from JSON endpoints:
 | `/api/reboot` | POST | restart |
 | `/api/ota` | POST | firmware upload (zOTA.ino) |
 
-The page never makes the loop wait for a browser for more than 3 s. Large replies are written in pieces.
+The page never makes the loop wait for a browser for more than 3 s. The page itself (`WEB_PAGE`, about 120 KB) and the
+JSON answers built in `webBuf` go out in pieces from `webLoop()` (`webTxStep`: up to 4 KB per call and never more than
+the socket takes, so `client.write` never spins), so a page load does not hold the 40 Hz loop. The page carries an
+ETag made of the build date and `Cache-Control: no-cache`: a browser that has this build's page sends `If-None-Match`
+and gets a 304 (`webSendPage`). Short literal replies are written at once.
 
 **Simulator** (`Firmware/simulator`, published at https://renatorgr.github.io/Boards/ by
 `.github/workflows/simulator.yml`): the page above and the XIAO page with a pretend module answering these

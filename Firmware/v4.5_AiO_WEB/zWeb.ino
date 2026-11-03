@@ -31,9 +31,11 @@
 //   the autosteer safety (zSafety.ino), the steering settings from the program, the radio
 //   corrections, why the Teensy started; the WAS check, the watchdog and the simulator mode in the settings
 //
-// One request at a time, answered with "Connection: close". Reading a request and sending the
-// answer never wait for the browser longer than WEB_TIMEOUT_MS, so the GNSS / steering loop keeps
-// running. Only the firmware update takes over the loop, with the steering switched off.
+// One request at a time, answered with "Connection: close". A request is read as its bytes arrive, and the
+// page and the JSON answers go out in pieces, one per pass of loop(), as much as the socket buffer takes
+// (webTxStep): the GNSS / steering loop never waits for the browser. The small answers are written at once
+// (they fit the empty socket buffer); a browser that stops taking data is given up after WEB_TIMEOUT_MS.
+// Only the firmware update takes over the loop, with the steering switched off.
 //
 // There is no password: anyone on the module's network can open the page.
 
@@ -73,9 +75,48 @@ static struct
     char     path[48];
     char     query[96];
     uint32_t contentLength;
+    const char* tx;               // the rest of the answer's body still to send, in pieces from webLoop() (webTxStep)
+    size_t   txLeft;              // bytes of it left (0: nothing pending)
+    uint32_t txMs;                // when the last piece went out (a browser that takes nothing for WEB_TIMEOUT_MS is given up)
 } rq;
 
 static char webBuf[16384];       // JSON answers
+#define WEB_TX_PIECE     4096    // at most this much of a body per pass of loop() (the socket buffer holds 8 KB)
+
+// The page's ETag: its build date. The page is served with "Cache-Control: no-cache", so the browser keeps
+// it but asks every time ("If-None-Match"); the same build answers "304 Not Modified" (about 100 bytes), a
+// new build sends the page. So the ~120 KB page only travels after a firmware update.
+static char webEtag[40];
+static void webEtagSetup()
+{
+    const char* b = __DATE__ " " __TIME__;           // e.g. Nov  3 2026 14:20:11 -> "Nov-3-2026-14:20:11" (no spaces in an ETag)
+    size_t k = 0;
+    webEtag[k++] = '"';
+    for (const char* p = b; *p && k < sizeof(webEtag) - 2; p++)
+    {
+        if (*p == ' ') { if (webEtag[k - 1] != '-') webEtag[k++] = '-'; }
+        else webEtag[k++] = *p;
+    }
+    webEtag[k++] = '"';
+    webEtag[k] = '\0';
+}
+
+// True when the request has a header "name" whose value contains "value" (the headers are in rq.head, as
+// one string up to the empty line, while a request is being answered)
+static bool webHeaderHas(const char* name, const char* value)
+{
+    const size_t nl = strlen(name), wn = strlen(value);
+    for (const char* l = strstr(rq.head, "\r\n"); l; l = strstr(l + 2, "\r\n"))
+    {
+        if (strncasecmp(l + 2, name, nl) || l[2 + nl] != ':') continue;
+        const char* v = l + 3 + nl;
+        const char* e = strstr(v, "\r\n");
+        const size_t vn = e ? (size_t)(e - v) : strlen(v);
+        for (size_t i = 0; i + wn <= vn; i++) if (!memcmp(v + i, value, wn)) return true;
+        return false;
+    }
+    return false;
+}
 
 // For the report (GET /api/diag, web page Firmware tab): requests answered, error answers (with the last
 // one), and requests closed with no answer (the browser too slow or gone)
@@ -83,6 +124,10 @@ static uint32_t webReqN = 0, webErrN = 0, webDropN = 0;
 static char     webErrLast[96] = "";
 
 // ---------------------------------------------------------------- sending
+// webWrite writes all of d now, waiting for the browser between pieces (at most WEB_TIMEOUT_MS): for the
+// headers and the small answers, which fit the empty socket buffer and go out without a wait. A body that
+// stays in memory (the page in flash, webBuf) is not written here: webTxStart keeps it and webLoop() writes
+// a piece per pass (webTxStep), so the loop never waits for the browser.
 static bool webWrite(EthernetClient& c, const char* d, size_t n)
 {
     uint32_t t0 = millis();
@@ -108,6 +153,35 @@ static bool webWrite(EthernetClient& c, const char* d, size_t n)
     return true;
 }
 
+// One piece of the pending body: as much as the socket buffer takes now, never waiting for it. The
+// browser gone, or taking nothing for WEB_TIMEOUT_MS: the rest is dropped (counted in webDropN).
+static void webTxStep()
+{
+    EthernetClient& c = rq.client;
+    if (!c.connected()) { webDropN++; rq.txLeft = 0; return; }
+    const int room = c.availableForWrite();
+    if (room <= 0)
+    {
+        if (millis() - rq.txMs > WEB_TIMEOUT_MS) { webDropN++; rq.txLeft = 0; }
+        return;
+    }
+    size_t k = (size_t)room < rq.txLeft ? (size_t)room : rq.txLeft;
+    if (k > WEB_TX_PIECE) k = WEB_TX_PIECE;
+    const size_t w = c.write((const uint8_t*)rq.tx, k);  // never more than the buffer takes: socketSend() would spin
+    if (w == 0) { webDropN++; rq.txLeft = 0; return; }
+    rq.tx     += w;
+    rq.txLeft -= w;
+    rq.txMs    = millis();
+}
+
+static void webTxStart(const char* body, size_t len)
+{
+    rq.tx     = body;
+    rq.txLeft = len;
+    rq.txMs   = millis();
+    webTxStep();                                         // the first piece now; webLoop() sends the rest
+}
+
 static void webSend(EthernetClient& c, int code, const char* type, const char* body, size_t len)
 {
     const char* text = code == 200 ? "OK" : code == 400 ? "Bad Request" : code == 404 ? "Not Found" :
@@ -117,7 +191,28 @@ static void webSend(EthernetClient& c, int code, const char* type, const char* b
                             "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %u\r\n"
                             "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
                             code, text, type, (unsigned)len);
-    if (webWrite(c, h, hn)) webWrite(c, body, len);
+    if (!webWrite(c, h, hn)) return;
+    if (body == webBuf) webTxStart(body, len);           // stays in memory until sent: in pieces from webLoop()
+    else webWrite(c, body, len);                         // a short literal: fits the socket buffer, no wait
+}
+
+// GET /: the page, from flash. A browser that has this build's page sends its ETag back and gets "304 Not
+// Modified"; otherwise the page goes out in pieces from webLoop().
+static void webSendPage(EthernetClient& c)
+{
+    char h[260];
+    if (webHeaderHas("If-None-Match", webEtag))
+    {
+        const int hn = snprintf(h, sizeof(h), "HTTP/1.1 304 Not Modified\r\nETag: %s\r\nCache-Control: no-cache\r\n"
+                                              "Connection: close\r\n\r\n", webEtag);
+        webWrite(c, h, hn);
+        return;
+    }
+    const size_t len = strlen(WEB_PAGE);
+    const int hn = snprintf(h, sizeof(h), "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n"
+                                          "ETag: %s\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n", (unsigned)len, webEtag);
+    if (!webWrite(c, h, hn)) return;
+    webTxStart(WEB_PAGE, len);
 }
 
 static void webSendJson(EthernetClient& c, int code, const char* json)
@@ -902,6 +997,13 @@ static void webFinish()
 {
     rq.client.stop();
     rq.active = false;
+    rq.txLeft = 0;
+}
+
+// The request is answered: close it, unless its body is still going out in pieces (webLoop() closes it then)
+static void webDone()
+{
+    if (!rq.txLeft) webFinish();
 }
 
 // GET /api/diag: the firmware's own state, for the report (web page, Firmware tab)
@@ -948,7 +1050,7 @@ static void webDispatch()
     const bool get = !strcmp(rq.method, "GET"), post = !strcmp(rq.method, "POST");
     const char* body = rq.bodyAt >= 0 ? rq.head + rq.bodyAt : "";
     if      (get  && (!strcmp(rq.path, "/") || !strcmp(rq.path, "/index.html")))
-        webSend(c, 200, "text/html; charset=utf-8", WEB_PAGE, strlen(WEB_PAGE));
+        webSendPage(c);
     else if (get  && !strcmp(rq.path, "/api/status"))   apiStatus(c);
     else if (get  && !strcmp(rq.path, "/api/log"))      apiLog(c);
     else if (get  && !strcmp(rq.path, "/api/settings")) apiSettingsGet(c);
@@ -969,7 +1071,7 @@ static void webDispatch()
         restartTeensy();
     }
     else webSend(c, 404, "text/plain", "Not found", 9);
-    webFinish();
+    webDone();
 }
 
 // Request line and headers are complete in rq.head[0 .. headEnd)
@@ -1037,6 +1139,7 @@ static EthernetClient webAccept()
 void webSetup()
 {
     if (!Ethernet_running) return;
+    webEtagSetup();
     webRunning = webListenStart();
     if (!webRunning) StatusLog.println("[boot] web page: port 80 could not be opened (FAILED)");
     // (its address: the "[status] Ethernet: link up ..." line, zStatus.ino)
@@ -1046,6 +1149,12 @@ void webSetup()
 void webLoop()
 {
     if (!webRunning) return;
+    if (rq.active && rq.txLeft)                         // an answer still going out: one piece per pass
+    {
+        webTxStep();
+        if (!rq.txLeft) webFinish();
+        return;
+    }
     if (!rq.active)
     {
         EthernetClient c = webAccept();
@@ -1057,6 +1166,7 @@ void webLoop()
         rq.bodyAt = -1;
         rq.method[0] = rq.path[0] = rq.query[0] = '\0';
         rq.contentLength = 0;
+        rq.txLeft = 0;
     }
     EthernetClient& c = rq.client;
     if (millis() - rq.startMs > WEB_TIMEOUT_MS ||
@@ -1090,7 +1200,7 @@ void webLoop()
         if (!strcmp(rq.method, "POST") && !strcmp(rq.path, "/api/ota"))
         {
             apiOta(c, (const uint8_t*)rq.head + rq.bodyAt, have);
-            webFinish();
+            webDone();
             return;
         }
         if (rq.contentLength > WEB_BODY_MAX) { webSend(c, 413, "text/plain", "Too large", 9); webFinish(); return; }
