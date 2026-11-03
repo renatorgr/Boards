@@ -20,6 +20,7 @@
    2026-11-03 (Claude): dual.f9p2.refMiss / headingValid, the RELPOSNED flags the Teensy keeps since today; the flags
    value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
    2026-11-03 (Claude): /api/diag loop.hz and loop.steps (loops per second, the time of each part of the Teensy loop).
+   2026-11-03 (Claude): steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz), steer.loopMs / loopHz in /api/status.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -265,7 +266,7 @@ function Module(key) {
  const fresh = () => ({
   t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5",
   cfg: {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: h.gps2,
-   wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50},
+   wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50, steerLoop100: 0},
   wdt: true, saved: true, fwOver: null, prev: null, fwSize: 688128,
   log: [], logNext: 1, tlAt: -1,
   simSince: -1, heldBase: 0,
@@ -329,7 +330,7 @@ function Module(key) {
   L.push([0.3, "[boot] " + fwName() + ", built " + built() + " with Teensyduino 1.58"]);
   L.push([0.3, st.boot === "restart" ? "[boot] Start: restart by software (web page, firmware update, or the program's subnet change)" : "[boot] Start: power on (or the Teensy's button, or a USB upload)"]);
   L.push([0.4, "[boot] Settings from the EEPROM: output " + out + ", GPS2 port " + gps2]);
-  L.push([0.4, "[boot] Steering: minimum " + (cfg.steerMinKmhX10 / 10).toFixed(1) + " km/h, maximum " + cfg.steerMaxKmh + " km/h, soft start " + cfg.softStartX10ms * 10 + " ms (0 = off), current kickout delay " + cfg.currentKickX10ms * 10 + " ms"]);
+  L.push([0.4, "[boot] Steering: minimum " + (cfg.steerMinKmhX10 / 10).toFixed(1) + " km/h, maximum " + cfg.steerMaxKmh + " km/h, soft start " + cfg.softStartX10ms * 10 + " ms (0 = off), current kickout delay " + cfg.currentKickX10ms * 10 + " ms, loop " + (cfg.steerLoop100 ? 100 : 40) + " Hz"]);
   if (cfg.wasCheckOff) L.push([0.4, "[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer"]);
   if (cfg.simMode) L.push([0.4, "[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program"]);
   L.push([0.9, "[boot] Autosteer: ADS1115 (WAS) found, waiting for the program"]);
@@ -542,6 +543,7 @@ function Module(key) {
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
    switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
    line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
+   loopMs: cfg.steerLoop100 ? 10 : 25, loopHz: cfg.steerLoop100 ? 100 : 40,
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
    sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
@@ -750,9 +752,9 @@ function Module(key) {
  // ---- /api/settings (zWeb.ino apiSettingsGet / apiSettingsPost)
  const FIELDS = [["outputMode", 0, 2], ["classicNoDual", 0, 1], ["hprAcceptFloat", 0, 1], ["epochWaitMs", 20, 100], ["tm171SwapRollPitch", 0, 1],
   ["tm171YawSign", -1, 1], ["xiaoOff", 0, 1], ["wasCheckOff", 0, 1], ["wdtOff", 0, 1], ["umSingle", 0, 1], ["simMode", 0, 1],
-  ["steerMinKmhX10", 1, 30], ["steerMaxKmh", 5, 40], ["softStartX10ms", 0, 100], ["currentKickX10ms", 0, 200]];
+  ["steerMinKmhX10", 1, 30], ["steerMaxKmh", 5, 40], ["softStartX10ms", 0, 100], ["currentKickX10ms", 0, 200], ["steerLoop100", 0, 1]];
  const DEFAULTS = {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: 0,
-  wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50};
+  wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50, steerLoop100: 0};
  const settingsJson = () => ({ok: true, settings: Object.assign({}, cfg), saved: st.saved, wdt: st.wdt});
  function settingsPost(b) {
   const s = b.defaults === "1" ? Object.assign({}, DEFAULTS) : Object.assign({}, cfg);
@@ -775,8 +777,8 @@ function Module(key) {
    gps2Name() + ", WAS check " + (cfg.wasCheckOff ? "OFF" : "on") + ", watchdog " + (cfg.wdtOff ? "off" : "on"));
   if (cfg.umSingle !== was.umSingle) line(cfg.umSingle ? "[web] UM982 with one antenna: no dual-antenna heading on the page, AgOpenGPS settings ConfigUM982S.txt" : "[web] UM982 with two antennas: AgOpenGPS settings ConfigUM982D.txt");
   if (cfg.simMode !== was.simMode) line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program" : "[web] Simulator mode off: the GPS goes to the program again");
-  if (["steerMinKmhX10", "steerMaxKmh", "softStartX10ms", "currentKickX10ms"].some(n => cfg[n] !== was[n]))
-   line("[web] Steering: minimum " + (cfg.steerMinKmhX10 / 10).toFixed(1) + " km/h, maximum " + cfg.steerMaxKmh + " km/h, soft start " + cfg.softStartX10ms * 10 + " ms (0 = off), current kickout delay " + cfg.currentKickX10ms * 10 + " ms");
+  if (["steerMinKmhX10", "steerMaxKmh", "softStartX10ms", "currentKickX10ms", "steerLoop100"].some(n => cfg[n] !== was[n]))
+   line("[web] Steering: minimum " + (cfg.steerMinKmhX10 / 10).toFixed(1) + " km/h, maximum " + cfg.steerMaxKmh + " km/h, soft start " + cfg.softStartX10ms * 10 + " ms (0 = off), kickout delay " + cfg.currentKickX10ms * 10 + " ms, loop " + (cfg.steerLoop100 ? 100 : 40) + " Hz");
   return ok(settingsJson());
  }
 

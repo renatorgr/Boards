@@ -29,6 +29,8 @@
    covers the pressure sensor. A chosen .hex is an AiO_WEB one by the marker of 22 Oct 2026 only.
    3 Nov 2026: the dual-antenna card says when the second F9P gets no corrections from the first one, or flags its
    heading as not valid (the RELPOSNED flags, dual.f9p2.refMiss / headingValid).
+   3 Nov 2026: Steering settings card: the steering loop, 40 Hz (default) or 100 Hz (steerLoop100); the Steering card
+   shows the loop rate set and measured (steer.loopMs / loopHz).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -174,7 +176,7 @@ a{color:var(--acc)}
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
  <div class="card"><h2>Steering</h2>
   <div class="big" id="was">–</div>
-  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
+  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Loop</dt><dd id="loopHz">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
    <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
    <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
    <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
@@ -261,6 +263,7 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
  <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor (not the Keya's slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
+ <div class="opt"><span style="flex:1">Steering loop<small>How often the wheel angle is read and the valve or motor output updated. 100 Hz: as the AiO 26 firmware and AgOpenWeb's steering packets, the WAS read 250 times a second instead of 128; the program's gains are per degree, so they stay the same. Try it once the tractor steers well at 40 Hz (default).</small></span><select name="steerLoop100"><option value="0">40 Hz</option><option value="1">100 Hz</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
@@ -561,6 +564,7 @@ function render(s){
  const st=s.steer;
  set("was",fmt(st.was,1,"°"));set("setp",fmt(st.set,1,"°"));set("pwm",String(st.pwm));
  set("lineDist",lineText(st.line));
+ set("loopHz",st.loopMs?Math.round(1000/st.loopMs)+" Hz"+(st.loopHz?" · "+st.loopHz+"/s":""):"–",st.loopMs&&st.loopHz&&st.loopHz<Math.round(1000/st.loopMs)-2?"warn":"");
  pill("active",(st.active?"steering":"off"),st.active?"ok":"");
  set("sw",(st.switchOn?"on":"off"));set("aogKmh",fmt(st.aogKmh,1," km/h"));
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top
@@ -1114,7 +1118,7 @@ function fillSettings(s){
  if(f.epochWaitMs.value!==String(s.epochWaitMs)){const o=document.createElement("option");o.textContent=s.epochWaitMs;f.epochWaitMs.appendChild(o);f.epochWaitMs.value=String(s.epochWaitMs);}
  f.tm171YawSign.value=String(s.tm171YawSign);f.xiaoOff.value=String(s.xiaoOff);
  f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;
- selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);lastSet=s;
+ selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);selVal(f.steerLoop100,s.steerLoop100);lastSet=s;
 }
 async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
 async function postSettings(body){
@@ -1133,7 +1137,7 @@ $("fs").addEventListener("submit",e=>{e.preventDefault();const f=$("fs");
  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!confirm("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
  p.set("simMode",f.simMode.checked?"1":"0");
  p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
- p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);
+ p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
  postSettings(p.toString());});
 $("defaults").addEventListener("click",()=>{if(confirm("Restore the defaults of this page?"))postSettings("defaults=1");});
 

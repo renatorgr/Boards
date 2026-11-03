@@ -209,7 +209,7 @@ void keyaCommand(uint8_t command[])
     }
 }
 
-// Called from the 40 Hz steering loop (Autosteer.ino). True: autosteer must stay off. Like the WAS check
+// Called from the steering loop (40 or 100 Hz, Autosteer.ino). True: autosteer must stay off. Like the WAS check
 // (zSafety.ino): blocked while there is no heartbeat and, with a steer switch, until the switch has been seen
 // off (so autosteer does not come back by itself when the cable is plugged in again).
 bool     keyaLost      = false;   // no heartbeat now

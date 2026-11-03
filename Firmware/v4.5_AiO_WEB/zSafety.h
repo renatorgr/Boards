@@ -2,6 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    24 Oct 2026: wasOut declared for zLeds.ino.
+   3 Nov 2026: steerLoopHz, the steering loops per second, for the report.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -46,6 +47,7 @@ extern uint32_t loopCount, loopMaxUs, loopMax5Us;
 #define LOOP_STEPS 16                 // buckets 0..15 for the parts of loop() (stepName; 20 = firmware update lands in 0)
 void  loopAt(uint8_t step);           // loop(): the part that starts now (the time of each part, for the report)
 extern uint32_t loopHz, loopStepAvgUs[LOOP_STEPS], loopStepMaxUs[LOOP_STEPS];
+extern uint32_t steerLoopHz;          // steering loops per second (40 or 100, Autosteer.ino), last whole 5 s window
 void  wdtStart();
 // C linkage declared here, before the prototypes the Arduino IDE adds. The IDE writes its own
 // prototype of wdtWarnC without extern "C" (it only sees extern "C" { } blocks), and a C++ declaration

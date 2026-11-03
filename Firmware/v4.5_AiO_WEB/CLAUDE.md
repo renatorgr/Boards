@@ -86,7 +86,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Steering (AiO 26: `aio_autosteer`)
 | File | Purpose |
 |------|---------|
-| `Autosteer.ino` | Pins, steer settings / config (EEPROM 10 / 40 / 60), WAS (ADS1115) and WAS map, switches, min / max speed, UDP 8888 PGNs (`ReceiveUdp`), 40 Hz `autosteerLoop()`, PGN 253 / 250 |
+| `Autosteer.ino` | Pins, steer settings / config (EEPROM 10 / 40 / 60), WAS (ADS1115) and WAS map, switches, min / max speed, UDP 8888 PGNs (`ReceiveUdp`), 40 / 100 Hz `autosteerLoop()` (`steerLoopApply`), PGN 253 / 250 |
 | `AutosteerPID.ino` | PID and output: Cytron, IBT2, Danfoss, Keya; soft start |
 | `KeyaCANBUS.ino` | Keya on CAN3 (250 kbit/s): heartbeat, enable / speed commands, slip |
 | `zSafety.ino` / `.h` | WAS check, why autosteer went off, PGN 221 text to the program, watchdog, crash hook, boot reason, `loopStep` names |
