@@ -22,6 +22,7 @@
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
    AiO_WEB 4.5, 24 Oct 2026: the GPS LED is driven by zLeds.ino (fix quality), no longer from here.
    AiO_WEB 4.5, 3 Nov 2026: PGN 247 byte 23, the program's maximum wheel angle, kept for the web page (aowMaxSteerDeg).
+   AiO_WEB 4.5, 3 Nov 2026: ggaCount, the GGA sentences parsed, so that loop() reads the receiver up to one GGA per pass.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -582,6 +583,7 @@ void GGA_Handler()
 
     // Sent by gnssProcess() once this epoch's VTG and HPR are in (or EPOCH_WAIT_MS has passed)
     ggaPending = true;
+    ggaCount++;                                 // loop() reads the receiver up to one GGA per pass (main .ino)
     ggaMs      = millis();
     ggaUtcCs   = utcCs(fixTime);
     if (ggaFirstMs == 0) ggaFirstMs = ggaMs | 1;
