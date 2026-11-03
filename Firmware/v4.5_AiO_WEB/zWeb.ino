@@ -695,7 +695,7 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
         StatusLog.line(cfg.simMode ? "[web] Simulator mode ON (for the program's simulator only): the GPS is not sent to the program"
                                    : "[web] Simulator mode off: the GPS goes to the program again");
     if (steerChanged)
-        StatusLog.line("[web] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), current kickout delay %u ms",
+        StatusLog.line("[web] Steering: minimum %u.%u km/h, maximum %u km/h, soft start %u ms (0 = off), kickout delay %u ms",
                        cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
                        (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10);
     Json j(webBuf, sizeof(webBuf));

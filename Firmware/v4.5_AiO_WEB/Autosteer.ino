@@ -53,7 +53,7 @@
 #define STEER_MIN_KMH_X10   2     // below 0.2 km/h (the program's speed) the wheels are not turned (was fixed)
 #define STEER_MAX_KMH       25    // above 25 km/h autosteer is cut (was fixed)
 #define SOFT_START_X10MS    0     // soft start (x 10 ms): 0 = off, as before; the AiO 26 firmware uses 500 ms
-#define CURRENT_KICK_X10MS  50    // current sensor kickout: the current must stay high 0.5 s (AiO 26: 1 s)
+#define CURRENT_KICK_X10MS  50    // pressure / current sensor kickout: the reading must stay high 0.5 s (AiO 26: 1 s for the current)
 
 /////////////////////////////////////////////
 
@@ -410,13 +410,22 @@ void autosteerLoop()
 			sensorSample = (float)analogRead(PRESSURE_SENSOR_PIN);
 			sensorSample *= 0.25;
 			sensorReading = sensorReading * 0.6 + sensorSample * 0.4;
+
+			// AiO_WEB (3 Nov 2026): the same delay as the current sensor below (Settings > Steering, kickout delay):
+			// the pressure must stay above the limit that long; a short peak (the valve opening, a bump) is not a kickout
+			static uint32_t pressureHighMs = 0;   // when it went above the limit (0 = below)
 			if (sensorReading >= steerConfig.PulseCountMax)
 			{
-				steerSwitch = 1; // reset values like it turned off
-				currentState = 1;
-				previous = 0;
-				steerKick(SO_PRESSURE, (int)sensorReading);
+				if (pressureHighMs == 0) pressureHighMs = currentTime | 1;
+				if (currentTime - pressureHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+				{
+					steerSwitch = 1; // reset values like it turned off
+					currentState = 1;
+					previous = 0;
+					steerKick(SO_PRESSURE, (int)sensorReading);
+				}
 			}
+			else pressureHighMs = 0;
 		}
 
 		// Current sensor?

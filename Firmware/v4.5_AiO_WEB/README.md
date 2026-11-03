@@ -14,7 +14,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **IMU** | BNO085 | TM171 or BNO085 (RVC or I2C), found at start-up. TM171: gyro and new-install calibration, set-up check with one-click fix, and its settings, all from the page. |
 | **Output to the program** | `$PAOGI` / `$PANDA` | the same, plus the standard sentence set AgOpenWeb reads (`GGA`, `VTG`, `THS`, `HPR`), chosen automatically from the program's hello. |
 | **Autosteer safety** | kickouts | WAS voltage check (broken wire = autosteer blocked), Keya heartbeat lost = autosteer off, outputs off at once on a crash or a watchdog restart, and the reason autosteer went off on the program's screen. |
-| **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, current kickout delay. The wheelbase comes from AgOpenWeb. |
+| **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, kickout delay (pressure or current sensor). The wheelbase comes from AgOpenWeb; its maximum wheel angle and minimum steering speed are shown. |
 | **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
 | **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
@@ -103,7 +103,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
 | Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
 | Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
-| Current kickout delay (Steering) | 0.5 s | 0 (at once, as before), 0.25, 0.5 or 1 s. Current sensor only, not the Keya: the current must stay above the limit this long. |
+| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor (not the Keya): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). |
 
 ### Firmware update over the network
 
