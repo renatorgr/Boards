@@ -5,6 +5,8 @@
    interface descriptions (UBX-MON-VER, UBX-CFG-VALGET, UBX-CFG-VALSET, UBX-ACK); the Unicore
    commands (VERSIONA, CONFIG, MASK, UNMASK, UNILOGLIST, MODE, UNLOG, SAVECONFIG and the log
    commands) are those of the Unicore N4 high precision commands and logs reference.
+   4 Nov 2026: the receiver's own temperature: UBX-MON-SYS polled every 10 s once it is identified as a u-blox (rxTemp,
+   GNSS card and GPS tab); a firmware that does not know the message is asked three times, then the page says so.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -61,6 +63,11 @@ static uint32_t rxIdAskMs     = 0;
 static uint32_t rxByteMs      = 0;       // last byte from the receiver
 static uint32_t rxTalkSinceMs = 0;       // talking without a gap since
 static bool     rxSilentSeen  = true;    // silent for RXID_SILENT_MS since the last round
+// AiO_WEB 4 Nov 2026: its temperature (UBX-MON-SYS, zReceiver.h)
+int8_t   rxTemp   = RX_TEMP_NONE;
+uint32_t rxTempMs = 0;
+static uint32_t rxTempAskMs = 0;
+static uint8_t  rxTempAsks  = 0;         // unanswered polls (stops at RX_TEMP_TRIES)
 
 // ---------------------------------------------------------------- to the receiver
 // One message waits here until the corrections are between two RTCM messages (or 300 ms).
@@ -227,6 +234,7 @@ void receiverIdentifyAgain()
     rxIdState = RXID_WAIT;
     rxKind    = RX_UNKNOWN;
     rxModel[0] = rxFw[0] = rxProt[0] = rxHw[0] = '\0';
+    rxTemp = RX_TEMP_NONE; rxTempMs = 0; rxTempAsks = 0; rxTempAskMs = 0;   // the temperature was the previous receiver's
     rxIdMs    = 0;
     rxIdAsked = 0;
     rxTalkSinceMs = rxByteMs ? millis() - RXID_TALK_MS : 0;    // ask at once if it talks
@@ -408,6 +416,11 @@ static void ubxFrame(uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len)
     if (cls == 0x0A && id == 0x04)                 // MON-VER (length 0 = our own query, echoed by a
     {                                              // receiver that is not u-blox)
         if (len >= 40) ubxMonVer(p, len);
+        return;
+    }
+    if (cls == 0x0A && id == 0x39)                 // MON-SYS: the answer to our temperature poll (AiO_WEB 4 Nov 2026):
+    {                                              // tempValue, a signed byte in degrees C, at offset 18
+        if (len >= 19) { rxTemp = (int8_t)p[18]; rxTempMs = millis() | 1; }
         return;
     }
     if (cls == 0x05) { if (len >= 2) ubxAck(id == 0x01, p[0], p[1]); return; }
@@ -1121,6 +1134,21 @@ const char* umWriteRaw(const char* const* cmds, uint8_t n, const char* what)
     return nullptr;
 }
 
+// ---------------------------------------------------------------- temperature (AiO_WEB 4 Nov 2026)
+// For the page: "ok" reported lately, "old" (no answer for a while), "ask" (not answered yet), "none" (asked
+// RX_TEMP_TRIES times, never answered: a firmware without UBX-MON-SYS). Also used for the second F9P (zDualF9P.ino).
+const char* rxTempState(uint32_t reportedMs, uint8_t asks)
+{
+    if (reportedMs) return millis() - reportedMs < 3 * RX_TEMP_MS ? "ok" : "old";
+    return asks < RX_TEMP_TRIES ? "ask" : "none";
+}
+
+void rxTempJson(Json& j)
+{
+    if (rxTemp != RX_TEMP_NONE) j.i("temp", rxTemp);
+    j.str("tempSt", rxKind == RX_UBLOX ? rxTempState(rxTempMs, rxTempAsks) : "");
+}
+
 // ---------------------------------------------------------------- loop
 void receiverLoop()
 {
@@ -1162,6 +1190,13 @@ void receiverLoop()
             {
                 receiverIdentifyAgain();
                 rxTalkSinceMs = now;
+            }
+            // AiO_WEB 4 Nov 2026: a u-blox is asked its temperature (UBX-MON-SYS) every RX_TEMP_MS, between the
+            // other queries; once it has never answered RX_TEMP_TRIES polls it is not asked again
+            else if (talks && rxKind == RX_UBLOX && ubxOp == UBXOP_NONE && !rxTxLen && !rxCkBusy(RXCK_GPS)
+                     && now - rxTempAskMs >= RX_TEMP_MS && (rxTempMs || rxTempAsks < RX_TEMP_TRIES))
+            {
+                if (ubxSend(0x0A, 0x39, nullptr, 0)) { rxTempAskMs = now; if (!rxTempMs) rxTempAsks++; }
             }
             break;
     }
@@ -1257,6 +1292,7 @@ void receiverJson(Json& j)
     j.str("fw", rxFw);
     j.str("prot", rxProt);
     j.str("hw", rxHw);
+    rxTempJson(j);                                           // AiO_WEB 4 Nov 2026: "temp", "tempSt" (GPS tab)
     j.str("id", rxIdState == RXID_WAIT ? "wait" : rxIdState == RXID_ASK ? "ask" : rxIdState == RXID_DONE ? "done" : "none");
     j.i("idAgo", rxIdMs ? (long)((now - rxIdMs) / 1000) : -1);
     j.bo("talks", rxByteMs && now - rxByteMs < RX_TALKS_MS);

@@ -9,6 +9,8 @@
    own page cannot be reached.
    3 Nov 2026: an upload (this program, or the module's firmware) waits up to 20 s for data from a slow Wi-Fi link
    instead of the web server's 5 s, and an upload cut off halfway is written in Messages (it was silent).
+   4 Nov 2026: the chip's temperature (temperatureRead(), the ESP32's own sensor) in our state for the Teensy page (PGN 143,
+   "t") and in /api/state ("temp"), for the XIAO cards of both pages.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -271,6 +273,7 @@ static void sendInfo()
         j.str("st", staState());
         if (WiFi.status() == WL_CONNECTED) { j.str("ip", WiFi.localIP().toString().c_str()); j.i("rssi", WiFi.RSSI()); }
     }
+    j.num("t", temperatureRead(), 1);         // 4 Nov 2026: the chip's temperature (its own sensor), degrees C
     j.u("up", millis() / 1000);
     j.raw("}");
     if (j.n + 1 < sizeof(b)) teensy.sendInfo(b);
@@ -331,6 +334,7 @@ static void apiState()
     j.bo("resetBad", rr == ESP_RST_PANIC || rr == ESP_RST_INT_WDT || rr == ESP_RST_TASK_WDT || rr == ESP_RST_WDT || rr == ESP_RST_BROWNOUT);
     j.u("heap", ESP.getFreeHeap());
     j.u("heapMin", ESP.getMinFreeHeap());
+    j.num("temp", temperatureRead(), 1);       // 4 Nov 2026: the chip's temperature, degrees C
     j.u("sketch", sketchSize);
     j.u("sketchFree", sketchFree);
 

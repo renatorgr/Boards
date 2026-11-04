@@ -37,7 +37,7 @@ env:
   ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS: https://www.pjrc.com/teensy/package_teensy_index.json
   TEENSYDUINO: '1.58'
   # Tools menu as in the README: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster"
-  FQBN: teensy:avr:teensy41:usb=serial,speed=600,opt=o2std,keys=en-us
+  FQBN: teensy:avr:teensy41:usb=serial,speed=450,opt=o2std,keys=en-us   # 450 MHz since 4 Nov 2026: cooler, the loop has time to spare
 
 jobs:
   build:

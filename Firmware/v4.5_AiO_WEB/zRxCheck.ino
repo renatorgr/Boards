@@ -22,6 +22,7 @@
    UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13; X20P.txt
    for HPG 2.11.
    2026-11-03: ckAutoStart asks ckAutoNeeded once a second, not at every loop (two F9P files = 1 ms per loop).
+   4 Nov 2026: each port's card on the GPS tab carries the receiver's temperature ("temp" / "tempSt", zReceiver.ino, zDualF9P.ino).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -1522,6 +1523,7 @@ FLASHMEM static void ckPortJson(Json& j, uint8_t port)
     j.str("model", ckModel(port));
     j.str("fw", ckFw(port));
     j.str("fwSt", ckFwState(port));
+    if (port == RXCK_GPS) rxTempJson(j); else dualF9pTempJson(j);   // AiO_WEB 4 Nov 2026: its temperature (UBX-MON-SYS)
     j.bo("set", !um && ckHasSet(port));                   // it has AgOpenGPS settings to compare with and load (F9P, X20P)
     j.str("role", um ? "" : RXCFG_UBX[role].name);
     j.str("file", um ? "" : RXCFG_UBX[role].file);

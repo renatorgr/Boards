@@ -8,6 +8,8 @@
    reads the same way ("AiO Board Msgs").
    24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
    3 Nov 2026: loopAt(step): the time of each part of loop() for the report (loopStepAvgUs / loopStepMaxUs, loopHz).
+   4 Nov 2026: cpuTempTick(): the Teensy's own temperature (tempmonGetTemp) once a second, with its clock, for the Firmware
+   tab and the report; a warning on the Status tab and the program's screen from 80 C.
    3 Nov 2026: the WAS check counts time (75 ms / 1 s) instead of loops, the same with the steering loop at 40 or 100 Hz;
    steerLoopHz (the steering loops per second) for the report; pressureFiltered() follows the kickout filter's rate.
    27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
@@ -434,6 +436,36 @@ uint32_t loopStepAvgUs[LOOP_STEPS] = {}, loopStepMaxUs[LOOP_STEPS] = {};
 static uint32_t loopLastUs = 0, loopWinMaxUs = 0, loopWinMs = 0, loopWinCount = 0, stepT0Us = 0;
 static uint32_t stepSumUs[LOOP_STEPS] = {}, stepWinMaxUs[LOOP_STEPS] = {};
 
+// AiO_WEB 4 Nov 2026: the chip's temperature from the Teensy 4.1's own sensor (tempmonGetTemp(), Teensyduino), once a
+// second. Shown with the clock (F_CPU_ACTUAL, the IDE's CPU Speed) on the Firmware tab and kept in the report, with the
+// highest value since start-up. From CPU_HOT_C a warning: the chip is rated to 95 C, where Teensyduino's own protection
+// restarts it, so 80 C means "look at the box" (sun, no air), not "stop".
+#define CPU_HOT_C        80.0f
+#define CPU_HOT_CLEAR_C  75.0f
+float cpuTemp = 0, cpuTempMax = 0;
+bool  cpuHot = false;
+static uint32_t cpuTempMs = 0;
+
+static void cpuTempTick(uint32_t ms)
+{
+    if (ms - cpuTempMs < 1000) return;
+    cpuTempMs = ms;
+    cpuTemp = tempmonGetTemp();
+    if (cpuTemp > cpuTempMax) cpuTempMax = cpuTemp;
+    if (!cpuHot && cpuTemp >= CPU_HOT_C)
+    {
+        cpuHot = true;
+        StatusLog.line("[status] Teensy at %.0f C (%lu MHz): hot - check the module's box (sun, air); the chip restarts itself at about 95 C",
+                       (double)cpuTemp, (unsigned long)(F_CPU_ACTUAL / 1000000));
+        hwMessage("Teensy hot: check the module's box", 10, true);
+    }
+    else if (cpuHot && cpuTemp <= CPU_HOT_CLEAR_C)
+    {
+        cpuHot = false;
+        StatusLog.line("[status] Teensy at %.0f C: cooled down", (double)cpuTemp);
+    }
+}
+
 // The part that was running (loopStep) ends now: its time goes to its bucket
 static void stepAccount(uint32_t us)
 {
@@ -465,6 +497,7 @@ void loopTick()
     loopCount++;
     loopWinCount++;
     const uint32_t ms = millis();
+    cpuTempTick(ms);
     if (ms - loopWinMs >= 5000)
     {
         loopHz = loopWinCount * 1000UL / (ms - loopWinMs);

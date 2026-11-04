@@ -34,6 +34,8 @@
    3 Nov 2026: a frozen IMU (roll and heading unchanged while driving, tm.frozen): FROZEN on the IMU card, a warning at the top.
    3 Nov 2026: "Notes about this installation" on the Settings tab (GET / POST /api/note, plain text, kept in the EEPROM),
    also in the report.
+   4 Nov 2026: temperatures on the cards (the Teensy with its clock on the Firmware tab, the receivers, the TM171, the XIAO)
+   and a "Teensy hot" warning; the GPS tab says when a receiver's firmware does not report it.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -161,20 +163,21 @@ a{color:var(--acc)}
   <dl style="margin-top:6px">
    <dt>Satellites</dt><dd id="sats">–</dd><dt>HDOP</dt><dd id="hdop">–</dd>
    <dt>Correction age</dt><dd id="age">–</dd><dt>Speed</dt><dd id="kmh">–</dd>
-   <dt>Latitude</dt><dd id="lat" class="nw">–</dd><dt>Longitude</dt><dd id="lon" class="nw">–</dd><dt>Altitude</dt><dd id="alt" class="nw">–</dd><dt>Checksum errors</dt><dd id="crc">–</dd><dt>Receiver</dt><dd id="rxModel">–</dd>
+   <dt>Latitude</dt><dd id="lat" class="nw">–</dd><dt>Longitude</dt><dd id="lon" class="nw">–</dd><dt>Altitude</dt><dd id="alt" class="nw">–</dd><dt>Checksum errors</dt><dd id="crc">–</dd><dt>Receiver</dt><dd id="rxModel">–</dd><dt id="rxTempT" class="hidden">Temperature</dt><dd id="rxTemp" class="hidden">–</dd>
    <dt id="g1SetT" class="hidden">Setup</dt><dd id="g1Set" class="hidden">–</dd>
   </dl>
   <p class="note hidden" id="g1Go">Receiver check and settings: <a href="#" data-go="gps">GPS tab</a></p></div>
  <div class="card" id="dualCard"><h2>Dual-antenna heading</h2>
   <div class="big" id="dualHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd>
-   <dt id="f2T" class="hidden">Second F9P</dt><dd id="f2" class="hidden">–</dd><dt id="f2SetT" class="hidden">Setup</dt><dd id="f2Set" class="hidden">–</dd></dl>
+   <dt id="f2T" class="hidden">Second F9P</dt><dd id="f2" class="hidden">–</dd><dt id="f2TempT" class="hidden">Its temperature</dt><dd id="f2Temp" class="hidden">–</dd><dt id="f2SetT" class="hidden">Setup</dt><dd id="f2Set" class="hidden">–</dd></dl>
   <div class="box mono" id="hprRaw">–</div>
   <p class="note hidden" id="f2Go">Baud rate, check and AgOpenGPS settings: <a href="#" data-go="gps">GPS tab</a></p></div>
  <div class="card"><h2>IMU</h2>
   <div class="big" id="tmHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="tmState">–</dd><dt>Type</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
    <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd>
+   <dt id="tmTempT" class="hidden">Temperature</dt><dd id="tmTemp" class="hidden">–</dd>
    <dt id="tmCalT" class="hidden">Gyro calibration</dt><dd id="tmCal" class="hidden">–</dd>
    <dt id="tmSetupT" class="hidden">Setup</dt><dd id="tmSetup" class="hidden">–</dd></dl>
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
@@ -208,7 +211,7 @@ a{color:var(--acc)}
   <dl style="margin-top:6px"><dt>Last hello</dt><dd id="xHello" class="nw">–</dd>
    <dt>Packets to the XIAO</dt><dd id="xTo">–</dd><dt>PGNs from the XIAO</dt><dd id="xFrom">–</dd><dt>Last PGN from the XIAO</dt><dd id="xLast">–</dd>
    <dt>Checksum errors</dt><dd id="xCrc">–</dd><dt>Lost</dt><dd id="xDrop">–</dd><dt>Received / sent</dt><dd id="xKB" class="nw">–</dd>
-   <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd></dl>
+   <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd><dt>XIAO temperature</dt><dd id="xTemp">–</dd></dl>
   <p class="note hidden" id="xNote"></p>
   </div>
 </div>
@@ -283,7 +286,7 @@ a{color:var(--acc)}
 <div class="grid fill gps">
 <div class="card"><h2>GPS receiver</h2>
  <div class="big" id="gModel">–</div>
- <dl style="margin-top:6px"><dt>Make</dt><dd id="gKind">–</dd><dt>Firmware</dt><dd id="gFw">–</dd><dt id="gProtT">Protocol</dt><dd id="gProt">–</dd><dt id="gNmeaT" class="hidden">NMEA version</dt><dd id="gNmea" class="hidden">–</dd><dt>Identified</dt><dd id="gId">–</dd></dl>
+ <dl style="margin-top:6px"><dt>Make</dt><dd id="gKind">–</dd><dt>Firmware</dt><dd id="gFw">–</dd><dt id="gProtT">Protocol</dt><dd id="gProt">–</dd><dt>Temperature</dt><dd id="gTemp">–</dd><dt id="gNmeaT" class="hidden">NMEA version</dt><dd id="gNmea" class="hidden">–</dd><dt>Identified</dt><dd id="gId">–</dd></dl>
  <p id="ck0FwNote" class="note bad hidden">Wrong firmware: AgOpenGPS uses HPG 1.13 (the AOGConfigOMatic settings are for it). Download it and install it on the F9P with AOGConfigOMatic («Flash firmware») or u-center: <a href="https://github.com/lansalot/AOGConfigOMatic/raw/main/AOGConfigOMatic/UBX113.bin" target="_blank" rel="noopener">UBX113.bin (HPG 1.13)</a> · <a href="https://github.com/lansalot/AOGConfigOMatic/releases" target="_blank" rel="noopener">AOGConfigOMatic</a></p>
  <div class="row"><button class="sec" type="button" id="gIdent">Ask again</button><button class="sec hidden" type="button" id="gUbxOn">Switch the UBX output on (u-blox)</button></div>
  <p class="note">The Teensy asks the receiver what it is: VERSIONA to the UM982, UBX-MON-VER to the F9P / X20P. The sentences sent to the program do not depend on it.</p></div>
@@ -305,7 +308,7 @@ a{color:var(--acc)}
   <p class="note">Every setting of the receiver, read from its RAM and compared with the factory defaults: the ones that differ, as a u-center configuration file (the form of the AOGConfigOMatic files). Put into the firmware (zRxConfig.h), it becomes the AgOpenGPS file of a receiver AOGConfigOMatic has none for.</p></div> -->
  <p class="note" id="ck0Note">Baud rate checked at start-up (460800). Change only with autosteer off.</p></div>
 <div class="card hidden" id="ck1"><h2>Second F9P check</h2>
- <dl><dt>Data at 460800 baud</dt><dd id="ck1Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck1Hz">–</dd><dt>Receiver</dt><dd id="ck1Model">–</dd><dt>Firmware</dt><dd id="ck1Fw">–</dd><dt>What the Teensy needs</dt><dd id="ck1Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck1Ago">–</dd></dl>
+ <dl><dt>Data at 460800 baud</dt><dd id="ck1Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck1Hz">–</dd><dt>Receiver</dt><dd id="ck1Model">–</dd><dt>Firmware</dt><dd id="ck1Fw">–</dd><dt>Temperature</dt><dd id="ck1Temp">–</dd><dt>What the Teensy needs</dt><dd id="ck1Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck1Ago">–</dd></dl>
  <p id="ck1FwNote" class="note bad hidden">Wrong firmware: AgOpenGPS uses HPG 1.13 (the AOGConfigOMatic settings are for it). Download it and install it on the F9P with AOGConfigOMatic («Flash firmware») or u-center: <a href="https://github.com/lansalot/AOGConfigOMatic/raw/main/AOGConfigOMatic/UBX113.bin" target="_blank" rel="noopener">UBX113.bin (HPG 1.13)</a> · <a href="https://github.com/lansalot/AOGConfigOMatic/releases" target="_blank" rel="noopener">AOGConfigOMatic</a></p>
  <p id="ck1Warn" class="note bad hidden"></p>
  <div id="ck1Vals" class="hidden"><p class="note">Values read</p><div id="ck1Bad" class="mono warn" style="margin-top:4px"></div>
@@ -420,7 +423,7 @@ a{color:var(--acc)}
 <p class="note warn hidden" data-locknote="m" style="margin:0 0 10px"></p>
 <div class="grid">
 <div class="card"><h2>Running firmware</h2>
- <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="target">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
+ <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="target">–</dd><dt>Processor</dt><dd id="cpu">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
  <div class="row"><button class="danger" id="reboot">Restart Teensy</button></div></div>
 <div class="card"><h2>Version on GitHub</h2>
  <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
@@ -511,6 +514,7 @@ function render(s){
  set("alt",(g.lat!==null&&g.alt)?Number(g.alt).toFixed(2)+" m":"–");
  set("crc",String(g.crcErr),g.crcErr?"warn":"");
  set("rxModel",g.model?g.model+(g.rxFw?" · "+g.rxFw:""):"–");
+ {const gt=g.temp!==undefined;for(const id of ["rxTempT","rxTemp"])$(id).classList.toggle("hidden",!gt);if(gt)set("rxTemp",g.temp+" °C"+(g.tempSt==="old"?" (old reading)":""));}   /* its temperature when it reports it (UBX-MON-SYS) */
  const d=s.dual,f2=d.f9p2||null;
  // AiO_WEB: the dual heading comes from the UM982 (HPR) or from a second F9P on the GPS2 port (RELPOSNED)
  const f9=d.src==="f9p"||(!d.src&&!!f2&&f2.on);
@@ -528,6 +532,7 @@ function render(s){
  // the second F9P itself: its data, model and firmware, and whether it has what the Teensy needs (zRxCheck.ino's summary)
  const c2=f9&&f2&&f2.on?d.ck2:null;
  for(const id of ["f2T","f2","f2SetT","f2Set","f2Go"])$(id).classList.toggle("hidden",!c2);
+ {const ft=c2&&f2.temp!==undefined;for(const id of ["f2TempT","f2Temp"])$(id).classList.toggle("hidden",!ft);if(ft)set("f2Temp",f2.temp+" °C"+(f2.tempSt==="old"?" (old reading)":""));}   /* UBX-MON-SYS, when its firmware reports it */
  if(c2){
   let t="–",cls="";
   if(c2.health==="ok"){t=c2.model?c2.model+(c2.fw?" · "+c2.fw:""):"answering (model not read yet)";cls=c2.fwSt==="older"||c2.fwSt==="newer"?"warn":"ok";}
@@ -545,6 +550,7 @@ function render(s){
  set("imuType",t.type?t.type+" · "+t.port:"not detected",t.type?"":"bad");
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
+ {const tt=t.temp!==undefined;for(const id of ["tmTempT","tmTemp"])$(id).classList.toggle("hidden",!tt);if(tt)set("tmTemp",Number(t.temp).toFixed(1)+" °C");}   /* the TM171 sends it; the BNO085 has none */
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
   $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");
@@ -614,6 +620,7 @@ function render(s){
  else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
  if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
  if(s.tm&&s.tm.frozen)al.push("IMU frozen: its roll and heading have not changed for 3 s while driving. Check the IMU (power, cable; restart the module). The roll sent to the program is stale."+(s.tm.frozenN>1?" ("+s.tm.frozenN+"× since start-up)":""));
+ if(s.cpuHot)al.push("The Teensy is at "+Math.round(s.cpuTemp)+" °C: hot. Check the module's box (sun, no air). The chip restarts itself at about 95 °C.");
  if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
  if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
@@ -661,8 +668,9 @@ function render(s){
   if(xi){set("xProg",(xi.v||"?")+(xi.c?" · "+xi.c:"")+(x.infoAgo>15?" ("+ago(x.infoAgo)+")":""));
    setLink("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""),xi.apIp?"http://"+xi.apIp+"/":"");   /* its page, on its own network */
    set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
-   setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");}   /* its page on that network */
-  else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");}
+   setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");   /* its page on that network */
+   set("xTemp",xi.t!==undefined?Number(xi.t).toFixed(1)+" °C":"–");}   /* the ESP32's own sensor, in its PGN 143 */
+  else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");set("xTemp","–");}
   // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
   const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
   let xn="",xnc="";
@@ -677,6 +685,7 @@ function render(s){
  renderGh();
  renderLock(s);
  const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
+ set("cpu",s.cpuMhz?s.cpuMhz+" MHz · "+Number(s.cpuTemp).toFixed(1)+" °C (max "+Number(s.cpuTempMax).toFixed(1)+" °C)":"–",s.cpuHot?"warn":"");   /* the clock chosen in the IDE, the chip's temperature */
  const pv=s.prev;set("prevFw",pv?pv.fw.split(" ")[0]+", built "+pv.built:"none kept yet (kept from the next update on)");if(!busy)$("revert").disabled=!pv;
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
@@ -792,11 +801,13 @@ function fillUbx(u){
   s.disabled=v[n]===undefined;}
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
 }
+// a receiver's temperature row: u-blox report it with UBX-MON-SYS (polled every 10 s), an older firmware never answers
+function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982")return "the UM982 does not report it";if(st==="ask")return "asking…";if(st==="none")return "not reported (this firmware has no UBX-MON-SYS)";return "–";}
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
  set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?"asking…":"not identified"),j.model||k?"":"warn");
  set("gKind",k==="ublox"?"u-blox":k==="um982"?"Unicore":"–");
- set("gFw",j.fw||"–");set("gProt",j.prot||"–");$("gProtT").classList.toggle("hidden",k!=="ublox");$("gProt").classList.toggle("hidden",k!=="ublox");   /* u-blox only */
+ set("gFw",j.fw||"–");set("gProt",j.prot||"–");set("gTemp",tempText(j.temp,j.tempSt,k));$("gProtT").classList.toggle("hidden",k!=="ublox");$("gProt").classList.toggle("hidden",k!=="ublox");   /* u-blox only */
  const um=k==="um982";                                  /* NMEA version: UM982 only, from its CONFIG (zReceiver.ino) */
  set("gNmea",um&&j.um&&j.um.nmea||"–");$("gNmeaT").classList.toggle("hidden",!um);$("gNmea").classList.toggle("hidden",!um);
  set("gId",!j.talks?"the receiver sends nothing":j.id==="done"?ago(j.idAgo):j.id==="none"?(j.hpr?"no answer (it sends HPR: Unicore)":"no answer"):"asking…",!j.talks||j.id==="none"?"warn":"");
@@ -1015,7 +1026,7 @@ function renderCk(j){
  const ublox=j.kind==="ublox",um=j.kind==="um982";
  for(const port of [0,1]){
   const p=c.ports[port],id="ck"+port;
-  if(port===1){$("ck1").classList.toggle("hidden",!p.on);if(!p.on)continue;set("ck1Model",p.model||"–");}
+  if(port===1){$("ck1").classList.toggle("hidden",!p.on);if(!p.on)continue;set("ck1Model",p.model||"–");set("ck1Temp",tempText(p.temp,p.tempSt,"ublox"));}
   ckHealth(id+"Data",p);
   const fast=p.health==="ok"&&Math.abs(p.hz[0]-100)>5?"warn":"";
   if(port===0){const n=["GGA","VTG","HPR"].slice(0,um||p.hz[2]?3:2),hzs=n.map((x,i)=>p.hz[i]);
