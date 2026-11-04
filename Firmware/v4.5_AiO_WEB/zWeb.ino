@@ -19,6 +19,8 @@
    3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
    3 Nov 2026: steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz); steer.loopMs / steer.loopHz (the loop
    time set and the steering loops per second measured) for the Steering card and the report.
+   4 Nov 2026: cpuMhz / cpuTemp / cpuTempMax / cpuHot (the Teensy's clock and temperature, zSafety.ino) in /api/status and
+   the report (diag.cpu); gnss.temp, dual.f9p2.temp and tm.temp, the temperatures the receivers and the TM171 report.
    3 Nov 2026: tm.frozen / tm.frozenN in /api/status (roll and heading unchanged while driving, zImu.ino imuFreezeCheck).
    3 Nov 2026: GET / POST /api/note, the installation note (zSettings.ino); the request buffers grew for its text.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -333,6 +335,10 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.str("built", __DATE__ " " __TIME__);
     j.str("target", otaFlashId);
     j.str("marker", otaMarker);
+    j.u("cpuMhz", F_CPU_ACTUAL / 1000000);                 // AiO_WEB 4 Nov 2026: the clock (the IDE's CPU Speed) and the
+    j.num("cpuTemp", cpuTemp, 1);                          // chip's temperature, now and the highest since start-up (zSafety.ino)
+    j.num("cpuTempMax", cpuTempMax, 1);
+    j.bo("cpuHot", cpuHot);
     j.u("up", now / 1000);
     {
         char ip[20];
@@ -398,6 +404,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.str("speedSrc", speedSource == 'v' ? "VTG" : speedSource == 'p' ? "positions" : "-");
     if (full) j.str("rx", rxTypesLast);                     // the long texts only for the web page
     j.str("model", rxModel);                                // the receiver, as it answered (zReceiver.ino)
+    rxTempJson(j);                                          // AiO_WEB 4 Nov 2026: its temperature, "temp" / "tempSt" (zReceiver.ino)
     if (full) { j.str("rxKind", rxKindName()); j.str("rxFw", rxFw); }
     if (full) { j.str("ckH", rxCkHealthName(RXCK_GPS)); j.str("ck2H", rxCkHealthName(RXCK_GPS2)); }   // the data at 460800 (zRxCheck.ino)
     if (full) j.bo("single", rxSingleAntenna());          // one antenna: the page leaves the dual heading card out
@@ -436,6 +443,7 @@ void statusJson(Json& j, uint32_t now, bool full)
     j.u("crcErr", imuErrors());
     j.bo("frozen", imuFrozen);                      // AiO_WEB: roll and heading unchanged while driving (zImu.ino imuFreezeCheck)
     j.u("frozenN", imuFrozenCount);
+    if (imuType == IMU_TM171 && tm171TempMs && now - tm171TempMs < 10000) j.num("temp", TemperatureV.fValue, 1);   // AiO_WEB 4 Nov 2026: from its Status Output (TM171.ino)
     // AiO_WEB: the TM171 gyro calibration (TM171.ino)
     j.str("calib", tmCalibName(tmCalibState));
     j.str("calibKind", tmCalibKind == TMC_KIND_INSTALL ? "install" : "gyro");
@@ -1047,6 +1055,11 @@ static void apiDiag(EthernetClient& c)
     j.i("heapFree", (long)((char*)&_heap_end - __brkval));     // RAM2 (malloc / DMAMEM)
     j.i("stackFree", (long)(&here - (char*)&_ebss));           // RAM1, between the variables and the stack
 #endif
+    j.close();
+    j.obj("cpu");                                              // AiO_WEB 4 Nov 2026: the clock and the chip's temperature (zSafety.ino)
+    j.u("mhz", F_CPU_ACTUAL / 1000000);
+    j.num("temp", cpuTemp, 1);
+    j.num("tempMax", cpuTempMax, 1);
     j.close();
     j.obj("loop");
     j.u("n", loopCount);

@@ -53,7 +53,7 @@ function state() {
  const w = {ap: X.ap, apCl: t > 8 ? 1 : 0, ch: 6, host: X.host, staOn: X.staOn && !!X.sta, sta: X.sta, st: staSt()};
  if (w.st === "ok") { w.ip = "192.168.1.57"; w.rssi = -61 + Math.round(S.wob(t, 3, 0.1)); }
  return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: (S.BUILD.xiaoBuilt || {})[C3 ? "c3" : "s3"] || S.BUILD.built || "Oct 25 2026 09:00:00",
-  up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412,
+  up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
   link: {talking: mod && mt > 5.2, lastAgo: mod ? 0 : Math.floor((Date.now() - lostAt) / 1000), frames: Math.floor(mt * 12), crcErr: 0, cut: 0,
    rxKB: S.r2(mt * 1.9, 1), txKB: S.r2(mt * 0.05, 1), hellos: Math.floor(mt / 2), sets: Math.floor(mt), broken: 0},

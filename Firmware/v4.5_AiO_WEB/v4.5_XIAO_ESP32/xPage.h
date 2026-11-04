@@ -15,6 +15,7 @@
    2 Nov 2026 (later): error messages under the cards in red and bold, confirmations green, waits orange: the .note
    rule came after the colour classes and painted every message grey (the Teensy page already had .note.bad etc.).
    3 Nov 2026: a dropped upload says so (weak Wi-Fi?) and how to get round it, instead of "The connection failed".
+   4 Nov 2026: the XIAO's temperature in its card, the Teensy's clock and temperature in the Module card.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -120,7 +121,7 @@ a{color:var(--acc)}
    <dt>Speed</dt><dd id="mKmh">–</dd><dt>Antenna heading</dt><dd id="mDual">–</dd><dt>IMU</dt><dd id="mTm">–</dd><dt>GPS receiver</dt><dd id="mRx">–</dd>
    <dt>Wheel angle (WAS)</dt><dd id="mWas">–</dd><dt>Autosteer</dt><dd id="mAct">–</dd>
    <dt>Ethernet cable</dt><dd id="mLink">–</dd><dt>Program</dt><dd id="mAog">–</dd><dt>RTCM corrections</dt><dd id="mRtcm">–</dd>
-   <dt>Firmware</dt><dd id="mFw" class="mono">–</dd></dl>
+   <dt>Firmware</dt><dd id="mFw" class="mono">–</dd><dt>Processor</dt><dd id="mCpu">–</dd></dl>
   <p class="note">The module's full page opens only over the Ethernet cable, on the module's network: <a class="mono" id="mPage" href="http://192.168.5.126/">http://192.168.5.126/</a>. Another network: WiFi tab, «Module network».</p></div>
  <div class="card"><h2><span id="aName">Program</span> → module<span class="age" id="aAge"></span></h2>
   <div class="big" id="aKmh">–</div>
@@ -132,7 +133,7 @@ a{color:var(--acc)}
   <dl><dt>Up for</dt><dd id="xUp">–</dd><dt>Start-up reason</dt><dd id="xRst">–</dd>
    <dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>Devices connected</dt><dd id="xCl">–</dd><dt>Other network</dt><dd id="xSta">–</dd><dt>IP on the other network</dt><dd id="xIp">–</dd>
    <dt>Link to the Teensy</dt><dd id="xLink">–</dd><dt>Received / sent</dt><dd id="xKB">–</dd><dt>Checksum errors</dt><dd id="xCrc">–</dd>
-   <dt>Free memory</dt><dd id="xHeap">–</dd></dl></div>
+   <dt>Free memory</dt><dd id="xHeap">–</dd><dt>Temperature</dt><dd id="xTemp">–</dd></dl></div>
 </div>
 </section>
 
@@ -244,6 +245,7 @@ function renderModule(t){
  $("aName").textContent=hn||"Program";
  pill("mRtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");
  const fw=s.fw||"–",sp=fw.lastIndexOf(" ");set("mFw",(sp>0?fw.slice(0,sp):fw).replace(/_/g,"_\u200b"));   // "name version": the name has the version already; may break after "_"
+ set("mCpu",s.cpuMhz?s.cpuMhz+" MHz · "+Number(s.cpuTemp).toFixed(1)+" °C":"–",s.cpuHot?"warn":"");   // the Teensy's clock and temperature (4 Nov 2026)
  if(s.ip){for(const id of["mPage","nIp"]){const a=$(id);a.href="http://"+s.ip+"/";a.textContent="http://"+s.ip+"/";}   // the module's page, at its real IP (Status note, WiFi tab)
   const si=$("subnet");if(!si.value&&document.activeElement!==si)si.value=s.ip.split(".").slice(0,3).join(".");}
  renderVer();renderTeensyFw();
@@ -278,7 +280,7 @@ function renderState(x){
  pill("xLink",(x.link.talking?"talking":"no data"),x.link.talking?"ok":"bad");
  set("xKB",x.link.rxKB.toFixed(1)+" / "+x.link.txKB.toFixed(1)+" kB");
  set("xCrc",String(x.link.crcErr),x.link.crcErr?"warn":"");
- set("xHeap",Math.round(x.heap/1024)+" kB");
+ set("xHeap",Math.round(x.heap/1024)+" kB");set("xTemp",x.temp!==undefined?Number(x.temp).toFixed(1)+" °C":"–");
  renderGh();
  renderVer();
  set("pFw",x.fw);set("pBuilt",x.built);set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");

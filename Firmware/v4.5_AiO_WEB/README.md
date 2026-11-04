@@ -29,6 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
 | 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
 | 2 Nov 2026 | [Update from the XIAO page](#update-from-the-xiao-page). [Go back to the previous firmware](#going-back-to-the-previous-firmware), on both pages. The page is also at `http://aio.local/`. Fix: the page stopped answering seconds after start-up. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Plainer **On GitHub** row on the Firmware tab. |
@@ -49,7 +50,7 @@ One row per day, in short; the details are in the sections of this file (the lin
   - 1.57 also builds (older compiler).
   - 1.59 to 1.61 use the same compiler as 1.58 (1.59 and 1.60 checked: they build), but have not been tried on a tractor.
   - 1.62 brings a new compiler (gcc 15) and has not been checked.
-- Board: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster".
+- Board: Teensy 4.1, USB type Serial, **CPU 450 MHz**, Optimize "Faster". 450 MHz since 4 Nov 2026: below 600 MHz the chip runs at a lower core voltage and stays cooler in a closed box, and the loop has time to spare (see Main loop); 600 MHz works too. The Firmware tab shows the clock the running build uses.
 - Nothing else to install: the BNO085 library and the flash routines (`FlashTxx.c` / `.h`) are in the sketch folder, and FlexCAN_T4 comes with Teensyduino.
 - Warnings do not stop the build (the ones in NativeEthernet, FNET and mbedtls come with Teensyduino and are normal); only an "error" does.
 - `arm-none-eabi-g++ ... not found`: that Teensyduino's compiler did not install. Remove Teensy in the Boards Manager and install it again.
@@ -73,13 +74,13 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 | Tab | |
 |---|---|
-| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen). GNSS, dual heading (not with one antenna), IMU, steering (with the distance to the guidance line the program sends), the steering settings from the program (with its maximum wheel angle and minimum steering speed, shown only: the firmware keeps its own limits), network and corrections, the XIAO. |
+| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen, Teensy hot). GNSS, dual heading (not with one antenna), IMU, steering (with the distance to the guidance line the program sends), the steering settings from the program (with its maximum wheel angle and minimum steering speed, shown only: the firmware keeps its own limits), network and corrections, the XIAO. The temperatures the parts report, each on its card: the u-blox receivers, the TM171, the XIAO (the Teensy's is on the Firmware tab). |
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below, and **Notes about this installation**: a free-text box (wiring, calibration values, what was changed and when) saved in the Teensy, kept through firmware updates and put in the diagnostic report. |
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
 | **Machine** | Only once a machine module (IP .123: the official Machine_UDP_v5, the sprayer module, the seed drill module, or anything that talks like them) has been heard on UDP 9999. Its IP, last packet, checksum errors, hello replies, and one square per section (up to 64) in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254, and PGN 229 above 16) but still closed on the module, cyan asked off but still open. The modules' side comes from their PGN 237 (the AiO v26 layout; our seed drill module adds sections 17-64), else the sprayer PGN 160 or the hello reply (1-16 only); with several machine modules on the network (each its own IP, up to 4), their sections are shown together and the IP row lists them. The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed. The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives. Only to look at. |
-| **Firmware** | Firmware name and build date, why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors); send it when something goes wrong. |
+| **Firmware** | Firmware name and build date, the processor's clock and temperature (and the highest since start-up), why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors); send it when something goes wrong. |
 
 While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
 
@@ -154,6 +155,8 @@ After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers: after three tries the GPS tab says so. The UM982 has no command for it.
+
 ### Receiver check (GPS tab)
 
 - **Data at 460800 baud**: valid, wrong baud rate (bytes but nothing valid; also a warning on Status), or nothing arriving. The GGA, VTG and HPR rates as they arrive (the Teensy wants 10 Hz).
@@ -211,6 +214,7 @@ At start-up the firmware looks for:
 - A BNO085 on I2C silent for 3 s is started again (only with autosteer off). Counted from its own start since 3 Nov 2026: before, it was started again once at every boot for nothing ("silent for 3 s" right after being found), which held the loop for up to 1.5 s.
 - An IMU whose roll and heading stay **exactly the same for 3 s while the tractor drives above 2 km/h** is reported as **frozen** (since 3 Nov 2026): a hung sensor that still sends packets, which the "no data" checks cannot see. A message on the program's screen every 8 s, a warning at the top of the Status tab, `FROZEN` on the IMU card and a `[status]` line; "IMU OK again" when the values move. Nothing is cut: the program decides what it does with the roll. On a bench with the program's simulator driving and the IMU lying still the warning appears: that is the way to test it (move the IMU and it clears).
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
+- A TM171 sends its temperature in its Status Output: the IMU card shows it (since 4 Nov 2026). The BNO085 has none to show.
 
 ### TM171 gyro calibration from the page
 
@@ -293,6 +297,7 @@ wire is needed; without it the page can only warn.
   with a link to the GPS tab. A warning at the top of Status when nothing arrives from it, when it is at the
   wrong baud rate, or when it lacks settings. The GPS tab, **Second F9P check**, has the details and the
   buttons: **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
+- Its temperature (`UBX-MON-SYS`, since 4 Nov 2026) in the dual-antenna card and in its check on the GPS tab, as for the first receiver.
 - A fresh F9P sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies
   it and checks it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
 - **Set up automatically**, like the first receiver (see the receiver check): found at another baud rate the
@@ -383,7 +388,7 @@ The mDNS responder (`aio.local`, the `_http._tcp` announcement of the page) is F
 
 ## Main loop
 
-Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second (850 before 3 Nov 2026). The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
+Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second at 600 MHz, about 28 000 at the 450 MHz the firmware is built with since 4 Nov 2026 (850 before 3 Nov 2026). The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
 
 - **GNSS receiver**: each pass reads everything the receiver has sent (up to 512 bytes, about one GGA). Until 3 Nov 2026 it read one byte per pass: with an RTK fix an F9P at 10 Hz sends about 1300 bytes a second, more than a slow loop took, so the 2 KB serial buffer overflowed, GGA sentences were cut, the position came and went and the dual heading was never used.
 - **Receiver set-up check** (both F9Ps): once a second. Before 3 Nov 2026 it walked the whole settings file at every pass (1 ms each time, most of the loop on that board).
@@ -487,7 +492,7 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 | `zDualF9P.ino` | GPS2 port, second F9P |
 | `zImu.ino` / `.h`, `TM171.ino`, `BNO08x_AOG.*` | IMU detection and reading |
 | `KeyaCANBUS.ino` | Keya motor |
-| `zSafety.ino` / `.h` | WAS check, autosteer off, program's screen messages, watchdog, crash, start reason |
+| `zSafety.ino` / `.h` | WAS check, autosteer off, program's screen messages, watchdog, crash, start reason, the chip's temperature |
 | `zNet.h`, `zEthernet.ino` | Ethernet, network stack run from the loop, mDNS (`aio.local`) |
 | `zRtcm.h` | RTCM counter |
 | `zStatus.ino`, `zStatusLog.h` | messages |

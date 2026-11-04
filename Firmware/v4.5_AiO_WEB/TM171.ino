@@ -26,6 +26,7 @@
    AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
    (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
    warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
+   AiO_WEB 4.5, 4 Nov 2026: tm171TempMs, when the last Status Output (with TemperatureV) came: the IMU card shows the temperature.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -64,6 +65,7 @@ Onion RollV;
 Onion PitchV;
 
 Onion TemperatureV;
+uint32_t tm171TempMs = 0;      // AiO_WEB 4 Nov 2026: when the last Status Output (function 22, with the temperature) came
 uint8_t qos;
 
 bool TM171DataSeen = false;
@@ -205,6 +207,7 @@ bool TM171byte(uint8_t temp)
           TemperatureV.fBytes[1] = ImuData[12];
           TemperatureV.fBytes[2] = ImuData[13];
           TemperatureV.fBytes[3] = ImuData[14];
+          tm171TempMs = millis() | 1;
           qos = ImuData[17] & 0x07;
 #ifdef TM171DEBUG
           Serial.print("[tm171] temperature "); Serial.print(TemperatureV.fValue);

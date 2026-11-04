@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 4 Nov 2026 | The XIAO's temperature in its card, here and on the Teensy page; the Teensy's clock and temperature in the [Module card](#what-it-does). |
 | 3 Nov 2026 | An [update over Wi-Fi](#update-over-wifi-from-a-file) on a weak link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
 | 2 Nov 2026 | [Module (Teensy) firmware](#the-modules-firmware-from-this-page) card on the Firmware tab: install the Teensy's firmware from this page, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Red / green messages under the cards. |
 | 1 Nov 2026 | Header and tabs stay at the top while the page scrolls. Report card last on the Firmware tab. Plainer **On GitHub** row. |
@@ -47,9 +48,9 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Tab | What it shows |
 |---|---|
-| **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network. The fix is green whenever the receiver has a position (GPS, DGPS, RTK float, RTK fixed: the name says which) and red only without one. |
+| **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network, the Teensy's clock and temperature. The fix is green whenever the receiver has a position (GPS, DGPS, RTK float, RTK fixed: the name says which) and red only without one. |
 | | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, requested steer angle, autosteer on / off, sections (16 boxes), hydraulic lift (up / down), tramline, PGN 254 per second. |
-| | **XIAO**: uptime, start-up reason, WiFi, the link to the Teensy, memory (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
+| | **XIAO**: uptime, start-up reason, WiFi, the link to the Teensy, memory, the chip's temperature (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
 | **Messages** | The module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates). |
 | **WiFi** | The XIAO's network name and password. |
 | | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |

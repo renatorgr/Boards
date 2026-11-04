@@ -23,6 +23,9 @@
    2026-11-03 (Claude): steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz), steer.loopMs / loopHz in /api/status.
    2026-11-03 (Claude): tm.frozen / tm.frozenN in /api/status (a frozen IMU, zImu.ino imuFreezeCheck); the pretend IMU never freezes.
    2026-11-03 (Claude): GET / POST /api/note, the installation note, kept with the pretend module's state (st.note).
+   2026-11-04 (Claude): cpuMhz / cpuTemp / cpuTempMax / cpuHot and diag.cpu (the Teensy's clock and temperature); gnss.temp,
+   f9p2.temp and the GPS tab's temp / tempSt (the X20P answers UBX-MON-SYS, an F9P on HPG 1.13 does not); tm.temp (TM171); the
+   XIAO's "t" in its info.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -458,6 +461,13 @@ function Module(key) {
   if (p === 1 && !f9p2Here()) return "none";          // GPS2 set to a second F9P, but a XIAO is there
   return T() < 3 ? "wait" : "ok";
  }
+ // the receiver's temperature (UBX-MON-SYS, polled every 10 s): the X20P answers, an F9P on HPG 1.13 does not (three polls, then "none")
+ function rxTemp(p, t) {
+  const kind = p === 0 ? rx.kind : "ublox", fw = p === 0 ? rx.fw : "HPG 1.13";
+  if (kind !== "ublox") return {tempSt: ""};
+  if (fw === "HPG 1.13") return {tempSt: t < 35 ? "ask" : "none"};
+  return t < 15 ? {tempSt: "ask"} : {temp: 41 + Math.round(wob(t, 1, 0.03)), tempSt: "ok"};
+ }
  function ckPort(p, t) {
   const k = st.ck.ports[p], um = p === 0 && rx.kind === "um982", role = ckRole(p), set = um ? null : UBX_SETS[role];
   const health = ckHealth(p), live = health === "ok";
@@ -466,6 +476,7 @@ function Module(key) {
   const hz = p === 0 ? (live ? (um ? [100, 100, 100] : [100, 100, 0]) : [0, 0, 0]) : (live ? [100, 0] : [0, 0]);
   return {on: ckPortOn(p), health: health, bytes: live ? 5 * (p === 0 ? 7200 : 1700) : 0, good: live ? (p === 0 ? (um ? 150 : 100) : 50) : 0, hz: hz, at: 460800,
    model: live ? (p === 0 ? rx.model : "ZED-F9P") : "", fw: live ? (p === 0 ? rx.fw : "HPG 1.13") : "", fwSt: !um && live ? "same" : "",
+   ...(live ? rxTemp(p, t) : {tempSt: ""}),
    set: !um && !!set, role: set ? set.name : "", file: set ? set.file : "", setFw: set ? set.fw : "", keys: set ? set.keys : 0,
    essAgo: !um && k.essAt >= 0 && live ? Math.floor(t - k.essAt) : -1, ess: ess,
    cmpAgo: !um && k.cmpAt >= 0 ? Math.floor(t - k.cmpAt) : -1, same: !um && k.cmpAt >= 0 ? set.keys : 0, diff: 0, unk: 0,
@@ -504,6 +515,7 @@ function Module(key) {
   const wasRaw = Math.round(6805 + was * sc.counts / 2), wasV = wasRaw / 2668;
   const kick = sc.pressure || sc.current ? sc.kickMax : 0;
   const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
+   cpuMhz: 450, cpuTemp: r2(46.2 + wob(t, 1.5, 0.05), 1), cpuTempMax: 51.2, cpuHot: false,   // the Teensy's clock and temperature (zSafety.ino)
    prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
   j.net = {link: true, aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
    rtcm: rtcm, rtcmKB: r2(rtcmT * 1.31, 1), rtcmBps: rtcm ? Math.round(1310 + wob(t, 60, 0.2)) : 0, rtcmOk: Math.floor(rtcmT * 4.6), rtcmBad: t > 60 ? 1 : 0,
@@ -513,6 +525,7 @@ function Module(key) {
    age: gga ? f.age : "", lat: gga ? r2(lat, 7) : null, lon: gga ? r2(lon, 7) : null, alt: gga ? alt.toFixed(2) : "", kmh: gga ? r2(tr.kmh, 2) : 0, speedSrc: gga ? "VTG" : "-"};
   if (full) j.gnss.rx = t >= 5 ? rxTypes() : "";
   j.gnss.model = t >= 4.5 ? rx.model : "";
+  Object.assign(j.gnss, rxTemp(0, t));   // its temperature (UBX-MON-SYS)
   if (full) {
    j.gnss.rxKind = t >= 4.5 ? rx.kind : ""; j.gnss.rxFw = t >= 4.5 ? rx.fw : "";
    j.gnss.ckH = ckHealth(0); j.gnss.ck2H = ckHealth(1);
@@ -533,6 +546,7 @@ function Module(key) {
     port: cfg.xiaoOff === 1 ? "off" : on ? "F9P" : h.xiao && t > 5.2 ? "XIAO" : "auto", seen: cfg.xiaoOff === 1 && f9p2Here() && t > 5,
     heading: here ? r2(wrap360(tr.hdg + 90), 2) : 0, baseline: here ? 121.4 : 0, roll: here ? r2(roll, 2) : 0, carr: here ? (d.ok ? 2 : 1) : 0, flags: here ? (d.ok ? 0x137 : 0x0AF) : 0,
     refMiss: here && !d.ok, headingValid: here && d.ok};   // the RELPOSNED flags: not ok = the first F9P's corrections missing
+   if (here) Object.assign(j.dual.f9p2, rxTemp(1, t)); else j.dual.f9p2.tempSt = "ask";
    j.dual.ck2 = ckStatus(1, t);
   }
   j.tm = {type: imuOk ? h.imu : "", port: imuOk ? h.imuPort : "", ok: imuOk, seen: imuOk,
@@ -542,6 +556,7 @@ function Module(key) {
   Object.assign(j.tm, {calib: tm.calib, calibKind: tm.kind, calibLeft: tm.calib === "running" ? Math.max(0, Math.ceil(tm.end - t)) : -1,
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});
   if (isTm) j.tm.set = tmSetJson(t);
+  if (isTm && imuOk) j.tm.temp = r2(37.5 + wob(t, 0.6, 0.02), 1);   // the TM171's Status Output carries its temperature
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
    switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
    line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
@@ -574,7 +589,7 @@ function Module(key) {
   return j;
  }
  function xiaoInfo(up) {
-  return {v: VERSION, c: opt.chip === "s3" ? "ESP32-S3" : "ESP32-C3", ap: "XIAO-3F2A", apIp: "192.168.4.1", cl: 1, sta: "Farm WiFi", st: "ok", ip: "192.168.1.57", rssi: -61, up: up};
+  return {v: VERSION, c: opt.chip === "s3" ? "ESP32-S3" : "ESP32-C3", ap: "XIAO-3F2A", apIp: "192.168.4.1", cl: 1, sta: "Farm WiFi", st: "ok", ip: "192.168.1.57", rssi: -61, t: 44.3, up: up};
  }
  function steerCfg() {
   const base = {kp: 12, hiPwm: 235, minPwm: 9, lowPwm: 28, counts: 134, offset: -36, ackerman: 97, invertWas: false, singleWas: true, relayHigh: false,
@@ -641,6 +656,7 @@ function Module(key) {
   const ckOp = c.op ? c.op : "";
   const msg = c.op === "load" || c.op === "check" ? Math.min(c.msgs - 1, Math.floor((t - c.t0) / (c.end - c.t0) * c.msgs)) : 0;
   return {ok: true, kind: t >= 4.5 ? rx.kind : "", model: t >= 4.5 ? rx.model : "", fw: t >= 4.5 ? rx.fw : "", prot: ub ? rx.prot : "", hw: ub ? rx.hw : "",
+   ...rxTemp(0, t),
    id: st.id.st, idAgo: st.id.st === "done" ? Math.floor(t - st.id.at) : -1, talks: t >= 4, hpr: um,
    ubx: {op: u.op, seq: u.seq, res: ub ? u.res : "", readAgo: ub && u.at >= 0 ? Math.floor(t - u.at) : -1, frames: ub ? Math.floor(t * 2) : 0, bad: 0,
     v: ubxV, na: []},
@@ -803,7 +819,7 @@ function Module(key) {
  // ---- /api/diag (zWeb.ino apiDiag)
  function diag() {
   const t = Math.max(0, T());
-  return {fw: fwName() + " " + fwVer(), built: built(), teensyduino: 158, upMs: Math.round(t * 1000), ram: {heapFree: 412640, stackFree: 238112},
+  return {fw: fwName() + " " + fwVer(), built: built(), teensyduino: 158, upMs: Math.round(t * 1000), ram: {heapFree: 412640, stackFree: 238112}, cpu: {mhz: 450, temp: 46.3, tempMax: 51.2},
    loop: {n: Math.floor(t * 41000), maxUs: 2950, max5sUs: 610, hz: 41000,
     steps: [{s: 14, name: "Ethernet stack", avgUs: 9, maxUs: 410}, {s: 3, name: "receiver", avgUs: 2, maxUs: 95}, {s: 6, name: "IMU", avgUs: 1, maxUs: 180},
      {s: 7, name: "GPS2 port (second F9P / XIAO)", avgUs: 1, maxUs: 60}, {s: 8, name: "GNSS output", avgUs: 1, maxUs: 120}, {s: 10, name: "web page", avgUs: 3, maxUs: 610},

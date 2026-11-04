@@ -17,6 +17,8 @@
    2026-11-03 (Claude for renatorgr): the RELPOSNED flags refPosMiss / refObsMiss (the first F9P's corrections are
    not reaching the second one) and relPosHeadingValid are kept (dual.f9p2.refMiss / headingValid) and explain a missing
    heading on the page and in [status]; the heading also needs relPosHeadingValid now.
+   2026-11-04 (Claude for renatorgr): the second F9P's temperature (UBX-MON-SYS polled every 10 s while its RELPOSNED
+   arrives; dualF9pTemp, the dual-antenna card and its check on the GPS tab), as zReceiver.ino does for the first one.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -63,6 +65,11 @@ uint8_t  dualF9pCarr     = 0;             // carrSoln: 0 none, 1 float, 2 fixed
 uint16_t dualF9pFlags    = 0;
 bool     dualF9pRefMiss  = false;         // refPosMiss / refObsMiss: the first F9P's corrections (RTCM over UART2) do not reach the second
 bool     dualF9pHeadingValid = false;     // relPosHeadingValid
+int8_t   dualF9pTemp   = RX_TEMP_NONE;    // AiO_WEB 4 Nov 2026: its temperature (UBX-MON-SYS tempValue, zReceiver.h)
+uint32_t dualF9pTempMs = 0;               // when it last reported it (0 = never)
+static uint32_t dTempAskMs = 0;
+static uint8_t  dTempAsks  = 0;           // unanswered polls (stops at RX_TEMP_TRIES)
+static const uint8_t UBX_MON_SYS_POLL[] = {0xB5, 0x62, 0x0A, 0x39, 0x00, 0x00, 0x43, 0xD3};   // a MON-SYS poll, checksum included
 uint32_t dualF9pBytes    = 0;             // bytes from the second F9P
 uint32_t dualF9pNmea     = 0;             // NMEA sentences with a valid checksum (a fresh F9P sends NMEA, not RELPOSNED)
 uint32_t dualF9pNmeaMs   = 0;             // last one (millis, 0 = never)
@@ -218,6 +225,7 @@ void dualF9pRestart()
     dualBaud = 2;
     dSt = 0;
     dLineLen = 0;
+    dualF9pTemp = RX_TEMP_NONE; dualF9pTempMs = 0; dTempAsks = 0; dTempAskMs = 0;   // maybe another receiver now
 }
 
 static int32_t le32(const uint8_t* p) { return (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24)); }
@@ -280,6 +288,16 @@ void dualF9pProcess()
     if (!dualF9pOn() || rxCkOwns(RXCK_GPS2)) return;     // (the receiver check is searching for its baud rate)
     const uint32_t now = millis();
     if (dSt && now - dLastMs > 100) dSt = 0;               // a frame cut off: forget it
+    // AiO_WEB 4 Nov 2026: its temperature, a UBX-MON-SYS poll every RX_TEMP_MS while its RELPOSNED arrives and the
+    // receiver check is not talking to it; the answer comes in with the frames below. Never answered RX_TEMP_TRIES
+    // polls (a firmware without the message): not asked again.
+    if (dualF9pMs && now - dualF9pMs < 2000 && !rxCkBusy(RXCK_GPS2) && now - dTempAskMs >= RX_TEMP_MS
+        && (dualF9pTempMs || dTempAsks < RX_TEMP_TRIES) && Serial2.availableForWrite() >= (int)sizeof(UBX_MON_SYS_POLL))
+    {
+        Serial2.write(UBX_MON_SYS_POLL, sizeof(UBX_MON_SYS_POLL));
+        dTempAskMs = now;
+        if (!dualF9pTempMs) dTempAsks++;
+    }
     int budget = 512;
     while (budget-- > 0 && Serial2.available() > 0)
     {
@@ -326,6 +344,10 @@ void dualF9pProcess()
                 {
                     rxCkGood[RXCK_GPS2]++;
                     if (dCls == 0x01 && dId == 0x3C) relPosNed(dBuf, dLen);
+                    else if (dCls == 0x0A && dId == 0x39)             // MON-SYS: our temperature poll (tempValue at 18)
+                    {
+                        if (dLen >= 19) { dualF9pTemp = (int8_t)dBuf[18]; dualF9pTempMs = now | 1; }
+                    }
                     else rxCkUbx(RXCK_GPS2, dCls, dId, dBuf, dLen);    // answers to the receiver check (zRxCheck.ino)
                 }
                 else dualF9pBad++;
@@ -356,5 +378,13 @@ void dualF9pJson(Json& j)
     j.i("flags", dualF9pFlags);
     j.bo("refMiss", dualF9pRefMiss);                       // no corrections from the first F9P (refPosMiss / refObsMiss)
     j.bo("headingValid", dualF9pHeadingValid);             // relPosHeadingValid
+    dualF9pTempJson(j);                                     // AiO_WEB 4 Nov 2026: "temp", "tempSt"
     j.close();
+}
+
+// Its temperature for the page (the dual-antenna card, and its check on the GPS tab through zRxCheck.ino)
+void dualF9pTempJson(Json& j)
+{
+    if (dualF9pTemp != RX_TEMP_NONE) j.i("temp", dualF9pTemp);
+    j.str("tempSt", rxTempState(dualF9pTempMs, dTempAsks));
 }
