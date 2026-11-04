@@ -334,6 +334,12 @@ The addresses must not move: settings must survive a firmware update.
     sets it to 0 so the copy is consumed. A firmware larger than 2 MB would overlap the kept copy: `otaPrevSave`
     skips the copy then (no previous firmware), and the hex parser refuses any address at or past 2 MB
     (`OTA_BUFFER_SIZE`), so a firmware can never reach the kept copy.
+13. **RAM1 and the stack**: on the Teensy 4.1 all code runs from RAM1 (ITCM) unless marked `FLASHMEM`, and ITCM is
+    taken in 32 KB blocks; variables (DTCM) share the same 512 KB and the stack gets the rest. Crossing a block costs
+    32 KB of stack at once (4 Nov 2026: 1.4 KB of temperature code took the IDE's "code" from 261 576 B, 568 B of
+    padding, to the next block; `diag.ram.stackFree` 46 KB -> 10 KB). New code that is not time-critical (web page
+    answers, JSON, set-up, text) gets `FLASHMEM`; keep the steering, GNSS, IMU and anything that runs during a flash
+    write (FlasherX, `FlashTxx.c` RAMFUNC) in RAM. The GitHub check fails under 32 KB "free for local variables".
 
 ## Version and Publishing
 

@@ -248,7 +248,7 @@ void disableKeyaSteer()
 }
 
 // Web page: the steering card (zWeb.ino)
-void keyaJson(Json& j)
+FLASHMEM void keyaJson(Json& j)
 {
     const uint32_t now = millis();
     char t[160];

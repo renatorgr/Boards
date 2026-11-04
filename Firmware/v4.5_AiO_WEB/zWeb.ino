@@ -21,6 +21,9 @@
    time set and the steering loops per second measured) for the Steering card and the report.
    4 Nov 2026: cpuMhz / cpuTemp / cpuTempMax / cpuHot (the Teensy's clock and temperature, zSafety.ino) in /api/status and
    the report (diag.cpu); gnss.temp, dual.f9p2.temp and tm.temp, the temperatures the receivers and the TM171 report.
+   4 Nov 2026: the JSON answers and the GET handlers run from flash (FLASHMEM). The code that runs from RAM1 is counted
+   in 32 KB blocks: the temperatures above took it 1 KB over 256 KB and the stack lost 32 KB (46 KB -> 10 KB free in
+   the report). The page's answers are not in a hurry; the steering, the GNSS and the IMU stay in RAM1.
    3 Nov 2026: tm.frozen / tm.frozenN in /api/status (roll and heading unchanged while driving, zImu.ino imuFreezeCheck).
    3 Nov 2026: GET / POST /api/note, the installation note (zSettings.ino); the request buffers grew for its text.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -328,7 +331,7 @@ static const char* fixNameOf(int q)
 // The module's state as one JSON object: the web page (/api/status) and, once a second, the XIAO
 // (zXiao.ino, so its WiFi page can show it). full = also what only the web page shows (the
 // steering settings, the start reason, the long texts), so the XIAO's copy stays well below its 3 kB.
-void statusJson(Json& j, uint32_t now, bool full)
+FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
 {
     j.raw("{");
     j.str("fw", FW_NAME " " FW_VERSION);
@@ -589,7 +592,7 @@ static void apiStatus(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
-static void apiLog(EthernetClient& c)
+FLASHMEM static void apiLog(EthernetClient& c)
 {
     const uint32_t after = queryAfter();
     Json j(webBuf, sizeof(webBuf));
@@ -610,7 +613,7 @@ static void apiLog(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
-static void settingsJson(Json& j)
+FLASHMEM static void settingsJson(Json& j)
 {
     j.obj("settings");
     j.i("outputMode", cfg.outputMode);
@@ -634,7 +637,7 @@ static void settingsJson(Json& j)
     j.bo("wdt", wdtRunning);
 }
 
-static void apiSettingsGet(EthernetClient& c)
+FLASHMEM static void apiSettingsGet(EthernetClient& c)
 {
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
@@ -752,7 +755,7 @@ static void apiUm982Post(EthernetClient& c, const char* body)
     webSendJson(c, 200, "{\"ok\":true}");
 }
 
-static void apiUm982Get(EthernetClient& c)
+FLASHMEM static void apiUm982Get(EthernetClient& c)
 {
     const uint32_t after = queryAfter();
     Json j(webBuf, sizeof(webBuf));
@@ -780,7 +783,7 @@ static void apiGpsGet(EthernetClient& c)
 
 // GET /api/rxdump: the settings "Read all settings" found different from the factory defaults, as a u-center
 // configuration file (the form of the AOGConfigOMatic files; zRxCheck.ino). Line by line: it can be longer than webBuf.
-static void apiRxDump(EthernetClient& c)
+FLASHMEM static void apiRxDump(EthernetClient& c)
 {
     if (!rxCkDumpReady()) { webSend(c, 404, "text/plain", "No settings read yet", 20); return; }
     size_t total = 0;
@@ -1036,7 +1039,7 @@ static void webDone()
 }
 
 // GET /api/diag: the firmware's own state, for the report (web page, Firmware tab)
-static void apiDiag(EthernetClient& c)
+FLASHMEM static void apiDiag(EthernetClient& c)
 {
     const uint32_t now = millis();
     Json j(webBuf, sizeof(webBuf));
@@ -1087,7 +1090,7 @@ static void apiDiag(EthernetClient& c)
 
 // GET /api/note: the installation note (zSettings.ino, EEPROM). POST /api/note: the body is the new text itself (plain
 // text, not a form), up to NOTE_MAX bytes; control characters other than tabs and line breaks are refused.
-static void apiNoteGet(EthernetClient& c)
+FLASHMEM static void apiNoteGet(EthernetClient& c)
 {
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");

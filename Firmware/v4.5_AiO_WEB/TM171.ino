@@ -542,7 +542,7 @@ void tm171SettingLoop()
 }
 
 // For the web page: the settings as read, decoded
-void tm171SettingJson(Json& j)
+FLASHMEM void tm171SettingJson(Json& j)
 {
     const uint32_t now = millis();
     j.obj("set");

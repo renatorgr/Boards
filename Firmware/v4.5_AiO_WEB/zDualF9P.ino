@@ -19,6 +19,7 @@
    heading on the page and in [status]; the heading also needs relPosHeadingValid now.
    2026-11-04 (Claude for renatorgr): the second F9P's temperature (UBX-MON-SYS polled every 10 s while its RELPOSNED
    arrives; dualF9pTemp, the dual-antenna card and its check on the GPS tab), as zReceiver.ino does for the first one.
+   Later the same day: 0 every time = not reported; nothing to report when the GPS2 port is not the second F9P's.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -69,6 +70,7 @@ int8_t   dualF9pTemp   = RX_TEMP_NONE;    // AiO_WEB 4 Nov 2026: its temperature
 uint32_t dualF9pTempMs = 0;               // when it last reported it (0 = never)
 static uint32_t dTempAskMs = 0;
 static uint8_t  dTempAsks  = 0;           // unanswered polls (stops at RX_TEMP_TRIES)
+static bool     dTempReal  = false;       // a value other than 0 came (zReceiver.h)
 static const uint8_t UBX_MON_SYS_POLL[] = {0xB5, 0x62, 0x0A, 0x39, 0x00, 0x00, 0x43, 0xD3};   // a MON-SYS poll, checksum included
 uint32_t dualF9pBytes    = 0;             // bytes from the second F9P
 uint32_t dualF9pNmea     = 0;             // NMEA sentences with a valid checksum (a fresh F9P sends NMEA, not RELPOSNED)
@@ -225,7 +227,7 @@ void dualF9pRestart()
     dualBaud = 2;
     dSt = 0;
     dLineLen = 0;
-    dualF9pTemp = RX_TEMP_NONE; dualF9pTempMs = 0; dTempAsks = 0; dTempAskMs = 0;   // maybe another receiver now
+    dualF9pTemp = RX_TEMP_NONE; dualF9pTempMs = 0; dTempAsks = 0; dTempAskMs = 0; dTempReal = false;   // maybe another receiver now
 }
 
 static int32_t le32(const uint8_t* p) { return (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24)); }
@@ -346,7 +348,14 @@ void dualF9pProcess()
                     if (dCls == 0x01 && dId == 0x3C) relPosNed(dBuf, dLen);
                     else if (dCls == 0x0A && dId == 0x39)             // MON-SYS: our temperature poll (tempValue at 18)
                     {
-                        if (dLen >= 19) { dualF9pTemp = (int8_t)dBuf[18]; dualF9pTempMs = now | 1; }
+                        if (dLen >= 19)
+                        {
+                            const int8_t v = (int8_t)dBuf[18];
+                            if (v) dTempReal = true;
+                            else if (!dualF9pTempMs) rxTempZeroLog("Second F9P", dBuf, dLen);
+                            dualF9pTemp = dTempReal ? v : RX_TEMP_NONE;   // 0 every time: not filled
+                            dualF9pTempMs = now | 1;
+                        }
                     }
                     else rxCkUbx(RXCK_GPS2, dCls, dId, dBuf, dLen);    // answers to the receiver check (zRxCheck.ino)
                 }
@@ -358,7 +367,7 @@ void dualF9pProcess()
 }
 
 // Web page: Status, dual card (zWeb.ino)
-void dualF9pJson(Json& j)
+FLASHMEM void dualF9pJson(Json& j)
 {
     const uint32_t now = millis();
     j.obj("f9p2");
@@ -383,8 +392,9 @@ void dualF9pJson(Json& j)
 }
 
 // Its temperature for the page (the dual-antenna card, and its check on the GPS tab through zRxCheck.ino)
-void dualF9pTempJson(Json& j)
+FLASHMEM void dualF9pTempJson(Json& j)
 {
+    if (!dualF9pOn()) { j.str("tempSt", ""); return; }   // the XIAO or nothing on the GPS2 port: no second F9P to ask
     if (dualF9pTemp != RX_TEMP_NONE) j.i("temp", dualF9pTemp);
-    j.str("tempSt", rxTempState(dualF9pTempMs, dTempAsks));
+    j.str("tempSt", rxTempState(dualF9pTempMs, dTempAsks, dTempReal));
 }

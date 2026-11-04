@@ -7,6 +7,8 @@
    commands) are those of the Unicore N4 high precision commands and logs reference.
    4 Nov 2026: the receiver's own temperature: UBX-MON-SYS polled every 10 s once it is identified as a u-blox (rxTemp,
    GNSS card and GPS tab); a firmware that does not know the message is asked three times, then the page says so.
+   Later the same day: a receiver that answers 0 every time (the X20P) does not fill it, also "not reported"; the JSON
+   answers run from flash (FLASHMEM, zWeb.ino header).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -68,6 +70,7 @@ int8_t   rxTemp   = RX_TEMP_NONE;
 uint32_t rxTempMs = 0;
 static uint32_t rxTempAskMs = 0;
 static uint8_t  rxTempAsks  = 0;         // unanswered polls (stops at RX_TEMP_TRIES)
+static bool     rxTempReal  = false;     // a value other than 0 came (0 every time = the field is not filled)
 
 // ---------------------------------------------------------------- to the receiver
 // One message waits here until the corrections are between two RTCM messages (or 300 ms).
@@ -234,7 +237,7 @@ void receiverIdentifyAgain()
     rxIdState = RXID_WAIT;
     rxKind    = RX_UNKNOWN;
     rxModel[0] = rxFw[0] = rxProt[0] = rxHw[0] = '\0';
-    rxTemp = RX_TEMP_NONE; rxTempMs = 0; rxTempAsks = 0; rxTempAskMs = 0;   // the temperature was the previous receiver's
+    rxTemp = RX_TEMP_NONE; rxTempMs = 0; rxTempAsks = 0; rxTempAskMs = 0; rxTempReal = false;   // the previous receiver's
     rxIdMs    = 0;
     rxIdAsked = 0;
     rxTalkSinceMs = rxByteMs ? millis() - RXID_TALK_MS : 0;    // ask at once if it talks
@@ -420,7 +423,14 @@ static void ubxFrame(uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len)
     }
     if (cls == 0x0A && id == 0x39)                 // MON-SYS: the answer to our temperature poll (AiO_WEB 4 Nov 2026):
     {                                              // tempValue, a signed byte in degrees C, at offset 18
-        if (len >= 19) { rxTemp = (int8_t)p[18]; rxTempMs = millis() | 1; }
+        if (len >= 19)
+        {
+            const int8_t v = (int8_t)p[18];
+            if (v) rxTempReal = true;
+            else if (!rxTempMs) rxTempZeroLog("GPS receiver", p, len);
+            rxTemp = rxTempReal ? v : RX_TEMP_NONE;           // 0 every time: the field is not filled (zReceiver.h)
+            rxTempMs = millis() | 1;
+        }
         return;
     }
     if (cls == 0x05) { if (len >= 2) ubxAck(id == 0x01, p[0], p[1]); return; }
@@ -1136,17 +1146,27 @@ const char* umWriteRaw(const char* const* cmds, uint8_t n, const char* what)
 
 // ---------------------------------------------------------------- temperature (AiO_WEB 4 Nov 2026)
 // For the page: "ok" reported lately, "old" (no answer for a while), "ask" (not answered yet), "none" (asked
-// RX_TEMP_TRIES times, never answered: a firmware without UBX-MON-SYS). Also used for the second F9P (zDualF9P.ino).
-const char* rxTempState(uint32_t reportedMs, uint8_t asks)
+// RX_TEMP_TRIES times, never answered: a firmware without UBX-MON-SYS), "zero" (it answers, always with 0: the field
+// is not filled). Also used for the second F9P (zDualF9P.ino).
+const char* rxTempState(uint32_t reportedMs, uint8_t asks, bool real)
 {
-    if (reportedMs) return millis() - reportedMs < 3 * RX_TEMP_MS ? "ok" : "old";
+    if (reportedMs) return !real ? "zero" : millis() - reportedMs < 3 * RX_TEMP_MS ? "ok" : "old";
     return asks < RX_TEMP_TRIES ? "ask" : "none";
 }
 
-void rxTempJson(Json& j)
+FLASHMEM void rxTempJson(Json& j)
 {
     if (rxTemp != RX_TEMP_NONE) j.i("temp", rxTemp);
-    j.str("tempSt", rxKind == RX_UBLOX ? rxTempState(rxTempMs, rxTempAsks) : "");
+    j.str("tempSt", rxKind == RX_UBLOX ? rxTempState(rxTempMs, rxTempAsks, rxTempReal) : "");
+}
+
+// The first UBX-MON-SYS answer with 0 C, in Messages with its bytes: tempValue is byte 18 (counted from 0), after
+// msgVer, bootType, the CPU / memory / IO loads, runTime and three counters. Shows a receiver that does not fill it.
+FLASHMEM void rxTempZeroLog(const char* who, const uint8_t* p, uint16_t len)
+{
+    char hex[3 * 24 + 1] = "";
+    for (uint16_t i = 0; i < len && i < 24; i++) snprintf(hex + 3 * i, 4, "%02X ", p[i]);
+    StatusLog.line("[status] %s: temperature not reported (UBX-MON-SYS answers 0 C; bytes %s)", who, hex);
 }
 
 // ---------------------------------------------------------------- loop
@@ -1256,7 +1276,7 @@ bool umTeensyMissing(char* out, size_t n)
     return out[0] != '\0';
 }
 
-static void umJson(Json& j)
+FLASHMEM static void umJson(Json& j)
 {
     const uint32_t now = millis();
     char t[8];
@@ -1282,7 +1302,7 @@ static void umJson(Json& j)
     j.close();
 }
 
-void receiverJson(Json& j)
+FLASHMEM void receiverJson(Json& j)
 {
     const uint32_t now = millis();
     j.raw("{");

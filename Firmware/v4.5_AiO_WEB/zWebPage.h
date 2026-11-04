@@ -802,7 +802,7 @@ function fillUbx(u){
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
 }
 // a receiver's temperature row: u-blox report it with UBX-MON-SYS (polled every 10 s), an older firmware never answers
-function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982")return "the UM982 does not report it";if(st==="ask")return "asking…";if(st==="none")return "not reported (this firmware has no UBX-MON-SYS)";return "–";}
+function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982")return "the UM982 does not report it";if(st==="zero")return "not reported (its firmware answers 0 °C)";if(st==="ask")return "asking…";if(st==="none")return "not reported (this firmware has no UBX-MON-SYS)";return "–";}
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
  set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?"asking…":"not identified"),j.model||k?"":"warn");

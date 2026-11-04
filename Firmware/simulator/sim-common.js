@@ -24,7 +24,7 @@
    2026-11-03 (Claude): tm.frozen / tm.frozenN in /api/status (a frozen IMU, zImu.ino imuFreezeCheck); the pretend IMU never freezes.
    2026-11-03 (Claude): GET / POST /api/note, the installation note, kept with the pretend module's state (st.note).
    2026-11-04 (Claude): cpuMhz / cpuTemp / cpuTempMax / cpuHot and diag.cpu (the Teensy's clock and temperature); gnss.temp,
-   f9p2.temp and the GPS tab's temp / tempSt (the X20P answers UBX-MON-SYS, an F9P on HPG 1.13 does not); tm.temp (TM171); the
+   f9p2.temp and the GPS tab's temp / tempSt (the X20P answers UBX-MON-SYS with 0 = "zero", an F9P on HPG 1.13 does not); tm.temp (TM171); the
    XIAO's "t" in its info.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
@@ -461,12 +461,12 @@ function Module(key) {
   if (p === 1 && !f9p2Here()) return "none";          // GPS2 set to a second F9P, but a XIAO is there
   return T() < 3 ? "wait" : "ok";
  }
- // the receiver's temperature (UBX-MON-SYS, polled every 10 s): the X20P answers, an F9P on HPG 1.13 does not (three polls, then "none")
+ // the receiver's temperature (UBX-MON-SYS, polled every 10 s): the X20P answers 0 (not filled), an F9P on HPG 1.13 does not answer
  function rxTemp(p, t) {
   const kind = p === 0 ? rx.kind : "ublox", fw = p === 0 ? rx.fw : "HPG 1.13";
   if (kind !== "ublox") return {tempSt: ""};
   if (fw === "HPG 1.13") return {tempSt: t < 35 ? "ask" : "none"};
-  return t < 15 ? {tempSt: "ask"} : {temp: 41 + Math.round(wob(t, 1, 0.03)), tempSt: "ok"};
+  return {tempSt: t < 15 ? "ask" : "zero"};   // the X20P (HPG 2.11) answers, always with 0 (bench, 4 Nov 2026): not filled
  }
  function ckPort(p, t) {
   const k = st.ck.ports[p], um = p === 0 && rx.kind === "um982", role = ckRole(p), set = um ? null : UBX_SETS[role];
@@ -546,7 +546,8 @@ function Module(key) {
     port: cfg.xiaoOff === 1 ? "off" : on ? "F9P" : h.xiao && t > 5.2 ? "XIAO" : "auto", seen: cfg.xiaoOff === 1 && f9p2Here() && t > 5,
     heading: here ? r2(wrap360(tr.hdg + 90), 2) : 0, baseline: here ? 121.4 : 0, roll: here ? r2(roll, 2) : 0, carr: here ? (d.ok ? 2 : 1) : 0, flags: here ? (d.ok ? 0x137 : 0x0AF) : 0,
     refMiss: here && !d.ok, headingValid: here && d.ok};   // the RELPOSNED flags: not ok = the first F9P's corrections missing
-   if (here) Object.assign(j.dual.f9p2, rxTemp(1, t)); else j.dual.f9p2.tempSt = "ask";
+   j.dual.f9p2.tempSt = "";
+   if (here) Object.assign(j.dual.f9p2, rxTemp(1, t));
    j.dual.ck2 = ckStatus(1, t);
   }
   j.tm = {type: imuOk ? h.imu : "", port: imuOk ? h.imuPort : "", ok: imuOk, seen: imuOk,

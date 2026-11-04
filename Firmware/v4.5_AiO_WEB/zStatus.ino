@@ -282,7 +282,7 @@ static void statusRxTypes()
 // (when the state starts) what the program gets meanwhile, then the last HPR exactly as the receiver
 // sent it. Printed when the state starts, and again when the reason changes.
 static int noDualWhyReported = -1;
-static void statusNoDualWhy(bool force, const char* meanwhile)   // meanwhile: nullptr = only the reason
+FLASHMEM static void statusNoDualWhy(bool force, const char* meanwhile)   // meanwhile: nullptr = only the reason
 {
     int why = epochNoDual;                         // fallback: the last epoch's reason
     uint32_t best = 0;

@@ -36,7 +36,7 @@ permissions:
 env:
   ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS: https://www.pjrc.com/teensy/package_teensy_index.json
   TEENSYDUINO: '1.58'
-  # Tools menu as in the README: Teensy 4.1, USB type Serial, CPU 600 MHz, Optimize "Faster"
+  # Tools menu as in the README: Teensy 4.1, USB type Serial, CPU 450 MHz, Optimize "Faster"
   FQBN: teensy:avr:teensy41:usb=serial,speed=450,opt=o2std,keys=en-us   # 450 MHz since 4 Nov 2026: cooler, the loop has time to spare
 
 jobs:
@@ -93,6 +93,16 @@ jobs:
           # diagnostics switched on are fine on the bench, not in a published build
           if grep -nE '^#define +(FUSION_DEBUG|RAW_NMEA_DEBUG|SEND_TO_USB) +1' "$dir/zHandlers.ino"; then
             echo "::warning::a diagnostic switch is 1 in zHandlers.ino (set it to 0 before publishing)"
+          fi
+          # RAM1 (512 KB) holds the code that runs from RAM, counted in 32 KB blocks, and the variables; what is left is
+          # the stack. One block more of code takes 32 KB from the stack (4 Nov 2026: 46 KB -> 10 KB free): too little
+          # fails here, before a module runs short. Cold code (web page answers, JSON) goes to flash with FLASHMEM.
+          free=$(sed -n 's/.*free for local variables:\([0-9]*\).*/\1/p' build.log | head -n 1)
+          echo "RAM1 left for the stack: ${free:-?} bytes"
+          test -n "$free" || { echo "::error::RAM1 'free for local variables' not found in the compile output"; exit 1; }
+          if [ "$free" -lt 32768 ]; then
+            echo "::error::RAM1 leaves only $free bytes for the stack (32 KB at least): move cold code (web page answers, JSON) to flash with FLASHMEM"
+            exit 1
           fi
           cp "build/$name.ino.hex" "$name.hex"
 
