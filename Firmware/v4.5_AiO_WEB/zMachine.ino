@@ -231,7 +231,7 @@ void machineLoop()
 
 // The "mach" object of /api/status (zWeb.ino): only once the module has been heard, so the page
 // shows the Machine tab only then
-void machineJson(Json& j, uint32_t now)
+FLASHMEM void machineJson(Json& j, uint32_t now)
 {
     if (!mach.lastMs) return;
     j.obj("mach");

@@ -155,7 +155,9 @@ After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
-**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers: after three tries the GPS tab says so. The UM982 has no command for it.
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers: after three tries the GPS tab says so. A receiver that answers 0 every time does not fill the field: the GPS tab says *not reported* too, and Messages has the bytes of its first answer. The UM982 has no command for it.
+
+Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So for now no receiver here shows a temperature; a newer receiver firmware may.
 
 ### Receiver check (GPS tab)
 
@@ -388,12 +390,13 @@ The mDNS responder (`aio.local`, the `_http._tcp` announcement of the page) is F
 
 ## Main loop
 
-Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second at 600 MHz, about 28 000 at the 450 MHz the firmware is built with since 4 Nov 2026 (850 before 3 Nov 2026). The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
+Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second at 600 MHz and about 31 000 at the 450 MHz the firmware is built with since 4 Nov 2026 (measured; longest pass 3.5 ms, the same as at 600 MHz: it waits on the BNO085's I2C, not on the processor). 850 before 3 Nov 2026. The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
 
 - **GNSS receiver**: each pass reads everything the receiver has sent (up to 512 bytes, about one GGA). Until 3 Nov 2026 it read one byte per pass: with an RTK fix an F9P at 10 Hz sends about 1300 bytes a second, more than a slow loop took, so the 2 KB serial buffer overflowed, GGA sentences were cut, the position came and went and the dual heading was never used.
 - **Receiver set-up check** (both F9Ps): once a second. Before 3 Nov 2026 it walked the whole settings file at every pass (1 ms each time, most of the loop on that board).
 - **Steering**: on its own timer, 40 or 100 Hz (Settings), whatever else the loop does.
 - **Web page**: never waits for a browser for more than 3 s, and the page goes out in small pieces between steering loops (see Web page).
+- **Memory for the stack**: RAM1 (512 KB) holds the code that runs from RAM, counted in 32 KB blocks, and the variables; the rest is the stack. The report shows what is left of it when the report is made (`diag.ram.stackFree`). On 4 Nov 2026 the temperatures took that code just over 256 KB and the stack lost a whole block (10 KB left); the web page's answers and JSON now run from flash (`FLASHMEM`), and the GitHub check fails when a build leaves less than 32 KB.
 - **BNO085 on I2C**: found at start-up (up to 1.5 s of waiting, before the loop starts); from then on it is started again only after 3 s of silence, with autosteer off (see IMU).
 
 ## Inputs

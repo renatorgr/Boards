@@ -42,13 +42,16 @@ extern uint32_t rxIdQuietUntil;       // millis: the console ignores the answer 
 
 // AiO_WEB 4 Nov 2026: the receivers' own temperature, UBX-MON-SYS (tempValue, degrees C), polled by zReceiver.ino
 // (GPS1) and zDualF9P.ino (the second F9P). A firmware without that message never answers: after RX_TEMP_TRIES
-// unanswered polls the page says so. The UM982 has no such command.
+// unanswered polls the page says so. The UM982 has no such command. A receiver that answers 0 every time does not
+// fill the field (the ZED-X20P on HPG 2.11, seen 4 Nov 2026 in a 24 C room): "not reported" too, until it sends
+// another value.
 #define RX_TEMP_NONE   -128           // not reported (yet)
 #define RX_TEMP_MS     10000          // polled this often, once the receiver is identified and talking
 #define RX_TEMP_TRIES  3              // unanswered polls before "this firmware does not report it"
 extern int8_t   rxTemp;               // GPS1
 extern uint32_t rxTempMs;             // when GPS1 last reported it (0 = never)
-const char* rxTempState(uint32_t reportedMs, uint8_t asks);   // "ok", "old", "ask" or "none" for the page
+const char* rxTempState(uint32_t reportedMs, uint8_t asks, bool real);   // "ok", "old", "zero", "ask" or "none" for the page
+void        rxTempZeroLog(const char* who, const uint8_t* p, uint16_t len);   // the first answer with 0: logged once
 void        rxTempJson(Json& j);      // GPS1: "temp" (when known) and "tempSt"
 
 // RTCM counters of the corrections forwarded to the receiver (zStatus.ino): a query to the
