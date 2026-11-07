@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | **0.10.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone ([Notes](#notes)). **0.10.3**: alarms also as PGN 221, on the program's screen ([Messages](#messages)). **0.10.4**: Module tab: a Module card, one Network settings card. |
+| 7 Nov 2026 | **0.10.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.10.3**: alarms also as PGN 221 ([Messages](#messages)). **0.10.4**: Module tab: Module card, one Network settings card. Code shared with the seed drill marked ([Notes](#notes)). |
 | 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
 | 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
 | 26 Oct 2026 | **0.6**: all 8 relays are sections by default. **0.7**: also a plain ESP32 with [relay modules](#a-separate-esp32-with-relay-modules), up to 16 relays. The relay number above its function on the page. |
@@ -306,6 +306,11 @@ level the module is using.
   it to the right one or to −1.
 - The FPD-270A valves and the YF-S201 are plastic and made for water. Rinse with clean
   water after each job. Fit a filter before the flow meter.
+- The seed drill module (`Seeder/Seeder_ESP32`) grew out of this program: the Wi-Fi, the web helpers, the
+  network settings, the PGN handling and the relay driving are the same code in both, marked in the sources
+  as `// ==== shared "name"` … `// ==== end shared "name"`. A change to one of those blocks goes in both
+  programs: the "Shared code" check (`.github/scripts/check_shared_blocks.py`) compares them on every pull
+  request. The sensors, the rate and the alarms are this program's own.
 - The ISOBUS group of AgOpenGPS is working on a standard way for modules to send such
   readings (ISOBUS DDIs). PGN 161 follows that proposal; the PGN number itself is this
   project's choice until the group picks one. The module keeps sending PGN 160 for the AiO

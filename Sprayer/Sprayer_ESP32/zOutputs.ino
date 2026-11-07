@@ -13,6 +13,7 @@
 // RELAY_ON_HIGH (Sprayer_ESP32.ino) says how the relays of the chosen board close: on a HIGH pin
 // (ESP32_Relay_X8) or on a LOW pin (the usual relay modules). cfg.invertOutputs (PGN 238, byte 8
 // bit 0; the official module calls it isRelayActiveHigh) turns that round: 0 = as built, 1 = inverted.
+// ==== shared "relay-level": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // The program sends this setting at start-up and when the machine profile is loaded, so the
 // "relay active high" box in its machine settings normally stays unticked.
 
@@ -22,6 +23,7 @@ static int relayLevel(bool on)
     const bool drive = on != (cfg.invertOutputs != 0);
     return (drive == (RELAY_ON_HIGH != 0)) ? HIGH : LOW;
 }
+// ==== end shared "relay-level"
 
 static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 
@@ -49,6 +51,7 @@ void outputsInit()
     }
 }
 
+// ==== shared "outputs": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // Everything off, whatever the polarity setting says (used before a restart or a program update)
 void outputsAllOff()
 {
@@ -117,4 +120,5 @@ void applyOutputs()
     relaysWrite(bits);
     relayBits = bits;
     sectionsOn = open;
+// ==== end shared "outputs"
 }

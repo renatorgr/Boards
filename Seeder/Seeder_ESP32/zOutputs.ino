@@ -18,6 +18,7 @@
 // Relay24_ESP32, on a LOW PCF8574 pin on the KC868-A32.
 // cfg.invertOutputs (PGN 238, byte 8 bit 0; the official module calls it isRelayActiveHigh) turns that
 // round: 0 = as built, 1 = inverted.
+// ==== shared "relay-level": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // The program sends this setting at start-up and when the machine profile is loaded, so the
 // "relay active high" box in its machine settings normally stays unticked.
 
@@ -27,6 +28,7 @@ static int relayLevel(bool on)
     const bool drive = on != (cfg.invertOutputs != 0);
     return (drive == (RELAY_ON_HIGH != 0)) ? HIGH : LOW;
 }
+// ==== end shared "relay-level"
 
 static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 
@@ -112,6 +114,7 @@ void outputsInit()
 }
 #endif
 
+// ==== shared "outputs": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // Everything off, whatever the polarity setting says (used before a restart or a program update)
 void outputsAllOff()
 {
@@ -160,7 +163,7 @@ void applyOutputs()
         if (top > secTop) secTop = top;
     }
 
-    const uint64_t req = linkOk ? sectionsReq : 0;
+    const uint64_t req = (linkOk && masterOn) ? sectionsReq : 0;
     const bool other[6] = { false,                          // other[f - FN_OTHER]
                             linkOk && isLower, linkOk && isRaise,
                             linkOk && (tramline & 1), linkOk && (tramline & 2),
@@ -180,4 +183,5 @@ void applyOutputs()
     relaysWrite(bits);
     relayBits = bits;
     sectionsOn = open;
+// ==== end shared "outputs"
 }

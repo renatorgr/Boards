@@ -164,7 +164,7 @@ function wifiPost(b) {
  if (b.staPass || staSsid !== X.sta) X.staPassSet = !!b.staPass;   // a new network without a password: an open one
  Object.assign(X, {ap: b.apSsid, staOn: staOn, sta: staSsid, host: b.host, subnet: net, ipLast: b.ipLast === undefined ? X.ipLast : +b.ipLast});
  if (b.apPass) X.pass = b.apPass;
- event("Wi-Fi settings saved from the page, restarting");
+ event("network settings saved from the page, restarting");
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
