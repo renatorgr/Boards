@@ -9,7 +9,7 @@ tested on the sprayer.
 
 ## Changelog
 
-One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history.
 
 | Date | What changed |
 |---|---|

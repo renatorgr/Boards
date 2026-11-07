@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
-   2026-10-27 (Claude): v0.1.1: PGN 237 in the AiO v26 layout, sections 17-64 after it (bytes 13-18).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

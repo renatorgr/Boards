@@ -1,9 +1,7 @@
 /* sim-xiao.js - the web page simulator: the XIAO page (xPage.h) with a pretend XIAO and module behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-31 (Claude): the pretend XIAO was compiled when the .bin for its chip on main was (firmware.json).
-   2026-11-02 (Claude): the module's firmware from this page: a .hex sent on to the Teensy over the link (POST
-   /api/teensy-update) and the Teensy's previous firmware put back (POST /api/teensy-revert).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

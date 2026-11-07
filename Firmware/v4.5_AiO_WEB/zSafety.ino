@@ -6,16 +6,7 @@
    the kickout values in %, the loop time for the report).
    The message format (PGN 221) is the one AgOpenGPS reads (UDPComm, case 221) and AgOpenWeb
    reads the same way ("AiO Board Msgs").
-   24 Oct 2026: loop step 12 is now the LEDs (zLeds.ino).
-   3 Nov 2026: loopAt(step): the time of each part of loop() for the report (loopStepAvgUs / loopStepMaxUs, loopHz).
-   4 Nov 2026: cpuTempTick(): the Teensy's own temperature (tempmonGetTemp) once a second, with its clock, for the Firmware
-   tab and the report; a warning on the Status tab and the program's screen from 80 C.
-   3 Nov 2026: the WAS check counts time (75 ms / 1 s) instead of loops, the same with the steering loop at 40 or 100 Hz;
-   steerLoopHz (the steering loops per second) for the report; pressureFiltered() follows the kickout filter's rate.
-   27 Oct 2026: differential WAS input, a reading below -0.5 V is a fault too: nothing is wired to WAS_L
-   (AmpSeal pin 3), and the message says to choose Single in the program (a 3-wire sensor).
-   27 Oct 2026: autosteer turned off by the program's on-screen button in Button mode reads "by the program
-   (its screen says why)", with a [status] line, instead of "steer button" (Autosteer.ino, steerOffByProgram).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

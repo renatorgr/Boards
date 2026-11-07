@@ -13,21 +13,9 @@
    position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut-off beyond
    the WAS map (+-50 deg; only with the WAS voltage in range, zSafety.ino) or above 25 km/h, the WAS
    map, no steering below 0.2 km/h, PWM at 122 Hz and LOW_HIGH_DEGREES 1.5.
-   AiO_WEB 4.5, 20 Oct 2026, ideas of the AgOpenGPS AiO 26 firmware: the minimum and maximum speed set on the
-   web page, the current kickout only after the current is high for a while, the soft start
-   (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
-   AiO_WEB 4.5, 23 Oct 2026 (Claude (Anthropic) for renatorgr): with "Button" as the steer switch, the
-   program's on-screen autosteer button turns autosteer on and off too, like the physical button.
-   AiO_WEB 4.5, 24 Oct 2026: the STEER LED is driven by zLeds.ino (this file only reports the button press).
-   AiO_WEB 4.5, 27 Oct 2026: PGN 229 (sections 1-64) handed to zMachine.ino for the web page's Machine tab.
-   AiO_WEB 4.5, 27 Oct 2026: steerOffByProgram tells zSafety.ino whether the program's on-screen button or the
-   physical button turned autosteer off (Button mode), so the reason reads "by the program", not "steer button".
-   AiO_WEB 4.5, 3 Nov 2026: the pressure sensor kickout waits the kickout delay of the web page, as the current
-   sensor does; PGN 254 byte 10 kept as the distance to the guidance line (lineDist, was "tram") and PGN 251 byte 7
-   as the program's minimum steering speed (aowMinKmhX10), both for the web page only.
-   AiO_WEB 4.5, 3 Nov 2026: the steering loop runs at 40 Hz (default) or 100 Hz, chosen on the web page (steerLoopApply:
-   the loop time, the ADS1115 rate, the kickout filters); the watchdog counts milliseconds instead of loops and the
-   encoder debounce is 25 ms, so both are the same at either rate.
+   Ideas of the AgOpenGPS AiO 26 firmware: the minimum and maximum speed set on the web page, the current kickout
+   delay, the soft start (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

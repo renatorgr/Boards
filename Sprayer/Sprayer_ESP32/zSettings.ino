@@ -1,11 +1,7 @@
 /* zSettings.ino - the settings kept in the ESP32's flash (Preferences).
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): also keeps which sensors the machine has.
-   2026-10-27 (Claude): also the module IP's last number.
-   2026-11-02 (Claude): also the spraying settings (target rate, nozzles, pressure limits, flow tolerance) and the
-   tool's section widths from the program (PGN 235).
-   2026-11-07 (Claude): moduleName() is the own network's name (the 16-digit MAC name is gone).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

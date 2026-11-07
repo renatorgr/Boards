@@ -1,9 +1,7 @@
 /* sim-teensy.js - the web page simulator: the Teensy page (zWebPage.h) with a pretend module behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): the Machine tab links to the seed drill module's page or the sprayer module's page, by the implement.
-   2026-11-02 (Claude): POST /api/revert, back to the previous firmware the module keeps.
-   2026-11-03 (Claude): GET / POST /api/note, the installation note (Settings tab).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

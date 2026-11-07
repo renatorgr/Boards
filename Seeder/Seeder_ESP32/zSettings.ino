@@ -1,7 +1,7 @@
 /* zSettings.ino - the settings kept in the ESP32's flash (Preferences).
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
-   2026-11-07 (Claude): moduleName() is the own network's name (the 16-digit MAC name is gone).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

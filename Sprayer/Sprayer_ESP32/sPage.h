@@ -2,23 +2,7 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
-   2026-10-26 (Claude): relay cells show the relay number above its function; 16 relays were cramped.
-   2026-10-27 (Claude): the divider field is for the pressure signal only (10k / 10k = 0.5).
-   2026-10-27 (Claude): the sensors fitted are ticked in Calibration; readings and fields only for those (none: no
-   Sprayer card).
-   2026-10-27 (Claude): sections sized to the machine (up to 64), the module IP's last number.
-   2026-11-02 (Claude): v0.10.0: three tabs. Spraying: the L/ha (actual and target), the pressure and what gives the
-   target, the sections and the alarms, big enough to read in the cab. Settings: target rate, nozzles, pressure limits,
-   flow tolerance, the section widths from the program, the sensors and their calibration. Module: AgOpenWeb, relays,
-   Wi-Fi, program, events, and a "Download the report" button (state, settings and events in a .json file to send when
-   something goes wrong), as on the Teensy and XIAO pages.
-   2026-11-02 (Claude): a fourth and last tab, Firmware, as on the Teensy and XIAO pages: the program installed, the
-   version on GitHub (asked by the browser when the page opens, every 6 hours and with "Check now"), Install from
-   GitHub, install a chosen .bin with a progress bar, Restart, and the report. A .bin for another board, another
-   module's program or the .merged.bin is refused.
-   2026-11-02 (Claude): v0.10.1: the Wi-Fi settings as on the XIAO page: own network, tractor network with "Search for
-   networks" (a tap on a network chooses it), program network, and a Save card with the password typed in it.
-   2026-11-07 (Claude): v0.10.2: "Name on the network" (the own Wi-Fi name, the mDNS instance) instead of "Module name".
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

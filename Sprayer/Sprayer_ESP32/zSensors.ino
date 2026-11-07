@@ -1,8 +1,7 @@
 /* zSensors.ino - pressure sensor, flow meter, optional master switch.
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): dividers from a common resistor kit: pressure 10k / 10k, flow 10k / 22k.
-   2026-10-27 (Claude): a sensor that is not fitted (page setting) reads 0: its pin floats without it.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

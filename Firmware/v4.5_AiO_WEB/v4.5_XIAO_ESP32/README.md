@@ -19,11 +19,11 @@ The Teensy side of the link (pins, frames, PGN 141 / 142 / 143, speed) is descri
 
 ## Changelog
 
-Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB). One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history.
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | The page is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`), under the name of the XIAO's own WiFi network: [What it does](#what-it-does). |
+| 7 Nov 2026 | The page is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`), under the name of the XIAO's own WiFi network ([What it does](#what-it-does)); a shorter note in the Module firmware card; short file headers. |
 | 4 Nov 2026 | The XIAO's temperature in its card, here and on the Teensy page; the Teensy's clock and temperature in the [Module card](#what-it-does). |
 | 3 Nov 2026 | An [update over Wi-Fi](#update-over-wifi-from-a-file) on a weak link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
 | 2 Nov 2026 | [Module (Teensy) firmware](#the-modules-firmware-from-this-page) card on the Firmware tab: install the Teensy's firmware from this page, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Red / green messages under the cards. |

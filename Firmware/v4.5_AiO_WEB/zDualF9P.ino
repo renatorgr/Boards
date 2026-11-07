@@ -6,20 +6,7 @@
    message is described in the u-blox ZED-F9P interface description.
    Written 2026 by Claude (Anthropic) for renatorgr (v4.5_AiO_WEB). The receiver check (zRxCheck.ino)
    gets the other UBX messages of the second F9P (its answers) and its counts.
-   2026-10-23 (Claude for renatorgr): NMEA sentences from the second F9P count as valid data too, so a
-   fresh F9P (NMEA out of the box, no RELPOSNED yet) is recognised, checked and can take the AgOpenGPS
-   settings; a GNSS receiver on the GPS2 port while the port is set to the XIAO or off is noticed
-   (valid NMEA or UBX on it) and the Status page says to change the setting.
-   2026-10-26 (Claude for renatorgr): the GPS2 port is automatic: the second F9P is taken
-   when valid UBX or NMEA arrives on the port, or on trial at start-up when only junk arrives at 460800
-   (a receiver at another baud rate: the receiver check searches for it); a XIAO hello gives the port back
-   to the XIAO. Decided again at each start, and only with autosteer off. The setting keeps "off".
-   2026-11-03 (Claude for renatorgr): the RELPOSNED flags refPosMiss / refObsMiss (the first F9P's corrections are
-   not reaching the second one) and relPosHeadingValid are kept (dual.f9p2.refMiss / headingValid) and explain a missing
-   heading on the page and in [status]; the heading also needs relPosHeadingValid now.
-   2026-11-04 (Claude for renatorgr): the second F9P's temperature (UBX-MON-SYS polled every 10 s while its RELPOSNED
-   arrives; dualF9pTemp, the dual-antenna card and its check on the GPS tab), as zReceiver.ino does for the first one.
-   Later the same day: 0 every time = not reported; nothing to report when the GPS2 port is not the second F9P's.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

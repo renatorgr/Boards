@@ -23,6 +23,21 @@ With the tractor **parked** you can try what the module refuses while autosteer 
 
 The choices are in the page address (`teensy/?gps=f9p&imu=bno&motor=keya&prog=aog`), so a link opens a given set-up. The state of the pretend module lives in the browser tab and is forgotten when the tab closes.
 
+## Changelog
+
+One row per day, in short; the details are in the sections of this file (the links) and in the git history.
+
+| Date | What changed |
+|---|---|
+| 7 Nov 2026 | The seed drill page's four tabs and Firmware tab checked, with a made-up newer `.bin` "on GitHub"; `firmware.json` lists the seed drill `.bin` once it is on `main`; the modules' names on the network ([How it is built](#how-it-is-built)). |
+| 4 Nov 2026 | The Teensy's clock and temperature, the receivers' and the TM171's temperatures and the XIAO's in the pretend modules' answers. |
+| 3 Nov 2026 | The pretend Teensy answers the new fields: the distance to the line and the program's steering limits, the RELPOSNED flags, the loop times in the report, the steering loop rate, the frozen-IMU flag, the installation note. |
+| 2 Nov 2026 | The sprayer page's tabs, Firmware tab and report checked end to end; the previous firmware the Teensy keeps, put back from its page and from the XIAO page; "Search for networks"; the check waits for the module's answers. |
+| 1 Nov 2026 | The sprayer boom is 8 sections of 1 m; the "On GitHub" wording. |
+| 31 Oct 2026 | The update check reads the site's own `firmware.json`: a newer build of the same version shows as new (Teensy, XIAO C3 and S3). |
+| 28 Oct 2026 | The seed drill's board is the Relay24_ESP32 (24 relays). |
+| 27 Oct 2026 | The seed drill module (Seeder_ESP32, 19 sections) with its own page; the AiO v26's machine part and two of our modules on the Machine tab; the sprayer's readings only with its sensors. |
+
 ## How it is built
 
 `build.py` cuts the pages out of the newest `Firmware/vX.Y_AiO_WEB` folder, `Seeder/Seeder_ESP32` and `Sprayer/Sprayer_ESP32` exactly as the firmware serves them and puts the simulator scripts in their `<head>` (a module page also gets its implement, `window.SIM_IMPL`). The scripts answer the page's `/api/...` requests (and the firmware upload) instead of the module, so the page's own JavaScript is not changed: what you see is the page as it is in the firmware. The GitHub Action `.github/workflows/simulator.yml` runs on every change under `Firmware/`, `Seeder/Seeder_ESP32/` or `Sprayer/Sprayer_ESP32/`, opens every tab in a browser as a check (`smoke-test.js`), and publishes the result on GitHub Pages when the change reaches `main`. A pull request only builds and checks: the simulator shows the merged firmware.

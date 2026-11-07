@@ -4,15 +4,7 @@
    Link to the Teensy: same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO
    New Dawn"
    (AgOpenGPS-Official, GPL v3).
-   2 Nov 2026: the Teensy's firmware from this page, over the link (POST /api/teensy-update: the .hex goes to the Teensy
-   block by block, PGN 145; POST /api/teensy-revert: the Teensy puts its previous firmware back), for a module whose
-   own page cannot be reached.
-   3 Nov 2026: an upload (this program, or the module's firmware) waits up to 20 s for data from a slow Wi-Fi link
-   instead of the web server's 5 s, and an upload cut off halfway is written in Messages (it was silent).
-   4 Nov 2026: the chip's temperature (temperatureRead(), the ESP32's own sensor) in our state for the Teensy page (PGN 143,
-   "t") and in /api/state ("temp"), for the XIAO cards of both pages.
-   7 Nov 2026: the page is also announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
-   Docs/ADD_ON_CARDS.md), under the name of the XIAO's own WiFi network ("XIAO-xxxx"): unique, and the one the operator knows.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

@@ -11,11 +11,6 @@
    Keya, the dual F9P on the GPS2 port, the rest of the AiO firmware's steering, the network stack
    polled from loop(), the receiver check (zRxCheck.ino, with the AgOpenGPS receiver settings of AOGConfigOMatic
    by lansalot, zRxConfig.h) and the simulator mode setting.
-   2 Nov 2026: otaSetup() at start-up (the previous firmware kept in the flash, zOTA.ino).
-   3 Nov 2026: aowMaxSteerDeg / aowMinKmhX10, the program's steering limits for the web page (shown only).
-   3 Nov 2026: loop() reads everything the receiver has sent, up to one GGA per pass (was one byte per loop:
-   with an RTK fix an F9P at 10 Hz sent more bytes than the loop ran times, the buffer filled, GGAs were cut).
-   3 Nov 2026: loopAt(step) before each part of loop(): the report says how long each part takes (zSafety.ino).
    Original notice (chriskinal), kept as it was:
      Copywrite 2024 chriskinal
      This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
@@ -24,8 +19,7 @@
      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
-   AiO_WEB 4.5, 24 Oct 2026: the board LEDs are driven from one place, zLeds.ino (ledsUpdate in loop).
-   AiO_WEB 4.5, 3 Nov 2026: the [boot] Steering line says the loop rate (40 or 100 Hz, Autosteer.ino).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

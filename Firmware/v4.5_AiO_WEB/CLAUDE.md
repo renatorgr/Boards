@@ -357,8 +357,10 @@ The addresses must not move: settings must survive a firmware update.
 ## Code Style
 
 - Code, comments, web page and README in **English**.
-- Each file starts with a header: what it does, where it comes from (credits), what was changed and by
-  whom, the GPL v3 licence line and `SPDX-License-Identifier: GPL-3.0-or-later`. Keep the original notices.
+- Each file starts with a short header: what it does, where it comes from (credits; the original notices stay whole),
+  one line that points to the README changelog and the git log for the history, the GPL v3 licence line and
+  `SPDX-License-Identifier: GPL-3.0-or-later`. No dated change lines in headers (they grew to 30 lines by November
+  2026): the day's README changelog row and the commit message say what changed.
 - Comments say why, in plain words; keep the existing density.
 - Status messages: `[boot]` once per fact at start-up, `[status]` only on a change, `[web]` for page
   actions, `[xiao]` for the XIAO.

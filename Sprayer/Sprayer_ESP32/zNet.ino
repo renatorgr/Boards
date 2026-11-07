@@ -2,16 +2,7 @@
    Part of the sprayer section controller (folder Sprayer of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
-   2026-10-27 (Claude): the sensors fitted are saved with the calibration.
-   2026-10-27 (Claude): the module IP's last number.
-   2026-11-02 (Claude): v0.10.0: the spraying settings (POST /api/spray), the rate, pressure for the target and the
-   alarms in /api/status, the sprayer alarms in /aow/status. The start of /api/status is read from the .bin by the
-   page's update check and by Firmware/simulator/build.py (firmware.json): keep it as it is.
-   2026-11-02 (Claude): v0.10.1: GET /api/scan, the Wi-Fi networks the module hears, for "Search for networks" on the
-   page (as on the XIAO page).
-   2026-11-07 (Claude): v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path,
-   the official Docs/ADD_ON_CARDS.md) under the own network's name; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
-   2026-11-07 (Claude): v0.10.3: "kind":"Sprayer" in /api/status, as the seed drill's module says "Seeder".
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

@@ -9,8 +9,7 @@
    the faults reported once in the [status] messages and as the reason autosteer went off
    (zSafety.ino) instead of being printed on every heartbeat; no prints on the USB serial while steering;
    the fault name "less phase" written "phase loss".
-   AiO_WEB 4.5, 20 Oct 2026, as in the AgOpenGPS AiO 26 firmware (KeyaCANDriver.h: no heartbeat for 500 ms
-   = the motor is lost): keyaCheck() turns autosteer off and blocks it while the heartbeat is missing.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

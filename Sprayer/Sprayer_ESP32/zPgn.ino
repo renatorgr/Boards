@@ -3,13 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Message layouts after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3) and Docs/PGN.md of AgOpenWeb.
-   2026-10-27 (Claude): no PGN 160 when no sensor is fitted.
-   2026-10-27 (Claude): PGN 229 read in full (sections 1-64).
-   2026-10-27 (Claude): v0.9.1: PGN 237 in the AiO v26 layout (sections, lift, tramline, geo stop, status).
-   2026-11-02 (Claude): v0.10.0: PGN 235 (section widths, kept in flash) read; PGN 161 sent, ISOBUS process data with
-   the readings, the actual and target rate, the pressure for the target, the pressure limits and the alarms.
-   2026-11-07 (Claude): v0.10.3: PGN 221 (the text the program shows) when an alarm comes on or goes off and every 10 s
-   while one is on, so the official AgOpenWeb shows the sprayer alarms too.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

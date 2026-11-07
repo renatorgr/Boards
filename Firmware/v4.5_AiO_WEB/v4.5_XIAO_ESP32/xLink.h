@@ -3,8 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
    (AgOpenGPS-Official, GPL v3).
-   2 Nov 2026: PGN 145, a firmware update for the Teensy sent over the link from this page (fwBegin, fwBlock, fwSend,
-   the Teensy's answers), and "go back to the previous firmware".
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

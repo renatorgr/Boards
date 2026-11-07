@@ -3,13 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Same link protocol as the ESP32 bridge of the official AgOpenGPS Teensy firmware v26 "AiO New Dawn"
    (AgOpenGPS-Official, GPL v3), at the same speed, 460800 baud.
-   2026-10-23 (Claude for renatorgr): every byte from Serial2 also goes to the GPS2 sniffer (zDualF9P.ino),
-   which notices a GNSS receiver on the port while it is set to the XIAO or off.
-   2026-10-26 (Claude for renatorgr): the GPS2 port is automatic (zDualF9P.ino): the bridge is on while the
-   port is not the second F9P's.
-   2026-11-02 (Claude for renatorgr): PGN 145, a firmware update for the Teensy from the XIAO page over the link
-   (the .hex in blocks, each answered; the same checks and install as from the module's own page, zOTA.ino), and
-   "go back to the previous firmware": for a module whose own page cannot be reached.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

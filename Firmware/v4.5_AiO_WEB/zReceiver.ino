@@ -5,10 +5,7 @@
    interface descriptions (UBX-MON-VER, UBX-CFG-VALGET, UBX-CFG-VALSET, UBX-ACK); the Unicore
    commands (VERSIONA, CONFIG, MASK, UNMASK, UNILOGLIST, MODE, UNLOG, SAVECONFIG and the log
    commands) are those of the Unicore N4 high precision commands and logs reference.
-   4 Nov 2026: the receiver's own temperature: UBX-MON-SYS polled every 10 s once it is identified as a u-blox (rxTemp,
-   GNSS card and GPS tab); a firmware that does not know the message is asked three times, then the page says so.
-   Later the same day: a receiver that answers 0 every time (the X20P) does not fill it, also "not reported"; the JSON
-   answers run from flash (FLASHMEM, zWeb.ino header).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

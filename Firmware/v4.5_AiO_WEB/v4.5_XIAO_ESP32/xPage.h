@@ -1,21 +1,7 @@
 /* xPage.h - the XIAO web page (English).
    Part of the XIAO ESP32C3 / ESP32S3 program that goes with the Teensy firmware AiO_WEB.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed) and red
-   only without one; a "Download the report" button on the Firmware tab, like the Teensy page's.
-   31 Oct 2026: the GitHub check also compares when this XIAO's .bin was compiled (firmware.json on the simulator's
-   site), so a new build of the same version (4.5) shows as new.
-   1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
-   installed one; the Status note says which build this XIAO runs.
-   1 Nov 2026: the "Report for an analysis" card is the last one on the Firmware tab, as on the Teensy page.
-   1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
-   2 Nov 2026: the "Module (Teensy) firmware" card on the Firmware tab: a .hex (chosen, or from GitHub) sent to the
-   Teensy over the link, and "Go back to the previous firmware" the Teensy keeps - for a module whose own page cannot
-   be reached (POST /api/teensy-update, /api/teensy-revert).
-   2 Nov 2026 (later): error messages under the cards in red and bold, confirmations green, waits orange: the .note
-   rule came after the colour classes and painted every message grey (the Teensy page already had .note.bad etc.).
-   3 Nov 2026: a dropped upload says so (weak Wi-Fi?) and how to get round it, instead of "The connection failed".
-   4 Nov 2026: the XIAO's temperature in its card, the Teensy's clock and temperature in the Module card.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -200,7 +186,7 @@ a{color:var(--acc)}
  <div class="row"><button class="act" id="tInstall" disabled>Install on the module</button></div>
  <progress id="tProg" max="100" value="0" class="hidden"></progress>
  <p id="tMsg" class="note"></p>
- <p class="note">For when the module's own page does not open (its network cable, its network, a fault in the page): the file goes to the Teensy over its link to this XIAO, about a minute, and the Teensy checks it as it does a file from its own page. The previous firmware is the one that ran before the module's last update, kept in the Teensy's flash: no file or internet needed. Only with autosteer off and the tractor stopped; autosteer is off during the update. Uses the password of the «Update or restart» card.</p></div>
+ <p class="note">For when the module's own page does not open: the file goes to the Teensy over this XIAO's link (about a minute) and the Teensy checks it as one from its own page. The previous firmware is the one that ran before the module's last update, kept in the Teensy's flash: no file or internet needed. Only with autosteer off and the tractor stopped. Uses the password of the «Update or restart» card.</p></div>
 <div class="card"><h2>Report for an analysis</h2>
  <p class="note">Puts the XIAO's state and settings, the module status it receives and both message lists in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
  <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div></div>

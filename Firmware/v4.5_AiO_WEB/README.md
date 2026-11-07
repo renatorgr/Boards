@@ -4,6 +4,8 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 
 > **Not tried on a tractor yet:** the dual F9P, the Keya motor, steering with a BNO085. Check them on the bench first.
 
+**Contents:** [What it adds](#what-it-adds-to-the-official-aio-v4-firmware) · [Changelog](#changelog) · [Compiling and first install](#compiling-and-first-install) · [Web page](#web-page) · [GPS receiver](#gps-receiver) · [IMU](#imu-tm171-or-bno085) · [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) · [Steering](#steering) · [Autosteer safety](#autosteer-safety) · [Network stack](#network-stack) · [Main loop](#main-loop) · [Inputs](#inputs) · [Output to the program](#output-to-the-program-udp-9999) · [Setting up](#setting-up) · [Compile-time settings](#compile-time-settings-top-of-zhandlersino) · [Messages](#messages) · [LEDs](#leds) · [Files](#files) · [XIAO ESP32C3 / ESP32S3](#xiao-esp32c3--esp32s3) · [Credits and licence](#credits-and-licence)
+
 ## What it adds to the official AiO v4 firmware
 
 | | Official AiO v4 | v4.5_AiO_WEB |
@@ -25,11 +27,11 @@ The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single anten
 
 ## Changelog
 
-One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history.
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | The page is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`), under a name unique to this module (**AiO** + four digits of the Teensy's id), shown on the Connections card: [Web page](#web-page), [Network stack](#network-stack). |
+| 7 Nov 2026 | The page is also an AgOpenWeb add-on card (`_aowcard._tcp`) under a name unique to the module (**AiO** + 4 digits), on the Connections card ([Web page](#web-page)); shorter notes on the page; a contents line and short file headers ([Files](#files)). |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
 | 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
 | 2 Nov 2026 | [Update from the XIAO page](#update-from-the-xiao-page). [Go back to the previous firmware](#going-back-to-the-previous-firmware), on both pages. The page is also at `http://aio.local/`. Fix: the page stopped answering seconds after start-up. |
@@ -169,7 +171,7 @@ Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED
 - **Compare with AOGConfigOMatic** (F9P, X20P: every key of the file; UM982: which commands it already has) and **Load the AgOpenGPS settings** (F9P, X20P: each line as one `UBX-CFG-VALSET` to RAM, BBR and flash; UM982: one command at a time, then `SAVECONFIG`).
 - **Firmware**: the AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**). `X20P.txt` was read from an X20P with HPG 2.11; another version shows in orange.
 - **X20P**: AOGConfigOMatic has no file for it, so `X20P.txt` (in the sketch folder, and in `zRxConfig.h`) was read on 24 Oct 2026 from Renato's working ZED-X20P with **Read all settings**: the 25 settings that differ from the factory defaults (UART1 at 460800, 10 Hz, high-precision NMEA, RMC / GLL / GSA / GSV off, I2C off), plus the keys the Teensy needs that stay at their factory values (UBX and RTCM3 in, UBX and NMEA out, GGA and VTG every fix). One antenna only: an X20P with a second F9P has no file yet.
-- **Read all settings** (u-blox; the button is commented out in `zWebPage.h` now that `X20P.txt` exists, the Teensy side stays, see the HTML comment there to put it back): every setting of the receiver, read from its RAM layer with `UBX-CFG-VALGET` (the all-items key, 64 items per answer) and compared with its Default layer; the ones that differ from the factory defaults are kept (up to 512; `CFG-SEC-*` left out) and downloaded as a u-center configuration file named after the model (`X20P.txt`): a comment line, then `CFG-VALGET - 06 8B …` lines of up to 64 key + value pairs, the form of the AOGConfigOMatic files that `zRxConfig.h` is made from. The way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for. Reading does not change the receiver and is allowed with autosteer on.
+- **Read all settings** (u-blox; the button was taken off the page on 24 Oct 2026 now that `X20P.txt` exists, the Teensy side (`GET /api/rxdump`) stays; the page code is in the git history before 7 Nov 2026): every setting of the receiver, read from its RAM layer with `UBX-CFG-VALGET` (the all-items key, 64 items per answer) and compared with its Default layer; the ones that differ from the factory defaults are kept (up to 512; `CFG-SEC-*` left out) and downloaded as a u-center configuration file named after the model (`X20P.txt`): a comment line, then `CFG-VALGET - 06 8B …` lines of up to 64 key + value pairs, the form of the AOGConfigOMatic files that `zRxConfig.h` is made from. The way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for. Reading does not change the receiver and is allowed with autosteer on.
 - One operation at a time, only with autosteer off. AgIO's GPS tool (`!AOGR1`) stops it.
 
 ### u-blox settings (GPS tab)

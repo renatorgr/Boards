@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Hydraulic lift timing after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
-   2026-10-27 (Claude): up to 64 sections (PGN 229).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

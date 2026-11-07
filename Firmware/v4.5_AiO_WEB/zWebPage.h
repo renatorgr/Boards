@@ -1,43 +1,7 @@
 /* zWebPage.h - the module's web page (English).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   25 Oct 2026: Machine tab for any standard machine module (official Machine_UDP_v5 or sprayer Nano): sections from
-   the hello reply, Sprayer card only with PGN 160, up to 16 sections.
-   26 Oct 2026: the buttons the module refuses while autosteer is on (or the tractor moves) are greyed out then,
-   with a line at the top of the tab saying why. Machine card fits a phone screen: the Hello replies row wraps,
-   the checksum wording is a note under the list. The GPS2 port is automatic or off (Settings), and says what it found,
-   in one short line. The section squares stay as many as the highest section used since the module started (they
-   fell back to 5 when every section was off).
-   27 Oct 2026: the Sprayer card also hides when the module stops sending PGN 160 (a sprayer module set to no sensors,
-   or another module) and still sends the rest; its wording says module, not Nano.
-   27 Oct 2026: up to 64 section squares on the Machine tab (PGN 229 from the program, the seed drill module's
-   PGN 237); cmd and sec are hex digits now. The sections of any module (its PGN 237 in the AiO v26 layout) and of
-   several modules together; their IPs in the IP row.
-   27 Oct 2026: a negative WAS reading on the differential input (nothing on AmpSeal pin 3): the WAS row and the
-   warning at the top say so and to choose Single in the program; the WAS check setting mentions it.
-   27 Oct 2026: "Last turned off" by the program says that its screen gives the reason (button, boundary, speed, RTK).
-   31 Oct 2026: the GPS fix is green whenever the receiver has a position (GPS, DGPS, RTK float or fixed), red only without one.
-   31 Oct 2026: the GitHub check also compares when the firmware was compiled (firmware.json on the simulator's site), so
-   a new build of the same version (4.5) shows as new; Install from GitHub takes vX.Y_AiO_WEB.hex or .ino.hex.
-   1 Nov 2026: the "On GitHub" row says only what is there and whether it is newer, the same or older than the
-   installed one; the Status note says which build this module runs.
-   1 Nov 2026: the header and the tab bar stay at the top while the page scrolls (small windows, the program's web cards).
-   2 Nov 2026: "Previous firmware" on the Firmware tab, with "Go back to the previous firmware" (POST /api/revert): the
-   firmware that ran before the last update, kept in the Teensy's flash; no file or internet needed.
-   3 Nov 2026: Steering card: the distance to the guidance line (PGN 254 byte 10). Steering settings card: the program's
-   maximum wheel angle (PGN 247) and minimum steering speed (PGN 251), shown only. The kickout delay setting also
-   covers the pressure sensor. A chosen .hex is an AiO_WEB one by the marker of 22 Oct 2026 only.
-   3 Nov 2026: the dual-antenna card says when the second F9P gets no corrections from the first one, or flags its
-   heading as not valid (the RELPOSNED flags, dual.f9p2.refMiss / headingValid).
-   3 Nov 2026: Steering settings card: the steering loop, 40 Hz (default) or 100 Hz (steerLoop100); the Steering card
-   shows the loop rate set and measured (steer.loopMs / loopHz).
-   3 Nov 2026: a frozen IMU (roll and heading unchanged while driving, tm.frozen): FROZEN on the IMU card, a warning at the top.
-   3 Nov 2026: "Notes about this installation" on the Settings tab (GET / POST /api/note, plain text, kept in the EEPROM),
-   also in the report.
-   4 Nov 2026: temperatures on the cards (the Teensy with its clock on the Firmware tab, the receivers, the TM171, the XIAO)
-   and a "Teensy hot" warning; the GPS tab says when a receiver's firmware does not report it.
-   2026-11-07: "Name on the network" on the Connections card: the mDNS instance name AgOpenWeb's web cards list the page under
-   ("AiO" + four digits of the Teensy's id, zEthernet.ino), now also announced as an add-on card (_aowcard._tcp).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -230,7 +194,7 @@ a{color:var(--acc)}
   <p class="note" style="margin-top:8px">Sections: what the program asks for (PGN 254; above 16, PGN 229) and what the machine modules report open, in their PGN 237 (else PGN 160 or the hello reply); several modules together</p>
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
-  <p class="note">What the machine module sends to UDP 9999 (to the whole network), as the Teensy hears it: the official AgOpenGPS Machine_UDP_v5, the AiO v26's machine part, the sprayer or seed drill module, or anything that talks like them. Only to look at: nothing here changes the module or the steering.</p></div>
+  <p class="note">What the machine module (the official AgOpenGPS Machine_UDP_v5, the AiO v26's machine part, the sprayer or seed drill module) sends to UDP 9999, as the Teensy hears it. Only to look at: nothing here changes the module or the steering.</p></div>
  <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
   <div class="big" id="mBar">–</div>
   <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the module started</dt><dd id="mTotal">–</dd>
@@ -264,7 +228,7 @@ a{color:var(--acc)}
 </div>
 </div>
 <div class="card"><h2>Autosteer safety</h2>
- <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short circuit, loose plug), autosteer switches off and stays blocked until the reading is normal again (the steering wheel always works). Switch it off only on a bench with no WAS connected: the Status page and the program warn while it is off, and with the WAS out of range the wheel angle goes to the program as 0°. With the program's A/D converter on Differential, a reading below −0.5 V is a fault too: nothing is wired to AmpSeal pin 3.</small></span></label>
+ <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short, loose plug) autosteer switches off until the reading is normal again; the wheel always steers by hand. Off only on a bench without a WAS: the page and the program warn, and the angle goes to the program as 0°. On Differential a reading below −0.5 V is a fault too (nothing on AmpSeal pin 3).</small></span></label>
  <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.</small></span></label>
 </div>
 <div class="card"><h2>Steering</h2>
@@ -272,7 +236,7 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
  <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor (not the Keya's slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
- <div class="opt"><span style="flex:1">Steering loop<small>How often the wheel angle is read and the valve or motor output updated. 100 Hz: as the AiO 26 firmware and AgOpenWeb's steering packets, the WAS read 250 times a second instead of 128; the program's gains are per degree, so they stay the same. Try it once the tractor steers well at 40 Hz (default).</small></span><select name="steerLoop100"><option value="0">40 Hz</option><option value="1">100 Hz</option></select></div>
+ <div class="opt"><span style="flex:1">Steering loop<small>How often the wheel angle is read and the valve or motor output updated. 100 Hz: as the AiO 26 firmware and AgOpenWeb's steering packets (the WAS read 250 times a second instead of 128); the gains stay the same. Try it once the tractor steers well at 40 Hz.</small></span><select name="steerLoop100"><option value="0">40 Hz</option><option value="1">100 Hz</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
 </form>
@@ -300,14 +264,10 @@ a{color:var(--acc)}
  <details id="ck0Cmd" class="hidden"><summary class="note">AgOpenGPS commands (✓ already in the receiver)</summary><div id="ck0CmdList" class="mono" style="margin-top:6px"></div></details>
  <div class="row"><select id="ck0Um" class="hidden"><option value="d">UM982 with two antennas</option><option value="s">UM982 with one antenna</option></select></div>
  <p id="ck0UmNote" class="note hidden">One antenna: Status leaves the dual-antenna heading out. Kept in the Teensy's settings.</p>
- <div class="row"><button class="act hidden" type="button" id="ck0Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load" data-lock="e">Load the AgOpenGPS settings</button>
- <!-- "Read all settings" (zRxCheck.ino, GET /api/rxdump) is kept in the Teensy but taken off the page (Renato, 2026-10-24): it
-      was made to get X20P.txt, which is in the firmware now (zRxConfig.h). To put it back: this button, the ck0DumpRow block
-      below, the same two in the second F9P card, and the lines marked "Read all settings" in renderCk and in the button handlers.
- <button class="sec hidden" type="button" id="ck0Dump">Read all settings</button> --></div>
+ <div class="row"><button class="act hidden" type="button" id="ck0Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck0Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck0Load" data-lock="e">Load the AgOpenGPS settings</button></div>
+ <!-- "Read all settings" (GET /api/rxdump, zRxCheck.ino: every setting of a u-blox receiver as a u-center file, the way X20P.txt was
+      made) was taken off the page on 24 Oct 2026; the Teensy side stays. Its page code is in the git history before 7 Nov 2026. -->
  <p id="ck0Msg" class="note"></p>
- <!-- <div class="hidden" id="ck0DumpRow"><div class="row"><button class="act" type="button" id="ck0Dl">Download</button></div>
-  <p class="note">Every setting of the receiver, read from its RAM and compared with the factory defaults: the ones that differ, as a u-center configuration file (the form of the AOGConfigOMatic files). Put into the firmware (zRxConfig.h), it becomes the AgOpenGPS file of a receiver AOGConfigOMatic has none for.</p></div> -->
  <p class="note" id="ck0Note">Baud rate checked at start-up (460800). Change only with autosteer off.</p></div>
 <div class="card hidden" id="ck1"><h2>Second F9P check</h2>
  <dl><dt>Data at 460800 baud</dt><dd id="ck1Data">–</dd><dt>Reaching the Teensy</dt><dd id="ck1Hz">–</dd><dt>Receiver</dt><dd id="ck1Model">–</dd><dt>Firmware</dt><dd id="ck1Fw">–</dd><dt>Temperature</dt><dd id="ck1Temp">–</dd><dt>What the Teensy needs</dt><dd id="ck1Need">–</dd><dt>AgOpenGPS settings</dt><dd id="ck1Ago">–</dd></dl>
@@ -315,11 +275,8 @@ a{color:var(--acc)}
  <p id="ck1Warn" class="note bad hidden"></p>
  <div id="ck1Vals" class="hidden"><p class="note">Values read</p><div id="ck1Bad" class="mono warn" style="margin-top:4px"></div>
   <details id="ck1Det"><summary class="note" id="ck1OkSum">–</summary><div id="ck1List" class="mono" style="margin-top:6px"></div></details></div>
- <div class="row"><button class="act hidden" type="button" id="ck1Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load" data-lock="e">Load the AgOpenGPS settings</button>
- <!-- "Read all settings", see the first card: <button class="sec hidden" type="button" id="ck1Dump">Read all settings</button> --></div>
+ <div class="row"><button class="act hidden" type="button" id="ck1Baud" data-lock="e">Set to 460800 and save</button><button class="sec" type="button" id="ck1Check">Compare with AOGConfigOMatic</button><button class="act hidden" type="button" id="ck1Load" data-lock="e">Load the AgOpenGPS settings</button></div>
  <p id="ck1Msg" class="note"></p>
- <!-- <div class="hidden" id="ck1DumpRow"><div class="row"><button class="act" type="button" id="ck1Dl">Download</button></div>
-  <p class="note">Every setting of the receiver, read from its RAM and compared with the factory defaults: the ones that differ, as a u-center configuration file (the form of the AOGConfigOMatic files).</p></div> -->
  <p class="note">The second F9P (GPS2 port) sends the RELPOSNED to the Teensy at 460800 baud. Its AgOpenGPS settings are those of DualRelPos.txt.</p></div>
 <form id="fu" class="hidden">
 <div class="card"><h2>Position</h2>
@@ -399,7 +356,7 @@ a{color:var(--acc)}
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
   <dl><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
   <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn" data-lock="m">Calibrate gyro</button><span class="note">Takes 20 s. Park the tractor and switch autosteer off; the engine can stay running. The result is kept until the TM171 is powered off.</span></div>
-  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn" data-lock="m">New install calibration</button><span class="note">Stored in the TM171's flash memory. Run it once after installing the TM171, or after a large temperature change. Takes about 20 s with the tractor parked and autosteer off. Do not cut power while it runs. When it finishes, switch the whole module off and on (the TM171 has no power switch of its own).</span></div>
+  <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn" data-lock="m">New install calibration</button><span class="note">Stored in the TM171's flash. Run it once after installing the TM171, or after a large temperature change: about 20 s, tractor parked, autosteer off, power on throughout. Then switch the whole module off and on (the TM171 has no switch of its own).</span></div>
  </div>
  <div class="card hidden" id="tmSetCard"><h2>TM171 setup</h2>
   <dl><dt>Setup</dt><dd id="tmSetup2">–</dd></dl>
@@ -440,7 +397,7 @@ a{color:var(--acc)}
  <p id="fwMsg" class="note"></p>
  <dl style="margin-top:8px"><dt>Previous firmware</dt><dd id="prevFw">–</dd></dl>
  <div class="row"><button class="sec" id="revert" data-lock="m" disabled>Go back to the previous firmware</button></div>
- <p class="note">Only with autosteer off and the tractor stopped (on a bench, with the simulator mode on or no WAS, also while the program's simulator drives). The whole file is checked before it replaces the current firmware; if anything fails, the current one keeps running. In the last seconds of the installation <b>do not switch the power off</b>. The saved settings are kept. The firmware that ran before the last update is kept in the Teensy's flash: going back to it needs no file and no internet (also from the XIAO page). Nothing is kept until the first update made with this firmware.</p></div>
+ <p class="note">Only with autosteer off and the tractor stopped (on a bench: simulator mode or no WAS). The file is checked before it replaces the firmware; if anything fails, the current one keeps running. In the last seconds <b>do not switch the power off</b>. The settings are kept. The firmware that ran before stays in the flash, so going back needs no file or internet (also from the XIAO page); nothing is kept until the first update made with this firmware.</p></div>
 <div class="card"><h2>Report for an analysis</h2>
  <p class="note">Puts the status, the messages, the settings, the GPS receiver and the Teensy's inner workings in one file, to send when something goes wrong. The file is downloaded by this browser.</p>
  <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div>
@@ -1022,7 +979,6 @@ function ckMsgText(c,p,port,um){
  if(p.dump==="noanswer"){out.push("The receiver did not answer the read of all its settings (UBX output off on UART1?).");cls="bad";}
  if([p.scan,p.baud,p.chk,p.load,p.dump].includes("stopped")){out.push("Stopped: the program (AgIO) took the receiver, or the GPS2 port changed.");cls="warn";}
  return [out.join(" "),cls];}
-function ckDumpName(p){return ((p.model||"").replace(/^ZED-/,"")||"receiver")+".txt";}
 function renderCk(j){
  const c=j.ck;if(!c)return;
  const ublox=j.kind==="ublox",um=j.kind==="um982";
@@ -1078,9 +1034,6 @@ function renderCk(j){
   $(id+"Baud").classList.toggle("hidden",!(p.scan==="found"&&p.found!==460800));$(id+"Baud").disabled=busy;
   $(id+"Load").classList.toggle("hidden",!(canLoad&&((miss&&miss.length)||differs)));
   $(id+"Load").disabled=busy||p.health==="junk";
-  // "Read all settings" (taken off the page, see the HTML): u-blox only; the download row once it is done
-  // $(id+"Dump").classList.toggle("hidden",!ub);$(id+"Dump").disabled=busy||p.health==="junk";
-  // $(id+"DumpRow").classList.toggle("hidden",p.dump!=="dumped");$(id+"Dl").textContent="Download "+ckDumpName(p);
   const m=ckLocal[port]&&Date.now()-ckLocalAt[port]<5000?ckLocal[port]:ckMsgText(c,p,port,port===0&&um);set(id+"Msg",m[0],m[1]);
  }
 }
@@ -1103,19 +1056,7 @@ for(const port of [0,1]){
   if(uni)q+="\n\n"+"Unicore: CONFIG COM1, COM2 and COM3 460800, then SAVECONFIG.";
   if(confirm(q+"\n\n"+"Only with autosteer off: the GPS stops for a few seconds."))ckAct(port,"baud");});
  $("ck"+port+"Load").addEventListener("click",()=>ckLoad(port));
- // "Read all settings" (taken off the page, see the HTML)
- // $("ck"+port+"Dump").addEventListener("click",()=>ckAct(port,"dump"));
- // $("ck"+port+"Dl").addEventListener("click",()=>ckDownload(port));
 }
-// the file of "Read all settings" (GET /api/rxdump), downloaded by this browser as <model>.txt (the button is
-// taken off the page for now, see the HTML; ckDumpName and this stay for when it comes back)
-async function ckDownload(port){
- const p=gpsJ&&gpsJ.ck&&gpsJ.ck.ports[port];if(!p)return;
- try{const r=await fetch("/api/rxdump",{cache:"no-store"});if(!r.ok){ckSay(port,"Error"+": HTTP "+r.status,"bad");return;}
-  const t=await r.text(),name=ckDumpName(p);
-  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/plain"}));a.download=name;
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
-  ckSay(port,"Downloaded: "+name,"ok");}catch(e){ckSay(port,"No connection to the module.","bad");}}
 let ckUmAt=0;
 $("ck0Um").addEventListener("change",async()=>{     /* UM982 antennas: a setting (Settings block), also the AgOpenGPS file */
  ckUmAt=Date.now();if(gpsJ)renderCk(gpsJ);

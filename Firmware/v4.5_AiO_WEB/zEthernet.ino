@@ -4,16 +4,8 @@
    and Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Changes 2026 by Claude (Anthropic) for renatorgr: two messages; the network stack polled from loop()
    (netPollFromLoop, netPoll, netDelay - see zNet.h); 8 KB socket buffers; one [boot] line instead of
-   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino);
-   2026-10-24: the subnet changed from the XIAO page (netSetSubnet; the card on the module's own page was
-   taken out again the same day: a mistake there would leave the page unreachable).
-   2026-11-02: the module announces its web page by mDNS (http://aio.local/, DNS-SD "_http._tcp"), so a browser
-   finds it by name and AgOpenWeb's "Search the network" (web cards) lists it at once (mdnsStart).
-   2026-11-02, later: the socket buffer size comes from zNet.h (NET_SOCKET_SIZE), shared with the web server's
-   own listening socket (zWeb.ino).
-   2026-11-07: the page is also announced as an AgOpenWeb add-on card (DNS-SD "_aowcard._tcp", TXT v=1 and path, the
-   official Docs/ADD_ON_CARDS.md), under an instance name unique to this module ("AiO" + four digits of the Teensy's
-   own serial id, mdnsName: the Ethernet MAC is the same on every AiO board).
+   the start-up prints (the link and the IP: "[status] Ethernet: link up ...", zStatus.ino).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

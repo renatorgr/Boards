@@ -4,8 +4,8 @@
    Balázs Gunics' fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1).
    Change by Claude (Anthropic) 2026 for renatorgr (v4.5_AiO_WEB): the Keya gets its speed and
    enable / disable as in the AiO firmware 27.04.2025 (SteerKeya, KeyaCANBUS.ino).
-   AiO_WEB 4.5, 20 Oct 2026: the soft start, after the one of the AgOpenGPS AiO 26 firmware
-   (AutosteerProcessor.cpp, GPL v3): steerRamp().
+   The soft start (steerRamp) is after the one of the AgOpenGPS AiO 26 firmware (AutosteerProcessor.cpp, GPL v3).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

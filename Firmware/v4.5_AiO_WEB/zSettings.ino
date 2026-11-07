@@ -1,9 +1,7 @@
 /* zSettings.ino - settings from the web page, kept in the EEPROM.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
-   3 Nov 2026: steerLoop100 (the steering loop at 100 Hz), default 40 Hz.
-   3 Nov 2026: the installation note (noteLoad / noteSave), EEPROM address 1024, up to NOTE_MAX bytes.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

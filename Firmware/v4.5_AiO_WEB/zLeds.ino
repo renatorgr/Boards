@@ -2,8 +2,9 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 24 Oct 2026 by Claude (Anthropic) for renatorgr, after the LED_Status_Guide of
    AgOpenGPS-Official/Firmware_Teensy_AiO_26 (GPL v3).
-   25 Oct 2026: the in-between state (orange) is shown as red and green in turn: through the diffused light
-   windows of a panel (Renato's RayCorp case) orange cannot be told from red.
+   The in-between state (orange) is shown as red and green in turn: through the diffused light windows of a panel
+   (Renato's RayCorp case) orange cannot be told from red.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
