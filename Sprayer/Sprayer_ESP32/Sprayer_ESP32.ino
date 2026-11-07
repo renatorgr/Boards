@@ -6,7 +6,11 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.10.2 (2026-11-07), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.3 (2026-11-07), not yet tested on the sprayer.
+//   v0.10.3: the alarms also go to the program as PGN 221, the text message it shows on its screen (the official
+//         AgOpenWeb too, which reads no PGN 161): when an alarm comes on or goes off, and every 10 s while one is on.
+//         /api/status says "kind":"Sprayer" as the seed drill's module says "Seeder". The USB help text comes on
+//         any unknown command.
 //   v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
 //         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
 //         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status of 0.10.0 are gone.
@@ -51,7 +55,8 @@
 //       160 with the sprayer readings (pressure, flow, litres, master switch, sections open) for the AgOpenWeb
 //       fork's sprayer strip and the AiO module page, and 161 with ISOBUS process data (DDIs: pressure, flow, total,
 //       sections, actual and target L/ha, the pressure for the target, pressure limits, alarms);
-//       with no sensor ticked on the page it sends neither.
+//       with no sensor ticked on the page it sends neither. 221 (the text message the program shows on its
+//       screen) when an alarm comes on or goes off, and every 10 s while one is on.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
@@ -79,7 +84,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.2"
+#define FW_VERSION          "0.10.3"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -138,6 +143,8 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define SEND_PORT           9999
 #define SPRAYER_PGN         0xA0    // 160: sprayer readings for the AgOpenWeb fork (Docs/PGN.md there)
 #define PROCESS_DATA_PGN    0xA1    // 161: ISOBUS process data (DDI values) for the AgOpenWeb fork (Docs/PGN.md there)
+#define HARDWARE_MESSAGE_PGN 0xDD   // 221: a text the program shows on its screen (the alarms), AgOpenGPS layout
+#define ALARM_REPEAT_S      10      // while an alarm is on, the PGN 221 message is sent again this often
 #define MAX_TOOL_SECTIONS   16      // PGN 235 has the widths of sections 1-16
 
 // Output functions in the program's pin config (PGN 236), as the official Machine_UDP_v5 maps them:
@@ -236,6 +243,7 @@ void udpPoll();
 void sendSignOfLife();
 void sendReadings();
 void sendProcessData();
+void sendAlarmMessage();
 void rateTick();
 void outputsInit();
 void outputsAllOff();
@@ -315,7 +323,7 @@ static void serialCommands()
         else if (!strcmp(line, "restart"))     { logEvent("restart (serial)"); restartAtMs = millis() + 200; }
         else if (!strcmp(line, "wifi-reset"))  { settingsResetWifi(); logEvent("Wi-Fi settings back to the defaults (serial)"); restartAtMs = millis() + 200; }
         else if (!strcmp(line, "total-reset")) { totalLitres = 0; totalPulses = 0; logEvent("total set to 0 (serial)"); }
-        else if (n == 0 && line[0]) Serial.println("commands: status, wifi-reset, total-reset, restart");
+        else if (line[0]) Serial.println("commands: status, wifi-reset, total-reset, restart");
     }
 }
 
@@ -387,6 +395,7 @@ void loop()
         rateTick();                 // L/ha, pressure for the target, alarms
         sendReadings();
         sendProcessData();
+        sendAlarmMessage();
         wifiWatch();
     }
 
