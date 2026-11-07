@@ -26,6 +26,7 @@
    2026-11-04 (Claude): cpuMhz / cpuTemp / cpuTempMax / cpuHot and diag.cpu (the Teensy's clock and temperature); gnss.temp,
    f9p2.temp and the GPS tab's temp / tempSt (the X20P answers UBX-MON-SYS with 0 = "zero", an F9P on HPG 1.13 does not); tm.temp (TM171); the
    XIAO's "t" in its info.
+   2026-11-07 (Claude): net.mdns, the Teensy's name on the network ("AiO 3F2A", the Connections card).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -517,7 +518,7 @@ function Module(key) {
   const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
    cpuMhz: 450, cpuTemp: r2(46.2 + wob(t, 1.5, 0.05), 1), cpuTempMax: 51.2, cpuHot: false,   // the Teensy's clock and temperature (zSafety.ino)
    prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
-  j.net = {link: true, aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
+  j.net = {link: true, mdns: "AiO 3F2A", aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
    rtcm: rtcm, rtcmKB: r2(rtcmT * 1.31, 1), rtcmBps: rtcm ? Math.round(1310 + wob(t, 60, 0.2)) : 0, rtcmOk: Math.floor(rtcmT * 4.6), rtcmBad: t > 60 ? 1 : 0,
    rtcmTypes: rtcm ? (um ? "1006 1008 1033 1075 1085 1095 1125 1230" : "1005 1074 1084 1094 1124 1230") : "",
    radio: false, radioKB: 0, radioBps: 0, radioOk: 0, radioBad: 0, radioTypes: ""};

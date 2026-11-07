@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 7 Nov 2026 | **0.10.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under the module's own Wi-Fi name ("Name on the network"); the home-made `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). |
 | 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
 | 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
 | 26 Oct 2026 | **0.6**: all 8 relays are sections by default. **0.7**: also a plain ESP32 with [relay modules](#a-separate-esp32-with-relay-modules), up to 16 relays. The relay number above its function on the page. |
@@ -303,8 +304,11 @@ level the module is using.
 - The FPD-270A valves and the YF-S201 are plastic and made for water. Rinse with clean
   water after each job. Fit a filter before the flow meter.
 - The ISOBUS group of AgOpenGPS is working on a standard way for modules to send such
-  readings (ISOBUS DDIs) and to show their own page in AgOpenWeb. PGN 161 follows that
-  proposal; the PGN number itself is this project's choice until the group picks one. The
-  module keeps sending PGN 160 for the AiO module page and older AgOpenWeb builds. The page
-  answers `GET /aow/status` (with the sprayer alarms) and announces itself as `_aow-ui._tcp`
-  over mDNS as the proposal describes.
+  readings (ISOBUS DDIs). PGN 161 follows that proposal; the PGN number itself is this
+  project's choice until the group picks one. The module keeps sending PGN 160 for the AiO
+  module page and older AgOpenWeb builds.
+- The page is announced over mDNS as `_http._tcp` (the AgOpenWeb fork's **Search the network**)
+  and as `_aowcard._tcp` with TXT `v=1` and `path=/`, the official AgOpenWeb add-on card
+  announcement (`Docs/ADD_ON_CARDS.md`), both under the module's own Wi-Fi name
+  (`Sprayer-xxxx`, "Name on the network" on the Firmware tab), unique to each module. The
+  earlier `_aow-ui._tcp` and `GET /aow/status` (0.10.0 and 0.10.1) are gone.

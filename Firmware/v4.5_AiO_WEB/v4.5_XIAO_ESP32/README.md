@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 7 Nov 2026 | The page is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`), under the name of the XIAO's own WiFi network: [What it does](#what-it-does). |
 | 4 Nov 2026 | The XIAO's temperature in its card, here and on the Teensy page; the Teensy's clock and temperature in the [Module card](#what-it-does). |
 | 3 Nov 2026 | An [update over Wi-Fi](#update-over-wifi-from-a-file) on a weak link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
 | 2 Nov 2026 | [Module (Teensy) firmware](#the-modules-firmware-from-this-page) card on the Firmware tab: install the Teensy's firmware from this page, or go back to its previous one (needs a Teensy firmware of 2 Nov 2026 or later). Red / green messages under the cards. |
@@ -40,7 +41,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 - **Another WiFi network too** (optional): the farm WiFi or a phone hotspot. Then the page is also at **http://xiao.local/** (the name can be changed) or at the IP shown on the page.
   - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may lose the connection for a few seconds.
   - `xiao.local` works on iPhone, Mac, Windows 10/11 and Linux; on many Android phones use the IP instead.
-  - The XIAO announces its page by mDNS, so AgOpenWeb's web cards (⚙ › **Search the network**) list it by name in a second when the AgOpenWeb computer is on that network.
+  - The XIAO announces its page by mDNS, so AgOpenWeb's web cards (⚙ › **Search the network**) list it in a second when the AgOpenWeb computer is on that network, under the name of its own WiFi network (`XIAO-xxxx`). It is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`, TXT `v=1`), the official format, so the official AgOpenWeb will list it too when its add-on card list ships.
 - **The page**, in English, dark or light:
   - the button at the top (☀ / ☾) switches it, and the phone remembers the choice;
   - without a choice, the phone's setting (dark or light mode) decides;

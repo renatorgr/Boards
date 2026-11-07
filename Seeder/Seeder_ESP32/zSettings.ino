@@ -1,6 +1,7 @@
 /* zSettings.ino - the settings kept in the ESP32's flash (Preferences).
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
+   2026-11-07 (Claude): moduleName() is the own network's name (the 16-digit MAC name is gone).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -17,14 +18,9 @@ String defaultApSsid()
     return String(b);
 }
 
-// A 16-digit name for this module (the ESP32's factory MAC), as the "Implements bring their UI" paper asks
-String moduleName()
-{
-    const uint64_t mac = ESP.getEfuseMac();
-    char b[20];
-    snprintf(b, sizeof(b), "%08lX%08lX", (unsigned long)(mac >> 32), (unsigned long)(mac & 0xFFFFFFFF));
-    return String(b);
-}
+// The module's name on the network: its own Wi-Fi network's name ("Seeder-xxxx" unless changed on the page), the mDNS
+// instance name AgOpenWeb's add-on card list shows, so one module can be told from another (zNet.ino)
+String moduleName() { return cfg.apSsid; }
 
 void settingsLoad()
 {

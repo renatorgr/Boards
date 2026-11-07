@@ -1,6 +1,7 @@
 // smoke-test.js - opens the built simulator in a browser and goes through its pages, as a check before it is published.
 // Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 // Written 2026 by Claude (Anthropic) for renatorgr.
+// 2026-11-07 (Claude): the sprayer's report has no /aow/status part any more (Sprayer_ESP32 0.10.2).
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 // 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
@@ -353,8 +354,8 @@ async function teensy(browser, port, q, name) {
    const [dl] = await Promise.all([pg.waitForEvent("download", {timeout: 5000}), pg.click("#dumpBtn")]);
    const name = dl.suggestedFilename(), r = JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
    if (!/^Sprayer_ESP32_report_\d{4}-\d\d-\d\d_\d{4}\.json$/.test(name)) fail.push(what + ": the report is called " + name);
-   if (!r.status || !r.status.rate || !r.settings || r.settings.rate !== 200 || !r.aow || !Array.isArray(r.aow.alarms))
-    fail.push(what + ": the report misses the status, the settings or the alarms");
+   if (!r.status || !r.status.rate || !r.settings || r.settings.rate !== 200)
+    fail.push(what + ": the report misses the status or the settings");
    if (JSON.stringify(r).includes("agopengps")) fail.push(what + ": the report has the password in it");
   } catch (e) { fail.push(what + ": no report downloaded (" + e.message + ")"); }
   await expect(pg, what, "#dumpMsg", /^Downloaded: Sprayer_ESP32_report_/);

@@ -11,6 +11,8 @@
    instead of the web server's 5 s, and an upload cut off halfway is written in Messages (it was silent).
    4 Nov 2026: the chip's temperature (temperatureRead(), the ESP32's own sensor) in our state for the Teensy page (PGN 143,
    "t") and in /api/state ("temp"), for the XIAO cards of both pages.
+   7 Nov 2026: the page is also announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
+   Docs/ADD_ON_CARDS.md), under the name of the XIAO's own WiFi network ("XIAO-xxxx"): unique, and the one the operator knows.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -230,7 +232,14 @@ static void wifiStart()
     }
     dns.setErrorReplyCode(DNSReplyCode::NoError);
     dns.start(53, "*", WiFi.softAPIP());            // every name -> this page (captive page)
-    if (MDNS.begin(cfg.host.c_str())) MDNS.addService("http", "tcp", 80);
+    if (MDNS.begin(cfg.host.c_str()))
+    {
+        MDNS.setInstanceName(cfg.apSsid);                   // the name in AgOpenWeb's list: the own network's, unique to this XIAO
+        MDNS.addService("http", "tcp", 80);                 // the page, for the AgOpenWeb fork's "Search the network"
+        MDNS.addService("aowcard", "tcp", 80);              // the official AgOpenWeb add-on card announcement (Docs/ADD_ON_CARDS.md)
+        MDNS.addServiceTxt("aowcard", "tcp", "v", "1");     //   TXT v=1 is required, path says where the page is
+        MDNS.addServiceTxt("aowcard", "tcp", "path", "/");
+    }
     logEvent("WiFi: own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(), sta ? ", joining the other network" : "");
 }
 

@@ -11,11 +11,12 @@
    the update comes as an upload with progress, and after the restart the module runs what was sent (the program, version
    and build read from the .bin, as the page does).
    2026-11-02 (Claude): v0.10.1: "Search for networks" on the Module tab (GET /api/scan).
+   2026-11-07 (Claude): v0.10.2: the module's name on the network is its own Wi-Fi name (no 16-digit name, no /aow/status).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The sprayer module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiScan, apiCalibPost, apiSprayPost, apiTotalPost,
-// apiRestartPost, apiAowStatus, the program update on /api/update). The sections the program asks for and the sprayer's readings come
+// apiRestartPost, the program update on /api/update). The sections the program asks for and the sprayer's readings come
 // from the pretend tractor of sim-common.js, the same the Teensy page's Machine tab shows: the 8 m sprayer's 8 sections
 // on the ESP32_Relay_X8 board (8 relays from the program's pin config, both sensors, on the tractor's Wi-Fi).
 // The own-network password is the module's default, agopengps.
@@ -24,7 +25,7 @@
 const S = window.AioSim, KEY = "aiosim.sprayer", MKEY = "aiosim.sprayer.module", M = S.Module(MKEY);
 const B = S.BUILD.sprayer || {}, FW = B.name || "Sprayer_ESP32", VER = B.version || "0.5";
 const IMPL = S.IMPL, RELAYS = 8;
-const NAME = "00007C4EA4CF12B3", AP = "Sprayer-4E7C";          // from the ESP32's factory MAC, as zSettings.ino makes them
+const AP = "Sprayer-4E7C";                                      // from the ESP32's factory MAC, as zSettings.ino makes it
 // sta: on the tractor's Wi-Fi; lost: was, until LOST_AT s; ap: the tractor's Wi-Fi not set
 const NET = S.opt.wifi, LOST_AT = 24;
 // the spraying settings (Settings tab): the pretend nozzles give 0.8 L/min at 3 bar (sim-common.js), and the target
@@ -131,7 +132,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
+ return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
@@ -149,15 +150,6 @@ function status() {
 const settings = () => ({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host, sensors: X.sensors, ppl: X.ppl,
  ipLast: X.ipLast, subnet: X.subnet, pmax: X.pmax, pdiv: X.pdiv, rate: X.rate, nzSp: X.nzSp, nzFl: X.nzFl, nzBar: X.nzBar, pLow: X.pLow,
  pHigh: X.pHigh, fTol: X.fTol});
-// GET /aow/status: the name and the alarms (apiAowStatus)
-function aowStatus() {
- const st = status(), a = [];
- if (!st.aog.link) a.push({id: "no-program", priority: "medium", text: "No messages from AgOpenWeb"});
- ["pressure-low", "pressure-high", "flow-low", "flow-high", "flow-closed"].forEach((id, b) => {
-  if (st.rate.alarms & (1 << b)) a.push({id: id, priority: "high", text: ["Low pressure", "High pressure", "Flow too low", "Flow too high", "Flow with the sections off"][b]});
- });
- return {v: 1, name: NAME, alarms: a};
-}
 const number = (v, lo, hi) => /^\d{1,5}$/.test(String(v)) && +v >= lo && +v <= hi;   // argNumber
 
 const printable = (v, lo, hi) => typeof v === "string" && v.length >= lo && v.length <= hi && /^[\x20-\x7E]*$/.test(v);
@@ -265,7 +257,6 @@ S.hook(async (method, path, q, body) => {
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/calib") r = calibPost(b);
  else if (post && path === "/api/spray") r = sprayPost(b);
- else if (get && path === "/aow/status") r = S.ok(aowStatus());
  else if (post && path === "/api/total") r = totalPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
  S.save(KEY, X);

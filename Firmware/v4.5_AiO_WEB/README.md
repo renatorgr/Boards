@@ -29,6 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 7 Nov 2026 | The page is also announced as an AgOpenWeb add-on card (`_aowcard._tcp`), under a name unique to this module (**AiO** + four digits of the Teensy's id), shown on the Connections card: [Web page](#web-page), [Network stack](#network-stack). |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
 | 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
 | 2 Nov 2026 | [Update from the XIAO page](#update-from-the-xiao-page). [Go back to the previous firmware](#going-back-to-the-previous-firmware), on both pages. The page is also at `http://aio.local/`. Fix: the page stopped answering seconds after start-up. |
@@ -64,7 +65,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 ## Web page
 
-Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page by that name within a second, next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
+Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second under the module's name on the network, **AiO** and four digits of the Teensy's own id (e.g. `AiO 3F2A`, shown on the Connections card), next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
 
 **Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
@@ -386,7 +387,7 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 
 NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
 
-The mDNS responder (`aio.local`, the `_http._tcp` announcement of the page) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling.
+The mDNS responder (`aio.local`; the page announced as `_http._tcp` for the fork's **Search the network** and as `_aowcard._tcp` with TXT `v=1` and `path=/` for the official AgOpenWeb's add-on cards, `Docs/ADD_ON_CARDS.md`, both under the instance name `AiO xxxx`) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
 
 ## Main loop
 

@@ -5,6 +5,7 @@
    2026-10-27 (Claude): also the module IP's last number.
    2026-11-02 (Claude): also the spraying settings (target rate, nozzles, pressure limits, flow tolerance) and the
    tool's section widths from the program (PGN 235).
+   2026-11-07 (Claude): moduleName() is the own network's name (the 16-digit MAC name is gone).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -21,14 +22,9 @@ String defaultApSsid()
     return String(b);
 }
 
-// A 16-digit name for this module (the ESP32's factory MAC), as the "Implements bring their UI" paper asks
-String moduleName()
-{
-    const uint64_t mac = ESP.getEfuseMac();
-    char b[20];
-    snprintf(b, sizeof(b), "%08lX%08lX", (unsigned long)(mac >> 32), (unsigned long)(mac & 0xFFFFFFFF));
-    return String(b);
-}
+// The module's name on the network: its own Wi-Fi network's name ("Sprayer-xxxx" unless changed on the page), the mDNS
+// instance name AgOpenWeb's add-on card list shows, so one module can be told from another (zNet.ino)
+String moduleName() { return cfg.apSsid; }
 
 void settingsLoad()
 {

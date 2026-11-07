@@ -4,6 +4,7 @@
    2026-10-27 (Claude): made from sim-sprayer.js (Sprayer_ESP32 v0.8) when the seed drill got its own program, Seeder_ESP32 v0.1.
    2026-10-28 (Claude): Seeder_ESP32 v0.2: the Relay24_ESP32 board (24 relays) instead of the KC868-A32 (32).
    2026-11-02 (Claude): v0.2.1: "Search for networks" in the network settings (GET /api/scan).
+   2026-11-07 (Claude): v0.2.2: the module's name on the network is its own Wi-Fi name (no 16-digit name).
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -17,7 +18,7 @@
 const S = window.AioSim, KEY = "aiosim.seeder", MKEY = "aiosim.seeder.module", M = S.Module(MKEY);
 const B = S.BUILD.seeder || {}, FW = B.name || "Seeder_ESP32", VER = B.version || "0.1";
 const IMPL = S.IMPL, RELAYS = 24, BOARD = "Relay24_ESP32";
-const NAME = "00007C4EA4CF12B3", AP = "Seeder-4E7C";           // from the ESP32's factory MAC, as zSettings.ino makes them
+const AP = "Seeder-4E7C";                                       // from the ESP32's factory MAC, as zSettings.ino makes it
 // sta: on the tractor network (the cable); lost: was, until LOST_AT s (the cable unplugged); ap: the cable not plugged in
 const NET = S.opt.wifi, LOST_AT = 24;
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: false, sta: "", staPassSet: false,
@@ -84,7 +85,7 @@ function status() {
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sd.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sd.req >> (k - 1)) & 1) { X.secTop = k; break; }
  return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", kind: "Seeder", board: BOARD, up: Math.floor(t),
-  heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: NAME,
+  heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, staUp: staUp(), eth: true, ethUp: ethUp(), ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: staUp() ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sd.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,

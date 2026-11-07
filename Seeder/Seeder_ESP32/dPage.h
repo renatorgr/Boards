@@ -4,6 +4,7 @@
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
    2026-11-02 (Claude): v0.2.1: the network settings as on the XIAO page: own network, tractor Wi-Fi with "Search for
    networks" (a tap on a network chooses it), program network, and a Save card with the password typed in it.
+   2026-11-07 (Claude): v0.2.2: "Name on the network" (the own Wi-Fi name, the mDNS instance) instead of "Module name".
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -138,7 +139,7 @@ label.opt input{margin-top:4px}
 </div>
 
 <div class="card"><h2>Program</h2>
-<dl><dt>Version</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
+<dl><dt>Version</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Name on the network</dt><dd id="name">–</dd></dl>
 <div class="row"><label class="act">Install a new program (.bin)<input type="file" id="bin" accept=".bin" style="display:none" onchange="update()"></label><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
 <div class="msg" id="msgProg"></div>
 <p class="note">Arduino IDE: Sketch → Export compiled binary, then choose the .bin from the sketch folder. Every row closes during the update.</p>
