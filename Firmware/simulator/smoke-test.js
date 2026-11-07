@@ -2,6 +2,8 @@
 // Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 // Written 2026 by Claude (Anthropic) for renatorgr.
 // 2026-11-07 (Claude): the sprayer's report has no /aow/status part any more (Sprayer_ESP32 0.10.2).
+// 2026-11-07 (Claude): the seed drill page's four tabs and Firmware tab (Seeder_ESP32 0.2.3): as the sprayer page's; a
+// newer build on GitHub is a made-up .bin, since none is on main yet.
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 // 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
 // 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
@@ -226,7 +228,9 @@ async function teensy(browser, port, q, name) {
   await pg.close();
  }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
- // section 1 and so on); then the relays set back to the program's pin config (the password asked in a prompt)
+ // section 1 and so on); Settings: the relays set back to the program's pin config (the password asked in a prompt);
+ // Module: the search for Wi-Fi networks; Firmware: the program on GitHub (none until the .bin is on main), wrong files
+ // refused, the report downloaded
  {
   const what = "Seed drill page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/", what);
@@ -235,25 +239,32 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "h1", /^Seeder module$/);
   await expect(pg, what, "#sub", /^on the cable as 192\.168\.5\.123 · program talking/);
   if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
+  if (!(await pg.locator("#t-work").isVisible())) fail.push(what + ": the Sowing tab does not show first");
   if (await pg.locator("#simBar select").count() !== 2) fail.push(what + ": the strip should offer only the network and the tractor");
-  await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
-  await expect(pg, what, "#log", /network cable connected/);
-  await expect(pg, what, "#eth", /connected/);
-  await expect(pg, what, "#ago229", /now/);
-  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+ · Relay24_ESP32$/);
-  await expect(pg, what, "#invert", /relay on = pin high$/);
   if ((await pg.locator("#secs span").count()) !== 19) fail.push(what + ": expected the 19 sections");
   if ((await pg.locator("#secs span.on").count()) !== 19) fail.push(what + ": expected 19 sections open while sowing");
+  await expect(pg, what, "#detail", /^19 of 19 open · [\d.]+ km\/h · lift (idle|lowering|raising)/);
+  if (await pg.locator("#silent").isVisible()) fail.push(what + ": 'program silent' shows while the program talks");
+  await shot(pg, "seeder-status");
+  await pg.click('nav button[data-t="settings"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-settings").isVisible())) fail.push(what + ": tab Settings does not show");
   if ((await pg.locator("#relays span").count()) !== 24) fail.push(what + ": expected the Relay24_ESP32's 24 relays");
   if ((await pg.locator("#relays span.on").count()) !== 19) fail.push(what + ": expected 19 relays on while sowing");
   await expect(pg, what, "#relayNote", /^24 relays, 24 of them sections: relay 1 follows section 1/);
   await expect(pg, what, "#r18", /^19S19$/);
-  await shot(pg, "seeder-status");
   await pg.fill("#first", "0");
   await pg.click("button[onclick='saveRelays()']"); await pg.waitForTimeout(1500);
   await expectSoon(pg, what, "#msgRelays", /done/);
   await expectSoon(pg, what, "#log", /relays follow the program's pin config/);
   await expect(pg, what, "#relayNote", /^24 relays, 8 of them sections: what each relay does comes from the program/);
+  await shot(pg, "seeder-settings");
+  await pg.click('nav button[data-t="module"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-module").isVisible())) fail.push(what + ": tab Module does not show");
+  await expect(pg, what, "#log", /ready: module IP 192\.168\.5\.123/);
+  await expect(pg, what, "#log", /network cable connected/);
+  await expect(pg, what, "#eth", /connected/);
+  await expect(pg, what, "#ago229", /now/);
+  await expect(pg, what, "#invert", /relay on = pin high$/);
   // the Wi-Fi settings as on the XIAO page: "Search for networks" lists what the module hears, strongest first, and a tap
   // chooses one; Save wants the password typed in its card (nothing is saved here: the module would restart)
   await pg.click("#scan");
@@ -266,6 +277,69 @@ async function teensy(browser, port, q, name) {
   await pg.click("button[onclick='saveWifi()']");
   await expectSoon(pg, what, "#msgWifi", /^Type the password of the own Wi-Fi network\.$/);
   await shot(pg, "seeder-network");
+  await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(700);
+  if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": tab Firmware does not show");
+  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+$/);
+  await expect(pg, what, "#board", /^Relay24_ESP32$/);
+  // the .bin on main, once there is one: the one the pretend module runs (or an older one, when the code changed and the
+  // .bin did not yet); none yet: said so
+  await expect(pg, what, "#ghVer", /^(no seed drill program on GitHub|v[\d.]+, built [^—]+ — (the one installed|older than the installed one \(the new \.bin is not on GitHub yet\)))$/);
+  if (!(await pg.locator("#ghInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with nothing newer there");
+  if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
+  await shot(pg, "seeder-firmware");
+  // wrong files: the .merged.bin, a program for the other board, the sprayer's program
+  const sdBin = (fw, ver, built, board) => Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31),
+   Buffer.from('{"fw":"' + fw + '","ver":"' + ver + '","built":"' + built + '"\0' + (board ? ',"board":"' + board + '"\0' : ""))]);
+  for (const [name, buf, re] of [["Seeder_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^This is the wrong file: use Seeder_ESP32\.ino\.bin/],
+   ["Seeder_ESP32.ino.bin", sdBin("Seeder_ESP32", "0.2", LATER, "KC868-A32"), /^This program is for the KC868-A32 board, but this module is on the Relay24_ESP32 board/],
+   ["Sprayer_ESP32.ino.bin", sdBin("Sprayer_ESP32", "0.10", LATER, ""), /^This is the program Sprayer_ESP32, not this module's/]]) {
+   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf});
+   await pg.click("#install"); await pg.waitForTimeout(500);
+   await expect(pg, what + " (" + name + ")", "#msgProg", re);
+  }
+  if (/program update/.test(await pg.locator("#log").textContent())) fail.push(what + ": a wrong file was sent to the module");
+  try {
+   const [dl] = await Promise.all([pg.waitForEvent("download", {timeout: 5000}), pg.click("#dumpBtn")]);
+   const name = dl.suggestedFilename(), r = JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
+   if (!/^Seeder_ESP32_report_\d{4}-\d\d-\d\d_\d{4}\.json$/.test(name)) fail.push(what + ": the report is called " + name);
+   if (!r.status || !r.status.out || !r.settings || r.settings.first !== 0)
+    fail.push(what + ": the report misses the status or the settings");
+   if (JSON.stringify(r).includes("agopengps")) fail.push(what + ": the report has the password in it");
+  } catch (e) { fail.push(what + ": no report downloaded (" + e.message + ")"); }
+  await expect(pg, what, "#dumpMsg", /^Downloaded: Seeder_ESP32_report_/);
+  await pg.close();
+ }
+ // a newer build of the seed drill program on GitHub: offered, marked on the Firmware tab, downloaded from GitHub (here: a
+ // made-up .bin with the version running and a later build date, since none is on main yet) and sent to the module,
+ // which then runs it
+ {
+  const what = "Seed drill page, newer build on GitHub";
+  const html = fs.readFileSync(path.join(site, "seeder", "index.html"), "utf8");
+  const running = JSON.parse(/window\.SIM_BUILD=(\{.*?\});<\/script>/.exec(html)[1]).seeder.version;
+  const bin = Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31),
+   Buffer.from('{"fw":"Seeder_ESP32","ver":"' + running + '","built":"' + LATER + '"\0,"board":"Relay24_ESP32"\0'), Buffer.alloc(4000, 0x5A)]);
+  const raw = "https://raw.githubusercontent.com/renatorgr/Boards/main/Seeder/Seeder_ESP32/Seeder_ESP32.ino.bin";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/#firmware", what,
+   j => { j.seeder = {file: "Seeder/Seeder_ESP32/Seeder_ESP32.ino.bin", name: "Seeder_ESP32", version: running, built: LATER, board: "Relay24_ESP32", size: bin.length}; });
+  const cors = {"Access-Control-Allow-Origin": "*"};
+  await pg.route("https://api.github.com/repos/renatorgr/Boards/contents/Seeder/Seeder_ESP32?ref=main", r => r.fulfill({status: 200,
+   contentType: "application/json", headers: cors, body: JSON.stringify([{type: "file", name: "Seeder_ESP32.ino.bin", size: bin.length, download_url: raw}])}));
+  await pg.route(raw, r => r.fulfill({status: 200, contentType: "application/octet-stream", headers: cors, body: bin}));
+  pg.on("dialog", d => d.accept("agopengps"));
+  await pg.waitForTimeout(2500);
+  if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  if (!(await pg.locator('nav button[data-t="firmware"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
+  if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
+  else {
+   await pg.click("#ghInstall");
+   try { await pg.waitForFunction(() => /^Back:/.test(document.getElementById("msgProg").textContent), null, {timeout: 25000}); }
+   catch (e) { fail.push(what + ": the module did not come back with the new program (" + (await pg.locator("#msgProg").textContent()) + ")"); }
+   await expect(pg, what, "#msgProg", /^Back: it runs Seeder_ESP32 v[\d.]+, built 31 Dec 2099 23:59 for the Relay24_ESP32\.$/);
+   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — the one installed$/);
+   if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is still marked new after the update");
+  }
+  await shot(pg, "seeder-firmware-updated");
   await pg.close();
  }
  // the sprayer module's page: 8 sections spraying on the X8 board's 8 relays, the rate on target, the boom pressure;

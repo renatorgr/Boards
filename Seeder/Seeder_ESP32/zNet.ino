@@ -8,6 +8,8 @@
    page (as on the XIAO page).
    2026-11-07 (Claude): v0.2.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path,
    the official Docs/ADD_ON_CARDS.md) under the own network's name; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
+   2026-11-07 (Claude): v0.2.3: /api/status starts as the sprayer's (fw, ver, built, board): the page's Firmware tab and
+   Firmware/simulator/build.py (firmware.json) read that text from the .bin. Keep it as it is.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -183,8 +185,11 @@ static void apiStatus()
     const uint32_t now = millis();
     String j;
     j.reserve(2000);
+    // one text in the program image: the page (before it installs a .bin) and build.py (firmware.json) find in it
+    // which program, version and build a .bin is, and the board in the line below; keep both as they are
     j += "{\"fw\":\"" FW_NAME "\",\"ver\":\"" FW_VERSION "\",\"built\":\"" __DATE__ " " __TIME__ "\"";
-    j += ",\"kind\":\"Seeder\",\"board\":\"" BOARD_NAME "\"";
+    j += ",\"board\":\"" BOARD_NAME "\"";
+    j += ",\"kind\":\"Seeder\"";                      // which implement the module drives (the sprayer's says "Sprayer")
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
     j += ",\"name\":" + jsonStr(moduleName());
 

@@ -10,7 +10,7 @@ by a 12 V DPDT relay. Two boards:
 - a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an
   external DPDT relay.
 
-Version 0.2.1, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
+Version 0.2.3, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
 got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
 not run on either board yet.
 
@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | **0.2.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under the module's own Wi-Fi name ("Name on the network"); the home-made `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). |
+| 7 Nov 2026 | **0.2.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). **0.2.3**: four tabs as the sprayer page's, with Firmware: Install from GitHub, the report ([How it works](#how-it-works)). |
 | 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
 | 28 Oct 2026 | **0.2**: runs on the [Relay24_ESP32](#hardware-relay24_esp32) board of this repository, now the default; the [KC868-A32](#hardware-kc868-a32) stays as a choice. |
 | 27 Oct 2026 | **0.1**: the seed drill part of Sprayer_ESP32 0.8 in its own folder: KC868-A32, 19 sections, no sensors, no PGN 160. **0.1.1**: PGN 237 in the AiO v26 layout, the sections above 16 after it, so the [AiO module page](#what-the-aio-module-page-shows) shows them all. |
@@ -53,9 +53,13 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the tractor
   network the same page is at `http://192.168.5.123/` or `http://seeder.local/` (the module
   announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list it by name
-  in a second). Without the board, the page can be tried in the
-  [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on every
-  change.
+  in a second). It has four tabs, as the sprayer page: **Sowing** (the sections, big enough
+  for the cab), **Settings** (which section each relay follows), **Module** (AgOpenWeb, the
+  network and its settings, the events) and **Firmware** (the program installed, the version
+  on GitHub with *Install from GitHub*, a `.bin` update, a restart and *Download the report*,
+  a `.json` file to send when something goes wrong). Without the board, the page can be tried
+  in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on
+  every change.
 
 ## Choosing the board
 
@@ -66,7 +70,7 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
 | `BOARD_RELAY24` (default) | Relay24_ESP32: 24 relays through 74HC595 shift registers, RTL8201F network chip |
 | `BOARD_KC868_A32` | KinCony KC868-A32: 32 relays through PCF8574 chips, LAN8720 network chip |
 
-The page shows the board next to the version (*Program* card).
+The page shows the board under the version (*Firmware* tab, *Program installed* card).
 
 ## Hardware: Relay24_ESP32
 
@@ -110,10 +114,15 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
 4. Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be
    powered or not). KC868-A32: power it with 12 V and plug its USB socket in, as in
    KinCony's guide. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.1` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.3` and `ready`.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
-page *Install a new program* and choose the `.bin`.
+page's *Firmware* tab *Choose .bin* (`Seeder_ESP32.ino.bin` from this folder, not the
+`.merged.bin`) and *Install*. Or **Install from GitHub**: the phone fetches
+`Seeder_ESP32.ino.bin` from this folder on `main` (once it is committed there: the simulator's
+`build.py` then lists its version, board and build date in `firmware.json`, as it does for the
+sprayer) and sends it to the module. The page refuses a `.bin` of another program or for the
+other board.
 
 ## Setup
 
