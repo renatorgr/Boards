@@ -12,6 +12,7 @@
    and build read from the .bin, as the page does).
    2026-11-02 (Claude): v0.10.1: "Search for networks" on the Module tab (GET /api/scan).
    2026-11-07 (Claude): v0.10.2: the module's name on the network is its own Wi-Fi name (no 16-digit name, no /aow/status).
+   2026-11-07 (Claude): v0.10.3: "kind":"Sprayer" in /api/status.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -132,7 +133,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
+ return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", kind: "Sprayer", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,

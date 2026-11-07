@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | **0.10.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under the module's own Wi-Fi name ("Name on the network"); the home-made `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). |
+| 7 Nov 2026 | **0.10.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). **0.10.3**: the alarms also as PGN 221, shown on the program's screen ([Messages](#messages)). |
 | 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
 | 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
 | 26 Oct 2026 | **0.6**: all 8 relays are sections by default. **0.7**: also a plain ESP32 with [relay modules](#a-separate-esp32-with-relay-modules), up to 16 relays. The relay number above its function on the page. |
@@ -48,8 +48,10 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   rate, target, pressure for the target, pressure limits and alarms as **ISOBUS process
   data** (DDIs, see *Messages*). The
   [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb) shows
-  them above the section buttons and sounds the alarms. With no sensor ticked it sends
-  neither: see *Sensors fitted* below.
+  them above the section buttons and sounds the alarms. An alarm also goes to the program
+  as PGN 221, the text message it shows on its screen, so the official AgOpenWeb (which
+  reads no PGN 161) shows the alarm too: when it comes on or goes off, and every 10 s
+  while it lasts. With no sensor ticked it sends none of them: see *Sensors fitted* below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
@@ -239,6 +241,7 @@ Monitor: `wifi-reset`.
 | 237 | module → program | every 200 ms, in the layout of the AgOpenGPS AiO v26 firmware: sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives) |
 | 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 | 161 | module → program | right after each 160: ISOBUS process data, 8 bytes per value (table below) |
+| 221 | module → program | when an alarm comes on or goes off, and every 10 s while one is on: the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most). The official AgOpenWeb shows it; the fork has the alarms from 161 as well |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts

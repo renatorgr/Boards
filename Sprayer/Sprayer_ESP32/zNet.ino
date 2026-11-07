@@ -11,6 +11,7 @@
    page (as on the XIAO page).
    2026-11-07 (Claude): v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path,
    the official Docs/ADD_ON_CARDS.md) under the own network's name; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
+   2026-11-07 (Claude): v0.10.3: "kind":"Sprayer" in /api/status, as the seed drill's module says "Seeder".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -171,6 +172,7 @@ static void apiStatus()
     // which program, version and build a .bin is, and the board in the line below; keep both as they are
     j += "{\"fw\":\"" FW_NAME "\",\"ver\":\"" FW_VERSION "\",\"built\":\"" __DATE__ " " __TIME__ "\"";
     j += ",\"board\":\"" BOARD_NAME "\"";
+    j += ",\"kind\":\"Sprayer\"";                     // which implement the module drives (the seed drill's says "Seeder")
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
     j += ",\"name\":" + jsonStr(moduleName());
 

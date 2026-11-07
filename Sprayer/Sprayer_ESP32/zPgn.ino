@@ -8,6 +8,8 @@
    2026-10-27 (Claude): v0.9.1: PGN 237 in the AiO v26 layout (sections, lift, tramline, geo stop, status).
    2026-11-02 (Claude): v0.10.0: PGN 235 (section widths, kept in flash) read; PGN 161 sent, ISOBUS process data with
    the readings, the actual and target rate, the pressure for the target, the pressure limits and the alarms.
+   2026-11-07 (Claude): v0.10.3: PGN 221 (the text the program shows) when an alarm comes on or goes off and every 10 s
+   while one is on, so the official AgOpenWeb shows the sprayer alarms too.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -37,6 +39,10 @@
 //              193 the pressure that gives the target now, 0.1 Pa     element 1
 //              195 minimum pressure, 196 maximum pressure, 0.1 Pa     element 1, when set
 //            57344 (proprietary range) sprayer alarms: the ALARM_* bits, always sent  element 1
+//   221 hardware message, the text the program shows on its screen for a few seconds (AgOpenGPS layout, as the
+//       AiO Teensy sends it): seconds to show, colour (0 warning, 1 normal), text of 60 bytes at most. Sent when an
+//       alarm comes on or goes off, and every ALARM_REPEAT_S while one is on. The official AgOpenWeb reads it (161 only
+//       the fork).
 
 static uint8_t rx[300];
 
@@ -138,6 +144,44 @@ void sendProcessData()
     pdValue(msg, n, 1, 57344, sprayAlarms);
     msg[4] = n - 5;
     sendPgn(msg, n + 1, broadcastIp());
+}
+
+// PGN 221: { 0x80, 0x81, 0x7B, 221, n + 2, seconds to show, colour (0 = warning), text of n bytes (60 at most), CRC }
+static void sendHardwareMessage(const char* text, uint8_t seconds, bool warning)
+{
+    uint8_t msg[8 + 60] = { 0x80, 0x81, 0x7B, HARDWARE_MESSAGE_PGN };
+    size_t n = strlen(text);
+    if (n > 60) n = 60;
+    msg[4] = (uint8_t)(n + 2);
+    msg[5] = seconds;
+    msg[6] = warning ? 0 : 1;
+    memcpy(msg + 7, text, n);
+    sendPgn(msg, 8 + n, broadcastIp());
+}
+
+// Once a second, after the alarms of rateTick(): the alarms as a PGN 221 message when they change (one normal-colour
+// note when the last one goes off), and again every ALARM_REPEAT_S while one is on, so the program's screen keeps it.
+void sendAlarmMessage()
+{
+    static uint8_t  lastSent = 0;                           // the alarms the last message told
+    static uint32_t lastMs = 0;
+    const uint32_t now = millis();
+    if (sprayAlarms == lastSent && (!sprayAlarms || now - lastMs < ALARM_REPEAT_S * 1000UL)) return;
+    if (!sprayAlarms) sendHardwareMessage("Sprayer: alarms over", 3, false);
+    else
+    {
+        char text[61] = "Sprayer:", v[32];
+        if (sprayAlarms & ALARM_PRESSURE_LOW)  { snprintf(v, sizeof(v), " low pressure %.1f bar,", pressureBar); strlcat(text, v, sizeof(text)); }
+        if (sprayAlarms & ALARM_PRESSURE_HIGH) { snprintf(v, sizeof(v), " high pressure %.1f bar,", pressureBar); strlcat(text, v, sizeof(text)); }
+        if (sprayAlarms & ALARM_FLOW_LOW)      strlcat(text, " flow too low,", sizeof(text));
+        if (sprayAlarms & ALARM_FLOW_HIGH)     strlcat(text, " flow too high,", sizeof(text));
+        if (sprayAlarms & ALARM_FLOW_CLOSED)   strlcat(text, " flow with the sections off,", sizeof(text));
+        const size_t n = strlen(text);
+        if (n && text[n - 1] == ',') text[n - 1] = '\0';
+        sendHardwareMessage(text, ALARM_REPEAT_S + 2, true);
+    }
+    lastSent = sprayAlarms;
+    lastMs = now;
 }
 
 static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddress from)
