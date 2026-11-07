@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | **0.2.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). **0.2.3**: four tabs as the sprayer page's, with Firmware: Install from GitHub, the report ([How it works](#how-it-works)). |
+| 7 Nov 2026 | **0.2.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone ([Notes](#notes)). **0.2.3**: four tabs as the sprayer page's, with Firmware ([How it works](#how-it-works)). **0.2.4**: Module tab: a Module card, one Network settings card. |
 | 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
 | 28 Oct 2026 | **0.2**: runs on the [Relay24_ESP32](#hardware-relay24_esp32) board of this repository, now the default; the [KC868-A32](#hardware-kc868-a32) stays as a choice. |
 | 27 Oct 2026 | **0.1**: the seed drill part of Sprayer_ESP32 0.8 in its own folder: KC868-A32, 19 sections, no sensors, no PGN 160. **0.1.1**: PGN 237 in the AiO v26 layout, the sections above 16 after it, so the [AiO module page](#what-the-aio-module-page-shows) shows them all. |
@@ -70,7 +70,7 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
 | `BOARD_RELAY24` (default) | Relay24_ESP32: 24 relays through 74HC595 shift registers, RTL8201F network chip |
 | `BOARD_KC868_A32` | KinCony KC868-A32: 32 relays through PCF8574 chips, LAN8720 network chip |
 
-The page shows the board under the version (*Firmware* tab, *Program installed* card).
+The page shows the board on the *Module* tab (*Module* card), with the module's name on the network, its uptime and its free memory.
 
 ## Hardware: Relay24_ESP32
 
@@ -129,8 +129,8 @@ other board.
 1. Plug the network cable into the RUT901's `LAN2` and the board. The page's *Network* card shows
    *Network cable: connected*.
 2. **Program subnet**: the module and the tablet must be on the same subnet (the first
-   three numbers of the tablet's IP). If it is not 192.168.5, set it in the *Program network*
-   card on the page (then *Save and restart the module*), or let AgOpenWeb send it (PGN 201).
+   three numbers of the tablet's IP). If it is not 192.168.5, set it under *Program network* in the
+   *Network settings* card on the page (then *Save and restart the module*), or let AgOpenWeb send it (PGN 201).
 3. Open AgOpenWeb: the page's dot turns green (*program talking*). Leave
    **"relay active high" unticked** in its machine settings: the page shows
    *Output polarity: normal*.

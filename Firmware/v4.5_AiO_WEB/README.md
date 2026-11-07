@@ -21,7 +21,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
 | **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
 | **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. The in-between state alternates red and green, readable through a panel window. |
-| **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5, the AiO v26's machine part, the sprayer module or the seed drill module (several at once), their sections, and the sprayer's pressure and flow. |
+| **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5, the AiO v26's machine part, the sprayer module or the seed drill module (several at once), their sections, and the sprayer's pressure, flow, rate and alarms (PGN 160 and 161). |
 
 The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single antenna) or a second F9P on the GPS2 port; **IMU** TM171 or BNO085; **steering** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN; **optional** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time).
 
@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | The page is also an AgOpenWeb add-on card (`_aowcard._tcp`) under a name unique to the module (**AiO** + 4 digits), on the Connections card ([Web page](#web-page)); shorter notes on the page; a contents line and short file headers ([Files](#files)). |
+| 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
 | 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
 | 2 Nov 2026 | [Update from the XIAO page](#update-from-the-xiao-page). [Go back to the previous firmware](#going-back-to-the-previous-firmware), on both pages. The page is also at `http://aio.local/`. Fix: the page stopped answering seconds after start-up. |
@@ -77,7 +77,7 @@ Dark or light: the ☀ / ☾ button at the top (remembered by the browser), othe
 
 | Tab | |
 |---|---|
-| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen, Teensy hot). GNSS, dual heading (not with one antenna), IMU, steering (with the distance to the guidance line the program sends), the steering settings from the program (with its maximum wheel angle and minimum steering speed, shown only: the firmware keeps its own limits), network and corrections, the XIAO. The temperatures the parts report, each on its card: the u-blox receivers, the TM171, the XIAO (the Teensy's is on the Firmware tab). |
+| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen, Teensy hot). GNSS, steering (with the distance to the guidance line the program sends and, folded under it, the steering settings received from the program: its maximum wheel angle and minimum steering speed are shown only, the firmware keeps its own limits), dual heading (not with one antenna), IMU, connections (network, the sentences sent to the program, what the receiver sends), corrections, the XIAO. The temperatures the parts report, each on its card: the u-blox receivers, the TM171, the XIAO (the Teensy's is on the Firmware tab). |
 | **Messages** | The last 60 `[status]` lines. |
 | **Settings** | The settings below, and **Notes about this installation**: a free-text box (wiring, calibration values, what was changed and when) saved in the Teensy, kept through firmware updates and put in the diagnostic report. |
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
@@ -335,7 +335,7 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
-AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering settings card shows them next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
+AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
 
 At the top of `Autosteer.ino`:
 

@@ -91,6 +91,7 @@ async function teensy(browser, port, q, name) {
  else if (ours && !(spr ? /^\.\.\/sprayer\//.test(link) : /^\.\.\/seeder\//.test(link))) fail.push(what + ": the module link goes to " + link);
  const p160 = ours && spr;   // only the sprayer has sensors: the seed drill's module sends no PGN 160
  if ((await pg.locator("#mSprayCard.hidden").count() === 0) !== p160) fail.push(what + ": the Sprayer (PGN 160) card " + (p160 ? "is missing" : "shows without PGN 160"));
+ if (p160) await expect(pg, what, "#mAlarms", /^none$/);   // its PGN 161 read too: the alarm bits
  return pg;
 }
 
@@ -157,6 +158,9 @@ async function teensy(browser, port, q, name) {
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/", what);
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#hdr", /_XIAO_ESP32C3/);
+  // the seed drill's 19 sections (PGN 229): one square each, not the 16 of PGN 254 alone
+  for (let i = 0; i < 40 && (await pg.locator("#aSecs span").count()) !== 19; i++) await pg.waitForTimeout(250);
+  if ((await pg.locator("#aSecs span").count()) !== 19) fail.push(what + ": Program → module should show the seed drill's 19 sections");
   await expect(pg, what, "#mFw", /AiO/);
   await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — the one installed$/);
   await shot(pg, "xiao-status");

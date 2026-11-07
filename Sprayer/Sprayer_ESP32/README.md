@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 7 Nov 2026 | **0.10.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). **0.10.3**: the alarms also as PGN 221, shown on the program's screen ([Messages](#messages)). |
+| 7 Nov 2026 | **0.10.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone ([Notes](#notes)). **0.10.3**: alarms also as PGN 221, on the program's screen ([Messages](#messages)). **0.10.4**: Module tab: a Module card, one Network settings card. |
 | 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
 | 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
 | 26 Oct 2026 | **0.6**: all 8 relays are sections by default. **0.7**: also a plain ESP32 with [relay modules](#a-separate-esp32-with-relay-modules), up to 16 relays. The relay number above its function on the page. |
@@ -152,14 +152,14 @@ divider (to-GND ÷ total) in the page's calibration.
 
 1. On a phone, join the Wi-Fi network **Sprayer-xxxx**, password **agopengps**. The
    page opens by itself (or open `http://192.168.4.1/`).
-2. **Module** tab, card *Tractor Wi-Fi network*: tap *Search for networks* and then the
+2. **Module** tab, card *Network settings*, under *Tractor Wi-Fi network*: tap *Search for networks* and then the
    router the tablet uses (that ticks *Join the tractor network*), and type its password.
-   In the *Save* card type the own network's password (**agopengps**), *Save and restart
+   At the end of that card type the own network's password (**agopengps**), *Save and restart
    the module*. The header then shows `on <network> as 192.168.5.123`.
 3. **Program subnet**: the module and the tablet must be on the same subnet, which is
    the first three numbers of the tablet's IP on that network (Wi-Fi settings on the
    tablet; a Starlink router gives 192.168.1.x, for example). If it is not 192.168.5,
-   type it in the *Program network* card, then *Save and restart the module*: the header then shows
+   type it under *Program network* in the *Network settings* card, then *Save and restart the module*: the header then shows
    `as 192.168.1.123`. In AgOpenWeb set the module subnet to the same three numbers.
    AgOpenWeb can also send its subnet to the module (PGN 201) once it sees it.
 4. Open AgOpenWeb. The machine module shows up at `<subnet>.123`, and the page's dot
