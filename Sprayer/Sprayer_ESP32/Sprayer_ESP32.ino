@@ -7,7 +7,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.10.3 (2026-11-07), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.4 (2026-11-07), not yet tested on the sprayer.
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
 //   Or any ESP32 dev module with relay modules, up to 16 relays (BOARD_DEVKIT below).

@@ -4,7 +4,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOp
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.10.1 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.4 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## Changelog
@@ -144,7 +144,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.1` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.4` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
