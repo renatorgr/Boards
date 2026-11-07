@@ -8,10 +8,16 @@
    2026-10-28 (Claude): v0.2: the Relay24_ESP32 board (folder Relay24_ESP32) is the default board.
    2026-11-02 (Claude): v0.2.1: the network settings as on the XIAO page, with a search for Wi-Fi networks.
    2026-11-07 (Claude): v0.2.2: the page announced as an AgOpenWeb add-on card (_aowcard._tcp); _aow-ui and /aow/status gone.
+   2026-11-07 (Claude): v0.2.3: the page as the sprayer page: four tabs, a Firmware tab with Install from GitHub and the report.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Seeder_ESP32.ino  v0.2.2 (2026-11-07), not yet run on a board.
+// Seeder_ESP32.ino  v0.2.3 (2026-11-07), not yet run on a board.
+//   v0.2.3: the page catches up with the sprayer page (Sprayer_ESP32 0.10.1): four tabs (Sowing, Settings, Module,
+//         Firmware); the Firmware tab has the program installed, the version on GitHub and Install from GitHub, a .bin
+//         install with a progress bar and checks (another program or the other board refused), "Download the report"
+//         (a .json file). /api/status starts with the same text as the sprayer's (fw, ver, built, board): the page and
+//         Firmware/simulator/build.py (firmware.json) read it from the .bin.
 //   v0.2.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
 //         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
 //         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
@@ -50,9 +56,11 @@
 //   - no message from the program for 2 s (cable or Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Seeder-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://seeder.local/
-//   - the page shows the sections asked for and open, the relays, the link to the program and the network,
-//       and has the network settings and program subnet, the first section the relays follow, a program
-//       update (.bin) and a restart.
+//   - the page: Sowing tab with the sections asked for and open; Settings tab with the relays and the first section
+//       they follow; Module tab with the link to the program, the network and its settings, the program subnet and
+//       the events; Firmware tab with the program installed, the newest on GitHub (Install from GitHub, when the
+//       phone has internet), a program update (.bin), a restart and "Download the report" (a .json file to send when
+//       something goes wrong).
 //   - IO0 (BOOT) button held 5 s while running: Wi-Fi settings back to the defaults (forgotten password).
 //       On the Relay24_ESP32 only while the network cable is not in use (GPIO 0 carries its clock).
 //   - serial monitor (115200): "status", "wifi-reset", "restart".
@@ -74,7 +82,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.2"
+#define FW_VERSION          "0.2.3"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

@@ -5,6 +5,8 @@
    2026-10-28 (Claude): Seeder_ESP32 v0.2: the Relay24_ESP32 board (24 relays) instead of the KC868-A32 (32).
    2026-11-02 (Claude): v0.2.1: "Search for networks" in the network settings (GET /api/scan).
    2026-11-07 (Claude): v0.2.2: the module's name on the network is its own Wi-Fi name (no 16-digit name).
+   2026-11-07 (Claude): v0.2.3: the Firmware tab as the sprayer page's: the pretend module runs the .bin on main when there is
+   one (firmware.json), the update comes as an upload with progress, and after the restart it runs what was sent.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -84,7 +86,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sd.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sd.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: VER, built: S.BUILD.built || "Oct 25 2026 09:00:00", kind: "Seeder", board: BOARD, up: Math.floor(t),
+ return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: BOARD, kind: "Seeder", up: Math.floor(t),
   heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, staUp: staUp(), eth: true, ethUp: ethUp(), ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: staUp() ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
@@ -148,15 +150,17 @@ function restartPost(b) {
  restart(3000);
  return S.ok({ok: true, restart: true});
 }
-// a new program (.bin in a form, the password in the address): the Update library takes only an ESP32 image (first byte 0xE9)
+// a new program (.bin in a form, the password in the address): the Update library takes only an ESP32 image (first byte
+// 0xE9); after the restart the module runs it (which program, version and build: the text its /api/status starts with)
 async function updatePost(q, body) {
  if (q.get("pw") !== X.pass) return S.err(403, "wrong password");
  const f = body instanceof FormData ? body.get("bin") : null;
  event("program update: " + ((f && f.name) || "file"));
- if (f && f.size) await S.sleep(Math.min(4000, f.size / 1000));        // about 1 MB/s on the cable
  const h = f && f.size ? new Uint8Array(await f.slice(0, 1).arrayBuffer()) : [];
  if (h[0] !== 0xE9) { event("update: failed"); return S.err(500, "update failed, the old program stays"); }
+ const m = /\{"fw":"([^"]+)","ver":"([^"]*)","built":"([^"]*)"/.exec(new TextDecoder("latin1").decode(await f.arrayBuffer()));
  event("update: " + f.size + " bytes written, restarting");
+ if (m && m[1] === FW) { X.ver = m[2]; X.built = m[3]; }
  restart(4000);
  return S.ok({ok: true, restart: true});
 }
@@ -172,7 +176,14 @@ S.hook(async (method, path, q, body) => {
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/relays") r = relaysPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
- else if (post && path === "/api/update") r = await updatePost(q, body);
+ S.save(KEY, X);
+ return r;
+});
+// the program update comes as an upload with progress (XMLHttpRequest)
+S.hookXhr(async (path, q, body) => {
+ if (T() < 0) return S.OFFLINE;
+ if (path !== "/api/update") return S.err(404, "Not found");
+ const r = await updatePost(q, body);
  S.save(KEY, X);
  return r;
 });
