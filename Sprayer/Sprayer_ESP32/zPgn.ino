@@ -178,6 +178,7 @@ void sendAlarmMessage()
     lastMs = now;
 }
 
+// ==== shared "pgn-common-cases": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddress from)
 {
     switch (pgn)
@@ -234,6 +235,7 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         logEvent("machine config from the program: lift %s, raise %u s, lower %u s, outputs %s",
                  cfg.hydEnable ? "on" : "off", cfg.raiseTime, cfg.lowerTime, cfg.invertOutputs ? "INVERTED (relay active high ticked)" : "normal");
         break;
+// ==== end shared "pgn-common-cases"
 
     case 236:                                               // output functions, 24 entries
         if (dataLength < 24) return;
@@ -263,6 +265,7 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
         break;
     }
 
+    // ==== shared "pgn-subnet-receive": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
     case 201:                                               // subnet: save and restart with the new IP
         if (dataLength == 5 && d[5] == 201 && d[6] == 201)
         {
@@ -304,3 +307,4 @@ void udpPoll()
         handlePgn(pgn, rx, dataLength, udp.remoteIP());
     }
 }
+    // ==== end shared "pgn-subnet-receive"

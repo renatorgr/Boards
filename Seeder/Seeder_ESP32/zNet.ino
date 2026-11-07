@@ -102,6 +102,7 @@ void wifiWatch()
     else if (cfg.staOn) logEvent("lost the tractor network '%s'", cfg.staSsid.c_str());
 }
 
+// ==== shared "web-helpers": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // ---------------------------------------------------------------- web helpers
 static void sendJson(const String& body, int code = 200)
 {
@@ -142,7 +143,9 @@ static String jsonHex(uint64_t v)
     else snprintf(b, sizeof(b), "\"%lx\"", (unsigned long)v);
     return String(b);
 }
+// ==== end shared "web-helpers"
 
+// ==== shared "request-helpers": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // A whole number lo..hi in the request (only digits), else false
 static bool argNumber(const char* name, long lo, long hi, long& out)
 {
@@ -171,6 +174,7 @@ static bool captiveRedirect()
     server.send(302, "text/plain", "");
     return true;
 }
+// ==== end shared "request-helpers"
 
 // ---------------------------------------------------------------- web answers
 static void apiStatus()
@@ -210,6 +214,7 @@ static void apiStatus()
     for (uint8_t i = 0; i < NUM_RELAYS; i++) { if (i) j += ","; j += String(relayFn(i)); }
     j += "]}";
 
+    // ==== shared "status-log": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
     j += ",\"log\":[";
     bool first = true;
     for (uint8_t k = 0; k < 12; k++)
@@ -222,6 +227,7 @@ static void apiStatus()
     }
     j += "]}";
     sendJson(j);
+    // ==== end shared "status-log"
 }
 
 static void apiSettingsGet()
@@ -233,6 +239,7 @@ static void apiSettingsGet()
     sendJson(j);
 }
 
+// ==== shared "network-settings-post": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // "192.168.1" -> the three numbers; false when it is not three numbers 0-255
 static bool parseSubnet(const String& text, uint8_t out[3])
 {
@@ -310,6 +317,7 @@ static void apiScan()
     scanState = -1;
     sendJson("{\"busy\":true}");
 }
+// ==== end shared "network-settings-post"
 
 // Relay 1 follows section "first", the next relays the next sections (0 = the program's pin config)
 static void apiRelaysPost()
@@ -325,6 +333,7 @@ static void apiRelaysPost()
     sendJson("{\"ok\":true}");
 }
 
+// ==== shared "restart-update": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 static void apiRestartPost()
 {
     if (!passwordOk()) return;
@@ -369,6 +378,7 @@ static void notFound()
     if (captiveRedirect()) return;
     server.send(404, "text/plain", "not found");
 }
+// ==== end shared "restart-update"
 
 void webStart()
 {

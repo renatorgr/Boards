@@ -1,0 +1,38 @@
+# Shared code check.
+# The sprayer and the seed drill modules (Sprayer/Sprayer_ESP32, Seeder/Seeder_ESP32) have the same code in the
+# blocks marked `// ==== shared "name"` ... `// ==== end shared "name"`. A change to one that is not made to the
+# other fails this check, so the pull request shows it before it is merged. .github/scripts/check_shared_blocks.py
+# does the work (plain Python 3, no packages). It runs only when either program, the script or this file changes.
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Shared code
+
+on:
+  pull_request:
+    paths:
+      - 'Sprayer/Sprayer_ESP32/**'
+      - 'Seeder/Seeder_ESP32/**'
+      - '.github/scripts/check_shared_blocks.py'
+      - '.github/workflows/shared-code.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Sprayer/Sprayer_ESP32/**'
+      - 'Seeder/Seeder_ESP32/**'
+      - '.github/scripts/check_shared_blocks.py'
+      - '.github/workflows/shared-code.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  blocks:
+    name: blocks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare the shared blocks of the sprayer and the seed drill programs
+        run: python3 .github/scripts/check_shared_blocks.py

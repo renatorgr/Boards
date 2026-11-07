@@ -229,6 +229,7 @@ String defaultApSsid();
 String moduleName();
 
 // ---------------------------------------------------------------- small helpers
+// ==== shared "pgn-checksum": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // AgOpenGPS checksum: sum of the bytes from the 3rd up to the one before the checksum
 uint8_t pgnChecksum(const uint8_t* msg, size_t length)
 {
@@ -238,7 +239,9 @@ uint8_t pgnChecksum(const uint8_t* msg, size_t length)
 }
 
 bool staUp() { return cfg.staOn && WiFi.status() == WL_CONNECTED; }
+// ==== end shared "pgn-checksum"
 
+// ==== shared "log-event": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 void logEvent(const char* fmt, ...)
 {
     char* b = eventLog[eventNext];
@@ -251,6 +254,7 @@ void logEvent(const char* fmt, ...)
     Serial.println(b);
     eventNext = (eventNext + 1) % 12;
 }
+// ==== end shared "log-event"
 
 static void ledSet(bool on)
 {

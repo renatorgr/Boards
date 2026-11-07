@@ -32,6 +32,10 @@ text to paste into GitHub as a raw markdown code block.
   page find new versions on GitHub by those names (see the firmware `CLAUDE.md`, "Common Gotchas").
 - The firmware steers a tractor: safety code (WAS check, cut-offs, Keya heartbeat, watchdog) must keep working.
 - Pull requests: one topic each, a short plain description of what changes for Renato and how to test it.
+- `Sprayer/Sprayer_ESP32` and `Seeder/Seeder_ESP32` have the same code in the blocks marked `// ==== shared "name"` …
+  `// ==== end shared "name"` (Wi-Fi, web helpers, network settings, PGN handling, relays). Change both the same way,
+  or move a line out of the block: `.github/scripts/check_shared_blocks.py` compares them on every pull request
+  (the "Shared code" check). What is only one module's (sensors, rate, the cable, the relays setting) stays outside.
 - README changelogs: one short row per day (a summary of up to 240 characters, with links to the sections that
   hold the details). `.github/scripts/check_changelog.py` checks them on every pull request (the "Docs" check).
 

@@ -26,6 +26,7 @@ void settingsLoad()
 {
     Settings d;                                             // the defaults
     prefs.begin("seeder", true);
+    // ==== shared "settings-wifi-load": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
     cfg.apSsid  = prefs.getString("apSsid", defaultApSsid());
     cfg.apPass  = prefs.getString("apPass", DEFAULT_AP_PASS);
     cfg.staOn   = prefs.getBool("staOn", false);
@@ -34,6 +35,7 @@ void settingsLoad()
     cfg.host    = prefs.getString("host", DEFAULT_HOST);
     if (prefs.getBytesLength("subnet") == 3) prefs.getBytes("subnet", cfg.subnet, 3);
     cfg.ipLast       = prefs.getUChar("ipLast", d.ipLast);
+    // ==== end shared "settings-wifi-load"
     cfg.firstSection = prefs.getUChar("first", d.firstSection);
     cfg.raiseTime     = prefs.getUChar("raise", d.raiseTime);
     cfg.lowerTime     = prefs.getUChar("lower", d.lowerTime);
@@ -58,6 +60,7 @@ void settingsLoad()
 void settingsSave()
 {
     prefs.begin("seeder", false);
+    // ==== shared "settings-wifi-save": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
     prefs.putString("apSsid", cfg.apSsid);
     prefs.putString("apPass", cfg.apPass);
     prefs.putBool("staOn", cfg.staOn);
@@ -66,6 +69,7 @@ void settingsSave()
     prefs.putString("host", cfg.host);
     prefs.putBytes("subnet", cfg.subnet, 3);
     prefs.putUChar("ipLast", cfg.ipLast);
+    // ==== end shared "settings-wifi-save"
     prefs.putUChar("first", cfg.firstSection);
     prefs.putUChar("raise", cfg.raiseTime);
     prefs.putUChar("lower", cfg.lowerTime);
@@ -81,6 +85,7 @@ void settingsSave()
 
 // Only the Wi-Fi settings and the host name go back to the defaults (a forgotten password); the
 // program's config, the output functions, the module IP and the relays setting stay
+// ==== shared "settings-reset-wifi": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 void settingsResetWifi()
 {
     cfg.apSsid  = defaultApSsid();
@@ -91,3 +96,4 @@ void settingsResetWifi()
     cfg.host    = DEFAULT_HOST;
     settingsSave();
 }
+// ==== end shared "settings-reset-wifi"
