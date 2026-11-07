@@ -36,6 +36,8 @@
    also in the report.
    4 Nov 2026: temperatures on the cards (the Teensy with its clock on the Firmware tab, the receivers, the TM171, the XIAO)
    and a "Teensy hot" warning; the GPS tab says when a receiver's firmware does not report it.
+   2026-11-07: "Name on the network" on the Connections card: the mDNS instance name AgOpenWeb's web cards list the page under
+   ("AiO" + four digits of the Teensy's id, zEthernet.ino), now also announced as an add-on card (_aowcard._tcp).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -196,7 +198,7 @@ a{color:var(--acc)}
    <dt>Max wheel angle</dt><dd id="scMaxDeg">–</dd><dt>Min steer speed</dt><dd id="scMinKmh">–</dd></dl>
   <p class="note">Max wheel angle and min steer speed are the program's own limits (AgOpenWeb sends them), shown only: the firmware cuts beyond ±50° and uses the speeds of its Settings.</p></div>
  <div class="card"><h2>Connections</h2>
-  <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd>
+  <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd><dt>Name on the network</dt><dd id="mdns" class="nw">–</dd>
    <dt>Up for</dt><dd id="up">–</dd></dl>
   <p class="note">The receiver sends (last 5 s):</p><div class="box mono" id="rx">–</div></div>
  <div class="card"><h2>RTCM corrections</h2>
@@ -639,7 +641,7 @@ function render(s){
  const n=s.net;
  pill("link",n.link?"connected":"unplugged",n.link?"ok":"bad");
  const hn=n.host==="AgOpenWeb"||n.host==="AgOpenGPS"?n.host:"";
- pill("aog",!n.aog?"no communication":n.hostBoth?"two programs":hn?hn+" · "+"talking":"talking",!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp:"–");
+ pill("aog",!n.aog?"no communication":n.hostBoth?"two programs":hn?hn+" · "+"talking":"talking",!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp:"–");set("mdns",n.mdns||"–");
  pill("rtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");set("rtcmKB",n.rtcmKB.toFixed(0)+" kB"+(n.rtcm?" · "+n.rtcmBps+" B/s":""));
  set("rtcmMsg",n.rtcmOk+" · "+n.rtcmBad+" "+"with errors",n.rtcmBad?"warn":"");set("rtcmTypes",n.rtcmTypes||"–");
  pill("radio",(n.radio?"arriving":n.radioKB>0?"stopped":"nothing received"),n.radio?"ok":n.radioKB>0?"warn":"");

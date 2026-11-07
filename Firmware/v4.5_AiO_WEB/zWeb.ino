@@ -358,6 +358,7 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
 
     j.obj("net");
     j.bo("link", Ethernet.linkStatus() == LinkON);
+    j.str("mdns", mdnsName);                               // AiO_WEB 7 Nov 2026: the name on the network (zEthernet.ino mdnsStart)
     j.bo("aog", aogLastMs != 0 && now - aogLastMs < STATUS_SILENCE_MS);
     {
         char ip[20];

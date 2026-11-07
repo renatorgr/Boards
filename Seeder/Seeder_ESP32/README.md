@@ -20,6 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 7 Nov 2026 | **0.2.2**: the page is announced as an AgOpenWeb add-on card (`_aowcard._tcp`) under the module's own Wi-Fi name ("Name on the network"); the home-made `_aow-ui` and `/aow/status` are gone ([Notes](#notes)). |
 | 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
 | 28 Oct 2026 | **0.2**: runs on the [Relay24_ESP32](#hardware-relay24_esp32) board of this repository, now the default; the [KC868-A32](#hardware-kc868-a32) stays as a choice. |
 | 27 Oct 2026 | **0.1**: the seed drill part of Sprayer_ESP32 0.8 in its own folder: KC868-A32, 19 sections, no sensors, no PGN 160. **0.1.1**: PGN 237 in the AiO v26 layout, the sections above 16 after it, so the [AiO module page](#what-the-aio-module-page-shows) shows them all. |
@@ -255,8 +256,10 @@ messages with a right checksum from source `0x7F` (the program).
 
 ## Notes
 
-- The page also answers `GET /aow/status` and announces itself as `_aow-ui._tcp` over
-  mDNS, as the AgOpenGPS ISOBUS group's proposal for implements with their own page
-  describes.
+- The page is announced over mDNS as `_http._tcp` (the AgOpenWeb fork's **Search the network**)
+  and as `_aowcard._tcp` with TXT `v=1` and `path=/`, the official AgOpenWeb add-on card
+  announcement (`Docs/ADD_ON_CARDS.md`), both under the module's own Wi-Fi name
+  (`Seeder-xxxx`, "Name on the network" on the page), unique to each module. The earlier
+  `_aow-ui._tcp` and `GET /aow/status` (0.1 to 0.2.1) are gone.
 - Licence: GNU General Public License v3 or later (`Firmware/v4.5_AiO_WEB/COPYING`).
   Written 2026 by Claude (Anthropic) for renatorgr.

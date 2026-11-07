@@ -11,6 +11,9 @@
    finds it by name and AgOpenWeb's "Search the network" (web cards) lists it at once (mdnsStart).
    2026-11-02, later: the socket buffer size comes from zNet.h (NET_SOCKET_SIZE), shared with the web server's
    own listening socket (zWeb.ino).
+   2026-11-07: the page is also announced as an AgOpenWeb add-on card (DNS-SD "_aowcard._tcp", TXT v=1 and path, the
+   official Docs/ADD_ON_CARDS.md), under an instance name unique to this module ("AiO" + four digits of the Teensy's
+   own serial id, mdnsName: the Ethernet MAC is the same on every AiO board).
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -75,19 +78,35 @@ void EthernetStart()
 
 // ---------------------------------------------------------------- mDNS: the page by name
 // The module answers for the name MDNS_HOST.local (http://aio.local/ in a browser on the same network) and
-// announces its web page as a DNS-SD "_http._tcp" service, as the XIAO, sprayer and seed drill programs do, so
-// AgOpenWeb's web cards ("Search the network") list it in a second, by this name, without sweeping the
-// addresses. It is FNET's own responder (fnet_mdns, built into NativeEthernet), run from loop() by netPoll()
-// like the rest of the stack; it answers queries sent from any port by unicast (RFC 6762 6.7), which is how
-// AgOpenWeb asks. A name clash on the network is settled by FNET (it adds a number to the name).
+// announces its web page twice over DNS-SD, as the XIAO, sprayer and seed drill programs do: as "_http._tcp",
+// which the AgOpenWeb fork's web cards ("Search the network") list in a second, by name, without sweeping the
+// addresses; and as "_aowcard._tcp", the official AgOpenWeb add-on card announcement (Docs/ADD_ON_CARDS.md:
+// TXT v=1 is required, path says where the page is). The instance name of both is what the operator will see in
+// AgOpenWeb's list, so it has to tell this module from another one on the same network: "AiO" and four digits
+// of the Teensy's own serial id (mdnsName; the Ethernet MAC is the same on every AiO board). It is FNET's own
+// responder (fnet_mdns, built into NativeEthernet), run from loop() by netPoll() like the rest of the stack; it
+// answers queries sent from any port by unicast (RFC 6762 6.7), which is how AgOpenWeb asks. A name clash on
+// the network is settled by FNET (it adds a number to the name).
 #define MDNS_HOST "aio"
+char mdnsName[12] = "";                         // "AiO 3F2A": the instance name of both services (the Connections card, zWeb.ino)
+
+#ifdef ARDUINO_TEENSY41
+static const fnet_mdns_txt_key_t* aowcardTxt()  // the TXT record of "_aowcard._tcp"
+{
+  static const fnet_mdns_txt_key_t txt[] = { { (char*)"v", (char*)"1" }, { (char*)"path", (char*)"/" }, { 0, 0 } };
+  return txt;
+}
+#endif
 
 static void mdnsStart()
 {
 #ifdef ARDUINO_TEENSY41
-  MDNS.begin(MDNS_HOST, 1);                     // the host name and room for one service
-  MDNS.addService("_http._tcp", 80);            // the web page, instance "aio" (the host name)
-  StatusLog.line("[boot] mDNS: the page is also http://%s.local/ (AgOpenWeb's Search the network finds it by name)", MDNS_HOST);
+  snprintf(mdnsName, sizeof(mdnsName), "AiO %04X", (unsigned)(HW_OCOTP_MAC0 & 0xFFFF));
+  MDNS.begin(MDNS_HOST, 2);                     // the host name and room for two services
+  MDNS.setServiceName(mdnsName);                // NativeEthernet: one instance name for every service
+  MDNS.addService("_http._tcp", 80);            // the web page, for the fork's "Search the network"
+  MDNS.addService("_aowcard._tcp", 80, aowcardTxt);   // the official add-on card announcement
+  StatusLog.line("[boot] mDNS: the page is also http://%s.local/, announced as \"%s\" (_http._tcp and _aowcard._tcp: AgOpenWeb's web cards find it by name)", MDNS_HOST, mdnsName);
 #endif
 }
 

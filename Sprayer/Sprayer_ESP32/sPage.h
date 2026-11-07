@@ -18,6 +18,7 @@
    module's program or the .merged.bin is refused.
    2026-11-02 (Claude): v0.10.1: the Wi-Fi settings as on the XIAO page: own network, tractor network with "Search for
    networks" (a tap on a network chooses it), program network, and a Save card with the password typed in it.
+   2026-11-07 (Claude): v0.10.2: "Name on the network" (the own Wi-Fi name, the mDNS instance) instead of "Module name".
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -235,7 +236,7 @@ a{color:var(--acc)}
 <div class="grid">
 
 <div class="card"><h2>Program installed</h2>
-<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="board">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Module name</dt><dd id="name">–</dd></dl>
+<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="board">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Name on the network</dt><dd id="name">–</dd></dl>
 </div>
 
 <div class="card"><h2>Version on GitHub</h2>
@@ -414,7 +415,7 @@ function saveSpray(){const f={};for(const k of ['rate','nzSp','nzFl','nzBar','pL
 async function report(){
   const b=$('dumpBtn'),m=$('dumpMsg');b.disabled=true;m.className='note';m.textContent='Gathering…';
   const r={made:new Date().toString(),page:location.href,browser:navigator.userAgent};
-  for(const [k,u] of [['status','/api/status'],['settings','/api/settings'],['aow','/aow/status']]){
+  for(const [k,u] of [['status','/api/status'],['settings','/api/settings']]){
     try{r[k]=await (await fetch(u,{cache:'no-store'})).json()}catch(e){r[k]={error:String(e)}}}
   const d=new Date(),z=n=>String(n).padStart(2,'0'),fw=(r.status&&r.status.fw)||'Sprayer_ESP32';
   const name=fw+'_report_'+d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.json';

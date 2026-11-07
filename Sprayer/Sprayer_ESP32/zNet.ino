@@ -9,6 +9,8 @@
    page's update check and by Firmware/simulator/build.py (firmware.json): keep it as it is.
    2026-11-02 (Claude): v0.10.1: GET /api/scan, the Wi-Fi networks the module hears, for "Search for networks" on the
    page (as on the XIAO page).
+   2026-11-07 (Claude): v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path,
+   the official Docs/ADD_ON_CARDS.md) under the own network's name; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
@@ -23,7 +25,6 @@
 // POST /api/spray     target rate, nozzles, pressure limits, flow tolerance
 // GET  /api/scan      the Wi-Fi networks around      POST /api/restart
 // POST /api/update    a new program (.bin), then restart
-// GET  /aow/status    name and alarms, as the "Implements bring their UI" proposal describes
 
 static bool updateAuth = false;
 
@@ -50,12 +51,11 @@ void wifiStart()
     dns.start(53, "*", WiFi.softAPIP());                    // every name -> this page (captive page)
     if (MDNS.begin(cfg.host.c_str()))
     {
-        MDNS.addService("http", "tcp", 80);
-        MDNS.addService("aow-ui", "tcp", 80);               // how an AgOpenWeb could find this page one day
-        MDNS.addServiceTxt("aow-ui", "tcp", "v", "1");
-        MDNS.addServiceTxt("aow-ui", "tcp", "name", moduleName());
-        MDNS.addServiceTxt("aow-ui", "tcp", "path", "/");
-        MDNS.addServiceTxt("aow-ui", "tcp", "status", "/aow/status");
+        MDNS.setInstanceName(cfg.apSsid);                   // the name in AgOpenWeb's list: the own network's, unique to this module
+        MDNS.addService("http", "tcp", 80);                 // the page, for the AgOpenWeb fork's "Search the network"
+        MDNS.addService("aowcard", "tcp", 80);              // the official AgOpenWeb add-on card announcement (Docs/ADD_ON_CARDS.md)
+        MDNS.addServiceTxt("aowcard", "tcp", "v", "1");     //   TXT v=1 is required, path says where the page is
+        MDNS.addServiceTxt("aowcard", "tcp", "path", "/");
     }
     logEvent("own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(), sta ? ", joining the tractor network" : ", tractor network not set");
 }
@@ -381,25 +381,6 @@ static void apiRestartPost()
     restartAtMs = millis() + 500;
 }
 
-// The name and the alarms, as the "Implements bring their UI" proposal describes (GET /aow/status)
-static void apiAowStatus()
-{
-    String j = "{\"v\":1,\"name\":" + jsonStr(moduleName()) + ",\"alarms\":[";
-    static const char* const ALARM_ID[] = { "pressure-low", "pressure-high", "flow-low", "flow-high", "flow-closed" };
-    static const char* const ALARM_TEXT[] = { "Low pressure", "High pressure", "Flow too low", "Flow too high", "Flow with the sections off" };
-    bool first = true;
-    if (!linkOk) { j += "{\"id\":\"no-program\",\"priority\":\"medium\",\"text\":\"No messages from AgOpenWeb\"}"; first = false; }
-    for (uint8_t b = 0; b < 5; b++)
-    {
-        if (!(sprayAlarms & (1 << b))) continue;
-        if (!first) j += ",";
-        first = false;
-        j += String("{\"id\":\"") + ALARM_ID[b] + "\",\"priority\":\"high\",\"text\":\"" + ALARM_TEXT[b] + "\"}";
-    }
-    j += "]}";
-    sendJson(j);
-}
-
 // A new program (.bin from the Arduino IDE: Sketch > Export compiled binary), password in the URL
 static void apiUpdateDone()
 {
@@ -453,7 +434,6 @@ void webStart()
     server.on("/api/total", HTTP_POST, apiTotalPost);
     server.on("/api/restart", HTTP_POST, apiRestartPost);
     server.on("/api/update", HTTP_POST, apiUpdateDone, apiUpdateUpload);
-    server.on("/aow/status", HTTP_GET, apiAowStatus);
     server.onNotFound(notFound);
     server.begin();
 }

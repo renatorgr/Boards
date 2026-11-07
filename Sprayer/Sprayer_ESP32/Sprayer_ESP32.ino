@@ -6,7 +6,10 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.10.1 (2026-11-02), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.2 (2026-11-07), not yet tested on the sprayer.
+//   v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
+//         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
+//         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status of 0.10.0 are gone.
 //   v0.10.1: the Wi-Fi settings on the Module tab are laid out as on the XIAO page, with "Search for networks": the
 //         module lists the networks it hears (GET /api/scan) and a tap on one chooses it.
 //   v0.10.0: the module works out the application rate (L/ha) from the flow, the speed (PGN 239) and the widths of the
@@ -76,7 +79,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.1"
+#define FW_VERSION          "0.10.2"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

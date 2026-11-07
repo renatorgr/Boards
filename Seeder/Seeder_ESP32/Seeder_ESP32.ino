@@ -7,10 +7,14 @@
    (AgOpenGPS-Official/Boards, GPL v3).
    2026-10-28 (Claude): v0.2: the Relay24_ESP32 board (folder Relay24_ESP32) is the default board.
    2026-11-02 (Claude): v0.2.1: the network settings as on the XIAO page, with a search for Wi-Fi networks.
+   2026-11-07 (Claude): v0.2.2: the page announced as an AgOpenWeb add-on card (_aowcard._tcp); _aow-ui and /aow/status gone.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Seeder_ESP32.ino  v0.2.1 (2026-11-02), not yet run on a board.
+// Seeder_ESP32.ino  v0.2.2 (2026-11-07), not yet run on a board.
+//   v0.2.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
+//         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
+//         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
 //   v0.2.1: the network settings on the page are laid out as on the XIAO page, with "Search for networks": the
 //         module lists the Wi-Fi networks it hears (GET /api/scan) and a tap on one chooses it.
 //   v0.2: the Relay24_ESP32 board of this repository (BOARD_RELAY24, the default): 24 DPDT relays through
@@ -70,7 +74,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.1"
+#define FW_VERSION          "0.2.2"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
