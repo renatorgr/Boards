@@ -1,31 +1,7 @@
 /* zWeb.ino - the module's web server.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   24 Oct 2026: the STEER LED is driven by zLeds.ino, no longer from the stop command here.
-   26 Oct 2026: /api/status says whether the tractor is moving (steer.moving), so the page greys out the
-   buttons this file would refuse. The GPS2 port setting is automatic or off (zDualF9P.ino); /api/status
-   says what automatic found.
-   2 Nov 2026: the server listens and accepts its connections itself (webListenStart, webAccept), no longer
-   through NativeEthernet's EthernetServer, whose accept hands FNET an address length it never sets (see
-   webListen below). With the mDNS responder (zEthernet.ino, the same day) that stack garbage became small
-   and the page died seconds after boot ("the connection has timed out") while UDP went on.
-   2 Nov 2026, later: /api/status says which previous firmware is kept in the flash (prev), and POST /api/revert
-   puts it back (zOTA.ino): "Go back to the previous firmware" on the Firmware tab, no file or internet needed.
-   3 Nov 2026: the page and the JSON answers go out in pieces from webLoop() (webTxStep), so a browser never
-   holds the loop up: the page (~120 KB) used to stop the steering for 100 ms and more while the 8 KB socket
-   buffer drained. The page carries an ETag (its build date): a browser that has it gets "304 Not Modified".
-   /api/status: the program's maximum wheel angle and minimum steering speed (steerCfg), the distance to the
-   guidance line (steer.line), for the Steering cards.
-   3 Nov 2026: the diagnostic report says the loops per second and the time of each part of loop() (diag.loop.hz / steps).
-   3 Nov 2026: steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz); steer.loopMs / steer.loopHz (the loop
-   time set and the steering loops per second measured) for the Steering card and the report.
-   4 Nov 2026: cpuMhz / cpuTemp / cpuTempMax / cpuHot (the Teensy's clock and temperature, zSafety.ino) in /api/status and
-   the report (diag.cpu); gnss.temp, dual.f9p2.temp and tm.temp, the temperatures the receivers and the TM171 report.
-   4 Nov 2026: the JSON answers and the GET handlers run from flash (FLASHMEM). The code that runs from RAM1 is counted
-   in 32 KB blocks: the temperatures above took it 1 KB over 256 KB and the stack lost 32 KB (46 KB -> 10 KB free in
-   the report). The page's answers are not in a hurry; the steering, the GNSS and the IMU stay in RAM1.
-   3 Nov 2026: tm.frozen / tm.frozenN in /api/status (roll and heading unchanged while driving, zImu.ino imuFreezeCheck).
-   3 Nov 2026: GET / POST /api/note, the installation note (zSettings.ino); the request buffers grew for its text.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

@@ -1,7 +1,7 @@
 /* zReceiver.h - shared names for the GPS receiver identification and the u-blox and UM982 settings (zReceiver.ino).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   4 Nov 2026: the receivers' temperature (UBX-MON-SYS): RX_TEMP_*, rxTemp, rxTempState, rxTempJson.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

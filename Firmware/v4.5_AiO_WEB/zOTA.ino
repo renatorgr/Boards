@@ -2,10 +2,7 @@
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
    Uses FlasherX by Joe Pasquariello (FlashTxx.c / FlashTxx.h, public domain) for the flash.
-   3 Nov 2026: the marker of before 22 Oct 2026 (OTA_MARKER_OLD) is no longer carried in the image or accepted.
-   2 Nov 2026: the previous firmware is kept in the flash (2-4 MB) at every update and can be put back from the
-   Firmware tab or the XIAO page (otaPrevSave, otaRevertCheck, otaRevertInstall); the .hex can also come over the
-   XIAO link (zXiao.ino), through the same otaBegin / otaFeed / otaFinish / otaInstall.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

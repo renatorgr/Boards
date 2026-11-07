@@ -20,9 +20,7 @@
      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
      GNU General Public License for more details. You should have received a copy of the GNU General Public
      License along with this program. If not, see <https://www.gnu.org/licenses/>.
-   AiO_WEB 4.5, 24 Oct 2026: the GPS LED is driven by zLeds.ino (fix quality), no longer from here.
-   AiO_WEB 4.5, 3 Nov 2026: PGN 247 byte 23, the program's maximum wheel angle, kept for the web page (aowMaxSteerDeg).
-   AiO_WEB 4.5, 3 Nov 2026: ggaCount, the GGA sentences parsed, so that loop() reads the receiver up to one GGA per pass.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

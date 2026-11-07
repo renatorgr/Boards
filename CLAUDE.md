@@ -22,7 +22,9 @@ text to paste into GitHub as a raw markdown code block.
 ## Rules for every change
 
 - Code, comments, web pages and READMEs in **English**.
-- Keep each file's header: purpose, credits, what changed and by whom, GPL v3 / SPDX line.
+- Keep each file's header short: purpose, credits (where the code comes from, the original notices kept whole), one line
+  pointing to the README changelog and the git log for the history, and the GPL v3 / SPDX line. No dated change lines in
+  headers (they grew to 30 lines): the day's README changelog row and the commit message say what changed.
 - The Teensy firmware **cannot be compiled in Claude's cloud sessions** (pjrc.com, arduino.cc and the PlatformIO
   registry are blocked). Say so in the pull request; Renato compiles before merging. The ESP32 programs
   (`Seeder/Seeder_ESP32`, `Sprayer/Sprayer_ESP32`) can: arduino-cli with the esp32 core fetched from GitHub.

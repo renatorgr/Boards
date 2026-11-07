@@ -2,12 +2,7 @@
 # build.py - builds the web page simulator (a static site for GitHub Pages) from the firmware's own pages.
 # Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 # Written 2026 by Claude (Anthropic) for renatorgr.
-# 2026-10-27 (Claude): the seed drill module's page (Seeder/Seeder_ESP32/dPage.h); each module page fixes its implement.
-# 2026-10-31 (Claude): firmware.json, the date and time the Teensy .hex and the XIAO .bin files on main were compiled
-#                      (the update check of both pages compares it with the running program's).
-# 2026-11-02 (Claude): firmware.json also has the sprayer module's .bin (Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin): its
-#                      version, board and build, read from the .bin (the sprayer page's Firmware tab compares them).
-# 2026-11-07 (Claude): the same for the seed drill module's .bin (Seeder/Seeder_ESP32/Seeder_ESP32.ino.bin, "seeder").
+# The history of changes is in the README changelog and in the git log.
 # Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #

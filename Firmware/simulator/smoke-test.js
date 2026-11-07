@@ -1,28 +1,8 @@
 // smoke-test.js - opens the built simulator in a browser and goes through its pages, as a check before it is published.
 // Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
 // Written 2026 by Claude (Anthropic) for renatorgr.
-// 2026-11-07 (Claude): the sprayer's report has no /aow/status part any more (Sprayer_ESP32 0.10.2).
-// 2026-11-07 (Claude): the seed drill page's four tabs and Firmware tab (Seeder_ESP32 0.2.3): as the sprayer page's; a
-// newer build on GitHub is a made-up .bin, since none is on main yet.
+// The history of changes is in the README changelog and in the git log.
 // Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
-// 2026-10-27 (Claude): the Sprayer (PGN 160) card and the sprayer page's readings only with the sprayer's sensors.
-// 2026-10-27 (Claude): the seed drill has 19 sections on the KC868-A32's 32 relays, on the network cable (Sprayer_ESP32 v0.8).
-// 2026-10-28 (Claude): Seeder_ESP32 v0.2: the seed drill's board is the Relay24_ESP32, 24 relays.
-// 2026-10-27 (Claude): the seed drill module's own page (Seeder_ESP32); the Teensy's Machine tab shows all 19 sections.
-// 2026-10-27 (Claude): the AiO v26's machine part and two of our modules on the Teensy's Machine tab.
-// 2026-10-31 (Claude): the update check reads the site's own firmware.json: the same build says "latest version
-//                      installed", a newer build of the same version says "new" (Teensy page, XIAO C3 and S3).
-// 2026-11-01 (Claude): the "On GitHub" wording: "the one installed", "newer than the installed one".
-// 2026-11-01 (Claude): the sprayer has 8 sections of 1 m (was 5).
-// 2026-11-02 (Claude): the sprayer page's three tabs (Spraying, Settings, Module): the rate against the target, the
-// spraying settings saved, the section widths from the program, the report downloaded.
-// 2026-11-02 (Claude): the sprayer page's Firmware tab: the .bin on main is the one installed; a wrong .bin (the
-// .merged.bin, another board) is refused; a newer build on GitHub is installed from GitHub, end to end.
-// 2026-11-02 (Claude): after a click, the answer and the module's events are waited for (up to 5 s) instead of a fixed
-// time: on GitHub's slower machines the event list (refreshed once a second) came after the check.
-// 2026-11-02 (Claude): "Search for networks" on the sprayer and seed drill pages (Sprayer_ESP32 v0.10.1, Seeder_ESP32 v0.2.1).
-// 2026-11-02 (Claude): the previous firmware the Teensy keeps: offered and put back after the update on the Teensy page;
-// the XIAO page installs the firmware's .hex on the parked module over the link and puts the previous one back.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // node Firmware/simulator/smoke-test.js <site folder> [screenshot folder]   (needs the playwright package)

@@ -2,16 +2,7 @@
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr. Made from the page of Sprayer_ESP32 v0.8 (sPage.h).
    Look and feel from the XIAO page of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/xPage.h).
-   2026-11-02 (Claude): v0.2.1: the network settings as on the XIAO page: own network, tractor Wi-Fi with "Search for
-   networks" (a tap on a network chooses it), program network, and a Save card with the password typed in it.
-   2026-11-07 (Claude): v0.2.2: "Name on the network" (the own Wi-Fi name, the mDNS instance) instead of "Module name".
-   2026-11-07 (Claude): v0.2.3: the page laid out as the sprayer page (sPage.h of Sprayer_ESP32 0.10.1): four tabs. Sowing:
-   the sections, big enough to read in the cab. Settings: the relays and the first section they follow. Module: AgOpenWeb,
-   network, Wi-Fi settings, events. Firmware, as on the Teensy, XIAO and sprayer pages: the program installed, the version
-   on GitHub (asked by the browser when the page opens, every 6 hours and with "Check now"), Install from GitHub, install
-   a chosen .bin with a progress bar (a .bin for the other board, another module's program or the .merged.bin is
-   refused), Restart, and "Download the report" (state, settings and events in a .json file to send when something goes
-   wrong).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

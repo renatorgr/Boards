@@ -16,7 +16,7 @@ not run on either board yet.
 
 ## Changelog
 
-One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history and at the top of each file.
+One row per day, in short; the details are in the sections of this file (the links). Older changes are in the git history.
 
 | Date | What changed |
 |---|---|

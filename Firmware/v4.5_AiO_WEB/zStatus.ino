@@ -1,8 +1,7 @@
 /* zStatus.ino - [status] messages and which program talks to the module.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   24 Oct 2026: statusProgramTalking / statusRtcmLastMs for the LEDs (zLeds.ino).
-   3 Nov 2026: the Dual message names the RELPOSNED flags: no corrections from the first F9P, heading not valid.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    The sums and the alarm rules are those of SprayerService and the sprayer strip in the AgOpenWeb fork
    (renatorgr/AgOpenWeb, branch pulverizador), so the module and the program agree.
-   2026-11-02 (Claude): new in v0.10.0.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

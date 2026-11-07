@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Hydraulic lift timing after the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
-   2026-10-28 (Claude): v0.2: the Relay24_ESP32's relays (74HC595 shift registers) next to the KC868-A32's.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

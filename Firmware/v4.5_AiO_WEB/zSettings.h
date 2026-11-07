@@ -1,10 +1,7 @@
 /* zSettings.h - the settings block saved in the EEPROM.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   26 Oct 2026: the GPS2 port is automatic or off; "second F9P" saved by an earlier build loads as automatic.
-   3 Nov 2026: currentKickX10ms is the kickout delay of the pressure sensor too (Autosteer.ino).
-   3 Nov 2026: steerLoop100, the steering loop at 100 Hz instead of 40 (was reserved[0]; Autosteer.ino steerLoopApply).
-   3 Nov 2026: the installation note, free text kept in the EEPROM at NOTE_EEPROM_ADDR (cfgNote, noteLoad / noteSave).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

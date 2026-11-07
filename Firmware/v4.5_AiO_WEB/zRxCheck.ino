@@ -3,26 +3,12 @@
    AgOpenGPS settings of AOGConfigOMatic, loaded with one button.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-23 (Claude for renatorgr): both receivers are set up automatically (baud rate, then the AgOpenGPS
-   settings when one lacks what the Teensy needs), and the Status tab gets a summary of it (rxCkStatusJson).
-   2026-10-24: in one go - a receiver found at another baud rate keeps the port at that speed, is identified
-   and checked there, and the AgOpenGPS settings (which set 460800) are loaded at that speed; the port
-   switches when the baud rate message goes out. The baud-only change is kept for a receiver with nothing to load.
-   2026-10-24: "Read all settings" - every setting of a u-blox receiver read (UBX-CFG-VALGET, all items, RAM and
-   Default layers), the ones that differ from the factory defaults given as a u-center configuration file
-   (GET /api/rxdump): the way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for (X20P).
-   2026-10-24: the ZED-X20P gets its own settings (X20P.txt in zRxConfig.h, read that way from renatorgr's working
-   X20P): it is checked, compared and set up automatically like an F9P. The page's "Read all settings" button is
-   commented out in zWebPage.h for now; the Teensy side stays.
-   2026-10-26: the GPS2 port is automatic (zDualF9P.ino): its start-up judgement and baud rate search tell it
-   whether a receiver is there.
    The AgOpenGPS settings (zRxConfig.h) are those of AOGConfigOMatic by lansalot
    (github.com/lansalot/AOGConfigOMatic, GNU GPL v3; the F9P configuration by Jaap van den Handel),
    sent the way that program sends them: each line of its u-center file as one UBX-CFG-VALSET, the
    UM982 commands one at a time, then SAVECONFIG. Those u-blox files are made for firmware HPG 1.13; X20P.txt
    for HPG 2.11.
-   2026-11-03: ckAutoStart asks ckAutoNeeded once a second, not at every loop (two F9P files = 1 ms per loop).
-   4 Nov 2026: each port's card on the GPS tab carries the receiver's temperature ("temp" / "tempSt", zReceiver.ino, zDualF9P.ino).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

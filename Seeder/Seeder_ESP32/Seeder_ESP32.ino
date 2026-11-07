@@ -5,31 +5,11 @@
    Made from Sprayer_ESP32 v0.8 (folder Sprayer of the same repository): the seed drill has its own folder.
    The machine-module messages follow the official AgOpenGPS Machine_UDP_v5 module by Brian Tee
    (AgOpenGPS-Official/Boards, GPL v3).
-   2026-10-28 (Claude): v0.2: the Relay24_ESP32 board (folder Relay24_ESP32) is the default board.
-   2026-11-02 (Claude): v0.2.1: the network settings as on the XIAO page, with a search for Wi-Fi networks.
-   2026-11-07 (Claude): v0.2.2: the page announced as an AgOpenWeb add-on card (_aowcard._tcp); _aow-ui and /aow/status gone.
-   2026-11-07 (Claude): v0.2.3: the page as the sprayer page: four tabs, a Firmware tab with Install from GitHub and the report.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // Seeder_ESP32.ino  v0.2.3 (2026-11-07), not yet run on a board.
-//   v0.2.3: the page catches up with the sprayer page (Sprayer_ESP32 0.10.1): four tabs (Sowing, Settings, Module,
-//         Firmware); the Firmware tab has the program installed, the version on GitHub and Install from GitHub, a .bin
-//         install with a progress bar and checks (another program or the other board refused), "Download the report"
-//         (a .json file). /api/status starts with the same text as the sprayer's (fw, ver, built, board): the page and
-//         Firmware/simulator/build.py (firmware.json) read it from the .bin.
-//   v0.2.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
-//         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
-//         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
-//   v0.2.1: the network settings on the page are laid out as on the XIAO page, with "Search for networks": the
-//         module lists the Wi-Fi networks it hears (GET /api/scan) and a tap on one chooses it.
-//   v0.2: the Relay24_ESP32 board of this repository (BOARD_RELAY24, the default): 24 DPDT relays through
-//         74HC595 shift registers, one per actuator, and an RTL8201F network chip. The KC868-A32 stays
-//         as BOARD_KC868_A32.
-//   v0.1.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
-//         status), the sections above 16 after it (bytes 13-18).
-//   v0.1: the seed drill part of Sprayer_ESP32 v0.8 on its own: the KC868-A32 only, no pressure or flow
-//         sensor, no PGN 160.
 //
 // Boards (BOARD below):
 //   - Relay24_ESP32 (folder Relay24_ESP32 of this repository): an ESP32 DevKitC V4 plugged into a board with

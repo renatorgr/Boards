@@ -1,32 +1,7 @@
 /* sim-common.js - the web page simulator: a pretend AiO v4.5 module behind the real pages.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): the seed drill's sprayer module sends no PGN 160, as Sprayer_ESP32 v0.7.2 with no sensors ticked.
-   2026-10-27 (Claude): the seed drill is Renato's no-till drill, 19 sections (Sprayer_ESP32 v0.8 on a KC868-A32); the Teensy
-   sees its sections 1-16 only.
-   2026-10-27 (Claude): the seed drill has its own module program (Seeder_ESP32) and page (sim-seeder.js); a module page
-   fixes the implement (window.SIM_IMPL, from build.py). The Teensy's Machine tab shows every section (its PGN 229, the seed
-   drill module's PGN 237): cmd and sec as hex digits.
-   2026-10-27 (Claude): the machine module can also be the AgOpenGPS AiO v26's machine part (PGN 237, sections 1-16), or two
-   of our modules (.123 sections 1-16, .124 the rest), shown together as zMachine.ino does.
-   2026-11-01 (Claude): the sprayer boom is now 8 sections of 1 m (2 nozzles each), was 5 sections of 2-1-2-1-2 m.
-   2026-11-02 (Claude): the module pages' /aow/status goes to the pretend module too (Sprayer_ESP32 v0.10.0 report).
-   2026-11-02 (Claude): an upload's file is found whatever its form field is called (the sprayer page sends "bin").
-   2026-11-02 (Claude): the Teensy keeps the firmware that ran before its last update ("prev" in /api/status) and goes
-   back to it (revert(), POST /api/revert on its page, /api/teensy-revert on the XIAO's); a .hex sent from the XIAO page
-   over the link is checked and installed as one from the Teensy's page (ota() with its tag "[xiao]").
-   2026-11-03 (Claude): /api/status carries steer.line (the lightbar byte) and steerCfg.aowMaxDeg / aowMinKmhX10 (the
-   program's steering limits); a .hex is this firmware by the marker of 22 Oct 2026 only, as zOTA.ino since today.
-   2026-11-03 (Claude): dual.f9p2.refMiss / headingValid, the RELPOSNED flags the Teensy keeps since today; the flags
-   value matches carrSoln (0x137 fixed and valid, 0x0AF float with refObsMiss).
-   2026-11-03 (Claude): /api/diag loop.hz and loop.steps (loops per second, the time of each part of the Teensy loop).
-   2026-11-03 (Claude): steerLoop100 in /api/settings (the steering loop at 40 or 100 Hz), steer.loopMs / loopHz in /api/status.
-   2026-11-03 (Claude): tm.frozen / tm.frozenN in /api/status (a frozen IMU, zImu.ino imuFreezeCheck); the pretend IMU never freezes.
-   2026-11-03 (Claude): GET / POST /api/note, the installation note, kept with the pretend module's state (st.note).
-   2026-11-04 (Claude): cpuMhz / cpuTemp / cpuTempMax / cpuHot and diag.cpu (the Teensy's clock and temperature); gnss.temp,
-   f9p2.temp and the GPS tab's temp / tempSt (the X20P answers UBX-MON-SYS with 0 = "zero", an F9P on HPG 1.13 does not); tm.temp (TM171); the
-   XIAO's "t" in its info.
-   2026-11-07 (Claude): net.mdns, the Teensy's name on the network ("AiO 3F2A", the Connections card).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

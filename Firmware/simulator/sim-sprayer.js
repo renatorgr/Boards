@@ -1,18 +1,7 @@
 /* sim-sprayer.js - the web page simulator: the sprayer module's page (Sprayer/Sprayer_ESP32/sPage.h) with a pretend ESP32 behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): default pressure divider 0.5, as the module (10k / 10k).
-   2026-10-27 (Claude): the sensors fitted (v0.7.2): the sprayer has both, ticked on the page.
-   2026-10-27 (Claude): v0.8: sections as hex digits, the first section the relays follow, the module IP's last number.
-   2026-10-27 (Claude): v0.9: the sprayer on the ESP32_Relay_X8 board.
-   2026-11-02 (Claude): v0.10.0: the rate (L/ha), the pressure for the target and the alarms (zRate.ino), the spraying
-   settings (POST /api/spray), the section widths from the program (PGN 235) and /aow/status.
-   2026-11-02 (Claude): the Firmware tab: the pretend module runs the .bin on main (its build date from firmware.json);
-   the update comes as an upload with progress, and after the restart the module runs what was sent (the program, version
-   and build read from the .bin, as the page does).
-   2026-11-02 (Claude): v0.10.1: "Search for networks" on the Module tab (GET /api/scan).
-   2026-11-07 (Claude): v0.10.2: the module's name on the network is its own Wi-Fi name (no 16-digit name, no /aow/status).
-   2026-11-07 (Claude): v0.10.3: "kind":"Sprayer" in /api/status.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

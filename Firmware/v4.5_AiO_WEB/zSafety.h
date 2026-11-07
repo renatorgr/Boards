@@ -1,9 +1,7 @@
 /* zSafety.h - shared names for the autosteer safety code (zSafety.ino).
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   24 Oct 2026: wasOut declared for zLeds.ino.
-   3 Nov 2026: steerLoopHz, the steering loops per second, for the report.
-   4 Nov 2026: cpuTemp / cpuTempMax / cpuHot (the chip's temperature, zSafety.ino cpuTempTick).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

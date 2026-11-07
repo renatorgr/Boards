@@ -2,14 +2,7 @@
    Part of the seed drill section controller (folder Seeder of the Boards repository).
    Written 2026 by Claude (Anthropic) for renatorgr. Made from Sprayer_ESP32 v0.8.
    Same pattern as the XIAO program of the AiO v4.5 boards (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32).
-   2026-10-28 (Claude): v0.2: the network chip of the board chosen in Seeder_ESP32.ino (RTL8201F on the
-   Relay24_ESP32, LAN8720 on the KC868-A32), held in reset before a restart.
-   2026-11-02 (Claude): v0.2.1: GET /api/scan, the Wi-Fi networks the module hears, for "Search for networks" on the
-   page (as on the XIAO page).
-   2026-11-07 (Claude): v0.2.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path,
-   the official Docs/ADD_ON_CARDS.md) under the own network's name; the home-made "_aow-ui._tcp" and GET /aow/status are gone.
-   2026-11-07 (Claude): v0.2.3: /api/status starts as the sprayer's (fw, ver, built, board): the page's Firmware tab and
-   Firmware/simulator/build.py (firmware.json) read that text from the .bin. Keep it as it is.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

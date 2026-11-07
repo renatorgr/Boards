@@ -1,18 +1,7 @@
 /* zMachine.ino - the machine module (IP .123) as seen from the network, for the web page's Machine tab.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards.
    Written 2026 by Claude (Anthropic) for renatorgr.
-   25 Oct 2026: any standard machine module is recognised, the official AgOpenGPS Machine_UDP_v5 included
-   (its hello reply has no checksum, its PGN 237 carries the program's source byte); the sections come from
-   the hello reply when there is no sprayer PGN 160.
-   26 Oct 2026: sections 9-16 of the sprayer PGN 160 (byte 15, Sprayer_ESP32 v0.7); the highest section
-   seen since the start is kept, so the page keeps all its squares while every section is off.
-   27 Oct 2026: up to 64 sections: those the program asks for from its PGN 229 (Autosteer.ino ReceiveUdp,
-   sent with every 239 when the tool has more than 16 sections), those open from the seed drill module's
-   PGN 237 (Seeder_ESP32, sections 17-64 in bytes 10-15).
-   27 Oct 2026: the sections of every machine module, whatever it is: PGN 237 from 0x7B in the AgOpenGPS AiO v26
-   layout (sections 1-16 the module really drives; 17-64 in bytes 13-18 when it sends them) before the hello
-   reply (the AiO v26 leaves its sections at 0 there) and PGN 160; several modules on the network (each its own
-   IP) are kept apart and their sections put together.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

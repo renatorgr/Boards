@@ -3,40 +3,11 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    Successor of Sprayer_Nano v0.3 (same folder). The machine-module messages follow the official
    AgOpenGPS Machine_UDP_v5 module by Brian Tee (AgOpenGPS-Official/Boards, GPL v3).
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // Sprayer_ESP32.ino  v0.10.3 (2026-11-07), not yet tested on the sprayer.
-//   v0.10.3: the alarms also go to the program as PGN 221, the text message it shows on its screen (the official
-//         AgOpenWeb too, which reads no PGN 161): when an alarm comes on or goes off, and every 10 s while one is on.
-//         /api/status says "kind":"Sprayer" as the seed drill's module says "Seeder". The USB help text comes on
-//         any unknown command.
-//   v0.10.2: the page is announced as an AgOpenWeb add-on card (mDNS "_aowcard._tcp", TXT v=1 and path, the official
-//         Docs/ADD_ON_CARDS.md) under the own Wi-Fi network's name, unique to each module and shown on the page as
-//         "Name on the network"; the home-made "_aow-ui._tcp" and GET /aow/status of 0.10.0 are gone.
-//   v0.10.1: the Wi-Fi settings on the Module tab are laid out as on the XIAO page, with "Search for networks": the
-//         module lists the networks it hears (GET /api/scan) and a tap on one chooses it.
-//   v0.10.0: the module works out the application rate (L/ha) from the flow, the speed (PGN 239) and the widths of the
-//         open sections (PGN 235 from the program, kept in flash), the pressure that gives the target rate, and the
-//         sprayer alarms (low / high pressure, flow outside the tolerance, flow with the sections closed). Target rate,
-//         nozzles, pressure limits and flow tolerance are set on the module's page. It sends all of it to the program
-//         once a second as ISOBUS process data (PGN 161, DDIs), next to PGN 160. The page has four tabs: Spraying
-//         (L/ha, pressure, sections), Settings (target, nozzles, alarms, sensor calibration), Module (AgOpenWeb,
-//         relays, Wi-Fi, events) and Firmware as on the Teensy and XIAO pages (the program installed, the version on
-//         GitHub and Install from GitHub, install a .bin, restart, "Download the report").
-//   v0.9.1: PGN 237 in the layout of the AgOpenGPS AiO v26 firmware (sections, lift, tramline, geo stop,
-//         status), so the AiO Teensy's Machine tab reads the sections of any module the same way.
-//   v0.9: for the sprayer boards only (ESP32_Relay_X8, ESP32 dev module). It keeps reading PGN 229 in full and
-//         the module IP's last number.
-//   v0.8: more than 16 sections (PGN 229, up to 64). Relays can follow the sections in a row
-//         ("first section" on the page), the module's IP can end in another number than 123 (a second module).
-//   v0.7.2: the page says which sensors the machine has (pressure, flow, both or none). With none the module
-//           sends no PGN 160, and its page, AgOpenWeb and the AiO page show no sprayer readings.
-//   v0.7.1: sensor dividers from a common resistor kit (no 15k): pressure 10k / 10k (0.5, the new
-//           default on the page), flow 10k / 22k.
-//   v0.7: also runs on a plain ESP32 dev module with relay modules (up to 16 relays): BOARD_RELAY_X8 0.
-//   v0.6: all 8 relays are sections 1-8 by default (the boom has 5 now, up to 8 later).
-//   v0.5: the program subnet can also be set on the page (for routers that are not 192.168.5.x).
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
 //   Or any ESP32 dev module with relay modules, up to 16 relays (BOARD_DEVKIT below).

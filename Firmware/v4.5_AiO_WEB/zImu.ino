@@ -5,13 +5,9 @@
    first in RVC mode on Serial5 (BNO_RVC.cpp, frame format of the Adafruit BNO08x RVC library), then
    on I2C with the BNO08x_AOG library (SparkFun BNO080 library), with the same roll / pitch / heading
    conventions.
-   3 Nov 2026: the I2C BNO085 counts "silent" from its own start (it was started again for nothing at every
-   boot, 0.5-1.5 s of loop); its product ID may come in a later packet after begin(); when something answers
-   on I2C but not as a BNO085 (it kept running while the Teensy restarted), 3 more tries from the loop.
-   3 Nov 2026: imuFreezeCheck(): roll and heading exactly the same for 3 s while the tractor drives above 2 km/h = a frozen
-   IMU (a hung sensor that still sends packets): a message on the program's screen (PGN 221) every 8 s, a [status] line and
-   the Status card say so; nothing is cut, the program decides. The idea comes from NikName227's AOG_v4_Firmware_WebConfig
-   firmware (no licence there), written anew here.
+   The frozen-IMU check (imuFreezeCheck) takes its idea from NikName227's AOG_v4_Firmware_WebConfig firmware
+   (no licence there); written anew here.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

@@ -7,26 +7,9 @@
    TeensySerial (so it compiles with Teensyduino 1.58 and 1.59 or newer); one byte at a
    time (TM171byte), so zImu.ino can listen for a TM171 and a BNO085 on Serial5 at the same time; two compiler
    warnings removed (same code).
-   AiO_WEB 4.5, 23 Oct 2026: commands TO the TM171 (tm171Send) and the gyro calibration from the web page
-   (tm171Calib*), after the SYD Dynamics TransducerM user guide (EasyProtocol, Calibration object) and
-   application note AN002. Needs Teensy TX5 (pin 20) wired to the TM171 RXD.
-   AiO_WEB 4.5, 23 Oct 2026: the "new install" calibration (CalibB, saved in the TM171's flash) as a second button.
-   AiO_WEB 4.5, 23 Oct 2026: the TM171's settings (Setting object 21) read and written from the web page
-   (tm171Setting*): magnetometer, filters and gains, outputs, boot mode, output data rate.
-   AiO_WEB 4.5, 24 Oct 2026: the layout of the Setting object corrected from a real TM171 (the output data
-   rate is its own field in Hz; the inhibit time and the other words are left as read); the raw bytes in the
-   log and on the page; the "RX not wired" warning only after a second unanswered request.
-   AiO_WEB 4.5, 24 Oct 2026: a settings request was timed out at once when its timer was set a millisecond
-   after the loop's "now" (unsigned wrap): a false "no reply" line at every start-up (tmElapsed).
-   AiO_WEB 4.5, 24 Oct 2026: the real TM171 ignored every settings write sent "to everyone" (TO_ID 0) although
-   it answers requests sent that way: commands now go to the TM171's own ID, taken from the frames it sends
-   (tm171Id). The frame of a write, every acknowledge and the first frame of an unknown type go to the log.
-   AiO_WEB 4.5, 24 Oct 2026: the output data rate is chosen from a list (25, 50, 100 Hz); the set-up check
-   accepts the three (the AiO v6 firmware runs its IMU at 100 Hz).
-   AiO_WEB 4.5, 23 Oct 2026: set-up check. At start-up the TM171 is also looked for at the other baud rates
-   (tm171ScanBaud); a baud rate other than 115200, or settings that differ from the AgOpenGPS ones, give a
-   warning on the web page and on the program's screen, and a "Fix TM171 setup" button (tm171FixSetup).
-   AiO_WEB 4.5, 4 Nov 2026: tm171TempMs, when the last Status Output (with TemperatureV) came: the IMU card shows the temperature.
+   The commands to the TM171 (calibrations, settings) follow the SYD Dynamics TransducerM user guide (EasyProtocol)
+   and application note AN002.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */

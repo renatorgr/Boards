@@ -1,12 +1,7 @@
 /* sim-seeder.js - the web page simulator: the seed drill module's page (Seeder/Seeder_ESP32/dPage.h) with a pretend Relay24_ESP32 behind it.
    Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
    Written 2026 by Claude (Anthropic) for renatorgr.
-   2026-10-27 (Claude): made from sim-sprayer.js (Sprayer_ESP32 v0.8) when the seed drill got its own program, Seeder_ESP32 v0.1.
-   2026-10-28 (Claude): Seeder_ESP32 v0.2: the Relay24_ESP32 board (24 relays) instead of the KC868-A32 (32).
-   2026-11-02 (Claude): v0.2.1: "Search for networks" in the network settings (GET /api/scan).
-   2026-11-07 (Claude): v0.2.2: the module's name on the network is its own Wi-Fi name (no 16-digit name).
-   2026-11-07 (Claude): v0.2.3: the Firmware tab as the sprayer page's: the pretend module runs the .bin on main when there is
-   one (firmware.json), the update comes as an upload with progress, and after the restart it runs what was sent.
+   The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
