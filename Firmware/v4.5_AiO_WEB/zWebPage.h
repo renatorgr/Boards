@@ -133,6 +133,21 @@ a{color:var(--acc)}
    <dt id="g1SetT" class="hidden">Setup</dt><dd id="g1Set" class="hidden">–</dd>
   </dl>
   <p class="note hidden" id="g1Go">Receiver check and settings: <a href="#" data-go="gps">GPS tab</a></p></div>
+ <div class="card"><h2>Steering</h2>
+  <div class="big" id="was">–</div>
+  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Loop</dt><dd id="loopHz">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
+   <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
+   <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
+   <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
+   <dt>Keya motor (CAN)</dt><dd id="keya">–</dd><dt>Angle from the GPS</dt><dd id="gpsWas">–</dd></dl>
+  <details><summary class="note">Settings received from the program</summary>
+  <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
+   <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
+   <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
+   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd>
+   <dt>Max wheel angle</dt><dd id="scMaxDeg">–</dd><dt>Min steer speed</dt><dd id="scMinKmh">–</dd></dl>
+  <p class="note">Max wheel angle and min steer speed are the program's own limits (AgOpenWeb sends them), shown only: the firmware cuts beyond ±50° and uses the speeds of its Settings.</p>
+  </details></div>
  <div class="card" id="dualCard"><h2>Dual-antenna heading</h2>
   <div class="big" id="dualHdg">–</div>
   <dl style="margin-top:6px"><dt>Status</dt><dd id="dualState">–</dd><dt>Source</dt><dd id="dualSrc">–</dd><dt>Quality (QF)</dt><dd id="qf">–</dd><dt>Antenna roll</dt><dd id="antRoll">–</dd><dt>Antenna distance</dt><dd id="dualBase">–</dd>
@@ -147,31 +162,16 @@ a{color:var(--acc)}
    <dt id="tmCalT" class="hidden">Gyro calibration</dt><dd id="tmCal" class="hidden">–</dd>
    <dt id="tmSetupT" class="hidden">Setup</dt><dd id="tmSetup" class="hidden">–</dd></dl>
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
- <div class="card"><h2>Steering</h2>
-  <div class="big" id="was">–</div>
-  <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Loop</dt><dd id="loopHz">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
-   <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
-   <dt>WAS sensor</dt><dd id="wasV">–</dd><dt id="sensT">Pressure sensor</dt><dd id="sens">–</dd>
-   <dt>Last turned off</dt><dd id="off">–</dd><dt>Message to the program</dt><dd id="hwMsg">–</dd>
-   <dt>Keya motor (CAN)</dt><dd id="keya">–</dd><dt>Angle from the GPS</dt><dd id="gpsWas">–</dd></dl></div>
- <div class="card"><h2>Steering settings (from the program)</h2>
-  <dl><dt>Received</dt><dd id="scGot">–</dd><dt>Gain (Kp)</dt><dd id="scKp">–</dd><dt>Maximum PWM</dt><dd id="scHi">–</dd><dt>Minimum PWM</dt><dd id="scMin">–</dd>
-   <dt>Low PWM</dt><dd id="scLow">–</dd><dt>Counts per degree</dt><dd id="scCounts">–</dd><dt>WAS offset</dt><dd id="scOff">–</dd><dt>Ackermann</dt><dd id="scAck">–</dd>
-   <dt>WAS</dt><dd id="scWas">–</dd><dt>Motor</dt><dd id="scMotor">–</dd><dt>Relay active</dt><dd id="scRelay">–</dd><dt>Switch type</dt><dd id="scSw">–</dd>
-   <dt>Sensor</dt><dd id="scSens">–</dd><dt>Kickout limit</dt><dd id="scKick">–</dd><dt>IMU axis (roll)</dt><dd id="scAxis">–</dd><dt>Wheelbase</dt><dd id="scWb">–</dd>
-   <dt>Max wheel angle</dt><dd id="scMaxDeg">–</dd><dt>Min steer speed</dt><dd id="scMinKmh">–</dd></dl>
-  <p class="note">Max wheel angle and min steer speed are the program's own limits (AgOpenWeb sends them), shown only: the firmware cuts beyond ±50° and uses the speeds of its Settings.</p></div>
  <div class="card"><h2>Connections</h2>
   <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd><dt>Name on the network</dt><dd id="mdns" class="nw">–</dd>
-   <dt>Up for</dt><dd id="up">–</dd></dl>
+   <dt>Up for</dt><dd id="up">–</dd>
+   <dt>Sentences</dt><dd id="mode" class="nw">–</dd><dt>Choice</dt><dd id="modeSel">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt>In AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
+  <p class="note">Sent to the program:</p><div class="box mono" id="sent">–</div>
   <p class="note">The receiver sends (last 5 s):</p><div class="box mono" id="rx">–</div></div>
  <div class="card"><h2>RTCM corrections</h2>
   <dl><dt>NTRIP (program)</dt><dd id="rtcm" class="nw">–</dd><dt>Received</dt><dd id="rtcmKB" class="nw">–</dd><dt>RTCM messages</dt><dd id="rtcmMsg">–</dd><dt>Types</dt><dd id="rtcmTypes">–</dd>
    <dt>Radio (XBee)</dt><dd id="radio" class="nw">–</dd><dt>Received</dt><dd id="radioKB" class="nw">–</dd><dt>RTCM messages</dt><dd id="radioMsg">–</dd><dt>Types</dt><dd id="radioTypes">–</dd></dl>
   <p class="note">Messages with errors: bytes lost or changed on the way (weak radio signal, wrong port speed).</p></div>
- <div class="card"><h2>Sentences sent</h2>
-  <dl><dt>Mode</dt><dd id="mode" class="nw">–</dd><dt>Choice</dt><dd id="modeSel">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt>In AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
-  <div class="box mono" id="sent">–</div></div>
  <div class="card" id="xiaoCard"><h2>XIAO ESP32 (Serial2)</h2>
   <div class="big" id="xState">–</div>
   <dl style="margin-top:6px"><dt>Last hello</dt><dd id="xHello" class="nw">–</dd>
@@ -195,10 +195,11 @@ a{color:var(--acc)}
   <div class="msecs" id="mSec"></div>
   <div class="mleg"><span><i class="s-on"></i>open</span><span><i class="s-off"></i>closed</span><span><i class="s-goingon"></i>asked on, still closed</span><span><i class="s-goingoff"></i>asked off, still open</span></div>
   <p class="note">What the machine module (the official AgOpenGPS Machine_UDP_v5, the AiO v26's machine part, the sprayer or seed drill module) sends to UDP 9999, as the Teensy hears it. Only to look at: nothing here changes the module or the steering.</p></div>
- <div class="card hidden" id="mSprayCard"><h2>Sprayer (PGN 160)</h2>
+ <div class="card hidden" id="mSprayCard"><h2>Sprayer</h2>
   <div class="big" id="mBar">–</div>
   <dl style="margin-top:6px"><dt>Flow</dt><dd id="mFlow">–</dd><dt>Total since the module started</dt><dd id="mTotal">–</dd>
-   <dt>Main switch</dt><dd id="mMain">–</dd><dt>Last PGN 160</dt><dd id="mSprayAgo" class="nw">–</dd></dl></div>
+   <dt>Main switch</dt><dd id="mMain">–</dd><dt>Rate</dt><dd id="mRate">–</dd><dt>Alarms</dt><dd id="mAlarms">–</dd><dt>Last PGN 160 · 161</dt><dd id="mSprayAgo" class="nw">–</dd></dl>
+  <p class="note">Pressure, flow, total and main switch from its PGN 160; rate and alarms from its PGN 161 (ISOBUS process data, as AgOpenWeb reads them).</p></div>
 </div>
 </section>
 
@@ -350,7 +351,7 @@ a{color:var(--acc)}
 <p class="note warn hidden" data-locknote="m" style="margin:0 0 10px"></p>
 <div class="grid">
  <div class="card"><h2>IMU</h2>
-  <dl><dt>Type</dt><dd id="imuType2">–</dd><dt>Status</dt><dd id="tmState2">–</dd><dt>Heading</dt><dd id="tmHdg2">–</dd></dl>
+  <dl><dt>Type</dt><dd id="imuType2">–</dd><dt>Status</dt><dd id="tmState2">–</dd></dl>
   <p class="note hidden" id="imuNone">–</p>
   <p class="note hidden" id="imuWire">Everything on this tab sends commands to the TM171, so it needs one wire from Teensy pin 20 (TX5) to the TM171 RX pin. The board only wires the other direction.</p></div>
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
@@ -513,7 +514,7 @@ function render(s){
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
   $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");
-  set("imuType2",t.type?t.type+" · "+t.port:"none");pill("tmState2",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");set("tmHdg2",t.ok?fmt(t.out,2,"°"):"–");
+  set("imuType2",t.type?t.type+" · "+t.port:"none");pill("tmState2",t.ok?"OK":t.seen?"no data":"not detected",t.ok?"ok":"bad");
   if(tm&&t.set)renderTmSet(t.set);
   const noWire=tm&&t.set&&t.set.noWire,why=tm&&t.set?t.set.setupWhy:"",fixed=tm&&t.set&&!why&&t.set.fixAgo>=0&&t.set.fixAgo<120;
   $("tmFixRow").classList.toggle("hidden",!(why||noWire||fixed));
@@ -665,7 +666,7 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 
 // The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays.
 // Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160), the sprayer module
-// (PGN 160) or the seed drill module (PGN 237 with sections 1-64).
+// (PGN 160 and 161) or the seed drill module (PGN 237 with sections 1-64).
 function renderMach(m){
  if(!m)return;
  $("navMach").classList.remove("hidden");
@@ -683,7 +684,14 @@ function renderMach(m){
  if(noSpray)return;
  const old=m.sprayAgo>=5;
  set("mBar",fmt(m.bar,2," bar"),old?"warn":"");set("mFlow",fmt(m.lmin,2," L/min"));set("mTotal",fmt(m.total,1," L"));
- set("mMain",m.main?"on":"off",m.main?"ok":"");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");
+ set("mMain",m.main?"on":"off",m.main?"ok":"");
+ // PGN 161 (ISOBUS process data) comes with the 160: the rate while moving with the widths known, the target when set, the alarm bits
+ const pd=m.pdAgo!==undefined&&m.pdAgo>=0;
+ if(!pd){set("mRate","–");set("mAlarms","no PGN 161 from this module");set("mSprayAgo",ago(m.sprayAgo)+" · "+m.sprayN,old?"warn":"");}
+ else{set("mRate",(m.rate>=0?fmt(m.rate,1," L/ha"):"–")+(m.target>=0?" · target "+fmt(m.target,0," L/ha"):""));
+  const al=["low pressure","high pressure","flow too low","flow too high","flow with the sections closed"].filter((x,i)=>m.alarms&(1<<i));
+  set("mAlarms",al.length?al.join(", "):"none",al.length?"bad":"ok");
+  set("mSprayAgo",ago(m.sprayAgo)+" · "+ago(m.pdAgo)+" · "+m.sprayN,old?"warn":"");}
 }
 // One numbered square per section (5, or up to 64 when the program or the module uses more, 8 per row; as
 // many as the highest section used since the Teensy started, secN, so they do not shrink when all are off),

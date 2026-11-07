@@ -85,6 +85,7 @@ label.opt input{margin-top:4px}
 .nets .r{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mute)}
 .msg{font-size:13.5px;margin-top:6px;min-height:1.2em}
+p.grp{margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--line);font-weight:600;font-size:13.5px}hr.grp{border:0;border-top:1px solid var(--line);margin:14px 0 4px}
 progress{width:100%;height:14px;margin-top:10px;accent-color:var(--acc)}
 a{color:var(--acc)}
 [hidden]{display:none!important}
@@ -173,8 +174,12 @@ a{color:var(--acc)}
 <p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
 </div>
 
-<div class="card"><h2>Wi-Fi</h2>
+<div class="card"><h2>Module</h2>
 <dl>
+<dt>Board</dt><dd id="board">–</dd>
+<dt>Name on the network</dt><dd id="name">–</dd>
+<dt>Up</dt><dd id="up">–</dd>
+<dt>Free memory</dt><dd id="heap">–</dd>
 <dt>Own Wi-Fi network</dt><dd id="ap">–</dd>
 <dt>Tractor network</dt><dd id="sta">–</dd>
 <dt>Module IP</dt><dd id="ip">–</dd>
@@ -184,27 +189,22 @@ a{color:var(--acc)}
 <p class="note">The program looks for the machine module at &lt;subnet&gt;.123 on the tractor network. The subnet comes from the program (PGN 201), or is set below.</p>
 </div>
 
-<div class="card"><h2>Own Wi-Fi network</h2>
+<div class="card"><h2>Network settings</h2>
+<p class="grp">Own Wi-Fi network</p>
 <div class="field"><span>Network name</span><input type="text" id="apSsid" maxlength="32"></div>
 <div class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" id="apPass" maxlength="63"></div>
 <p class="note">Always on, at 192.168.4.1. Its password is also the one for changing the settings and the firmware.</p>
-</div>
-
-<div class="card"><h2>Tractor Wi-Fi network</h2>
+<p class="grp">Tractor Wi-Fi network</p>
 <label class="opt"><input type="checkbox" id="staOn"><span>Join the tractor network<small>The router the tablet uses. The page is then also at http://<b id="hostShow">sprayer</b>.local/ or at the module's IP on that network.</small></span></label>
 <div class="field"><span>Network name</span><input type="text" id="staSsid" maxlength="32"></div>
 <div class="row" style="margin:2px 0"><button class="sec" type="button" id="scan" onclick="scanNets()">Search for networks</button><span id="scanMsg" class="note"></span></div>
 <div id="netList" class="nets"></div>
 <div class="field"><span>That network's password (blank: keeps the current one; for a new network, blank = open network)</span><input type="password" id="staPass" maxlength="63"></div>
 <div class="field"><span>Module name on that network</span><input type="text" id="host" maxlength="24" oninput="$('hostShow').textContent=this.value||'sprayer'"></div>
-</div>
-
-<div class="card"><h2>Program network</h2>
+<p class="grp">Program network</p>
 <div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5" inputmode="decimal"></div>
 <div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
-</div>
-
-<div class="card"><h2>Save</h2>
+<hr class="grp">
 <div class="field"><span>Current password of the own Wi-Fi network (to confirm)</span><input type="password" id="pwW" maxlength="63"></div>
 <div class="row"><button class="act" type="button" onclick="saveWifi()">Save and restart the module</button></div>
 <div class="msg" id="msgWifi"></div>
@@ -220,7 +220,7 @@ a{color:var(--acc)}
 <div class="grid">
 
 <div class="card"><h2>Program installed</h2>
-<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="board">–</dd><dt>Up</dt><dd id="up">–</dd><dt>Free memory</dt><dd id="heap">–</dd><dt>Name on the network</dt><dd id="name">–</dd></dl>
+<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd></dl>
 </div>
 
 <div class="card"><h2>Version on GitHub</h2>

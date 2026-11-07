@@ -24,7 +24,7 @@
 //     (layout below).
 //   - the sprayer module "Sprayer_Nano" (same hardware as the official one): hello reply with a right
 //     checksum, and PGN 160.
-//   - our ESP32 modules, "Sprayer_ESP32" (PGN 237 and 160) and "Seeder_ESP32" (PGN 237 with sections 17-64).
+//   - our ESP32 modules, "Sprayer_ESP32" (PGN 237, 160 and 161) and "Seeder_ESP32" (PGN 237 with sections 17-64).
 //
 // The program asks for sections 1-16 in PGN 254 (relay, relayHi; Autosteer.ino) and, on a tool with more
 // than 16 sections, for sections 1-64 in PGN 229 (bytes 5-12, section 1 = byte 5 bit 0), which it sends to
@@ -40,6 +40,11 @@
 //   80 81 7B A0 0B | ... the same ... | sections 1-8 (1) | sections 9-16 (1) | CRC   (Sprayer_ESP32 v0.7)
 //   (little-endian; CRC = sum of the bytes from the 3rd to the one before the CRC, as in AgOpenGPS)
 //
+// Sprayer PGN 161 (0xA1), once a second with the 160: ISOBUS process data, 8 bytes per value (Sprayer_ESP32/zPgn.ino):
+//   byte 0 = command 3 (bits 0-3) + element bits 0-3 (bits 4-7) | byte 1 = element bits 4-11 | DDI (2) | value (int32)
+//   Kept here: DDI 2 actual rate and 1 target rate (0.01 mm3/m2 = L/ha x 10 000) and 57344 the sprayer's alarm bits
+//   (1 low pressure, 2 high pressure, 4 flow too low, 8 flow too high, 16 flow with the sections closed). Up to 110 bytes.
+//
 // PGN 237 (0xED) from 0x7B, as the AiO v26 sends it (the official Machine_UDP_v5's 237 has 8 bytes of fixed
 // content and the source 0x7F instead):
 //   80 81 7B ED 08 | sections 1-16 (2) | lift (1: 0 off, 1 down, 2 up) | tramline (1) | geo stop (1) |
@@ -50,6 +55,7 @@
 #define MACH_PGN_HELLO    123    // the module's reply to the program's hello (PGN 200): sections on, 2 bytes
 #define MACH_PGN_LIFE     237    // the official module's periodic PGN (source 0x7F, fixed content); the seed drill's (0x7B)
 #define MACH_PGN_SPRAYER  0xA0   // 160
+#define MACH_PGN_SPRAYER_PD 0xA1 // 161: the sprayer's ISOBUS process data (rate, alarms)
 #define MACH_PKTS_LOOP    16     // packets read from UDP 9999 per loop at most
 #define MACH_SILENCE_MS   5000   // silent after this long (as STATUS_SILENCE_MS, which zStatus.ino defines after this file)
 #define MACH_229_MS       2000   // sections 17-64 asked for: only from a PGN 229 younger than this
@@ -84,6 +90,9 @@ static struct
     uint16_t pressCbar, flowCLmin;
     uint32_t totalDl;
     bool     mainOn;
+    uint32_t pdMs, pdN;          // last sprayer PGN 161 (0: never), how many
+    float    rateLha, targetLha; // from it: the actual and the target rate (-1: not in the last message)
+    uint8_t  alarms;             // from it: the sprayer's alarm bits (see the top of the file)
 } mach;
 
 // PGN 229 from the program, from ReceiveUdp (Autosteer.ino): sections 1-64 in bytes 5-12
@@ -152,8 +161,8 @@ void machineLoop()
     {
         const int len = Eth_udpModules.parsePacket();
         if (len <= 0) break;
-        uint8_t d[64];
-        const int got = Eth_udpModules.read(d, sizeof(d));   // the rest of a longer packet is dropped
+        uint8_t d[128];                                      // room for the sprayer's PGN 161 (up to 110 bytes)
+        const int got = Eth_udpModules.read(d, sizeof(d));   // the rest of a longer packet is dropped (counted as bad below)
         if (got < 5 || d[0] != 0x80 || d[1] != 0x81) continue;
         const bool fromModule = d[2] == MACH_SRC;
         const bool lifeSign   = d[2] == 0x7F && d[3] == MACH_PGN_LIFE;   // the official module's PGN 237
@@ -193,6 +202,21 @@ void machineLoop()
             machineSections(from, MACH_PGN_SPRAYER, d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14], mach.lastMs);
             mach.sprayMs   = mach.lastMs;
             mach.sprayN++;
+        }
+        else if (fromModule && d[3] == MACH_PGN_SPRAYER_PD && d[4] >= 8)
+        {
+            mach.rateLha = mach.targetLha = -1;
+            for (int p = 5; p + 8 <= 5 + d[4]; p += 8)
+            {
+                if ((d[p] & 0x0F) != 3) continue;                 // only "value" (command 3)
+                const uint16_t ddi = (uint16_t)(d[p + 2] | d[p + 3] << 8);
+                const int32_t v = (int32_t)((uint32_t)d[p + 4] | (uint32_t)d[p + 5] << 8 | (uint32_t)d[p + 6] << 16 | (uint32_t)d[p + 7] << 24);
+                if (ddi == 2)          mach.rateLha   = v / 10000.0f;
+                else if (ddi == 1)     mach.targetLha = v / 10000.0f;
+                else if (ddi == 57344) mach.alarms    = (uint8_t)v;
+            }
+            mach.pdMs = mach.lastMs;
+            mach.pdN++;
         }
         else if (fromModule && d[3] == MACH_PGN_LIFE && d[4] >= 2)
         {
@@ -257,6 +281,14 @@ FLASHMEM void machineJson(Json& j, uint32_t now)
         j.num("lmin", mach.flowCLmin / 100.0, 2);
         j.num("total", mach.totalDl / 10.0, 1);
         j.bo("main", mach.mainOn);
+        j.i("pdAgo", mach.pdMs ? (long)((now - mach.pdMs) / 1000) : -1);   // its PGN 161, when it sends one
+        if (mach.pdMs)
+        {
+            j.u("pdN", mach.pdN);
+            j.num("rate", mach.rateLha, 1);
+            j.num("target", mach.targetLha, 0);
+            j.u("alarms", mach.alarms);
+        }
     }
     j.close();
 }

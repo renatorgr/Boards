@@ -371,6 +371,16 @@ static void apiState()
     j.num("angle", teensy.p254.angle, 2);
     j.i("status", teensy.p254.status);
     j.u("sec", teensy.p254.sections);
+    {   // sections 1-64 as 16 hex digits (section 1 = the lowest bit), as the Teensy's Machine tab: 1-16 from PGN 254, the
+        // rest from a PGN 229 of the last 2 s; secN = the highest section asked for since the start
+        uint64_t sec = teensy.p254.sections;
+        if (teensy.ms229 && now - teensy.ms229 < 2000) sec |= teensy.sec229 & ~(uint64_t)0xFFFF;
+        if (teensy.secTop < 64 && sec >> teensy.secTop) teensy.secTop = 64 - __builtin_clzll(sec);
+        char hex[20];
+        snprintf(hex, sizeof(hex), "%08lx%08lx", (unsigned long)(sec >> 32), (unsigned long)(sec & 0xFFFFFFFF));
+        j.str("sec64", hex);
+        j.u("secN", teensy.secTop);
+    }
     j.i("ago239", teensy.p239.have ? (long)((now - teensy.p239.ms) / 1000) : -1);
     j.i("uturn", teensy.p239.uturn);
     j.i("hyd", teensy.p239.hydLift);

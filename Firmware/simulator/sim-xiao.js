@@ -56,7 +56,7 @@ function state() {
   link: {talking: mod && mt > 5.2, lastAgo: mod ? 0 : Math.floor((Date.now() - lostAt) / 1000), frames: Math.floor(mt * 12), crcErr: 0, cut: 0,
    rxKB: S.r2(mt * 1.9, 1), txKB: S.r2(mt * 0.05, 1), hellos: Math.floor(mt / 2), sets: Math.floor(mt), broken: 0},
   aog: {helloAgo: prog ? 0 : -1, rate254: prog ? 10 : 0, ago254: prog ? 0 : -1, kmh: prog ? S.r2(tr.kmh, 1) : 0, angle: eng ? S.r2(M.tractor(mt + 0.25).steer, 2) : 0,
-   status: eng ? 1 : 0, sec: prog ? M.machineCmd() : 0, ago239: prog ? 0 : -1, uturn: 0, hyd: !prog ? 0 : tr.moving && !tr.straight ? 2 : 1, tram: 0, geo: 0,
+   status: eng ? 1 : 0, sec: prog ? M.machineCmd() : 0, sec64: prog ? M.machineCmd64() : "0", secN: prog ? Math.max(16, S.IMPL.sections) : 0, ago239: prog ? 0 : -1, uturn: 0, hyd: !prog ? 0 : tr.moving && !tr.straight ? 2 : 1, tram: 0, geo: 0,
    pgns: prog ? [[200, Math.floor(n)], [239, Math.floor(n * 10)], [251, 1], [252, 1], [254, Math.floor(n * 10)]] : []}};
 }
 function teensy() {

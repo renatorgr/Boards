@@ -41,6 +41,7 @@ nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.saverow{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 12px;align-items:end;padding:0 14px}.saverow .note{grid-column:1/-1}
 @media (max-width:760px){.grid3{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
 .card h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:0 0 8px;font-weight:650}
@@ -114,7 +115,7 @@ a{color:var(--acc)}
   <dl style="margin-top:6px"><dt>Autosteer requested</dt><dd id="aSt">–</dd><dt>Requested angle</dt><dd id="aAng">–</dd>
    <dt>Steering data (PGN 254)</dt><dd id="aRate">–</dd><dt>Hydraulic lift</dt><dd id="aHyd">–</dd><dt>Tram line</dt><dd id="aTram">–</dd>
    <dt>U-turn</dt><dd id="aUt">–</dd><dt>Program hello</dt><dd id="aHello">–</dd></dl>
-  <p class="note" style="margin-top:8px">Sections 1–16</p><div class="secs" id="aSecs"></div></div>
+  <p class="note" style="margin-top:8px" id="aSecT">Sections 1–16</p><div class="secs" id="aSecs"></div></div>
  <div class="card"><h2>XIAO</h2>
   <dl><dt>Up for</dt><dd id="xUp">–</dd><dt>Start-up reason</dt><dd id="xRst">–</dd>
    <dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>Devices connected</dt><dd id="xCl">–</dd><dt>Other network</dt><dd id="xSta">–</dd><dt>IP on the other network</dt><dd id="xIp">–</dd>
@@ -146,7 +147,7 @@ a{color:var(--acc)}
  <label class="field"><span>That network's password (blank: keeps the current one; for a new network, blank = open network)</span><input type="password" name="staPass" maxlength="63"></label>
  <label class="field"><span>XIAO name on that network</span><input type="text" name="host" maxlength="24"></label>
 </div>
-<div class="card"><h2>Save</h2>
+<div class="saverow">
  <label class="field"><span>Current password of the XIAO network (to confirm)</span><input type="password" name="pw" id="pwW" maxlength="63"></label>
  <div class="row"><button class="act" type="submit">Save and restart the XIAO</button><span id="setMsg" class="note"></span></div>
  <p class="note">The XIAO restarts to apply them. If you change the name or the password of the XIAO network, connect the phone to the new network again. Forgot the password? Through the USB port on the panel, in the serial monitor: <span class="mono">wifi-reset</span>.</p>
@@ -256,8 +257,10 @@ function renderState(x){
  set("aTram",a.ago239<0?"–":a.tram?String(a.tram):"no");
  set("aUt",a.ago239<0?"–":a.uturn?String(a.uturn):"no");
  set("aHello",ago(a.helloAgo));
- const box=$("aSecs");if(!box.childElementCount)for(let i=1;i<=16;i++){const s=document.createElement("span");s.textContent=i;box.appendChild(s);}
- for(let i=0;i<16;i++)box.children[i].classList.toggle("on",a.ago254>=0&&!!(a.sec&(1<<i)));
+ // one square per section: 16 at least, up to 64 (PGN 229), as many as the highest section asked for since the XIAO started
+ const box=$("aSecs"),hx=String(a.sec64||(a.sec>>>0).toString(16)),ns=Math.max(16,a.secN||0);
+ if(box.childElementCount!==ns){box.textContent="";for(let i=1;i<=ns;i++){const s=document.createElement("span");s.textContent=i;box.appendChild(s);}set("aSecT","Sections 1–"+ns);}
+ for(let i=0;i<ns;i++){const d=hx.length-1-(i>>2);box.children[i].classList.toggle("on",a.ago254>=0&&d>=0&&!!((parseInt(hx[d],16)>>(i&3))&1));}
  set("xUp",dur(x.up));set("xRst",(x.reset),x.resetBad?"warn":"");
  set("xAp",x.wifi.ap+" · "+"channel"+" "+x.wifi.ch);set("xCl",String(x.wifi.apCl));
  const w=x.wifi;

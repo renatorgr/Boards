@@ -622,7 +622,10 @@ function Module(key) {
    helloAgo: 0, helloN: hellos * (two ? 2 : 1), helloNoCrc: kind === "aog", secAgo: 0, sec: hex16(sec), secN: machTop,
    secPgn: kind === "aog" ? 123 : 237, sprayAgo: -1};
   if (!p160) return j;
-  return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main});
+  // with the 160, its PGN 161: the rate while spraying on the move, the target set on the module page, no alarm
+  const rate = sp.sec && tr.kmh > 0.5 ? r2(sp.lmin * 600 / (IMPL.width * tr.kmh), 1) : -1;
+  return Object.assign(j, {sprayAgo: 0, sprayN: hellos, bar: r2(sp.bar, 2), lmin: r2(sp.lmin, 2), total: r2(sp.total, 1), main: sp.main,
+   pdAgo: 0, pdN: hellos, rate: rate, target: 150, alarms: 0});
  }
 
  // ---- /api/gps (zReceiver.ino receiverJson, zRxCheck.ino rxCkJson)
@@ -868,7 +871,7 @@ function Module(key) {
   status: status, log: log, settingsJson: settingsJson, settingsPost: settingsPost, gps: gps, gpsPost: gpsPost, umPost: umPost, umGet: umGet,
   imuPost: imuPost, diag: diag, ota: ota, revert: revert, restart: restart, setSubnet: setSubnet, xiaoInfo: xiaoInfo,
   noteJson: noteJson, notePost: notePost,
-  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd & 0xFFFF, sprayerAt: sprayerAt,
+  tractor: t => tractor(t, parked), engaged: steering, machineCmd: () => sprayerAt().cmd & 0xFFFF, machineCmd64: () => hex16(sprayerAt().cmd), sprayerAt: sprayerAt,
  };
 }
 

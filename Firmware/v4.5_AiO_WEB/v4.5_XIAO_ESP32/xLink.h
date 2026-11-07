@@ -72,6 +72,9 @@ public:
     // ---- what AgOpenGPS / AgOpenWeb sends to the module (decoded here)
     struct Steer   { bool have = false; uint32_t ms = 0; float kmh = 0, angle = 0; uint8_t status = 0; uint16_t sections = 0; } p254;
     struct Machine { bool have = false; uint32_t ms = 0; uint8_t uturn = 0, hydLift = 0, tram = 0, geoStop = 0; uint16_t sections = 0; } p239;
+    uint64_t sec229 = 0;                 // PGN 229: sections 1-64 (sent with every 239 on a tool with more than 16)
+    uint32_t ms229 = 0;                  // its time (0 = never)
+    uint8_t  secTop = 0;                 // the highest section asked for since the start (the page keeps that many squares)
     uint32_t last200Ms = 0;              // last hello from AgIO / AgOpenWeb (PGN 200)
     float    rate254 = 0;                // PGN 254 per second (last full second)
 
@@ -230,6 +233,12 @@ private:
             p239.have = true; p239.ms = now | 1;
             p239.uturn = d[0]; p239.hydLift = d[2]; p239.tram = d[3]; p239.geoStop = d[4];
             p239.sections = (uint16_t)(d[6] | d[7] << 8);
+        }
+        else if (pgn == 229 && n >= 8)
+        {
+            sec229 = 0;
+            for (uint8_t b = 0; b < 8; b++) sec229 |= (uint64_t)d[b] << (8 * b);
+            ms229 = now | 1;
         }
         else if (pgn == 200) last200Ms = now | 1;
     }
