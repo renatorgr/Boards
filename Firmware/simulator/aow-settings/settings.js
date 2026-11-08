@@ -17,7 +17,7 @@
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
  const MAX_HITCH_DEG = 75;     // the most a drawbar may fold against the tractor in the turn
  const GO_AROUND_MARGIN = 1.0; // AgOpenWeb's safety margin round a Go around obstacle
-const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
+ const K_TURN_ARC = 2.2;      // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
  const r1 = v => Math.round(v * 10) / 10;
  const up = (v, step) => Math.round(Math.ceil(v / step - 1e-9) * step * 1000) / 1000;   // rounded again: 51 × 0.1 is 5.1000000000000005
@@ -69,26 +69,92 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
  }
  const depthOf = path => path.reduce((m, p) => Math.max(m, p.n), 0);
 
- // The K-turn from (0, 0) heading north onto the pass `lateral` metres to the right. AgOpenWeb draws only its first
- // part (YouTurnCreationService.CreateKStyleTurnCurve, AgOpenGPS's KStyleTurn): an arc of 2.2 rad (126°) and a straight
- // tail of 1.5 × the distance to the next pass; the turn is over for it as soon as the tractor reverses, and guidance
- // moves to the next pass. `forward` is that part; `reverse` is the backing up done by hand: back along the tail, then a
- // reverse arc of the remaining 54° at the same radius, ending heading south at `end`, the next pass to the left.
- function kTurnPath(radius, lateral) {
-  const forward = [{e: 0, n: 0}], pos = {e: 0, n: 0}, tail = 1.5 * Math.max(lateral, 0);
-  const theta = addArc(pos, 0, forward, K_TURN_ARC * radius, true, radius);
-  const tip = {e: pos.e + tail * Math.sin(theta), n: pos.n + tail * Math.cos(theta)};
-  forward.push(tip);
-  const reverse = [tip, {e: pos.e, n: pos.n}], back = {e: pos.e, n: pos.n};
-  const segments = 12, step = (Math.PI - K_TURN_ARC) / segments;
-  for (let k = 1; k <= segments; k++) {   // backing up while the heading goes on to south: the pivot moves against its heading
-   const h0 = theta + (k - 1) * step, h1 = theta + k * step;
-   back.e += radius * (Math.cos(h1) - Math.cos(h0)); back.n -= radius * (Math.sin(h1) - Math.sin(h0));
-   reverse.push({e: back.e, n: back.n});
-  }
-  return {forward, reverse, end: {e: back.e, n: back.n}};
+ // The K-turn from (0, 0) heading north onto the pass `lateral` metres to the right. AgOpenWeb draws only its first part
+ // (YouTurnCreationService.CreateKStyleTurnCurve, AgOpenGPS's KStyleTurn): an arc of 2.2 rad (126°) and a straight tail
+ // of 1.5 × the distance to the next pass. As soon as the tractor reverses the turn is over for AgOpenWeb and its guidance
+ // is on the next pass, backing up too (TrackGuidanceService steers in reverse). The shortest way back onto that pass at
+ // the same radius: straight back along the tail by `back` metres, then a reverse arc through the remaining 54°, which
+ // ends on the pass heading south at `end`.
+ function kTurnBack(radius, lateral) {
+  const tip = {e: radius * (1 - Math.cos(K_TURN_ARC)) + 1.5 * lateral * Math.sin(K_TURN_ARC), n: radius * Math.sin(K_TURN_ARC) + 1.5 * lateral * Math.cos(K_TURN_ARC)};
+  const back = (tip.e - lateral - radius * (1 + Math.cos(K_TURN_ARC))) / Math.sin(K_TURN_ARC);
+  return {tip, back, end: {e: lateral, n: tip.n - back * Math.cos(K_TURN_ARC) + radius * Math.sin(K_TURN_ARC)}};
  }
- const kTurnDepth = radius => 2 * radius * Math.sin(K_TURN_ARC);   // the forward arc's depth and the reverse arc's again
+ // the pivot's deepest point: the top of the forward arc, or where the backing up ends
+ const kTurnDepth = (radius, lateral) => Math.max(radius, kTurnBack(radius, lateral).end.n);
+
+ // ---- the whole turn step by step: the pivot's position and heading every 0.1 m, then where the implement goes ----
+
+ const STEP = 0.1;
+ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+ // `pieces`: {len, dir: 1 forward or -1 backing up, turn: 0 straight, 1 right (the heading grows) or -1 left, r}. Returns
+ // the poses {e, n, h (heading clockwise from north), dir} and the index where each piece ends.
+ function walk(pieces) {
+  const poses = [{e: 0, n: 0, h: 0, dir: 1}], ends = [];
+  let e = 0, n = 0, h = 0;
+  for (const p of pieces) {
+   const steps = Math.max(1, Math.ceil(p.len / STEP - 1e-9)), ds = p.len / steps, dir = p.dir || 1;
+   for (let k = 0; k < steps; k++) {
+    const dh = p.turn ? p.turn * ds / p.r : 0, hm = h + dh / 2;
+    e += dir * ds * Math.sin(hm); n += dir * ds * Math.cos(hm); h += dh;
+    poses.push({e, n, h, dir});
+   }
+   ends.push(poses.length - 1);
+  }
+  return {poses, ends};
+ }
+
+ // The pivot's path for a turn option ("semicircle" or "skip": quarter, straight, quarter; "keyhole"; "kturn") from (0, 0)
+ // heading north onto the pass `lateral` metres to the right, then `exit` metres down that pass. `turnEnd`: where the
+ // turn ends; a K-turn's `arcEnd` and `forwardEnd` (the tail between them), the backing up after it.
+ function turnPath(key, radius, lateral, exit) {
+  const R = radius, pieces = [];
+  if (key === "keyhole") {
+   const across = lateral / 2 + R, c = Math.atan2(Math.sqrt(Math.max(0, 4 * R * R - across * across)), across);
+   pieces.push({len: c * R, turn: -1, r: R}, {len: (Math.PI + 2 * c) * R, turn: 1, r: R}, {len: c * R, turn: -1, r: R});
+  } else if (key === "kturn") {
+   pieces.push({len: K_TURN_ARC * R, turn: 1, r: R}, {len: 1.5 * lateral, turn: 0},
+    {len: kTurnBack(R, lateral).back, dir: -1, turn: 0}, {len: (Math.PI - K_TURN_ARC) * R, dir: -1, turn: 1, r: R});
+  } else pieces.push({len: Math.PI / 2 * R, turn: 1, r: R}, {len: Math.max(0, lateral - 2 * R), turn: 0}, {len: Math.PI / 2 * R, turn: 1, r: R});
+  pieces.push({len: exit, turn: 0});
+  const w = walk(pieces), turnEnd = w.ends[w.ends.length - 2];
+  return {poses: w.poses, turnEnd, arcEnd: key === "kturn" ? w.ends[0] : turnEnd, forwardEnd: key === "kturn" ? w.ends[1] : turnEnd};
+ }
+
+ // Where the implement's two ends go along `poses`, and the machine's far end (`body` metres ahead of the pivot, behind
+ // when negative; null: not followed). `imp`: rigid {along: + ahead of the pivot, − behind} or trailed {hitch: behind the
+ // pivot, bars: [tank hitch,] drawbar, pivotToTool}; offset (right +), half (the width ÷ 2). A trailed implement's axle
+ // follows its hitch with no side slip: its heading turns by the hitch's sideways move ÷ the drawbar, forwards and backing
+ // up. `foldDeg`: the most a drawbar folds against what pulls it.
+ function sweep(poses, imp) {
+  const u = h => ({e: Math.sin(h), n: Math.cos(h)}), rt = h => ({e: Math.cos(h), n: -Math.sin(h)});
+  const left = [], right = [], centre = [], heading = [], body = [];
+  const bars = imp.bars || [], phis = bars.map(() => poses[0].h), prev = bars.map(() => null);
+  let fold = 0;
+  for (const p of poses) {
+   const f = u(p.h);
+   if (imp.body != null) body.push({e: p.e + imp.body * f.e, n: p.n + imp.body * f.n});
+   let c, th;
+   if (!bars.length) { c = {e: p.e + imp.along * f.e, n: p.n + imp.along * f.n}; th = p.h; }
+   else {
+    let pt = {e: p.e - imp.hitch * f.e, n: p.n - imp.hitch * f.n}, pull = p.h;
+    bars.forEach((bar, j) => {
+     if (prev[j]) { const r = rt(phis[j]); phis[j] += ((pt.e - prev[j].e) * r.e + (pt.n - prev[j].n) * r.n) / bar; }
+     prev[j] = pt;
+     fold = Math.max(fold, Math.abs(wrap(phis[j] - pull)));
+     pull = phis[j];
+     const b = u(phis[j]); pt = {e: pt.e - bar * b.e, n: pt.n - bar * b.n};
+    });
+    th = phis[phis.length - 1];
+    const b = u(th); c = {e: pt.e - imp.pivotToTool * b.e, n: pt.n - imp.pivotToTool * b.n};
+   }
+   const r = rt(th);
+   c = {e: c.e + imp.offset * r.e, n: c.n + imp.offset * r.n};
+   centre.push(c); heading.push(th);
+   left.push({e: c.e - imp.half * r.e, n: c.n - imp.half * r.n}); right.push({e: c.e + imp.half * r.e, n: c.n + imp.half * r.n});
+  }
+  return {left, right, centre, heading, body, foldDeg: fold * 180 / Math.PI};
+ }
 
  // `input`: machine ("tractor": the front wheels steer, the pivot is the rear axle; "articulated": the machine bends at a
  // joint midway between the axles; "harvester": the rear wheels steer, the pivot is the front axle), wheelbase, maxSteerDeg
@@ -142,7 +208,7 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
   const landing = (skip + 1) * spacing;
   const keyhole = semicircle ? null : r1(keyholeDepth(radius, spacing));
   const sagitta = semicircle ? null : r1(depthOf(sagittaPath(radius, spacing)));
-  const kturn = semicircle ? null : r1(kTurnDepth(radius));
+  const kturn = semicircle ? null : r1(kTurnDepth(radius, spacing));
 
   // what sweeps the widest in the turn: the machine's body (a tractor's nose, an articulated machine's nose, which swings
   // with its front half, a harvester's back end), or the implement's outer corner: its half width plus the offset out
@@ -179,19 +245,59 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
   const noseWhy = bodyName + " of the machine sweeps " + r1(noseReach) + " m past the pivot's path (" + noseFormula + ")";
   const distanceWhy = (noseReach >= toolReach ? noseWhy + ", more than " + toolWhy : toolWhy + ", more than " + bodyName + " of the machine (" + r1(noseReach) + " m)") + "; plus the " + r1(margin) + " m safety margin";
 
-  // the headland: the turn's depth, the distance from boundary and the implement behind the tractor, in whole passes
-  const behind = front ? 0 : r1(axleToTool);   // a front implement is ahead of the pivot: it enters the headland before the turn starts
-  const headland = depth => { const sum = r1(depth) + distance + behind; const passes = Math.ceil(sum / spacing - 0.001); return {sum: r1(sum), passes, width: r1(passes * spacing)}; };
+  // Each turn followed step by step (the implement and the machine's far end with it): how deep the pivot goes, what goes
+  // further than the distance from boundary allows (a K-turn backs the implement up first), and how far back into the field
+  // anything not yet straight on a pass reaches: the implement finishing its pass when the turn starts, its ends swinging,
+  // a front implement or a trailed one until it is straight on the next pass (within 10 cm and 2°), a K-turn's tail
+  const imp = trailed ? {bars: tbt ? [i.tankHitch, i.drawbar] : [i.drawbar], hitch: i.hitchLength, pivotToTool: i.pivotToTool, offset: i.offset, half: i.width / 2}
+   : {along: front ? axleToTool : -axleToTool, offset: i.offset, half: i.width / 2};
+  imp.body = articulated ? null : harvester ? -(i.wheelbase + i.overhang) : i.wheelbase + i.overhang;
+  const exitLen = Math.max(20, 15 * axleToTool);
+  const implName = front ? "the front implement" : trailed ? "the " + (tbt ? "TBT" : "trailed") + " implement" : "the implement";
+  function study(key, lateral, depth) {
+   const path = turnPath(key, radius, lateral, exitLen), sw = sweep(path.poses, imp), P = path.poses, end = path.turnEnd;
+   let top = 0;
+   for (let k = 0; k <= end; k++) top = Math.max(top, sw.left[k].n, sw.right[k].n, imp.body != null ? sw.body[k].n : -Infinity);
+   const own = top - depth > reach + 0.01 ? top - depth : reach;   // a K-turn: what backs up first reaches past the pivot
+   const dist = up(own + margin, 0.1);
+   let low = 0, lowWhy = "";
+   const take = (n, what) => { if (n < low - 1e-6) { low = n; lowWhy = what; } };
+   const inTail = k => key === "kturn" && k >= path.arcEnd && k <= path.forwardEnd;
+   for (let k = 0; k < end; k++) take(Math.min(sw.left[k].n, sw.right[k].n), k === 0 ? "start" : inTail(k) ? "tail" : "swing");
+   if (key === "kturn" && imp.body > 0) for (let k = path.arcEnd; k <= path.forwardEnd; k++) take(sw.body[k].n, "nose");
+   const target = sw.centre[P.length - 1].e;
+   let aligned = P.length - 1;
+   for (let k = end; k < P.length; k++) {
+    if (Math.abs(sw.centre[k].e - target) < 0.1 && Math.abs(wrap(sw.heading[k] - Math.PI)) < rad(2)) { aligned = k; take(sw.centre[k].n, "exit"); break; }
+    take(Math.min(sw.left[k].n, sw.right[k].n), "exit");
+   }
+   const sum = r1(depth) + dist - low, passes = Math.ceil(sum / spacing - 0.001);
+   const lowText = lowWhy === "start" ? implName + " " + r1(-low) + " m behind the pivot finishing its pass when the turn starts"
+    : lowWhy === "exit" ? (trailed ? implName + " straight on the next pass (within 10 cm) only " + r1(-low) + " m back from where the turn started"
+     : implName + " " + r1(-low) + " m ahead of the pivot when the turn ends, already on the next pass")
+    : lowWhy === "nose" ? "the K-turn's tail taking the tractor's nose " + r1(-low) + " m back into the field"
+    : lowWhy === "tail" ? "the K-turn's tail taking " + implName + "'s end " + r1(-low) + " m back into the field"
+    : lowWhy === "swing" ? implName + "'s end swinging " + r1(-low) + " m back into the field" : "";
+   return {path: Object.assign(path, {aligned}), sweep: sw, distance: dist, top: r1(top), low: r1(low), lowText,
+    headland: {sum: r1(sum), passes, width: r1(passes * spacing)}};
+  }
+  const option = (key, style, skipRows, lateral, depth, text) => Object.assign({key, style, skip: skipRows, depth}, study(key, lateral, depth), {text});
   const options = [];
-  if (semicircle) options.push({key: "semicircle", style: "Sagitta", skip: 0, depth: r1(radius), headland: headland(radius),
-   text: "Sagitta, skip 0: the next pass is " + r1(spacing) + " m away, 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep"});
+  let kTurnOut = "";
+  if (semicircle) options.push(option("semicircle", "Sagitta", 0, spacing, r1(radius),
+   "Sagitta, skip 0: the next pass is " + r1(spacing) + " m away, 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep"));
   else {
-   options.push({key: "skip", style: "Sagitta", skip, depth: r1(radius), headland: headland(radius),
-    text: "Sagitta, skip " + skip + " row" + (skip > 1 ? "s" : "") + ": the turn lands " + r1(landing) + " m away, 2 × " + r1(radius) + " m or more, a plain semicircle " + r1(radius) + " m deep; the skipped passes are worked on the way back"});
-   options.push({key: "keyhole", style: "Keyhole", skip: 0, depth: keyhole, headland: headland(keyhole),
-    text: "Keyhole, skip 0: the next pass is only " + r1(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"});
-   options.push({key: "kturn", style: "K-turn", skip: 0, depth: kturn, headland: headland(kturn), reverse: true,
-    text: "K-turn, skip 0: AgOpenWeb drives a 126° arc forward, " + r1(radius * Math.sin(K_TURN_ARC)) + " m deep, and a straight tail of " + r1(1.5 * spacing) + " m; then you stop and back up by hand (the turn is over for AgOpenWeb as soon as you reverse, and guidance is on the next pass). Backing up through the remaining 54° at the same radius goes another " + r1(radius * Math.sin(K_TURN_ARC)) + " m in: " + kturn + " m deep in all, with a stop and a reverse at every pass" + (trailed ? "; a trailed implement is hard to back up" : "")});
+   options.push(option("skip", "Sagitta", skip, landing, r1(radius),
+    "Sagitta, skip " + skip + " row" + (skip > 1 ? "s" : "") + ": the turn lands " + r1(landing) + " m away, 2 × " + r1(radius) + " m or more, a plain semicircle " + r1(radius) + " m deep; the skipped passes are worked on the way back"));
+   options.push(option("keyhole", "Keyhole", 0, spacing, keyhole,
+    "Keyhole, skip 0: the next pass is only " + r1(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"));
+   // the K-turn backs up: a trailed implement pushed back along that path folds; past the hitch limit it is left out
+   const k = option("kturn", "K-turn", 0, spacing, kturn, "");
+   const kb = kTurnBack(radius, spacing), backed = r1(kb.back + (Math.PI - K_TURN_ARC) * radius);
+   k.reverse = true;
+   k.text = "K-turn, skip 0: AgOpenWeb drives a 126° arc forward and a straight tail of " + r1(1.5 * spacing) + " m; as soon as you back up the turn is over for AgOpenWeb and its guidance is on the next pass, backing up too: you back up " + backed + " m until you are on it and straight, " + r1(kb.end.n) + " m deep, then drive forward. A stop and a reverse at every pass";
+   if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife)";
+   else { if (trailed) k.text += "; backing up a trailed implement takes care: its drawbar folds to " + Math.round(k.sweep.foldDeg) + "°"; options.push(k); }
   }
   const extension = up(Math.max(2 * radius, trailed ? 3 * axleToTool : 0), 0.5);
   const extensionWhy = !trailed || 2 * radius >= 3 * axleToTool ? "2 × the radius" : "3 × the " + r1(axleToTool) + " m from the rear axle to the working line, so the " + (tbt ? "TBT" : "trailed") + " implement is straight behind the tractor before the sections come on";
@@ -207,11 +313,12 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
    {key: "spacing", name: "Track spacing (not a setting)", value: r1(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
    {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
-   {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ")},
-   {key: "distance", name: "U-Turn → Distance from boundary", value: distance + " m", why: distanceWhy},
+   {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ") + (kTurnOut ? ". " + kTurnOut : "")},
+   {key: "distance", name: "U-Turn → Distance from boundary", value: options.some(o => o.distance !== distance) ? options.map(o => o.distance + " m" + (options.length > 1 ? " (" + o.style + ")" : "")).join(", ") : distance + " m",
+    why: distanceWhy + options.filter(o => o.distance !== distance).map(o => ". " + o.style + ": backing up, " + implName + " or the machine reaches " + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin").join("")},
    {key: "headland", name: "Headland width (Field builder → Headland)", value: sameHeadland ? widths[0] : widths.join(" or "),
-    why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + distance + (front ? "" : " + " + behind + " m of implement behind the axle") + " = " + o.headland.sum + " m").join("; ")
-     + ", rounded up to whole passes" + (sameHeadland && options.length > 1 ? ": the same headland for every turn" : "") + (front ? "; the front implement is ahead of the pivot and enters the headland first" : "")},
+    why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m").join("; ")
+     + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line" + (sameHeadland && options.length > 1 ? "; the same headland for every turn" : "")},
    {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
    {key: "goAround", name: "U-Turn → Going around obstacles", value: "radius " + r1(radius) + " m, margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
   ];
@@ -222,10 +329,10 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
   if (front && !harvester && i.axleToTool < i.overhang) problems.push("The front implement's working line is " + i.axleToTool + " m ahead of the front axle, behind the nose (" + i.overhang + " m): measure from the front axle to the boom or the cutter bar.");
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
   return {problems, rows, machine: i.machine, spacing: r1(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
-   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), behind, toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
+   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
    goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}};
  }
 
- const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnPath, kTurnDepth, depthOf, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, K_TURN_ARC};
+ const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnBack, kTurnDepth, turnPath, sweep, depthOf, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, K_TURN_ARC};
  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AowSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);
