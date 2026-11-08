@@ -15,10 +15,13 @@
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
- const MAX_HITCH_DEG = 75;     // the most a drawbar may fold against the tractor in the turn
+ const MAX_HITCH_DEG = 75;     // drawbar ÷ sin 75°: the radius where a trailed implement's wheels still roll round a circle of
+                               // their own; backing up, a drawbar folded past it is a jackknife
+ const FOLD_CLEARANCE_DEG = 5; // and it stays this far from where it touches a rear tyre or reaches its own stop
  const GO_AROUND_MARGIN = 1.0; // AgOpenWeb's safety margin round a Go around obstacle
  const K_TURN_ARC = 2.2;      // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
+ const deg = r => r * 180 / Math.PI;
  const r1 = v => Math.round(v * 10) / 10;
  const r2 = v => Math.round(v * 100) / 100;   // the track spacing: a 5 cm gap must show
  const up = (v, step) => Math.round(Math.ceil(v / step - 1e-9) * step * 1000) / 1000;   // rounded again: 51 × 0.1 is 5.1000000000000005
@@ -84,6 +87,36 @@
  // the pivot's deepest point: the top of the forward arc, or where the backing up ends
  const kTurnDepth = (radius, lateral) => Math.max(radius, kTurnBack(radius, lateral).end.n);
 
+ // ---- the drawbar and the rear tyres ----
+
+ // Does the drawbar, folded `angle` degrees against the tractor, overlap a rear tyre? Seen from above, in the tractor's
+ // frame (x to the side it swings to, y back from the rear axle): the drawbar a strip `bar` wide from the hitch pin `hitch`
+ // metres behind the axle, `len` long; the tyre a rectangle `tyre` wide round its centre `track` ÷ 2 out, and as long as
+ // the wheel is high (its full height: the drawbar's own height is not known). Separating axes of two rectangles.
+ function drawbarTouches(angle, hitch, bar, len, track, tyre, dia) {
+  const a = rad(angle), u = [Math.sin(a), Math.cos(a)], n = [Math.cos(a), -Math.sin(a)], strip = [];
+  for (const s of [0, len]) for (const w of [-bar / 2, bar / 2]) strip.push([s * u[0] + w * n[0], hitch + s * u[1] + w * n[1]]);
+  const x0 = track / 2 - tyre / 2, x1 = track / 2 + tyre / 2, box = [[x0, -dia / 2], [x1, -dia / 2], [x1, dia / 2], [x0, dia / 2]];
+  for (const ax of [[1, 0], [0, 1], u, n]) {
+   const A = strip.map(p => p[0] * ax[0] + p[1] * ax[1]), B = box.map(p => p[0] * ax[0] + p[1] * ax[1]);
+   if (Math.max(...A) < Math.min(...B) || Math.max(...B) < Math.min(...A)) return false;
+  }
+  return true;
+ }
+ // The angle (every 0.5°) where the drawbar first touches a rear tyre; null when it never does before 180°. A drawbar pin
+ // inside the tyres' back edge touches them long before 90°.
+ function drawbarTouchDeg(hitch, bar, len, track, tyre, dia) {
+  for (let d = 0; d <= 180; d += 0.5) if (drawbarTouches(d, hitch, bar, len, track, tyre, dia)) return d;
+  return null;
+ }
+ // How far a drawbar `len` long from a hitch pin `hitch` behind the pivot folds against the tractor when everything runs
+ // round a circle of `radius` at the pivot: the pin is at √(radius² + hitch²) from the centre and the implement's axle,
+ // with no side slip, where the drawbar is tangent to its own circle. 180 when it cannot follow.
+ function steadyFoldDeg(radius, hitch, len) {
+  const rh = Math.hypot(radius, hitch);
+  return len >= rh ? 180 : deg(Math.atan2(hitch, radius) + Math.asin(len / rh));
+ }
+
  // ---- the whole turn step by step: the pivot's position and heading every 0.1 m, then where the implement goes ----
 
  const STEP = 0.1;
@@ -126,12 +159,12 @@
  // when negative; null: not followed). `imp`: rigid {along: + ahead of the pivot, − behind} or trailed {hitch: behind the
  // pivot, bars: [tank hitch,] drawbar, pivotToTool}; offset (right +), half (the width ÷ 2). A trailed implement's axle
  // follows its hitch with no side slip: its heading turns by the hitch's sideways move ÷ the drawbar, forwards and backing
- // up. `foldDeg`: the most a drawbar folds against what pulls it.
+ // up. `foldDeg`: the most a drawbar folds against what pulls it; `firstFoldDeg`: the first one against the machine.
  function sweep(poses, imp) {
   const u = h => ({e: Math.sin(h), n: Math.cos(h)}), rt = h => ({e: Math.cos(h), n: -Math.sin(h)});
   const left = [], right = [], centre = [], heading = [], body = [];
   const bars = imp.bars || [], phis = bars.map(() => poses[0].h), prev = bars.map(() => null);
-  let fold = 0;
+  let fold = 0, firstFold = 0;
   for (const p of poses) {
    const f = u(p.h);
    if (imp.body != null) body.push({e: p.e + imp.body * f.e, n: p.n + imp.body * f.n});
@@ -143,6 +176,7 @@
      if (prev[j]) { const r = rt(phis[j]); phis[j] += ((pt.e - prev[j].e) * r.e + (pt.n - prev[j].n) * r.n) / bar; }
      prev[j] = pt;
      fold = Math.max(fold, Math.abs(wrap(phis[j] - pull)));
+     if (j === 0) firstFold = Math.max(firstFold, Math.abs(wrap(phis[j] - pull)));
      pull = phis[j];
      const b = u(phis[j]); pt = {e: pt.e - bar * b.e, n: pt.n - bar * b.n};
     });
@@ -154,7 +188,7 @@
    centre.push(c); heading.push(th);
    left.push({e: c.e - imp.half * r.e, n: c.n - imp.half * r.n}); right.push({e: c.e + imp.half * r.e, n: c.n + imp.half * r.n});
   }
-  return {left, right, centre, heading, body, foldDeg: fold * 180 / Math.PI};
+  return {left, right, centre, heading, body, foldDeg: deg(fold), firstFoldDeg: deg(firstFold)};
  }
 
  // `input`: machine ("tractor": the front wheels steer, the pivot is the rear axle; "articulated": the machine bends at a
@@ -168,11 +202,15 @@
  // hitch pin to the tank's axle, Tank trailing hitch), drawbar (hitch pin, or the tank's axle, to the implement's axle:
  // Trailing hitch), pivotToTool (its axle to the working line, behind = +: Pivot distance), length (from its attachment,
  // the 3-point hitch or its own axle, to its rearmost point: Implement length; 0 = not known), sprayerWidth (0 = no
- // tramline check), margin (the room kept between what sweeps the widest in the turn and the field edge: 1 m by default,
+ // tramline check), trackWidth, tyreWidth and wheelDiameter (the rear wheels: centre to centre, the tyre's width, its height;
+ // trackWidth 0 = no check), drawbarWidth (a trailed implement's drawbar near the hitch, where it can reach those tyres),
+ // swingDeg (the most the drawbar may turn to each side against the machine: a semi-mounted pivot's stop, or what the
+ // farmer knows it takes; 0 = only the tyres limit it), margin (the room kept between what sweeps the widest in the turn and the field edge: 1 m by default,
  // more where the edge is irregular). Returns the numbers and `rows`, one per suggestion, with the reason.
  function suggest(input) {
   const i = Object.assign({machine: "tractor", wheelbase: 2.5, maxSteerDeg: 35, overhang: 1.2, mount: "rear", width: 6, sections: 0, sectionWidth: 0,
-   overlap: 0, offset: 0, axleToTool: 1.8, hitchLength: 1.0, tankHitch: 3.0, drawbar: 3.0, pivotToTool: 0, length: 0, sprayerWidth: 0, margin: MARGIN}, input);
+   overlap: 0, offset: 0, axleToTool: 1.8, hitchLength: 1.0, tankHitch: 3.0, drawbar: 3.0, pivotToTool: 0, length: 0, sprayerWidth: 0, margin: MARGIN,
+   trackWidth: 0, tyreWidth: 0.6, wheelDiameter: 1.8, drawbarWidth: 0.3, swingDeg: 0}, input);
   if (i.frontOverhang !== undefined && input.overhang === undefined) i.overhang = i.frontOverhang;
   if (i.sections > 0 && i.sectionWidth > 0 && !(input.width > 0)) i.width = i.sections * i.sectionWidth / 100;
   const trailed = i.mount === "trailed" || i.mount === "tbt", tbt = i.mount === "tbt", front = i.mount === "front", problems = [];
@@ -182,6 +220,11 @@
   if (!(i.width > 0)) problems.push("The implement needs a width (or sections and a section width).");
   else if (!(spacing > 0.01)) problems.push("The overlap must be less than the implement width.");
   if (!(i.margin >= 0)) problems.push("The safety margin to the field edge cannot be negative.");
+  // the drawbar against the rear tyres: a tractor's or an articulated machine's (a harvester's rear wheels steer)
+  const tyreCheck = trailed && !harvester && i.trackWidth > 0;
+  if (tyreCheck && !(i.tyreWidth > 0 && i.wheelDiameter > 0 && i.trackWidth > i.tyreWidth && i.drawbarWidth >= 0 && i.drawbarWidth < i.trackWidth - i.tyreWidth))
+   problems.push("The rear tyres need a width and a height, the track must be wider than a tyre, and the drawbar must pass between the tyres.");
+  if (trailed && !(i.swingDeg >= 0 && i.swingDeg <= 180)) problems.push("The most the drawbar may turn must be between 0 (the tyres only) and 180°.");
   if (problems.length) return {problems, rows: [], options: []};
   // the working line from the pivot axle, along the machine. A rigid implement is measured from the axle nearest to it; the
   // pivot is a tractor's rear axle and a harvester's front axle, so a front implement on a tractor (or a rear one on a
@@ -200,7 +243,24 @@
   if (radius === RADIUS_FLOOR && RADIUS_FACTOR * rMin < RADIUS_FLOOR) why.push("AgOpenWeb's simple turn path goes no tighter than " + RADIUS_FLOOR + " m");
   const longestBar = trailed ? Math.max(i.drawbar, tbt ? i.tankHitch : 0) : 0;
   const hitchMin = longestBar / Math.sin(rad(MAX_HITCH_DEG));
-  if (hitchMin > radius) { radius = hitchMin; why.push("the " + longestBar + " m drawbar must not fold past " + MAX_HITCH_DEG + "°: at least " + r1(hitchMin) + " m"); }
+  if (hitchMin > radius) { radius = hitchMin; why.push("the " + longestBar + " m drawbar ÷ sin " + MAX_HITCH_DEG + "°, so the implement's wheels still roll round a circle of their own: at least " + r1(hitchMin) + " m"); }
+  // the drawbar that the machine pulls (a TBT's tank's) folds no further than where it touches a rear tyre or reaches its
+  // own stop (a semi-mounted implement's pivot), with some room, on the turn's circle
+  const firstBar = tbt ? i.tankHitch : i.drawbar;
+  const touchDeg = tyreCheck ? drawbarTouchDeg(i.hitchLength, i.drawbarWidth, firstBar, i.trackWidth, i.tyreWidth, i.wheelDiameter) : null;
+  const stopDeg = trailed && i.swingDeg > 0 ? i.swingDeg : null;
+  const limits = [];
+  if (touchDeg !== null) limits.push({at: touchDeg, what: "touches a rear tyre", onto: "onto a rear tyre (it touches at " + touchDeg + "°)"});
+  if (stopDeg !== null) limits.push({at: stopDeg, what: "reaches the most it may turn", onto: "past the most it may turn (" + stopDeg + "° to each side)"});
+  const limit = limits.length ? limits.reduce((a, b) => b.at < a.at ? b : a) : null;
+  const foldLimit = limit ? limit.at - FOLD_CLEARANCE_DEG : null;
+  if (limit) {
+   let r = radius;
+   while (steadyFoldDeg(r, i.hitchLength, firstBar) > foldLimit && r < 200) r += 0.1;
+   if (r >= 200) problems.push("The drawbar " + limit.what + " almost straight behind the tractor (at " + limit.at + "°): check the hitch, the drawbar, the track and the swing.");
+   else if (r > radius + 1e-9) { radius = r; why.push("the drawbar " + limit.what + " when it folds " + limit.at + "°: kept under " + foldLimit + "° on the turn's circle, at least " + r1(up(r, 0.1)) + " m"); }
+  }
+  if (problems.length) return {problems, rows: [], options: []};
   radius = up(radius, 0.1);
 
   // the turn onto the next pass: a semicircle when the pass is 2 × radius or more away, else skip passes or loop
@@ -304,7 +364,8 @@
    const kb = kTurnBack(radius, spacing), backed = r1(kb.back + (Math.PI - K_TURN_ARC) * radius);
    k.reverse = true;
    k.text = "K-turn, skip 0: AgOpenWeb drives a 126° arc forward and a straight tail of " + r1(1.5 * spacing) + " m; as soon as you back up the turn is over for AgOpenWeb and its guidance is on the next pass, backing up too: you back up " + backed + " m until you are on it and straight, " + r1(kb.end.n) + " m deep, then drive forward. A stop and a reverse at every pass";
-   if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife); an implement lifted rigid on the 3-point linkage for the turn is Rear fixed here";
+   if (foldLimit !== null && k.sweep.firstFoldDeg > foldLimit) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar to " + Math.round(k.sweep.firstFoldDeg) + "°, " + limit.onto;
+   else if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife); an implement lifted rigid on the 3-point linkage for the turn is Rear fixed here";
    else { if (trailed) k.text += "; backing up a trailed implement takes care: its drawbar folds to " + Math.round(k.sweep.foldDeg) + "°"; options.push(k); }
   }
   const extension = up(Math.max(2 * radius, trailed ? 3 * axleToTool : 0), 0.5);
@@ -335,13 +396,26 @@
    why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"});
   if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
    why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r2(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
+  if (tyreCheck || stopDeg !== null) {
+   const where = i.hitchLength < i.wheelDiameter / 2 ? "inside the tyres' back edge" : "behind the tyres' back edge";
+   const most = Math.max(...options.map(o => o.sweep.firstFoldDeg)), parts = [], value = [];
+   if (tyreCheck) {
+    value.push(touchDeg === null ? "never touches the tyres" : "touches the tyres at " + touchDeg + "°");
+    parts.push("the " + i.drawbarWidth + " m wide drawbar from the hitch " + i.hitchLength + " m behind the rear axle (" + where + ": " + r2(i.wheelDiameter / 2) + " m) and the rear tyres, "
+     + i.tyreWidth + " m wide, " + i.wheelDiameter + " m high, " + i.trackWidth + " m apart" + (touchDeg === null ? ", never meet" : ", meet when the drawbar folds " + touchDeg + "° against the tractor"));
+   }
+   if (stopDeg !== null) { value.push("at most " + stopDeg + "°"); parts.push("the drawbar may turn " + stopDeg + "° to each side at most (its stop, or what you typed)"); }
+   rows.push({key: "fold", name: "How far the drawbar may fold (not a setting)", value: value.join(", "),
+    why: parts.join("; ") + "; the turns here fold it " + Math.round(most) + "° at most" + (limit ? " (" + FOLD_CLEARANCE_DEG + "° or more away)" : "")});
+  }
   if (front && !harvester && i.axleToTool < i.overhang) problems.push("The front implement's working line is " + i.axleToTool + " m ahead of the front axle, behind the nose (" + i.overhang + " m): measure from the front axle to the boom or the cutter bar.");
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
   return {problems, rows, machine: i.machine, spacing: r2(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
    bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
-   goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}};
+   goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}, touchDeg, stopDeg, foldLimit};
  }
 
- const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnBack, kTurnDepth, turnPath, sweep, depthOf, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, K_TURN_ARC};
+ const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnBack, kTurnDepth, turnPath, sweep, depthOf, drawbarTouchDeg, steadyFoldDeg,
+  RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, FOLD_CLEARANCE_DEG, K_TURN_ARC};
  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AowSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);
