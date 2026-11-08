@@ -130,18 +130,28 @@ async function teensy(browser, port, q, name) {
   // the three examples with typical measures: a tandem-axle manure spreader, a trailed disc harrow, a reversible plough
   await pg.click("button:has-text('10 m manure spreader')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#presetNote", /^Typical measures/);
-  await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 0$/);
+  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^6\.7 m$/);     // its drawbar pin inside the rear tyres: they set the radius
+  await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 1 or Keyhole, skip 0$/);
   await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^30 m \(3 passes\)$/);
+  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 57°$/);
+  if (!(await pg.locator("#tyreWidth").isVisible())) fail.push(what + ": a trailed implement needs the rear tyres");
   await shot(pg, "aow-settings-spreader");
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0$/);
   await pg.click("button:has-text('4-furrow reversible plough')"); await pg.waitForTimeout(300);
+  if (await pg.locator("#tyreWidth").isVisible()) fail.push(what + ": the rear tyres are for trailed implements only");
   await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^4\.3 m \(Sagitta\), 4\.3 m \(Keyhole\), 6\.6 m \(K-turn\)$/);
   await expect(pg, what, "#draw svg text:last-child", /^next pass 1\.6 m away: K-turn, radius 4 m, 8\.7 m deep \(the backing up included\)$/);   // a plough skips no rows
   if ((await pg.locator("#draw svg polyline[stroke-dasharray='1 4']").count()) !== 1) fail.push(what + ": the plough's rear corner should be drawn dotted");
   await expect(pg, what, "#legend", /Blue dots: the implement's outer rear corner/);
   if (!(await pg.locator("#length").isVisible())) fail.push(what + ": the plough needs its length");
   await shot(pg, "aow-settings-plough");
+  await pg.click("button:has-text('3.2 m roller')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^4\.2 m$/);     // its own 60° stop sets the radius
+  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 110°, at most 60°$/);
+  await shot(pg, "aow-settings-roller");
+  await pg.click("button:has-text('2.7 m quick disc harrow')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0 or K-turn, skip 0$/);
   await pg.fill("#overlap", "3"); await pg.waitForTimeout(300);
   await expect(pg, what, "#problems", /overlap must be less than the implement width/);
   // the front sprayer on a tractor with 35° on the stop: two turns too tight for a semicircle, and a K-turn
