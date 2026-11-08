@@ -15,7 +15,7 @@ const near = (what, got, want, tol) => { if (Math.abs(got - want) > tol) fail.pu
 // the tractor of the worked example: 2.7 m wheelbase, 40° on the stop, 1.3 m from the front axle to the nose
 const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 1.3};
 
-// an 8 m sprayer mounted 1.8 m behind the rear axle: the next pass is 8 m away, 2 × 4 m, a plain semicircle
+// an 8 m sprayer mounted 1.8 m behind the rear axle: the next pass is 8 m away, 2 × 4 m, a plain semicircle (1 m margin to the edge)
 {
  const s = S.suggest(Object.assign({mount: "rear", width: 8, overlap: 0, axleToTool: 1.8, sprayerWidth: 8}, tractor));
  eq("sprayer problems", s.problems.length, 0);
@@ -25,9 +25,10 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("sprayer semicircle", s.semicircle, true);
  eq("sprayer skip", s.skip, 0);
  eq("sprayer options", s.options.map(o => o.key).join(","), "semicircle");
+ eq("sprayer no K-turn", s.kturn, null);   // a plain semicircle needs no backing up
  eq("sprayer nose reach", s.noseReach, 1.7);
  eq("sprayer tool reach", s.toolReach, 4.2);
- eq("sprayer distance", s.distance, 4.7);
+ eq("sprayer distance", s.distance, 5.2);   // the boom's end 4.2 m past the pivot, plus the 1 m margin
  eq("sprayer headland", s.options[0].headland.width, 16);
  eq("sprayer headland passes", s.options[0].headland.passes, 2);
  eq("sprayer extension", s.extension, 8);
@@ -48,11 +49,14 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("drill keyhole depth", s.keyhole, 9.8);
  near("drill sagitta depth", s.sagitta, 11.4, 0.15);
  eq("drill nose reach", s.noseReach, 1.7);
- eq("drill distance", s.distance, 2.2);
+ eq("drill distance", s.distance, 2.7);
  eq("drill axle to tool", s.axleToTool, 3);
- eq("drill options", s.options.map(o => o.key).join(","), "skip,keyhole");
+ eq("drill options", s.options.map(o => o.key).join(","), "skip,keyhole,kturn");
+ eq("drill K-turn depth", s.kturn, 6.5);   // 2 × 4 × sin 2.2: the 126° arc forward, the 54° left backing up
+ eq("drill headland K-turn", s.options[2].headland.width, 15);   // 6.5 + 2.7 + 3 = 12.2 m, 5 passes
+ if (!/hard to back up/.test(s.options[2].text)) fail.push("drill K-turn: should warn that a trailed implement is hard to back up");
  eq("drill headland with skip", s.options[0].headland.width, 12);
- eq("drill headland keyhole", s.options[1].headland.width, 15);
+ eq("drill headland keyhole", s.options[1].headland.width, 18);   // 9.8 + 2.7 + 3 = 15.5 m, 6 passes
  eq("drill extension", s.extension, 9);
  eq("drill tram", s.tram.whole, false);
  const drawn = S.keyholePath(4, 3);
@@ -61,6 +65,11 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  near("keyhole path ends level with its start", drawn[drawn.length - 1].n, 0, 0.05);
  const sag = S.sagittaPath(4, 3);
  near("sagitta path lands on the pass", sag[sag.length - 1].e, 3, 0.05);
+ const k = S.kTurnPath(4, 3);
+ near("K-turn arc end depth", k.forward[k.forward.length - 2].n, 4 * Math.sin(2.2), 0.05);   // the arc ends 3.2 m in, then the tail comes back
+ near("K-turn tail", k.forward[k.forward.length - 1].n, 4 * Math.sin(2.2) + 4.5 * Math.cos(2.2), 0.05);
+ near("K-turn reverse ends at the full depth", k.end.n, S.kTurnDepth(4), 0.05);
+ near("K-turn reverse ends left of the arc", k.end.e, 4 * (1 - Math.cos(2.2)) - 4 * (1 - Math.cos(Math.PI - 2.2)), 0.05);   // the back arc takes 0.41 × R back
 }
 
 // the same tractor with 35° on the stop: 2.7 ÷ tan 35° = 3.9 m, × 1.2 = 4.7 m; the sprayer's 8 m pass is now closer than 2 × 4.7
@@ -70,6 +79,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("35° semicircle", s.semicircle, false);
  eq("35° skip", s.skip, 1);
  eq("35° keyhole depth", s.keyhole, 8.3);
+ eq("35° K-turn depth", s.kturn, 7.6);     // 2 × 4.7 × sin 2.2
 }
 
 // a small tractor: the 4 m floor; a long drawbar: the hitch angle sets the radius
@@ -89,7 +99,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("articulated radius", a.radius, 5);     // × 1.2 = 4.95, rounded up
  eq("articulated nose reach", a.noseReach, 0.1);   // the front half swings with the turn: √(5² + 1²) − 5
  eq("articulated tool reach", a.toolReach, 4.2);
- eq("articulated distance", a.distance, 4.7);
+ eq("articulated distance", a.distance, 5.2);
  eq("articulated skip", a.skip, 1);         // 8 m passes, closer than 2 × 5
  eq("articulated keyhole", a.keyhole, 9.4);
  const h = S.suggest({machine: "harvester", wheelbase: 3.6, maxSteerDeg: 50, overhang: 2.0, mount: "front", width: 6, overlap: 0.3, axleToTool: 2.5});
@@ -98,7 +108,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("harvester spacing", h.spacing, 5.7);
  eq("harvester back end reach", h.noseReach, 2.9);   // √(4² + (3.6 + 2)²) − 4
  eq("harvester header reach", h.toolReach, 3.4);     // √((4 + 3)² + 2.5²) − 4
- eq("harvester distance", h.distance, 4);
+ eq("harvester distance", h.distance, 4.5);     // 3.43 + 1, rounded up
  eq("harvester skip", h.skip, 1);
  eq("harvester behind", h.behind, 0);       // the header is ahead of the pivot
  eq("harvester headland with skip", h.options[0].headland.width, 11.4);   // 4 + 4 = 8 m, 2 passes of 5.7
@@ -109,7 +119,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
 {
  const o = S.suggest(Object.assign({mount: "rear", width: 8, overlap: 0, offset: 1, axleToTool: 1.8}, tractor));
  eq("offset tool reach", o.toolReach, 5.2);      // √((4 + 5)² + 1.8²) − 4
- eq("offset distance", o.distance, 5.7);
+ eq("offset distance", o.distance, 6.2);
  const l = S.suggest(Object.assign({mount: "rear", width: 3, overlap: 0, axleToTool: 1.5, hitchLength: 1, length: 4}, tractor));
  near("long implement rear corner", l.toolReach, Math.sqrt(5.5 * 5.5 + 25) - 4, 0.06);   // 1 + 4 m behind the axle, not the 1.5 m working line
  if (!/rear corner/.test(l.rows[4].why)) fail.push("long implement: the reason should name the rear corner");
@@ -121,6 +131,15 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  const far = S.suggest(Object.assign({mount: "tbt", width: 3, overlap: 0, hitchLength: 1, tankHitch: 4, drawbar: 4, pivotToTool: 0}, tractor));
  eq("tbt that cannot follow", far.problems.length, 1);
  eq("no width", S.suggest(Object.assign({mount: "rear", width: 0}, tractor)).problems.length, 1);
+}
+
+// the margin to the field edge: 1 m by default, what the farmer wants on his irregular edges
+{
+ const base = Object.assign({mount: "rear", width: 8, overlap: 0, axleToTool: 1.8}, tractor);
+ eq("margin 0.5", S.suggest(Object.assign({margin: 0.5}, base)).distance, 4.7);
+ eq("margin 1.5", S.suggest(Object.assign({margin: 1.5}, base)).distance, 5.7);
+ eq("margin 1.5 headland", S.suggest(Object.assign({margin: 1.5}, base)).options[0].headland.width, 16);   // 4 + 5.7 + 1.8 = 11.5 m, still 2 passes
+ eq("negative margin", S.suggest(Object.assign({margin: -1}, base)).problems.length, 1);
 }
 
 // refused inputs

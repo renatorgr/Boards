@@ -14,9 +14,10 @@
 (function (root) {
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
- const MARGIN = 0.5;           // room kept between what sweeps the widest and the field edge
+ const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
  const MAX_HITCH_DEG = 75;     // the most a drawbar may fold against the tractor in the turn
  const GO_AROUND_MARGIN = 1.0; // AgOpenWeb's safety margin round a Go around obstacle
+const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
  const r1 = v => Math.round(v * 10) / 10;
  const up = (v, step) => Math.ceil(v / step - 1e-9) * step;
@@ -68,6 +69,27 @@
  }
  const depthOf = path => path.reduce((m, p) => Math.max(m, p.n), 0);
 
+ // The K-turn from (0, 0) heading north onto the pass `lateral` metres to the right. AgOpenWeb draws only its first
+ // part (YouTurnCreationService.CreateKStyleTurnCurve, AgOpenGPS's KStyleTurn): an arc of 2.2 rad (126°) and a straight
+ // tail of 1.5 × the distance to the next pass; the turn is over for it as soon as the tractor reverses, and guidance
+ // moves to the next pass. `forward` is that part; `reverse` is the backing up done by hand: back along the tail, then a
+ // reverse arc of the remaining 54° at the same radius, ending heading south at `end`, the next pass to the left.
+ function kTurnPath(radius, lateral) {
+  const forward = [{e: 0, n: 0}], pos = {e: 0, n: 0}, tail = 1.5 * Math.max(lateral, 0);
+  const theta = addArc(pos, 0, forward, K_TURN_ARC * radius, true, radius);
+  const tip = {e: pos.e + tail * Math.sin(theta), n: pos.n + tail * Math.cos(theta)};
+  forward.push(tip);
+  const reverse = [tip, {e: pos.e, n: pos.n}], back = {e: pos.e, n: pos.n};
+  const segments = 12, step = (Math.PI - K_TURN_ARC) / segments;
+  for (let k = 1; k <= segments; k++) {   // backing up while the heading goes on to south: the pivot moves against its heading
+   const h0 = theta + (k - 1) * step, h1 = theta + k * step;
+   back.e += radius * (Math.cos(h1) - Math.cos(h0)); back.n -= radius * (Math.sin(h1) - Math.sin(h0));
+   reverse.push({e: back.e, n: back.n});
+  }
+  return {forward, reverse, end: {e: back.e, n: back.n}};
+ }
+ const kTurnDepth = radius => 2 * radius * Math.sin(K_TURN_ARC);   // the forward arc's depth and the reverse arc's again
+
  // `input`: machine ("tractor": the front wheels steer, the pivot is the rear axle; "articulated": the machine bends at a
  // joint midway between the axles; "harvester": the rear wheels steer, the pivot is the front axle), wheelbase, maxSteerDeg
  // (the front wheels', the articulation's or the rear wheels' angle on the stop), overhang (tractor and articulated: front
@@ -78,10 +100,11 @@
  // hitch pin to the tank's axle, Tank trailing hitch), drawbar (hitch pin, or the tank's axle, to the implement's axle:
  // Trailing hitch), pivotToTool (its axle to the working line, behind = +: Pivot distance), length (from its attachment,
  // the 3-point hitch or its own axle, to its rearmost point: Implement length; 0 = not known), sprayerWidth (0 = no
- // tramline check). Returns the numbers and `rows`, one per suggestion, with the reason.
+ // tramline check), margin (the room kept between what sweeps the widest in the turn and the field edge: 1 m by default,
+ // more where the edge is irregular). Returns the numbers and `rows`, one per suggestion, with the reason.
  function suggest(input) {
   const i = Object.assign({machine: "tractor", wheelbase: 2.5, maxSteerDeg: 35, overhang: 1.2, mount: "rear", width: 6, sections: 0, sectionWidth: 0,
-   overlap: 0, offset: 0, axleToTool: 1.8, hitchLength: 1.0, tankHitch: 3.0, drawbar: 3.0, pivotToTool: 0, length: 0, sprayerWidth: 0}, input);
+   overlap: 0, offset: 0, axleToTool: 1.8, hitchLength: 1.0, tankHitch: 3.0, drawbar: 3.0, pivotToTool: 0, length: 0, sprayerWidth: 0, margin: MARGIN}, input);
   if (i.frontOverhang !== undefined && input.overhang === undefined) i.overhang = i.frontOverhang;
   if (i.sections > 0 && i.sectionWidth > 0 && !(input.width > 0)) i.width = i.sections * i.sectionWidth / 100;
   const trailed = i.mount === "trailed" || i.mount === "tbt", tbt = i.mount === "tbt", front = i.mount === "front", problems = [];
@@ -90,6 +113,7 @@
   if (!(i.wheelbase > 0) || !(i.maxSteerDeg > 0 && i.maxSteerDeg < 90)) problems.push("The wheelbase and the maximum steering angle must be above 0 (the angle below 90°).");
   if (!(i.width > 0)) problems.push("The implement needs a width (or sections and a section width).");
   else if (!(spacing > 0.01)) problems.push("The overlap must be less than the implement width.");
+  if (!(i.margin >= 0)) problems.push("The safety margin to the field edge cannot be negative.");
   if (problems.length) return {problems, rows: [], options: []};
   // the working line from the pivot axle, along the machine
   const axleToTool = trailed ? i.hitchLength + (tbt ? i.tankHitch : 0) + i.drawbar + i.pivotToTool : i.axleToTool;
@@ -114,6 +138,7 @@
   const landing = (skip + 1) * spacing;
   const keyhole = semicircle ? null : r1(keyholeDepth(radius, spacing));
   const sagitta = semicircle ? null : r1(depthOf(sagittaPath(radius, spacing)));
+  const kturn = semicircle ? null : r1(kTurnDepth(radius));
 
   // what sweeps the widest in the turn: the machine's body (a tractor's nose, an articulated machine's nose, which swings
   // with its front half, a harvester's back end), or the implement's outer corner: its half width plus the offset out
@@ -140,9 +165,9 @@
    toolWhy = "the " + (tbt ? "TBT" : "trailed") + " implement's axle runs " + r1(toolRadius) + " m from the turn's centre, inside the " + (harvester ? "machine" : "tractor") + ": its outer " + (along > i.pivotToTool ? "rear corner" : "end") + " (" + outName + ") reaches " + r1(toolReach) + " m past the pivot's path";
   }
   const reach = Math.max(noseReach, toolReach);
-  const distance = up(reach + MARGIN, 0.1);
+  const margin = i.margin, distance = up(reach + margin, 0.1);
   const noseWhy = bodyName + " of the machine sweeps " + r1(noseReach) + " m past the pivot's path (" + noseFormula + ")";
-  const distanceWhy = (noseReach >= toolReach ? noseWhy + ", more than " + toolWhy : toolWhy + ", more than " + bodyName + " of the machine (" + r1(noseReach) + " m)") + "; plus " + MARGIN + " m";
+  const distanceWhy = (noseReach >= toolReach ? noseWhy + ", more than " + toolWhy : toolWhy + ", more than " + bodyName + " of the machine (" + r1(noseReach) + " m)") + "; plus the " + r1(margin) + " m safety margin";
 
   // the headland: the turn's depth, the distance from boundary and the implement behind the tractor, in whole passes
   const behind = front ? 0 : r1(axleToTool);   // a front implement is ahead of the pivot: it enters the headland before the turn starts
@@ -155,6 +180,8 @@
     text: "Sagitta, skip " + skip + " row" + (skip > 1 ? "s" : "") + ": the turn lands " + r1(landing) + " m away, 2 × " + r1(radius) + " m or more, a plain semicircle " + r1(radius) + " m deep; the skipped passes are worked on the way back"});
    options.push({key: "keyhole", style: "Keyhole", skip: 0, depth: keyhole, headland: headland(keyhole),
     text: "Keyhole, skip 0: the next pass is only " + r1(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"});
+   options.push({key: "kturn", style: "K-turn", skip: 0, depth: kturn, headland: headland(kturn), reverse: true,
+    text: "K-turn, skip 0: AgOpenWeb drives a 126° arc forward, " + r1(radius * Math.sin(K_TURN_ARC)) + " m deep, and a straight tail of " + r1(1.5 * spacing) + " m; then you stop and back up by hand (the turn is over for AgOpenWeb as soon as you reverse, and guidance is on the next pass). Backing up through the remaining 54° at the same radius goes another " + r1(radius * Math.sin(K_TURN_ARC)) + " m in: " + kturn + " m deep in all, with a stop and a reverse at every pass" + (trailed ? "; a trailed implement is hard to back up" : "")});
   }
   const extension = up(Math.max(2 * radius, trailed ? 3 * axleToTool : 0), 0.5);
   const extensionWhy = !trailed || 2 * radius >= 3 * axleToTool ? "2 × the radius" : "3 × the " + r1(axleToTool) + " m from the rear axle to the working line, so the " + (tbt ? "TBT" : "trailed") + " implement is straight behind the tractor before the sections come on";
@@ -178,11 +205,11 @@
   if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
    why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r1(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
-  return {problems, rows, machine: i.machine, spacing: r1(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta,
-   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), distance, axleToTool: r1(axleToTool), behind, toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
+  return {problems, rows, machine: i.machine, spacing: r1(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
+   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), behind, toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
    goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}};
  }
 
- const api = {suggest, keyholeDepth, keyholePath, sagittaPath, depthOf, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG};
+ const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnPath, kTurnDepth, depthOf, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, K_TURN_ARC};
  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AowSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);

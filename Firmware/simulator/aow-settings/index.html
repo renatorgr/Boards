@@ -74,6 +74,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row"><label for="wheelbase">Wheelbase (m)<small>front axle to rear axle</small></label><input id="wheelbase" type="number" step="0.01" min="0.5" value="2.7"></div>
   <div class="row"><label for="steer" id="steerLabel">Maximum steering angle (°)<small>the front wheels on the stop, what the steer wizard measured</small></label><input id="steer" type="number" step="1" min="10" max="89" value="40"></div>
   <div class="row"><label for="overhang" id="overhangLabel">Front overhang (m)<small>front axle to the nose, weights included</small></label><input id="overhang" type="number" step="0.1" min="0" value="1.3"></div>
+  <div class="row"><label for="margin">Safety margin to the field edge (m)<small>room between what sweeps the widest in the turn and the boundary; more where the edge is irregular</small></label><input id="margin" type="number" step="0.1" min="0" value="1"></div>
  </div>
  <div class="card">
   <h2>Implement</h2>
@@ -99,7 +100,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <table id="results"><thead><tr><th>Setting</th><th>Suggested</th><th>Why</th></tr></thead><tbody></tbody></table>
  <div class="opt" id="opt"></div>
  <div id="draw"></div>
- <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the tractor's nose or the implement's outer end) 0.5 m inside the field edge; with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
+ <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the tractor's nose or the implement's outer end) the safety margin inside the field edge (1 m by default; more where the edge is irregular); with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
 </div>
 
 <footer>Rules from AgOpenWeb's U-turn code (SagittaTurnGeometry, YouTurnCreationService, VehicleToolLimits). Source: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware/simulator/aow-settings">github.com/renatorgr/Boards</a>. GPL v3.</footer>
@@ -107,7 +108,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
-const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth"];
+const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin"];
 const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
  tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
  articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
@@ -122,14 +123,14 @@ const PRESETS = {
  sprayer: {mount: "rear", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 1.8, hitch: 1, length: 0, sprayerWidth: 8},
  drill: {mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: 0, offset: 0, hitch: 1, drawbar: 2, pivotToTool: 0, length: 0, sprayerWidth: 8},
 };
-let chosen = "";   // the turn option drawn when there are two (skip or keyhole)
+let chosen = "";   // the turn option drawn when there are several (skip, keyhole or K-turn)
 
 function preset(name) { for (const [k, v] of Object.entries(PRESETS[name])) $(k).value = v; chosen = ""; update(); }
 function input() {
  const n = id => parseFloat($(id).value);
  return {machine: $("machine").value, wheelbase: n("wheelbase"), maxSteerDeg: n("steer"), overhang: n("overhang"), mount: $("mount").value, width: n("width"),
   sections: n("sections") || 0, sectionWidth: n("sectionWidth") || 0, overlap: n("overlap") || 0, offset: n("offset") || 0, axleToTool: n("axleToTool"), hitchLength: n("hitch"),
-  tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0};
+  tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0, margin: n("margin")};
 }
 function update() {
  labels();
@@ -169,7 +170,12 @@ function drawing(i, s, o) {
  const R = s.radius, D = s.distance, L = (o.skip + 1) * s.spacing, trailed = i.mount === "trailed", front = i.mount === "front";
  const pts = [];                       // the pivot's path from the start of the turn, heading north
  let centre;                           // of the arc that sweeps the widest
- if (o.key === "keyhole") {
+ let k = null;                         // a K-turn: the part AgOpenWeb drives, the backing up by hand
+ if (o.key === "kturn") {
+  k = AowSettings.kTurnPath(R, s.spacing);
+  pts.push(...k.forward, ...k.reverse);
+  centre = {e: R, n: 0};
+ } else if (o.key === "keyhole") {
   pts.push(...AowSettings.keyholePath(R, s.spacing));
   const across = s.spacing / 2 + R, ahead = Math.sqrt(Math.max(0, 4 * R * R - across * across));
   centre = {e: s.spacing / 2, n: ahead};
@@ -208,12 +214,23 @@ function drawing(i, s, o) {
  g += `<rect x="${X(i.offset - i.width / 2)}" y="${Y(toolN + 0.25)}" width="${(i.width * scale).toFixed(1)}" height="${(0.5 * scale).toFixed(1)}" fill="var(--tool)" opacity="0.55"/>`;
  g += `<line x1="${X(0)}" y1="${Y(toolN)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
  g += `<text x="${(parseFloat(X(i.offset + i.width / 2)) + 6).toFixed(1)}" y="${(parseFloat(Y(toolN)) + parseFloat(fs) + 8).toFixed(1)}" font-size="${fs}" fill="var(--tool)">${i.width} m ${trailed ? "trailed" : "implement"}, ${s.axleToTool} m ${front ? "ahead of" : "behind"} the axle${i.offset ? ", offset " + i.offset + " m" : ""}</text>`;
- // the pivot's path: the leg in, the turn, the leg out
- const path = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(pts.map(p => `L ${X(p.e)} ${Y(p.n)}`)).concat([`L ${X(L)} ${Y(-leg)}`]).join(" ");
- g += `<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+ // the pivot's path: the leg in, the turn, the leg out (a K-turn: the part AgOpenWeb drives, the backing up dashed, then forward onto the pass)
+ if (k) {
+  const fwd = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(k.forward.map(p => `L ${X(p.e)} ${Y(p.n)}`)).join(" ");
+  const rev = [`M ${X(k.reverse[0].e)} ${Y(k.reverse[0].n)}`].concat(k.reverse.slice(1).map(p => `L ${X(p.e)} ${Y(p.n)}`)).join(" ");
+  const out = `M ${X(k.end.e)} ${Y(k.end.n)} Q ${X(k.end.e)} ${Y(k.end.n - 1.5 * R)} ${X(L)} ${Y(k.end.n - 3 * R)} L ${X(L)} ${Y(-leg)}`;
+  g += `<path d="${fwd}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+  g += `<path d="${rev}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-dasharray="7 5"/>`;
+  g += `<path d="${out}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+  const left = k.end.e > (minX + maxX) / 2;   // the label on the side with room
+  g += `<text x="${(parseFloat(X(k.end.e)) + (left ? -8 : 8)).toFixed(1)}" y="${(parseFloat(Y(k.end.n)) + 5).toFixed(1)}" font-size="${fs}" fill="var(--ink)" text-anchor="${left ? "end" : "start"}">stop, back up by hand (dashed), forward onto the pass</text>`;
+ } else {
+  const path = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(pts.map(p => `L ${X(p.e)} ${Y(p.n)}`)).concat([`L ${X(L)} ${Y(-leg)}`]).join(" ");
+  g += `<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+ }
  g += `<circle cx="${X(0)}" cy="${Y(0)}" r="4" fill="var(--ink)"/>`;
  g += `<text x="${(parseFloat(X(0)) - 8).toFixed(1)}" y="${(parseFloat(Y(0)) + 5).toFixed(1)}" font-size="${fs}" fill="var(--ink)" text-anchor="end">turn starts</text>`;
- g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep</text>`;
+ g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep${k ? " (the backing up included)" : ""}</text>`;
  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top view of the U-turn">${g}</svg>`;
 }
 
