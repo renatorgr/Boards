@@ -20,6 +20,7 @@
  const K_TURN_ARC = 2.2;      // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
  const r1 = v => Math.round(v * 10) / 10;
+ const r2 = v => Math.round(v * 100) / 100;   // the track spacing: a 5 cm gap must show
  const up = (v, step) => Math.round(Math.ceil(v / step - 1e-9) * step * 1000) / 1000;   // rounded again: 51 × 0.1 is 5.1000000000000005
 
  // How far past its start a Keyhole turn onto a pass `lateral` metres away reaches (AgOpenWeb
@@ -279,24 +280,24 @@
     : lowWhy === "tail" ? "the K-turn's tail taking " + implName + "'s end " + r1(-low) + " m back into the field"
     : lowWhy === "swing" ? implName + "'s end swinging " + r1(-low) + " m back into the field" : "";
    return {path: Object.assign(path, {aligned}), sweep: sw, distance: dist, top: r1(top), low: r1(low), lowText,
-    headland: {sum: r1(sum), passes, width: r1(passes * spacing)}};
+    headland: {sum: r1(sum), passes, width: r2(passes * spacing)}};
   }
   const option = (key, style, skipRows, lateral, depth, text) => Object.assign({key, style, skip: skipRows, depth}, study(key, lateral, depth), {text});
   const options = [];
   let kTurnOut = "";
   if (semicircle) options.push(option("semicircle", "Sagitta", 0, spacing, r1(radius),
-   "Sagitta, skip 0: the next pass is " + r1(spacing) + " m away, 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep"));
+   "Sagitta, skip 0: the next pass is " + r2(spacing) + " m away, 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep"));
   else {
    options.push(option("skip", "Sagitta", skip, landing, r1(radius),
     "Sagitta, skip " + skip + " row" + (skip > 1 ? "s" : "") + ": the turn lands " + r1(landing) + " m away, 2 × " + r1(radius) + " m or more, a plain semicircle " + r1(radius) + " m deep; the skipped passes are worked on the way back"));
    options.push(option("keyhole", "Keyhole", 0, spacing, keyhole,
-    "Keyhole, skip 0: the next pass is only " + r1(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"));
+    "Keyhole, skip 0: the next pass is only " + r2(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"));
    // the K-turn backs up: a trailed implement pushed back along that path folds; past the hitch limit it is left out
    const k = option("kturn", "K-turn", 0, spacing, kturn, "");
    const kb = kTurnBack(radius, spacing), backed = r1(kb.back + (Math.PI - K_TURN_ARC) * radius);
    k.reverse = true;
    k.text = "K-turn, skip 0: AgOpenWeb drives a 126° arc forward and a straight tail of " + r1(1.5 * spacing) + " m; as soon as you back up the turn is over for AgOpenWeb and its guidance is on the next pass, backing up too: you back up " + backed + " m until you are on it and straight, " + r1(kb.end.n) + " m deep, then drive forward. A stop and a reverse at every pass";
-   if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife)";
+   if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife); an implement lifted rigid on the 3-point linkage for the turn is Rear fixed here";
    else { if (trailed) k.text += "; backing up a trailed implement takes care: its drawbar folds to " + Math.round(k.sweep.foldDeg) + "°"; options.push(k); }
   }
   const extension = up(Math.max(2 * radius, trailed ? 3 * axleToTool : 0), 0.5);
@@ -310,7 +311,7 @@
   const widths = options.map(o => o.headland.width + " m (" + o.headland.passes + " pass" + (o.headland.passes > 1 ? "es" : "") + ")");
   const sameHeadland = widths.every(w => w === widths[0]);
   const rows = [
-   {key: "spacing", name: "Track spacing (not a setting)", value: r1(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
+   {key: "spacing", name: "Track spacing (not a setting)", value: r2(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
    {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
    {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ") + (kTurnOut ? ". " + kTurnOut : "")},
@@ -325,10 +326,10 @@
   if (fromOtherAxle) rows.push({key: "hitch", name: "Tool → Hitch length (working center)", value: r1(axleToTool) + " m " + (front ? "ahead of the rear axle" : "behind the front axle"),
    why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"});
   if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
-   why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r1(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
+   why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r2(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
   if (front && !harvester && i.axleToTool < i.overhang) problems.push("The front implement's working line is " + i.axleToTool + " m ahead of the front axle, behind the nose (" + i.overhang + " m): measure from the front axle to the boom or the cutter bar.");
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
-  return {problems, rows, machine: i.machine, spacing: r1(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
+  return {problems, rows, machine: i.machine, spacing: r2(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
    bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
    goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}};
  }

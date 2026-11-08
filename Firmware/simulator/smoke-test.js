@@ -110,24 +110,26 @@ async function teensy(browser, port, q, name) {
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/aow-settings/", what);
   await pg.waitForTimeout(500);
   await expect(pg, what, "h1", /^AgOpenWeb settings from the dimensions$/);
-  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^4 m$/);          // U-Turn radius: 1.2 × (2.7 ÷ tan 40°) = 3.9, floor 4 m
-  await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^5\.2 m$/);       // distance from boundary: the 8 m boom's end plus the 1 m margin
+  // it opens on Renato's Case and front sprayer
+  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^4 m$/);          // U-Turn radius: 1.2 × (2.7 ÷ tan 42°) = 3.6, floor 4 m
+  await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^6\.3 m$/);       // distance from boundary: the 8 m boom's end plus the 1 m margin
   await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^16 m \(2 passes\)$/);
   if (!(await pg.locator("#draw svg").count())) fail.push(what + ": no drawing");
   if (await pg.locator("#draw svg circle[stroke-dasharray]").count()) fail.push(what + ": the drawing should show the implement's ends, not a reach circle");
   await expect(pg, what, "#legend", /^Black: the centre of the rear axle/);
   await shot(pg, "aow-settings-sprayer");
-  await pg.click("button:has-text('3 m seed drill')"); await pg.waitForTimeout(300);
+  await pg.click("button:has-text('3 m no-till drill')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0$/);   // backing it up jackknifes: no K-turn
-  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^12 m \(4 passes\) or 18 m \(6 passes\)$/);
+  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^21\.35 m \(7 passes\) or 18\.3 m \(6 passes\)$/);
   await expect(pg, what, "#results tbody tr:nth-child(9) td.v", /^no match$/);     // tramlines: 8 ÷ 3 is not whole
   if ((await pg.locator("#opt button").count()) !== 2) fail.push(what + ": expected the two turn options to draw");
+  await expect(pg, what, "#draw svg text:last-child", /^next pass 9\.15 m away: Sagitta, radius 4\.3 m, 4\.3 m deep$/);   // 3 × 3.05, no float tail
   await pg.click("#opt button:has-text('Keyhole')"); await pg.waitForTimeout(300);
-  await expect(pg, what, "#draw svg text:last-child", /^next pass 3 m away: Keyhole, radius 4 m, 9\.8 m deep$/);
+  await expect(pg, what, "#draw svg text:last-child", /^next pass 3\.05 m away: Keyhole, radius 4\.3 m, 10\.6 m deep$/);
   await shot(pg, "aow-settings-drill");
   await pg.fill("#overlap", "3"); await pg.waitForTimeout(300);
   await expect(pg, what, "#problems", /overlap must be less than the implement width/);
-  // a front sprayer: measured from the front axle, the wheelbase added for AgOpenWeb's hitch length
+  // the front sprayer on a tractor with 35° on the stop: two turns too tight for a semicircle, and a K-turn
   await pg.click("button:has-text('8 m sprayer')"); await pg.waitForTimeout(200);
   await pg.selectOption("#mount", "front"); await pg.fill("#steer", "35"); await pg.fill("#overhang", "1.5"); await pg.fill("#axleToTool", "2"); await pg.waitForTimeout(300);
   await expect(pg, what, "#axleToToolLabel", /^Front axle to the working line/);
