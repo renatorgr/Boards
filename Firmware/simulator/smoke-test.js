@@ -123,6 +123,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^21\.35 m \(7 passes\) or 18\.3 m \(6 passes\)$/);
   await expect(pg, what, "#results tbody tr:nth-child(9) td.v", /^no match$/);     // tramlines: 8 ÷ 3 is not whole
   if ((await pg.locator("#opt button").count()) !== 2) fail.push(what + ": expected the two turn options to draw");
+  await expect(pg, what, "#draw svg text:last-child", /^next pass 9\.15 m away: Sagitta, radius 4\.3 m, 4\.3 m deep$/);   // 3 × 3.05, no float tail
   await pg.click("#opt button:has-text('Keyhole')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#draw svg text:last-child", /^next pass 3\.05 m away: Keyhole, radius 4\.3 m, 10\.6 m deep$/);
   await shot(pg, "aow-settings-drill");

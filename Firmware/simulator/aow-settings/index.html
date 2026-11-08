@@ -177,7 +177,7 @@ function update() {
 // and the machine's far end (grey dots), from the same steps AowSettings works the headland out with.
 function drawing(i, s, o) {
  const R = s.radius, D = o.distance, P = o.path.poses, sw = o.sweep, end = o.path.turnEnd, fwdEnd = o.path.forwardEnd;
- const L = o.key === "skip" || o.key === "semicircle" ? (o.skip + 1) * s.spacing : s.spacing;
+ const L = Math.round((o.key === "skip" || o.key === "semicircle" ? (o.skip + 1) * s.spacing : s.spacing) * 100) / 100;
  const depth = o.depth, fence = depth + D, headland = o.headland.width, leg = Math.max(s.extension, 6);
  const bottom = Math.min(-leg, fence - headland - 2, o.low - 1.5);
  let last = end;                                     // down the next pass to the bottom of the picture
