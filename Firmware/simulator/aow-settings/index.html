@@ -40,6 +40,7 @@ td.w{color:var(--mute)}
 .problem:empty{display:none}
 #draw{margin-top:14px}
 svg{width:100%;height:auto;display:block;background:var(--soft);border-radius:10px}
+svg text{paint-order:stroke;stroke:var(--soft);stroke-width:4px;stroke-linejoin:round}
 .opt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:14.5px}
 .notes{color:var(--mute);font-size:14px;margin-top:16px}
 .notes ul{margin:4px 0 0;padding-left:20px}
@@ -100,6 +101,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <table id="results"><thead><tr><th>Setting</th><th>Suggested</th><th>Why</th></tr></thead><tbody></tbody></table>
  <div class="opt" id="opt"></div>
  <div id="draw"></div>
+ <div class="notes" id="legend"></div>
  <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the tractor's nose or the implement's outer end) the safety margin inside the field edge (1 m by default; more where the edge is irregular); with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
 </div>
 
@@ -163,77 +165,83 @@ function update() {
    opt.appendChild(b);
   }
  }
- $("draw").innerHTML = s.rows.length ? drawing(i, s, s.options.find(o => o.key === chosen) || s.options[0]) : "";
+ const drawn = s.options.find(o => o.key === chosen) || s.options[0];
+ $("draw").innerHTML = s.rows.length ? drawing(i, s, drawn) : "";
+ $("legend").textContent = s.rows.length ? legend(i, drawn) : "";
 }
 
-// Top view, metres: the passes up the page, the field edge across the top, the pivot's turn, the dashed sweep of what
-// reaches the widest, the headland line. North (the field edge) is up.
+// Top view, metres, north (the field edge) up: the passes, the field edge, the safety margin, the pivot's limit and the
+// headland line; the pivot's path (black, dashed where it backs up), the implement's two ends (blue, the outer one thick)
+// and the machine's far end (grey dots), from the same steps AowSettings works the headland out with.
 function drawing(i, s, o) {
- const R = s.radius, D = s.distance, L = (o.skip + 1) * s.spacing, trailed = i.mount === "trailed", front = i.mount === "front";
- const pts = [];                       // the pivot's path from the start of the turn, heading north
- let centre;                           // of the arc that sweeps the widest
- let k = null;                         // a K-turn: the part AgOpenWeb drives, the backing up by hand
- if (o.key === "kturn") {
-  k = AowSettings.kTurnPath(R, s.spacing);
-  pts.push(...k.forward, ...k.reverse);
-  centre = {e: R, n: 0};
- } else if (o.key === "keyhole") {
-  pts.push(...AowSettings.keyholePath(R, s.spacing));
-  const across = s.spacing / 2 + R, ahead = Math.sqrt(Math.max(0, 4 * R * R - across * across));
-  centre = {e: s.spacing / 2, n: ahead};
- } else {   // a quarter up and over, a straight piece when the pass is further than 2 × R, a quarter down onto it
-  const q = 18;
-  for (let k = 0; k <= q; k++) { const a = Math.PI / 2 * k / q; pts.push({e: R - R * Math.cos(a), n: R * Math.sin(a)}); }
-  for (let k = 0; k <= q; k++) { const a = Math.PI / 2 * k / q; pts.push({e: L - R + R * Math.sin(a), n: R * Math.cos(a)}); }
-  centre = {e: R, n: 0};
- }
- const depth = o.depth, leg = Math.max(s.extension, 6);
- const fence = depth + D;                    // north of the turn's start
- const sweep = R + s.reach;                  // the dashed circle round the arc's centre
- const headland = o.headland.width;
- const xs = pts.map(p => p.e).concat([centre.e - sweep, centre.e + sweep, i.offset - i.width / 2, L + i.width / 2]);
- const minX = Math.min(...xs) - 1, maxX = Math.max(...xs) + 1;
- const minN = -Math.max(leg, headland - fence + 2, s.behind + 2), maxN = fence + 1.5;
+ const R = s.radius, D = o.distance, P = o.path.poses, sw = o.sweep, end = o.path.turnEnd, fwdEnd = o.path.forwardEnd;
+ const L = o.key === "skip" || o.key === "semicircle" ? (o.skip + 1) * s.spacing : s.spacing;
+ const depth = o.depth, fence = depth + D, headland = o.headland.width, leg = Math.max(s.extension, 6);
+ const bottom = Math.min(-leg, fence - headland - 2, o.low - 1.5);
+ let last = end;                                     // down the next pass to the bottom of the picture
+ while (last + 1 < P.length && P[last + 1].n >= bottom && sw.left[last + 1].n >= bottom - 3) last++;
+ const upto = (arr, k) => arr.slice(0, k + 1);
+ const seen = [].concat(upto(P, last), upto(sw.left, last), upto(sw.right, last), sw.body.length ? upto(sw.body, end) : []);
+ const minX = Math.min(...seen.map(p => p.e), sw.centre[0].e - i.width / 2) - 1, maxX = Math.max(...seen.map(p => p.e), L + i.width / 2) + 1;
+ const minN = Math.min(bottom, ...seen.map(p => p.n)), maxN = fence + 1.5;
  const W = 900, scale = W / (maxX - minX), H = Math.round((maxN - minN) * scale);
  const X = e => ((e - minX) * scale).toFixed(1), Y = n => ((maxN - n) * scale).toFixed(1);
  const fs = Math.max(12, Math.min(16, 0.6 * scale)).toFixed(1);
+ const line = pts => pts.map(p => X(p.e) + "," + Y(p.n)).join(" ");
+ // the way the machine moves at pose k: a small arrowhead (backing up: the other way)
+ const arrow = (k, colour) => {
+  const p = P[k], d = p.h + (p.dir < 0 ? Math.PI : 0), vx = Math.sin(d), vy = -Math.cos(d), x = +X(p.e), y = +Y(p.n);
+  const pt = (a, b) => (x + a * vx - b * vy).toFixed(1) + "," + (y + a * vy + b * vx).toFixed(1);
+  return `<polygon points="${pt(8, 0)} ${pt(-5, 5)} ${pt(-5, -5)}" fill="${colour}"/>`;
+ };
+ // an implement end: solid going forward, dashed where it is backed up
+ const endLine = (pts, width) => {
+  const solid = `fill="none" stroke="var(--tool)" stroke-width="${width}"`;
+  if (!o.reverse) return `<polyline points="${line(upto(pts, last))}" ${solid}/>`;
+  return `<polyline points="${line(upto(pts, fwdEnd))}" ${solid}/><polyline points="${line(pts.slice(fwdEnd, end + 1))}" ${solid} stroke-dasharray="6 5"/>`
+   + `<polyline points="${line(pts.slice(end, last + 1))}" ${solid}/>`;
+ };
  let g = "";
  // the passes
  for (let x = -Math.ceil((0 - minX) / s.spacing) * s.spacing; x <= maxX; x += s.spacing)
   g += `<line x1="${X(x)}" y1="${Y(minN)}" x2="${X(x)}" y2="${Y(fence)}" stroke="var(--pass)" stroke-width="1"/>`;
- // the headland line and the field edge
+ // the headland line, the field edge, the safety margin, the pivot's limit
  g += `<line x1="0" y1="${Y(fence - headland)}" x2="${W}" y2="${Y(fence - headland)}" stroke="var(--acc)" stroke-width="1.5" stroke-dasharray="8 5"/>`;
  g += `<text x="${(W - 6).toFixed(1)}" y="${(parseFloat(Y(fence - headland)) - 5).toFixed(1)}" font-size="${fs}" fill="var(--acc)" text-anchor="end">headland line, ${headland} m from the edge (${o.headland.passes} pass${o.headland.passes > 1 ? "es" : ""})</text>`;
  g += `<line x1="0" y1="${Y(fence)}" x2="${W}" y2="${Y(fence)}" stroke="var(--fence)" stroke-width="3"/>`;
  g += `<text x="6" y="${(parseFloat(Y(fence)) - 6).toFixed(1)}" font-size="${fs}" fill="var(--fence)">field edge</text>`;
- g += `<line x1="0" y1="${Y(fence - D)}" x2="${W}" y2="${Y(fence - D)}" stroke="var(--fence)" stroke-width="1" stroke-dasharray="4 4"/>`;
- g += `<text x="${(W - 6).toFixed(1)}" y="${(parseFloat(Y(fence - D)) + parseFloat(fs) + 2).toFixed(1)}" font-size="${fs}" fill="var(--fence)" text-anchor="end">pivot stays ${D} m from the edge</text>`;
- // the sweep of what reaches the widest
- g += `<circle cx="${X(centre.e)}" cy="${Y(centre.n)}" r="${(sweep * scale).toFixed(1)}" fill="none" stroke="var(--tool)" stroke-width="1.5" stroke-dasharray="6 4"/>`;
- g += `<text x="${X(centre.e)}" y="${(parseFloat(Y(centre.n + sweep)) - 5).toFixed(1)}" font-size="${fs}" fill="var(--tool)" text-anchor="middle">${s.noseReach >= s.toolReach ? s.bodyName + " of the machine" : "the implement's outer end"} sweeps ${s.reach} m past the pivot's path</text>`;
- // the implement at the start of the turn (a front implement ahead of the pivot; an offset one to the side)
- const toolN = front ? s.axleToTool : -s.axleToTool;
- g += `<rect x="${X(i.offset - i.width / 2)}" y="${Y(toolN + 0.25)}" width="${(i.width * scale).toFixed(1)}" height="${(0.5 * scale).toFixed(1)}" fill="var(--tool)" opacity="0.55"/>`;
- g += `<line x1="${X(0)}" y1="${Y(toolN)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
- g += `<text x="${(parseFloat(X(i.offset + i.width / 2)) + 6).toFixed(1)}" y="${(parseFloat(Y(toolN)) + parseFloat(fs) + 8).toFixed(1)}" font-size="${fs}" fill="var(--tool)">${i.width} m ${trailed ? "trailed" : "implement"}, ${s.axleToTool} m ${front ? "ahead of" : "behind"} the pivot${i.offset ? ", offset " + i.offset + " m" : ""}</text>`;
- // the pivot's path: the leg in, the turn, the leg out (a K-turn: the part AgOpenWeb drives, the backing up dashed, then forward onto the pass)
- if (k) {
-  const fwd = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(k.forward.map(p => `L ${X(p.e)} ${Y(p.n)}`)).join(" ");
-  const rev = [`M ${X(k.reverse[0].e)} ${Y(k.reverse[0].n)}`].concat(k.reverse.slice(1).map(p => `L ${X(p.e)} ${Y(p.n)}`)).join(" ");
-  const out = `M ${X(k.end.e)} ${Y(k.end.n)} Q ${X(k.end.e)} ${Y(k.end.n - 1.5 * R)} ${X(L)} ${Y(k.end.n - 3 * R)} L ${X(L)} ${Y(-leg)}`;
-  g += `<path d="${fwd}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
-  g += `<path d="${rev}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-dasharray="7 5"/>`;
-  g += `<path d="${out}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
-  const left = k.end.e > (minX + maxX) / 2;   // the label on the side with room
-  g += `<text x="${(parseFloat(X(k.end.e)) + (left ? -8 : 8)).toFixed(1)}" y="${(parseFloat(Y(k.end.n)) + 5).toFixed(1)}" font-size="${fs}" fill="var(--ink)" text-anchor="${left ? "end" : "start"}">stop, back up by hand (dashed), forward onto the pass</text>`;
- } else {
-  const path = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(pts.map(p => `L ${X(p.e)} ${Y(p.n)}`)).concat([`L ${X(L)} ${Y(-leg)}`]).join(" ");
-  g += `<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+ if (s.margin > 0) {
+  g += `<line x1="0" y1="${Y(fence - s.margin)}" x2="${W}" y2="${Y(fence - s.margin)}" stroke="var(--fence)" stroke-width="1" stroke-dasharray="2 4"/>`;
+  g += `<text x="6" y="${(parseFloat(Y(fence - s.margin)) + parseFloat(fs) + 2).toFixed(1)}" font-size="${fs}" fill="var(--fence)">${s.margin} m safety margin</text>`;
  }
+ g += `<line x1="0" y1="${Y(fence - D)}" x2="${W}" y2="${Y(fence - D)}" stroke="var(--fence)" stroke-width="1" stroke-dasharray="6 4"/>`;
+ g += `<text x="${(W - 6).toFixed(1)}" y="${(parseFloat(Y(fence - D)) + parseFloat(fs) + 2).toFixed(1)}" font-size="${fs}" fill="var(--fence)" text-anchor="end">pivot stays ${D} m from the edge</text>`;
+ // the implement where the turn starts, its two ends along the turn, the machine's far end
+ const c0 = sw.centre[0];
+ g += `<rect x="${X(c0.e - i.width / 2)}" y="${Y(c0.n + 0.25)}" width="${(i.width * scale).toFixed(1)}" height="${(0.5 * scale).toFixed(1)}" fill="var(--tool)" opacity="0.55"/>`;
+ g += `<line x1="${X(0)}" y1="${Y(c0.n)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
+ g += endLine(sw.right, 1.2) + endLine(sw.left, 3);
+ if (sw.body.length) g += `<polyline points="${line(upto(sw.body, end))}" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round"/>`;
+ const outerTop = upto(sw.left, end).reduce((m, p) => p.n > m.n ? p : m);
+ g += `<text x="${X(outerTop.e)}" y="${(parseFloat(Y(outerTop.n)) - 6).toFixed(1)}" font-size="${fs}" fill="var(--tool)" text-anchor="middle">outer end of the implement</text>`;
+ // the pivot's path: the leg in, the turn (a K-turn's backing up dashed), down the next pass
+ const lead = `M ${X(0)} ${Y(-leg)} L ${X(0)} ${Y(0)} `;
+ if (o.reverse) {
+  g += `<path d="${lead}L ${line(upto(P, fwdEnd)).split(" ").join(" L ")}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+  g += `<polyline points="${line(P.slice(end, last + 1))}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+  g += `<path d="M ${line(P.slice(fwdEnd, end + 1)).split(" ").join(" L ")}" fill="none" stroke="var(--warn)" stroke-width="3" stroke-dasharray="7 5"/>`;
+  g += arrow(Math.round((o.path.arcEnd + fwdEnd) / 2), "var(--ink)") + arrow(Math.round((fwdEnd + end) / 2), "var(--warn)");
+ } else g += `<path d="${lead}L ${line(upto(P, last)).split(" ").join(" L ")}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+ g += arrow(Math.round((o.path.arcEnd) / 2), "var(--ink)") + arrow(Math.min(last, end + Math.round(3 / 0.1)), "var(--ink)");
  g += `<circle cx="${X(0)}" cy="${Y(0)}" r="4" fill="var(--ink)"/>`;
  g += `<text x="${(parseFloat(X(0)) - 8).toFixed(1)}" y="${(parseFloat(Y(0)) + 5).toFixed(1)}" font-size="${fs}" fill="var(--ink)" text-anchor="end">turn starts</text>`;
- g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep${k ? " (the backing up included)" : ""}</text>`;
+ g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep${o.reverse ? " (the backing up included)" : ""}</text>`;
  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top view of the U-turn">${g}</svg>`;
+}
+function legend(i, o) {
+ const harvester = i.machine === "harvester";
+ return "Black: the centre of the " + (harvester ? "front" : "rear") + " axle, the pivot AgOpenWeb steers along" + (o.reverse ? "; orange dashes: backing up" : "") + ". Blue: the two ends of the implement's working line, the outer one thick" + (o.reverse ? " (dashed while backed up)." : ".")
+  + (i.machine === "articulated" ? "" : " Grey dots: " + (harvester ? "the back end" : "the nose") + " of the machine.");
 }
 
 for (const id of F) $(id).addEventListener("input", update);
