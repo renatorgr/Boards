@@ -20,6 +20,7 @@
 #   sprayer/index.html  the sprayer module's page
 #   seeder/index.html   the seed drill module's page
 #   sim-*.js            the simulator
+#   aow-settings/       the AgOpenWeb settings from the tractor and implement dimensions (copied as it is)
 #   firmware.json       what "Install from GitHub" offers: the Teensy .hex and the XIAO .bin files of that folder, each
 #                       with the date and time it was compiled, read from the file itself (the __DATE__ __TIME__ text
 #                       every program carries). The Teensy page and the XIAO page fetch it from
@@ -250,6 +251,10 @@ def main():
             f.write(html)
     for js in ("sim-common.js", "sim-teensy.js", "sim-xiao.js", "sim-sprayer.js", "sim-seeder.js"):
         shutil.copy(os.path.join(HERE, js), out)
+    # the AgOpenWeb settings page: plain files, nothing from the firmware (aow-settings/README.md explains it)
+    os.makedirs(os.path.join(out, "aow-settings"))
+    for name in ("index.html", "settings.js"):
+        shutil.copy(os.path.join(HERE, "aow-settings", name), os.path.join(out, "aow-settings"))
     start = read(os.path.join(HERE, "index.html"))
     for k, v in {"VERSION": version, "FOLDER": folder, "SPRAYER_VERSION": sprayer["version"], "SEEDER_VERSION": seeder["version"],
                  "BUILT": now.strftime("%d %b %Y, %H:%M UTC"),
