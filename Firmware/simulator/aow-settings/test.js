@@ -182,6 +182,29 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("no hitch row when measured from the pivot", S.suggest(Object.assign({mount: "rear", width: 8, overlap: 0, axleToTool: 1.8}, tractor)).rows.some(r => r.key === "hitch"), false);
 }
 
+// Renato's machines, measured 8 Nov 2026: the Case (2.7 m, 42° from the steer wizard, nose 1.5 m), the 8 m boom on the front
+// linkage 2 m ahead of the front axle, and the semi-mounted no-till drill (pivot 1.54 m behind the rear axle, wheels 4.15 m
+// behind the pivot, the middle of its two rows of discs 1.6 m ahead of the wheels, a 5 cm gap between passes)
+{
+ const caseTractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 42, overhang: 1.5, margin: 1};
+ const sp = S.suggest(Object.assign({mount: "front", width: 8, overlap: 0, axleToTool: 2, sprayerWidth: 8}, caseTractor));
+ eq("Renato's sprayer problems", sp.problems.length, 0);
+ eq("Renato's sprayer radius", sp.radius, 4);           // 1.2 × 2.7 ÷ tan 42° = 3.6, the 4 m floor
+ eq("Renato's sprayer turn", sp.rows.find(r => r.key === "style").value, "Sagitta, skip 0");   // 8 m = 2 × 4 m: a plain semicircle
+ eq("Renato's sprayer distance", sp.distance, 6.3);
+ eq("Renato's sprayer headland", sp.rows.find(r => r.key === "headland").value, "16 m (2 passes)");
+ const d = S.suggest(Object.assign({mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6, sprayerWidth: 8}, caseTractor));
+ eq("Renato's drill problems", d.problems.length, 0);
+ eq("Renato's drill spacing", d.spacing, 3.05);         // the 5 cm gap shows
+ eq("Renato's drill radius", d.radius, 4.3);           // 4.15 m ÷ sin 75°
+ eq("Renato's drill axle to the discs", d.axleToTool, 4.1);   // 1.54 + 4.15 − 1.6
+ eq("Renato's drill options", d.options.map(o => o.key).join(","), "skip,keyhole");
+ if (!/lifted rigid on the 3-point linkage .* Rear fixed/.test(d.rows.find(r => r.key === "style").why)) fail.push("Renato's drill: should say a lifted 3-point implement is Rear fixed");
+ eq("Renato's drill distance", d.distance, 2.8);       // the tractor's nose
+ eq("Renato's drill headland", d.rows.find(r => r.key === "headland").value, "21.35 m (7 passes) or 18.3 m (6 passes)");   // the 18 m he uses
+ eq("Renato's drill extension", d.extension, 12.5);
+}
+
 // every distance printed with one decimal at most (51 × 0.1 is 5.1000000000000005 in floating point)
 {
  const long = [];
