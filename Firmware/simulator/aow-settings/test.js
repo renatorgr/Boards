@@ -205,6 +205,34 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("Renato's drill extension", d.extension, 12.5);
 }
 
+// the three examples with typical measures, on Renato's Case
+{
+ const caseTractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 42, overhang: 1.5, margin: 1};
+ const row = (r, key) => r.rows.find(x => x.key === key);
+ // a tandem-axle manure spreader: 4.8 m from the drawbar eye to the middle of its axles, the beaters 3 m behind, 10 m spread
+ const m = S.suggest(Object.assign({mount: "trailed", width: 10, overlap: 0, hitchLength: 1, drawbar: 4.8, pivotToTool: 3, length: 3.3}, caseTractor));
+ eq("spreader problems", m.problems.length, 0);
+ eq("spreader radius", m.radius, 5);                  // 4.8 m drawbar ÷ sin 75°
+ eq("spreader turn", row(m, "style").value, "Sagitta, skip 0");
+ eq("spreader distance", row(m, "distance").value, "4.6 m");   // its tail swings out as the tractor straightens, past the formula's 2.5 m
+ if (!/swings out as the tractor straightens, 3\.6 m/.test(row(m, "distance").why)) fail.push("spreader: the distance should say its tail swings out (not 'backing up')");
+ eq("spreader headland", row(m, "headland").value, "30 m (3 passes)");
+ eq("spreader extension", m.extension, 26.5);         // 3 × 8.8 m from the rear axle to the beaters
+ // a trailed disc harrow, its wheels between the gangs, 20 cm of overlap: backing it up would jackknife
+ const h = S.suggest(Object.assign({mount: "trailed", width: 4, overlap: 0.2, hitchLength: 1, drawbar: 3.5, pivotToTool: 0, length: 1.5}, caseTractor));
+ eq("harrow spacing", h.spacing, 3.8);
+ eq("harrow options", h.options.map(o => o.key).join(","), "skip,keyhole");
+ eq("harrow headland", row(h, "headland").value, "15.2 m (4 passes) or 19 m (5 passes)");
+ // a 4-furrow reversible plough on the 3-point linkage, 4.5 m long: a K-turn backs its rear corner towards the edge
+ const plough = {mount: "rear", width: 1.6, overlap: 0, axleToTool: 3, hitchLength: 1, length: 4.5};
+ const p = S.suggest(Object.assign({}, plough, caseTractor));
+ eq("plough options", p.options.map(o => o.key).join(","), "skip,keyhole,kturn");
+ eq("plough distances", row(p, "distance").value, "4.3 m (Sagitta), 4.3 m (Keyhole), 6.6 m (K-turn)");
+ const pk = p.options.find(o => o.key === "kturn"), short = S.suggest(Object.assign({}, plough, caseTractor, {length: 0})).options.find(o => o.key === "kturn");
+ if (!pk.corner || short.corner) fail.push("plough: the rear corner is followed only when the implement is longer than its working line");
+ if (!(pk.distance > short.distance)) fail.push("plough: backing up the 4.5 m plough should need more room than its working line alone");
+}
+
 // every distance printed with one decimal at most (51 × 0.1 is 5.1000000000000005 in floating point)
 {
  const long = [];

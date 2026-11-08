@@ -253,12 +253,19 @@
   const imp = trailed ? {bars: tbt ? [i.tankHitch, i.drawbar] : [i.drawbar], hitch: i.hitchLength, pivotToTool: i.pivotToTool, offset: i.offset, half: i.width / 2}
    : {along: front ? axleToTool : -axleToTool, offset: i.offset, half: i.width / 2};
   imp.body = articulated ? null : harvester ? -(i.wheelbase + i.overhang) : i.wheelbase + i.overhang;
+  // a long implement's rear corners, past its working line (Implement length): followed too, as a K-turn backs them up first
+  const cornerAlong = (harvester ? i.wheelbase : 0) + i.hitchLength + length;
+  const cornerImp = front || !(length > 0) ? null : trailed ? (length > i.pivotToTool ? Object.assign({}, imp, {pivotToTool: length}) : null)
+   : cornerAlong > axleToTool ? Object.assign({}, imp, {along: -cornerAlong}) : null;
   const exitLen = Math.max(20, 15 * axleToTool);
   const implName = front ? "the front implement" : trailed ? "the " + (tbt ? "TBT" : "trailed") + " implement" : "the implement";
   function study(key, lateral, depth) {
    const path = turnPath(key, radius, lateral, exitLen), sw = sweep(path.poses, imp), P = path.poses, end = path.turnEnd;
+   const corner = cornerImp ? sweep(path.poses, cornerImp) : null;
+   // the furthest anything goes, the way out included: a trailed implement's tail still swings out after the pivot's turn
    let top = 0;
-   for (let k = 0; k <= end; k++) top = Math.max(top, sw.left[k].n, sw.right[k].n, imp.body != null ? sw.body[k].n : -Infinity);
+   for (let k = 0; k < P.length; k++) top = Math.max(top, sw.left[k].n, sw.right[k].n, imp.body != null && k <= end ? sw.body[k].n : -Infinity,
+    corner ? Math.max(corner.left[k].n, corner.right[k].n) : -Infinity);
    const own = top - depth > reach + 0.01 ? top - depth : reach;   // a K-turn: what backs up first reaches past the pivot
    const dist = up(own + margin, 0.1);
    let low = 0, lowWhy = "";
@@ -279,7 +286,7 @@
     : lowWhy === "nose" ? "the K-turn's tail taking the tractor's nose " + r1(-low) + " m back into the field"
     : lowWhy === "tail" ? "the K-turn's tail taking " + implName + "'s end " + r1(-low) + " m back into the field"
     : lowWhy === "swing" ? implName + "'s end swinging " + r1(-low) + " m back into the field" : "";
-   return {path: Object.assign(path, {aligned}), sweep: sw, distance: dist, top: r1(top), low: r1(low), lowText,
+   return {path: Object.assign(path, {aligned}), sweep: sw, corner, distance: dist, top: r1(top), low: r1(low), lowText,
     headland: {sum: r1(sum), passes, width: r2(passes * spacing)}};
   }
   const option = (key, style, skipRows, lateral, depth, text) => Object.assign({key, style, skip: skipRows, depth}, study(key, lateral, depth), {text});
@@ -316,7 +323,8 @@
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
    {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ") + (kTurnOut ? ". " + kTurnOut : "")},
    {key: "distance", name: "U-Turn → Distance from boundary", value: options.some(o => o.distance !== distance) ? options.map(o => o.distance + " m" + (options.length > 1 ? " (" + o.style + ")" : "")).join(", ") : distance + " m",
-    why: distanceWhy + options.filter(o => o.distance !== distance).map(o => ". " + o.style + ": backing up, " + implName + " or the machine reaches " + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin").join("")},
+    why: distanceWhy + options.filter(o => o.distance !== distance).map(o => ". " + o.style + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
+     : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin").join("")},
    {key: "headland", name: "Headland width (Field builder → Headland)", value: sameHeadland ? widths[0] : widths.join(" or "),
     why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m").join("; ")
      + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line" + (sameHeadland && options.length > 1 ? "; the same headland for every turn" : "")},
