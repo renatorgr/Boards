@@ -20,7 +20,7 @@
 const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
  const r1 = v => Math.round(v * 10) / 10;
- const up = (v, step) => Math.ceil(v / step - 1e-9) * step;
+ const up = (v, step) => Math.round(Math.ceil(v / step - 1e-9) * step * 1000) / 1000;   // rounded again: 51 × 0.1 is 5.1000000000000005
 
  // How far past its start a Keyhole turn onto a pass `lateral` metres away reaches (AgOpenWeb
  // SagittaTurnGeometry.KeyholeDepth): the main arc's centre plus its radius.
@@ -95,8 +95,9 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
  // (the front wheels', the articulation's or the rear wheels' angle on the stop), overhang (tractor and articulated: front
  // axle to the nose; harvester: rear axle to the back end). The implement as AgOpenWeb's Tool page has it: mount ("front",
  // "rear", "trailed" or "tbt"), width (or sections × sectionWidth in cm), overlap (a gap is negative), offset (the working
- // line's centre right of the machine's, left is negative: Tool offset), axleToTool (rigid: the pivot axle to the working
- // line, Working center), hitchLength (rear axle to the hitch pin: the Hitch length of the Vehicle page), tankHitch (TBT:
+ // line's centre right of the machine's, left is negative: Tool offset), axleToTool (rigid: the axle nearest the implement to
+ // its working line, what a tape measures: the rear axle for a rear implement, the front axle for a front one; AgOpenWeb's
+ // Working center is from the pivot, so the wheelbase is added when that axle is not the pivot), hitchLength (rear axle to the hitch pin: the Hitch length of the Vehicle page), tankHitch (TBT:
  // hitch pin to the tank's axle, Tank trailing hitch), drawbar (hitch pin, or the tank's axle, to the implement's axle:
  // Trailing hitch), pivotToTool (its axle to the working line, behind = +: Pivot distance), length (from its attachment,
  // the 3-point hitch or its own axle, to its rearmost point: Implement length; 0 = not known), sprayerWidth (0 = no
@@ -115,8 +116,11 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
   else if (!(spacing > 0.01)) problems.push("The overlap must be less than the implement width.");
   if (!(i.margin >= 0)) problems.push("The safety margin to the field edge cannot be negative.");
   if (problems.length) return {problems, rows: [], options: []};
-  // the working line from the pivot axle, along the machine
-  const axleToTool = trailed ? i.hitchLength + (tbt ? i.tankHitch : 0) + i.drawbar + i.pivotToTool : i.axleToTool;
+  // the working line from the pivot axle, along the machine. A rigid implement is measured from the axle nearest to it; the
+  // pivot is a tractor's rear axle and a harvester's front axle, so a front implement on a tractor (or a rear one on a
+  // harvester) is the wheelbase further away
+  const fromOtherAxle = !trailed && (front !== harvester);
+  const axleToTool = trailed ? i.hitchLength + (tbt ? i.tankHitch : 0) + i.drawbar + i.pivotToTool : i.axleToTool + (fromOtherAxle ? i.wheelbase : 0);
 
   // the tightest turn: a bicycle model for a tractor (and a harvester, steered from the back, pivot on the front axle);
   // an articulated machine with the joint midway turns both axles on (wheelbase ÷ 2) ÷ tan(angle ÷ 2)
@@ -151,10 +155,16 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
   const halfOut = i.width / 2 + offset, outName = "half the width" + (offset > 0 ? " plus the " + r1(offset) + " m offset" : "");
   let toolReach, toolWhy, follows = true, toolRadius = radius;
   if (!trailed) {
-   // the rearmost corner of a rigid implement: its length from the 3-point hitch (a front implement: from its attachment)
-   const along = Math.max(axleToTool, length > 0 ? (front ? 0 : i.hitchLength) + length : 0);
+   // the working line, or the rearmost corner of a rear implement (its length from the 3-point hitch). An articulated
+   // machine's front half runs tangent to the circle at the front axle: a front implement there is measured from it
+   const line = front && articulated ? i.axleToTool : axleToTool;
+   const corner = !front && length > 0 ? (harvester ? i.wheelbase : 0) + i.hitchLength + length : 0;
+   const along = Math.max(line, corner);
    toolReach = Math.sqrt(Math.pow(radius + halfOut, 2) + along * along) - radius;
-   toolWhy = "the " + (front ? "front " : "") + "implement's outer " + (along > axleToTool ? "rear corner" : "end") + " " + r1(toolReach) + " m (√((" + r1(radius) + " + " + r1(halfOut) + ")² + " + r1(along) + "²) − " + r1(radius) + ": " + outName + ", " + (along > axleToTool ? "its length behind the hitch" : "the working line " + (front ? "ahead of" : "behind") + " the axle") + ")";
+   const alongName = corner > line ? "its length behind the hitch"
+    : front && articulated ? "the working line " + r1(line) + " m ahead of the front axle, which swings with the turn"
+    : "the working line " + r1(line) + " m " + (front ? "ahead of" : "behind") + " the pivot" + (fromOtherAxle ? " (" + i.wheelbase + " m wheelbase + " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle)" : "");
+   toolWhy = "the " + (front ? "front " : "") + "implement's outer " + (corner > line ? "rear corner" : "end") + " " + r1(toolReach) + " m (√((" + r1(radius) + " + " + r1(halfOut) + ")² + " + r1(along) + "²) − " + r1(radius) + ": " + outName + ", " + alongName + ")";
   } else {
    // a trailed implement cuts inside: its axle runs on a smaller circle than the hitch pin (and a TBT's tank between them)
    let r = Math.sqrt(radius * radius + i.hitchLength * i.hitchLength);
@@ -191,19 +201,25 @@ const K_TURN_ARC = 2.2;       // radians: the forward arc AgOpenWeb draws for a 
    tram = {width: i.sprayerWidth, passes: whole ? Math.round(passes) : r1(passes), whole};
   }
 
+  const widths = options.map(o => o.headland.width + " m (" + o.headland.passes + " pass" + (o.headland.passes > 1 ? "es" : "") + ")");
+  const sameHeadland = widths.every(w => w === widths[0]);
   const rows = [
    {key: "spacing", name: "Track spacing (not a setting)", value: r1(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
    {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
    {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ")},
    {key: "distance", name: "U-Turn → Distance from boundary", value: distance + " m", why: distanceWhy},
-   {key: "headland", name: "Headland width (Field builder → Headland)", value: options.map(o => o.headland.width + " m (" + o.headland.passes + " pass" + (o.headland.passes > 1 ? "es" : "") + ")").join(" or "),
-    why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + distance + (front ? "" : " + " + behind + " m of implement behind the axle") + " = " + o.headland.sum + " m, rounded up to whole passes" + (front ? "; the front implement is ahead of the pivot and enters the headland first" : "")).join(". ")},
+   {key: "headland", name: "Headland width (Field builder → Headland)", value: sameHeadland ? widths[0] : widths.join(" or "),
+    why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + distance + (front ? "" : " + " + behind + " m of implement behind the axle") + " = " + o.headland.sum + " m").join("; ")
+     + ", rounded up to whole passes" + (sameHeadland && options.length > 1 ? ": the same headland for every turn" : "") + (front ? "; the front implement is ahead of the pivot and enters the headland first" : "")},
    {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
    {key: "goAround", name: "U-Turn → Going around obstacles", value: "radius " + r1(radius) + " m, margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
   ];
+  if (fromOtherAxle) rows.push({key: "hitch", name: "Tool → Hitch length (working center)", value: r1(axleToTool) + " m " + (front ? "ahead of the rear axle" : "behind the front axle"),
+   why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"});
   if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
    why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r1(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
+  if (front && !harvester && i.axleToTool < i.overhang) problems.push("The front implement's working line is " + i.axleToTool + " m ahead of the front axle, behind the nose (" + i.overhang + " m): measure from the front axle to the boom or the cutter bar.");
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
   return {problems, rows, machine: i.machine, spacing: r1(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
    bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), behind, toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,

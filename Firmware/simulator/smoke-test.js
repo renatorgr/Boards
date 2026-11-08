@@ -129,6 +129,15 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "aow-settings-drill-kturn");
   await pg.fill("#overlap", "3"); await pg.waitForTimeout(300);
   await expect(pg, what, "#problems", /overlap must be less than the implement width/);
+  // a front sprayer: measured from the front axle, the wheelbase added for AgOpenWeb's hitch length
+  await pg.click("button:has-text('8 m sprayer')"); await pg.waitForTimeout(200);
+  await pg.selectOption("#mount", "front"); await pg.fill("#steer", "35"); await pg.fill("#overhang", "1.5"); await pg.fill("#axleToTool", "2"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#axleToToolLabel", /^Front axle to the working line/);
+  if (await pg.locator("#length").isVisible()) fail.push(what + ": the implement length is for rear and trailed implements only");
+  await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^6\.2 m$/);                     // distance from boundary
+  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^16 m \(2 passes\)$/);          // one headland for the three turns
+  await expect(pg, what, "#results tbody tr:nth-child(9) td.v", /^4\.7 m ahead of the rear axle$/); // AgOpenWeb's hitch length
+  await shot(pg, "aow-settings-front-sprayer");
   await pg.close();
  }
  for (const [q, name] of [["", "um982"], ["?gps=x20p&xiao=0&mach=0", "x20p"], ["?gps=f9p&imu=bno&motor=keya&prog=aog&mach=aog", "f9p"],

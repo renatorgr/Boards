@@ -78,7 +78,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  </div>
  <div class="card">
   <h2>Implement</h2>
-  <div class="row"><label for="mount">Type<small>as on AgOpenWeb's Tool page</small></label><select id="mount"><option value="front">Front fixed</option><option value="rear">Rear fixed (3-point)</option><option value="trailed">Trailing</option><option value="tbt">TBT (tank, then tool)</option></select></div>
+  <div class="row"><label for="mount">Type<small>as on AgOpenWeb's Tool page</small></label><select id="mount"><option value="front">Front fixed</option><option value="rear" selected>Rear fixed (3-point)</option><option value="trailed">Trailing</option><option value="tbt">TBT (tank, then tool)</option></select></div>
   <div class="row"><label for="sections">Sections<small>and their width: together they make the working width</small></label><input id="sections" type="number" step="1" min="1" value="8"></div>
   <div class="row"><label for="sectionWidth">Section width (cm)</label><input id="sectionWidth" type="number" step="0.1" min="1" value="100"></div>
   <div class="row"><label for="width">Working width (m)<small>sections × section width; type it directly if the sections differ</small></label><input id="width" type="number" step="0.1" min="0.1" value="8"></div>
@@ -89,7 +89,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row" data-for="tbt"><label for="tankHitch">Tank trailing hitch (m)<small>hitch pin to the tank's axle</small></label><input id="tankHitch" type="number" step="0.1" min="0.1" value="3"></div>
   <div class="row" data-for="trailed"><label for="drawbar" id="drawbarLabel">Trailing hitch (m)<small>hitch pin to the implement's axle</small></label><input id="drawbar" type="number" step="0.1" min="0.1" value="2"></div>
   <div class="row" data-for="trailed"><label for="pivotToTool">Pivot distance (m)<small>the implement's axle to the working line; behind its axle = positive</small></label><input id="pivotToTool" type="number" step="0.1" value="0"></div>
-  <div class="row"><label for="length">Implement length (m)<small>from its attachment (the 3-point hitch, or its own axle when trailed) to its rearmost point; 0 = not known</small></label><input id="length" type="number" step="0.1" min="0" value="0"></div>
+  <div class="row" data-for="notFront"><label for="length">Implement length (m)<small>from its attachment (the 3-point hitch, or its own axle when trailed) to its rearmost point; 0 = not known</small></label><input id="length" type="number" step="0.1" min="0" value="0"></div>
   <div class="row"><label for="sprayerWidth">Sprayer width for tramlines (m)<small>0 = no tramline check</small></label><input id="sprayerWidth" type="number" step="0.5" min="0" value="8"></div>
  </div>
 </div>
@@ -110,14 +110,16 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 const $ = id => document.getElementById(id);
 const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin"];
 const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
- tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
- articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
- harvester: ["Maximum steering angle (°)", "the rear wheels on the stop", "Rear overhang (m)", "rear axle to the back end", "Front axle to the working line (m)", "the front axle is the pivot: to the cutter bar"],
+ tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included"],
+ articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose"],
+ harvester: ["Maximum steering angle (°)", "the rear wheels on the stop", "Rear overhang (m)", "rear axle to the back end"],
 };
 function labels() {
  const l = LABELS[$("machine").value];
  const set = (id, text, small) => { const e = $(id); e.textContent = text; const s = document.createElement("small"); s.textContent = small; e.appendChild(s); };
- set("steerLabel", l[0], l[1]); set("overhangLabel", l[2], l[3]); set("axleToToolLabel", l[4], l[5]);
+ set("steerLabel", l[0], l[1]); set("overhangLabel", l[2], l[3]);
+ if ($("mount").value === "front") set("axleToToolLabel", "Front axle to the working line (m)", "the boom or the cutter bar ahead of the front axle, with a tape");
+ else set("axleToToolLabel", "Rear axle to the working line (m)", "the boom, the discs, the rows behind the rear axle, with a tape");
 }
 const PRESETS = {
  sprayer: {mount: "rear", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 1.8, hitch: 1, length: 0, sprayerWidth: 8},
@@ -135,7 +137,7 @@ function input() {
 function update() {
  labels();
  const mount = $("mount").value, trailed = mount === "trailed" || mount === "tbt";
- const show = {rigid: !trailed, trailed, tbt: mount === "tbt", hitch: mount !== "front"};
+ const show = {rigid: !trailed, trailed, tbt: mount === "tbt", hitch: mount !== "front", notFront: mount !== "front"};
  document.querySelectorAll("[data-for]").forEach(e => { e.style.display = show[e.dataset.for] ? "" : "none"; });
  $("drawbarLabel").firstChild.textContent = mount === "tbt" ? "Trailing hitch (m)" : "Trailing hitch (m)";
  $("drawbarLabel").lastChild.textContent = mount === "tbt" ? "the tank's axle to the implement's axle" : "hitch pin to the implement's axle";
@@ -213,7 +215,7 @@ function drawing(i, s, o) {
  const toolN = front ? s.axleToTool : -s.axleToTool;
  g += `<rect x="${X(i.offset - i.width / 2)}" y="${Y(toolN + 0.25)}" width="${(i.width * scale).toFixed(1)}" height="${(0.5 * scale).toFixed(1)}" fill="var(--tool)" opacity="0.55"/>`;
  g += `<line x1="${X(0)}" y1="${Y(toolN)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
- g += `<text x="${(parseFloat(X(i.offset + i.width / 2)) + 6).toFixed(1)}" y="${(parseFloat(Y(toolN)) + parseFloat(fs) + 8).toFixed(1)}" font-size="${fs}" fill="var(--tool)">${i.width} m ${trailed ? "trailed" : "implement"}, ${s.axleToTool} m ${front ? "ahead of" : "behind"} the axle${i.offset ? ", offset " + i.offset + " m" : ""}</text>`;
+ g += `<text x="${(parseFloat(X(i.offset + i.width / 2)) + 6).toFixed(1)}" y="${(parseFloat(Y(toolN)) + parseFloat(fs) + 8).toFixed(1)}" font-size="${fs}" fill="var(--tool)">${i.width} m ${trailed ? "trailed" : "implement"}, ${s.axleToTool} m ${front ? "ahead of" : "behind"} the pivot${i.offset ? ", offset " + i.offset + " m" : ""}</text>`;
  // the pivot's path: the leg in, the turn, the leg out (a K-turn: the part AgOpenWeb drives, the backing up dashed, then forward onto the pass)
  if (k) {
   const fwd = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(k.forward.map(p => `L ${X(p.e)} ${Y(p.n)}`)).join(" ");

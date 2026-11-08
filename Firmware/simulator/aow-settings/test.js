@@ -142,6 +142,36 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("negative margin", S.suggest(Object.assign({margin: -1}, base)).problems.length, 1);
 }
 
+// a front implement on a tractor is measured from the front axle; AgOpenWeb wants it from the rear axle, the pivot
+{
+ const f = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 35, overhang: 1.5, mount: "front", width: 8, overlap: 0, axleToTool: 2, margin: 1};
+ const s = S.suggest(f);
+ eq("front sprayer problems", s.problems.length, 0);
+ eq("front sprayer from the pivot", s.axleToTool, 4.7);   // 2.7 m wheelbase + 2 m
+ eq("front sprayer reach", s.toolReach, 5.2);           // √((4.7 + 4)² + 4.7²) − 4.7
+ eq("front sprayer distance", s.distance, 6.2);
+ eq("front sprayer hitch row", s.rows.find(r => r.key === "hitch").value, "4.7 m ahead of the rear axle");
+ eq("front sprayer one headland", s.rows.find(r => r.key === "headland").value, "16 m (2 passes)");   // the same for the three turns
+ eq("front sprayer behind", s.behind, 0);
+ eq("front boom behind the nose", S.suggest(Object.assign({}, f, {axleToTool: 0})).problems.length, 1);
+ const a = S.suggest({machine: "articulated", wheelbase: 3, maxSteerDeg: 40, overhang: 1, mount: "front", width: 8, overlap: 0, axleToTool: 1.5});
+ eq("articulated front reach", a.toolReach, 4.1);       // the front half is tangent at the front axle: √(9² + 1.5²) − 5
+ eq("articulated front hitch row", a.rows.find(r => r.key === "hitch").value, "4.5 m ahead of the rear axle");
+ const h = S.suggest({machine: "harvester", wheelbase: 3.6, maxSteerDeg: 50, overhang: 2, mount: "rear", width: 6, overlap: 0, axleToTool: 1});
+ eq("harvester rear implement from the pivot", h.axleToTool, 4.6);
+ eq("no hitch row when measured from the pivot", S.suggest(Object.assign({mount: "rear", width: 8, overlap: 0, axleToTool: 1.8}, tractor)).rows.some(r => r.key === "hitch"), false);
+}
+
+// every distance printed with one decimal at most (51 × 0.1 is 5.1000000000000005 in floating point)
+{
+ const long = [];
+ for (let m = 0; m <= 20; m++) for (const w of [3, 4.5, 6, 8, 12]) for (const deg of [30, 35, 40, 45]) {
+  const s = S.suggest(Object.assign({}, tractor, {maxSteerDeg: deg, mount: "rear", width: w, axleToTool: 1.8, margin: m / 10}));
+  for (const x of [s.distance, s.extension, s.radius]) if (!/^\d+(\.\d)?$/.test(String(x))) long.push(String(x));
+ }
+ eq("numbers printed short", long.join(" "), "");
+}
+
 // refused inputs
 {
  eq("overlap too big", S.suggest(Object.assign({mount: "rear", width: 3, overlap: 3}, tractor)).problems.length, 1);
