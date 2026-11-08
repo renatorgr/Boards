@@ -104,6 +104,29 @@ async function teensy(browser, port, q, name) {
  await expect(start, "start page", "h1", /simulator/);
  await shot(start, "start");
  await start.close();
+ // the AgOpenWeb settings page: the worked example's sprayer and seed drill, the drawing, a wrong input refused
+ {
+  const what = "AgOpenWeb settings page";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/aow-settings/", what);
+  await pg.waitForTimeout(500);
+  await expect(pg, what, "h1", /^AgOpenWeb settings from the dimensions$/);
+  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^4 m$/);          // U-Turn radius: 1.2 × (2.7 ÷ tan 40°) = 3.9, floor 4 m
+  await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^4\.7 m$/);       // distance from boundary: the 8 m boom's end
+  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^16 m \(2 passes\)$/);
+  if (!(await pg.locator("#draw svg").count())) fail.push(what + ": no drawing");
+  await shot(pg, "aow-settings-sprayer");
+  await pg.click("button:has-text('3 m seed drill')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0$/);
+  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^12 m \(4 passes\) or 15 m \(5 passes\)$/);
+  await expect(pg, what, "#results tbody tr:nth-child(9) td.v", /^no match$/);     // tramlines: 8 ÷ 3 is not whole
+  if ((await pg.locator("#opt button").count()) !== 2) fail.push(what + ": expected the two turn options to draw");
+  await pg.click("#opt button:has-text('Keyhole')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#draw svg text:last-child", /^next pass 3 m away: Keyhole, radius 4 m, 9\.8 m deep$/);
+  await shot(pg, "aow-settings-drill");
+  await pg.fill("#overlap", "3"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#problems", /overlap must be less than the implement width/);
+  await pg.close();
+ }
  for (const [q, name] of [["", "um982"], ["?gps=x20p&xiao=0&mach=0", "x20p"], ["?gps=f9p&imu=bno&motor=keya&prog=aog&mach=aog", "f9p"],
   ["?gps=dualf9p&imu=rvc&motor=ibt2&prog=aog&mach=v26", "dualf9p"], ["?imu=none&motor=danfoss&impl=sprayer&mach=two", "noimu"], ["?mach=two", "two"]]) {
   const pg = await teensy(browser, port, q, name);

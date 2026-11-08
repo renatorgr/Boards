@@ -1,0 +1,227 @@
+<!doctype html>
+<!-- index.html - AgOpenWeb settings from the tractor and implement dimensions: the form, the suggestions and the drawing.
+     Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator/aow-settings, see README.md there).
+     Written 2026 by Claude (Anthropic) for renatorgr.
+     The history of changes is in the README changelog and in the git log.
+     Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>AgOpenWeb settings from the dimensions</title>
+<script src="settings.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
+@media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:24px;margin:0 0 6px;font-weight:700}
+h2{font-size:17px;margin:0 0 10px}
+.lead{color:var(--mute);margin:0 0 18px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.row{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin:6px 0}
+.row label{font-size:14.5px}
+.row small{display:block;color:var(--mute);font-size:12.5px;line-height:1.3}
+input[type=number],select{width:100%;font:inherit;font-size:15px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink)}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.presets button,.opt button{font:inherit;font-size:14px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink);cursor:pointer}
+.presets button:hover,.opt button:hover{border-color:var(--acc)}
+.opt button.on{background:var(--acc);color:var(--accInk);border-color:var(--acc);font-weight:650}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:7px 8px;border-top:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.04em;border-top:0}
+td.v{white-space:nowrap;font-weight:650}
+td.w{color:var(--mute)}
+.problem{background:color-mix(in srgb,var(--warn) 16%,var(--card));border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:12px 0 0;font-size:14.5px}
+.problem:empty{display:none}
+#draw{margin-top:14px}
+svg{width:100%;height:auto;display:block;background:var(--soft);border-radius:10px}
+.opt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:14.5px}
+.notes{color:var(--mute);font-size:14px;margin-top:16px}
+.notes ul{margin:4px 0 0;padding-left:20px}
+footer{color:var(--mute);font-size:13.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+/* a phone: each suggestion as a block (name, value, why), not three narrow columns */
+@media (max-width:640px){
+ #results thead{display:none}
+ #results,#results tbody,#results tr,#results td{display:block;width:100%}
+ #results tr{border-top:1px solid var(--line);padding:8px 0}
+ #results td{border:0;padding:1px 4px}
+ #results td.v{white-space:normal}
+ #results td:first-child{color:var(--mute);font-size:13px}
+}
+a{color:var(--acc)}
+code{background:var(--soft);border-radius:4px;padding:0 4px}
+</style>
+</head>
+<body>
+<main>
+<h1>AgOpenWeb settings from the dimensions</h1>
+<p class="lead">Type the tractor and implement measures. The page suggests the U-turn, headland and tramline settings of AgOpenWeb and says why, with the same rules its U-turn code uses. A starting point for the Vehicle &amp; Tool page, not a replacement for a test in the field.</p>
+
+<div class="presets">
+ <button type="button" onclick="preset('sprayer')">8 m sprayer, mounted</button>
+ <button type="button" onclick="preset('drill')">3 m seed drill, trailed</button>
+</div>
+
+<div class="grid">
+ <div class="card">
+  <h2>Machine</h2>
+  <div class="row"><label for="machine">Type<small>the steering is different in each</small></label><select id="machine"><option value="tractor">Tractor</option><option value="articulated">Articulated</option><option value="harvester">Harvester</option></select></div>
+  <div class="row"><label for="wheelbase">Wheelbase (m)<small>front axle to rear axle</small></label><input id="wheelbase" type="number" step="0.01" min="0.5" value="2.7"></div>
+  <div class="row"><label for="steer" id="steerLabel">Maximum steering angle (°)<small>the front wheels on the stop, what the steer wizard measured</small></label><input id="steer" type="number" step="1" min="10" max="89" value="40"></div>
+  <div class="row"><label for="overhang" id="overhangLabel">Front overhang (m)<small>front axle to the nose, weights included</small></label><input id="overhang" type="number" step="0.1" min="0" value="1.3"></div>
+ </div>
+ <div class="card">
+  <h2>Implement</h2>
+  <div class="row"><label for="mount">Type<small>as on AgOpenWeb's Tool page</small></label><select id="mount"><option value="front">Front fixed</option><option value="rear">Rear fixed (3-point)</option><option value="trailed">Trailing</option><option value="tbt">TBT (tank, then tool)</option></select></div>
+  <div class="row"><label for="sections">Sections<small>and their width: together they make the working width</small></label><input id="sections" type="number" step="1" min="1" value="8"></div>
+  <div class="row"><label for="sectionWidth">Section width (cm)</label><input id="sectionWidth" type="number" step="0.1" min="1" value="100"></div>
+  <div class="row"><label for="width">Working width (m)<small>sections × section width; type it directly if the sections differ</small></label><input id="width" type="number" step="0.1" min="0.1" value="8"></div>
+  <div class="row"><label for="overlap">Overlap / gap (m)<small>0 for a sprayer or a seed drill; a gap is negative</small></label><input id="overlap" type="number" step="0.05" value="0"></div>
+  <div class="row"><label for="offset">Tool offset (m)<small>the working line's centre right of the machine's; left is negative</small></label><input id="offset" type="number" step="0.05" value="0"></div>
+  <div class="row" data-for="rigid"><label for="axleToTool" id="axleToToolLabel">Rear axle to the working line (m)<small>the boom, the discs, the rows</small></label><input id="axleToTool" type="number" step="0.1" min="0" value="1.8"></div>
+  <div class="row" data-for="hitch"><label for="hitch">Rear axle to the hitch (m)<small>the 3-point hitch or the drawbar pin: the Vehicle page's hitch length</small></label><input id="hitch" type="number" step="0.1" min="0" value="1"></div>
+  <div class="row" data-for="tbt"><label for="tankHitch">Tank trailing hitch (m)<small>hitch pin to the tank's axle</small></label><input id="tankHitch" type="number" step="0.1" min="0.1" value="3"></div>
+  <div class="row" data-for="trailed"><label for="drawbar" id="drawbarLabel">Trailing hitch (m)<small>hitch pin to the implement's axle</small></label><input id="drawbar" type="number" step="0.1" min="0.1" value="2"></div>
+  <div class="row" data-for="trailed"><label for="pivotToTool">Pivot distance (m)<small>the implement's axle to the working line; behind its axle = positive</small></label><input id="pivotToTool" type="number" step="0.1" value="0"></div>
+  <div class="row"><label for="length">Implement length (m)<small>from its attachment (the 3-point hitch, or its own axle when trailed) to its rearmost point; 0 = not known</small></label><input id="length" type="number" step="0.1" min="0" value="0"></div>
+  <div class="row"><label for="sprayerWidth">Sprayer width for tramlines (m)<small>0 = no tramline check</small></label><input id="sprayerWidth" type="number" step="0.5" min="0" value="8"></div>
+ </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+ <h2>Suggested settings</h2>
+ <div id="problems" class="problem"></div>
+ <table id="results"><thead><tr><th>Setting</th><th>Suggested</th><th>Why</th></tr></thead><tbody></tbody></table>
+ <div class="opt" id="opt"></div>
+ <div id="draw"></div>
+ <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the tractor's nose or the implement's outer end) 0.5 m inside the field edge; with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
+</div>
+
+<footer>Rules from AgOpenWeb's U-turn code (SagittaTurnGeometry, YouTurnCreationService, VehicleToolLimits). Source: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware/simulator/aow-settings">github.com/renatorgr/Boards</a>. GPL v3.</footer>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth"];
+const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
+ tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
+ articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose", "Rear axle to the working line (m)", "the boom, the discs, the rows"],
+ harvester: ["Maximum steering angle (°)", "the rear wheels on the stop", "Rear overhang (m)", "rear axle to the back end", "Front axle to the working line (m)", "the front axle is the pivot: to the cutter bar"],
+};
+function labels() {
+ const l = LABELS[$("machine").value];
+ const set = (id, text, small) => { const e = $(id); e.textContent = text; const s = document.createElement("small"); s.textContent = small; e.appendChild(s); };
+ set("steerLabel", l[0], l[1]); set("overhangLabel", l[2], l[3]); set("axleToToolLabel", l[4], l[5]);
+}
+const PRESETS = {
+ sprayer: {mount: "rear", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 1.8, hitch: 1, length: 0, sprayerWidth: 8},
+ drill: {mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: 0, offset: 0, hitch: 1, drawbar: 2, pivotToTool: 0, length: 0, sprayerWidth: 8},
+};
+let chosen = "";   // the turn option drawn when there are two (skip or keyhole)
+
+function preset(name) { for (const [k, v] of Object.entries(PRESETS[name])) $(k).value = v; chosen = ""; update(); }
+function input() {
+ const n = id => parseFloat($(id).value);
+ return {machine: $("machine").value, wheelbase: n("wheelbase"), maxSteerDeg: n("steer"), overhang: n("overhang"), mount: $("mount").value, width: n("width"),
+  sections: n("sections") || 0, sectionWidth: n("sectionWidth") || 0, overlap: n("overlap") || 0, offset: n("offset") || 0, axleToTool: n("axleToTool"), hitchLength: n("hitch"),
+  tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0};
+}
+function update() {
+ labels();
+ const mount = $("mount").value, trailed = mount === "trailed" || mount === "tbt";
+ const show = {rigid: !trailed, trailed, tbt: mount === "tbt", hitch: mount !== "front"};
+ document.querySelectorAll("[data-for]").forEach(e => { e.style.display = show[e.dataset.for] ? "" : "none"; });
+ $("drawbarLabel").firstChild.textContent = mount === "tbt" ? "Trailing hitch (m)" : "Trailing hitch (m)";
+ $("drawbarLabel").lastChild.textContent = mount === "tbt" ? "the tank's axle to the implement's axle" : "hitch pin to the implement's axle";
+ const i = input(), s = AowSettings.suggest(i);
+ $("problems").textContent = s.problems.join(" ");
+ const tb = $("results").tBodies[0];
+ tb.innerHTML = "";
+ for (const r of s.rows) {
+  const tr = tb.insertRow();
+  tr.insertCell().textContent = r.name;
+  const v = tr.insertCell(); v.className = "v"; v.textContent = r.value;
+  const w = tr.insertCell(); w.className = "w"; w.textContent = r.why;
+ }
+ const opt = $("opt");
+ opt.innerHTML = "";
+ if (s.options.length > 1) {
+  if (!s.options.some(o => o.key === chosen)) chosen = s.options[0].key;
+  opt.appendChild(document.createTextNode("Drawn: "));
+  for (const o of s.options) {
+   const b = document.createElement("button"); b.type = "button"; b.textContent = o.style + ", skip " + o.skip;
+   if (o.key === chosen) b.className = "on";
+   b.onclick = () => { chosen = o.key; update(); };
+   opt.appendChild(b);
+  }
+ }
+ $("draw").innerHTML = s.rows.length ? drawing(i, s, s.options.find(o => o.key === chosen) || s.options[0]) : "";
+}
+
+// Top view, metres: the passes up the page, the field edge across the top, the pivot's turn, the dashed sweep of what
+// reaches the widest, the headland line. North (the field edge) is up.
+function drawing(i, s, o) {
+ const R = s.radius, D = s.distance, L = (o.skip + 1) * s.spacing, trailed = i.mount === "trailed", front = i.mount === "front";
+ const pts = [];                       // the pivot's path from the start of the turn, heading north
+ let centre;                           // of the arc that sweeps the widest
+ if (o.key === "keyhole") {
+  pts.push(...AowSettings.keyholePath(R, s.spacing));
+  const across = s.spacing / 2 + R, ahead = Math.sqrt(Math.max(0, 4 * R * R - across * across));
+  centre = {e: s.spacing / 2, n: ahead};
+ } else {   // a quarter up and over, a straight piece when the pass is further than 2 × R, a quarter down onto it
+  const q = 18;
+  for (let k = 0; k <= q; k++) { const a = Math.PI / 2 * k / q; pts.push({e: R - R * Math.cos(a), n: R * Math.sin(a)}); }
+  for (let k = 0; k <= q; k++) { const a = Math.PI / 2 * k / q; pts.push({e: L - R + R * Math.sin(a), n: R * Math.cos(a)}); }
+  centre = {e: R, n: 0};
+ }
+ const depth = o.depth, leg = Math.max(s.extension, 6);
+ const fence = depth + D;                    // north of the turn's start
+ const sweep = R + s.reach;                  // the dashed circle round the arc's centre
+ const headland = o.headland.width;
+ const xs = pts.map(p => p.e).concat([centre.e - sweep, centre.e + sweep, i.offset - i.width / 2, L + i.width / 2]);
+ const minX = Math.min(...xs) - 1, maxX = Math.max(...xs) + 1;
+ const minN = -Math.max(leg, headland - fence + 2, s.behind + 2), maxN = fence + 1.5;
+ const W = 900, scale = W / (maxX - minX), H = Math.round((maxN - minN) * scale);
+ const X = e => ((e - minX) * scale).toFixed(1), Y = n => ((maxN - n) * scale).toFixed(1);
+ const fs = Math.max(12, Math.min(16, 0.6 * scale)).toFixed(1);
+ let g = "";
+ // the passes
+ for (let x = -Math.ceil((0 - minX) / s.spacing) * s.spacing; x <= maxX; x += s.spacing)
+  g += `<line x1="${X(x)}" y1="${Y(minN)}" x2="${X(x)}" y2="${Y(fence)}" stroke="var(--pass)" stroke-width="1"/>`;
+ // the headland line and the field edge
+ g += `<line x1="0" y1="${Y(fence - headland)}" x2="${W}" y2="${Y(fence - headland)}" stroke="var(--acc)" stroke-width="1.5" stroke-dasharray="8 5"/>`;
+ g += `<text x="${(W - 6).toFixed(1)}" y="${(parseFloat(Y(fence - headland)) - 5).toFixed(1)}" font-size="${fs}" fill="var(--acc)" text-anchor="end">headland line, ${headland} m from the edge (${o.headland.passes} pass${o.headland.passes > 1 ? "es" : ""})</text>`;
+ g += `<line x1="0" y1="${Y(fence)}" x2="${W}" y2="${Y(fence)}" stroke="var(--fence)" stroke-width="3"/>`;
+ g += `<text x="6" y="${(parseFloat(Y(fence)) - 6).toFixed(1)}" font-size="${fs}" fill="var(--fence)">field edge</text>`;
+ g += `<line x1="0" y1="${Y(fence - D)}" x2="${W}" y2="${Y(fence - D)}" stroke="var(--fence)" stroke-width="1" stroke-dasharray="4 4"/>`;
+ g += `<text x="${(W - 6).toFixed(1)}" y="${(parseFloat(Y(fence - D)) + parseFloat(fs) + 2).toFixed(1)}" font-size="${fs}" fill="var(--fence)" text-anchor="end">pivot stays ${D} m from the edge</text>`;
+ // the sweep of what reaches the widest
+ g += `<circle cx="${X(centre.e)}" cy="${Y(centre.n)}" r="${(sweep * scale).toFixed(1)}" fill="none" stroke="var(--tool)" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+ g += `<text x="${X(centre.e)}" y="${(parseFloat(Y(centre.n + sweep)) - 5).toFixed(1)}" font-size="${fs}" fill="var(--tool)" text-anchor="middle">${s.noseReach >= s.toolReach ? s.bodyName + " of the machine" : "the implement's outer end"} sweeps ${s.reach} m past the pivot's path</text>`;
+ // the implement at the start of the turn (a front implement ahead of the pivot; an offset one to the side)
+ const toolN = front ? s.axleToTool : -s.axleToTool;
+ g += `<rect x="${X(i.offset - i.width / 2)}" y="${Y(toolN + 0.25)}" width="${(i.width * scale).toFixed(1)}" height="${(0.5 * scale).toFixed(1)}" fill="var(--tool)" opacity="0.55"/>`;
+ g += `<line x1="${X(0)}" y1="${Y(toolN)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
+ g += `<text x="${(parseFloat(X(i.offset + i.width / 2)) + 6).toFixed(1)}" y="${(parseFloat(Y(toolN)) + parseFloat(fs) + 8).toFixed(1)}" font-size="${fs}" fill="var(--tool)">${i.width} m ${trailed ? "trailed" : "implement"}, ${s.axleToTool} m ${front ? "ahead of" : "behind"} the axle${i.offset ? ", offset " + i.offset + " m" : ""}</text>`;
+ // the pivot's path: the leg in, the turn, the leg out
+ const path = [`M ${X(0)} ${Y(-leg)}`, `L ${X(0)} ${Y(0)}`].concat(pts.map(p => `L ${X(p.e)} ${Y(p.n)}`)).concat([`L ${X(L)} ${Y(-leg)}`]).join(" ");
+ g += `<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+ g += `<circle cx="${X(0)}" cy="${Y(0)}" r="4" fill="var(--ink)"/>`;
+ g += `<text x="${(parseFloat(X(0)) - 8).toFixed(1)}" y="${(parseFloat(Y(0)) + 5).toFixed(1)}" font-size="${fs}" fill="var(--ink)" text-anchor="end">turn starts</text>`;
+ g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep</text>`;
+ return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top view of the U-turn">${g}</svg>`;
+}
+
+for (const id of F) $(id).addEventListener("input", update);
+for (const id of ["sections", "sectionWidth"]) $(id).addEventListener("input", () => { const w = parseFloat($("sections").value) * parseFloat($("sectionWidth").value) / 100; if (w > 0) { $("width").value = Math.round(w * 100) / 100; update(); } });
+$("mount").addEventListener("change", update);
+$("machine").addEventListener("change", () => { if ($("machine").value === "harvester") $("mount").value = "front"; update(); });
+update();
+</script>
+</body>
+</html>

@@ -29,6 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 8 Nov 2026 | **AgOpenWeb settings from the dimensions**: a calculator page that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons and a drawing ([the page](#agopenweb-settings-from-the-dimensions)). |
 | 7 Nov 2026 | The seed drill page's four tabs and Firmware tab checked, with a made-up newer `.bin` "on GitHub"; `firmware.json` lists the seed drill `.bin` once it is on `main`; the modules' names on the network ([How it is built](#how-it-is-built)). |
 | 4 Nov 2026 | The Teensy's clock and temperature, the receivers' and the TM171's temperatures and the XIAO's in the pretend modules' answers. |
 | 3 Nov 2026 | The pretend Teensy answers the new fields: the distance to the line and the program's steering limits, the RELPOSNED flags, the loop times in the report, the steering loop rate, the frozen-IMU flag, the installation note. |
@@ -56,6 +57,18 @@ One row per day, in short; the details are in the sections of this file (the lin
 | `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package) |
 
 To run it on your own computer: `python3 Firmware/simulator/build.py` and open `_site/index.html` in a browser (a `file://` page works). The check needs Node and `npm install playwright && npx playwright install chromium`.
+
+## AgOpenWeb settings from the dimensions
+
+**https://renatorgr.github.io/Boards/aow-settings/** is not a module page: a calculator. Choose the machine (a tractor, an articulated one that bends at its joint, a harvester steered from the back, each with its own turning geometry), type its wheelbase, the angle on the stop and the overhang, and the implement as AgOpenWeb's Tool page has it (front fixed, rear fixed, trailing or TBT, the sections and their width, the overlap, the tool offset, the hitch, trailing hitch and pivot distances, the implement length), and it suggests what to put in AgOpenWeb's Vehicle & Tool page, each value with its reason, and draws the turn from above: the U-turn radius, the turn style and the rows to skip, the distance from boundary, the headland width, the extension, the Go around radius and the tramline passes. Two buttons fill in the 8 m sprayer and the 3 m seed drill.
+
+The rules are AgOpenWeb's own (its `SagittaTurnGeometry`, `YouTurnCreationService` and `VehicleToolLimits`): the turn is drawn by the tractor's pivot, which must stay inside the field edge pulled in by the distance from boundary; a pass closer than twice the radius needs a loop (Sagitta or Keyhole) or skipped rows, a pass at twice the radius or more gets a plain semicircle. The radius is 1.2 × the tightest the machine can do (wheelbase ÷ tan of the steering angle; an articulated machine (wheelbase ÷ 2) ÷ tan of half the articulation angle), never under 4 m; the distance from boundary keeps what sweeps the widest in the turn, the tractor's nose or the implement's outer end, 0.5 m inside the edge; the headland is the turn's depth plus that distance plus the implement behind the axle, in whole passes. What is not geometry (the section timing, the steering gains, the antenna position) is not suggested.
+
+| File | What it does |
+|---|---|
+| `aow-settings/settings.js` | the arithmetic, with no page: runs in the browser and in Node, and is the model for a C# version on AgOpenWeb's Vehicle & Tool page |
+| `aow-settings/index.html` | the form, the table of suggestions and the drawing |
+| `aow-settings/test.js` | the check of the arithmetic with known machines: `node Firmware/simulator/aow-settings/test.js`, a step of the Action |
 
 ## When the firmware changes
 

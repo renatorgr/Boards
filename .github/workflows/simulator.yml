@@ -57,6 +57,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Check the AgOpenWeb settings arithmetic
+        run: node Firmware/simulator/aow-settings/test.js
+
       - name: Install the browser for the check
         run: |
           npm install --no-save --no-package-lock "playwright@$PLAYWRIGHT"
