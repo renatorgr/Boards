@@ -336,4 +336,9 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
 if (fail.length) { console.log("FAILED:\n " + fail.join("\n ")); process.exit(1); }
 eq("version is a number pair, as the page shows it", /^\d+\.\d+$/.test(S.VERSION), true);
 
+// index.html asks for settings.js with the version in the address: a browser that kept the old file (GitHub Pages lets it for
+// 10 minutes) fetches the new one with the new page, instead of showing "version undefined" and stopping half way.
+const page = require("fs").readFileSync(require("path").join(__dirname, "index.html"), "utf8");
+eq("index.html loads settings.js?v= with the current version", (page.match(/<script src="settings\.js\?v=([^"]+)"><\/script>/) || [])[1], S.VERSION);
+
 console.log("settings.js: all checks passed");
