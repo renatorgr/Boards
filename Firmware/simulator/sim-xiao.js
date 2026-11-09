@@ -21,7 +21,7 @@ const BIN = (S.BUILD.xiaoBin || {})[C3 ? "c3" : "s3"] || (C3 ? 1102560 : 990640)
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, reset: "power on", ap: "XIAO-3F2A", pass: "agopengps", staOn: true, sta: "Farm WiFi", staPassSet: true,
  host: "xiao", ev: [], evNext: 1, evAt: -1, scanAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
-S.bar("No XIAO and no module behind this page: the values are made up. The XIAO password is agopengps.",
+S.bar("Made-up values, no XIAO behind this page. Password agopengps.",
  ["gps", "imu", "motor", "prog", "chip", "park"], [KEY, MKEY], {gps: ["dualf9p"]});
 
 function event(x, t) {

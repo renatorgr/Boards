@@ -10,7 +10,7 @@
 "use strict";
 (function () {
 const S = window.AioSim, KEY = "aiosim.teensy", M = S.Module(KEY);
-S.bar("No module behind this page: the values are made up. Park the tractor to try the update and the calibrations.",
+S.bar("Made-up values, no module behind this page. Park the tractor to try the update and the calibrations.",
  ["gps", "imu", "motor", "prog", "xiao", "mach", "impl", "park"], [KEY]);
 // Our machine modules have a page of their own (the seed drill's, the sprayer's): a link to the one of the chosen
 // implement at the end of the Machine tab's card, the way its IP on the Machine tab would open it on the tractor.

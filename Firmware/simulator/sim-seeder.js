@@ -22,8 +22,8 @@ const NET = S.opt.wifi, LOST_AT = 24;
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: false, sta: "", staPassSet: false,
  host: "seeder", subnet: "192.168.5", ipLast: 123, first: 1, secs: IMPL.sections, secTop: 0, ev: [], evAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
-S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
- " The Relay24_ESP32 board is on the network cable: \"tractor network lost\" = the cable unplugged.",
+S.bar("Made-up values, no board behind this page. Password agopengps. Park the tractor to close the sections." +
+ " \"Tractor network lost\" = the network cable unplugged.",
  ["wifi", "park"], [KEY, MKEY]);
 
 // on the tractor network from 2.5 s on the cable (3.2 s on the tractor's Wi-Fi, when chosen on the page instead);

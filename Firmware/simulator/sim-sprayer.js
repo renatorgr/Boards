@@ -29,7 +29,7 @@ if (X.sensors === undefined) X.sensors = 3;                         // kept from
 if (X.ipLast === undefined) Object.assign(X, {ipLast: 123, secTop: 0});   // and before v0.8
 if (X.rate === undefined) Object.assign(X, SPRAY);                  // and before v0.10
 const T = () => (Date.now() - X.t0) / 1000;
-S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed.",
+S.bar("Made-up values, no board behind this page. Password agopengps. Park the tractor to close the sections.",
  ["wifi", "park"], [KEY, MKEY]);
 
 // on the tractor's Wi-Fi from 3.2 s; the program talks (PGN 239 ten times a second) from 5.5 s

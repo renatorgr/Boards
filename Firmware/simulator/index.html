@@ -2,7 +2,7 @@
 <!-- index.html - the start page of the web page simulator (build.py fills in the {{...}}).
      Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator, see README.md there).
      Written 2026 by Claude (Anthropic) for renatorgr.
-     2026-10-27 (Claude): the seed drill module's page (Seeder_ESP32) next to the sprayer module's.
+     The history of changes is in the README changelog and in the git log.
      Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
      SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
@@ -37,36 +37,35 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <body>
 <main>
 <h1>AiO v4.5 web page simulator</h1>
-<p class="lead">Try the web pages of the AiO v4.5 autosteer module, its XIAO and the ESP32 seed drill and sprayer modules without a board. These are the real pages from the firmware, rebuilt from the code on every change. The values behind them are made up: a tractor drives up and down a field with autosteer on, sowing with a 19-section no-till seed drill (or spraying, when the sprayer is chosen in the strip).</p>
+<p class="lead">The real web pages of the AiO v4.5 module, its XIAO and the seed drill and sprayer modules, with a pretend tractor behind them: it drives up and down a field with autosteer on, sowing with the 19-section seed drill. No board needed. Rebuilt from the firmware on every change.</p>
 <div class="grid">
  <div class="card"><h2>Teensy module page</h2>
-  <p>What the module shows at <code>http://192.168.5.126/</code> on the tractor's network: GNSS, IMU, steering, messages, settings, the GPS receiver, the machine module (every section, with a link to the module's own page) and the firmware update.</p>
+  <p>The AiO v4.5 page on the tractor network: GNSS, IMU, steering, machine module, settings and update.</p>
   <a class="go" href="teensy/">Open</a></div>
  <div class="card"><h2>XIAO Wi-Fi page</h2>
-  <p>What the XIAO ESP32 on the GPS2 port shows on its own Wi-Fi network, at <code>http://192.168.4.1/</code>, made for a phone. Its password here is <code>agopengps</code>.</p>
+  <p>The page of the XIAO on the GPS2 port, on its own Wi-Fi network, made for a phone.</p>
   <a class="go" href="xiao/">Open</a></div>
  <div class="card"><h2>Seed drill module page</h2>
-  <p>What the seed drill's Relay24_ESP32 board (Seeder_ESP32) shows on its own Wi-Fi network (<code>Seeder-xxxx</code>, at <code>http://192.168.4.1/</code>) or on the tractor network at <code>http://192.168.5.123/</code>: the 19 sections asked for and open, the 24 relays, the network cable, the settings and the program update. Its password here is <code>agopengps</code>.</p>
+  <p>The Seeder_ESP32 page: 19 sections, 24 relays, network cable, settings and update.</p>
   <a class="go" href="seeder/">Open</a></div>
  <div class="card"><h2>Sprayer module page</h2>
-  <p>What the ESP32 sprayer module (Sprayer_ESP32 on the ESP32_Relay_X8 board) shows on its own Wi-Fi network (<code>Sprayer-xxxx</code>, at <code>http://192.168.4.1/</code>) or on the tractor network at <code>http://192.168.5.123/</code>: pressure, flow and litres, the sections asked for and open, the relays, the Wi-Fi settings, the calibration and the program update. Its password here is <code>agopengps</code>.</p>
+  <p>The Sprayer_ESP32 page: sections, pressure, flow and litres, relays, Wi-Fi, calibration and update.</p>
   <a class="go" href="sprayer/">Open</a></div>
  <div class="card"><h2>Set up AgOpenWeb from your measures</h2>
-  <p>Type the tractor and implement measures and get the U-turn radius, turn style and skip rows, distance from boundary, headland width, extension and tramline settings to put in AgOpenWeb's Vehicle &amp; Tool page, each with its reason behind an arrow, every turn AgOpenWeb can make listed by the headland it needs, and a drawing of the turn. Not a module page and not part of AgOpenWeb: a calculator with AgOpenWeb's own U-turn rules.</p>
+  <p>Type the tractor and implement measures and get AgOpenWeb's U-turn, headland and tramline settings, with the reasons.</p>
   <a class="go" href="aow-settings/">Open</a></div>
 </div>
+<p class="note">The password on the module pages is <code>agopengps</code>. The strip at the top of each page changes the receiver, the IMU, the steering, the program, the implement or the network, and parks the tractor to try what the module refuses while autosteer is on.</p>
 <h3>Some set-ups to start from</h3>
 <ul>
  <li><a href="teensy/">UM982 with two antennas, TM171, Cytron valve, AgOpenWeb</a></li>
  <li><a href="teensy/?gps=f9p&amp;imu=bno&amp;motor=keya&amp;prog=aog">F9P, BNO085, Keya motor, AgOpenGPS</a></li>
  <li><a href="teensy/?gps=dualf9p&amp;imu=rvc&amp;motor=ibt2&amp;prog=aog">Dual F9P, BNO085 in RVC mode, IBT2 motor, AgOpenGPS</a></li>
  <li><a href="teensy/?gps=x20p&amp;xiao=0&amp;mach=0&amp;park=1">X20P and TM171, no XIAO, no machine module, tractor parked</a></li>
- <li><a href="teensy/?mach=aog">UM982 and TM171 with the official AgOpenGPS machine module (Machine_UDP_v5)</a></li>
- <li><a href="teensy/?impl=sprayer">UM982 and TM171 with the 8 m sprayer: 8 sections, pressure, flow and litres on the Machine tab</a></li>
- <li><a href="sprayer/">Sprayer module page with the 8 m sprayer on the ESP32_Relay_X8 board: 8 relays, the boom's readings</a></li>
- <li><a href="seeder/?wifi=lost">Seed drill module with the network cable unplugged: rows closed, the program's request outlined</a></li>
+ <li><a href="teensy/?mach=aog">The official AgOpenGPS machine module (Machine_UDP_v5)</a></li>
+ <li><a href="teensy/?impl=sprayer">The 8 m sprayer on the Machine tab</a></li>
+ <li><a href="seeder/?wifi=lost">Seed drill module with the network cable unplugged</a></li>
 </ul>
-<p class="note">Change the receiver, the IMU, the steering, the program, the XIAO, the machine module and the implement (the no-till seed drill with 19 sections, or the 8 m sprayer with 5 sections) in the strip at the top of each page. With the tractor parked you can try what the module refuses while autosteer is on: the firmware update, the TM171 calibrations, writing the receiver settings.</p>
 <footer>Pages of firmware {{FOLDER}} (version {{VERSION}}), Seeder_ESP32 (version {{SEEDER_VERSION}}) and Sprayer_ESP32 (version {{SPRAYER_VERSION}}), built on {{BUILT}} from commit <a href="{{COMMIT_URL}}">{{COMMIT}}</a>. Source and documentation: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware">github.com/renatorgr/Boards</a>. GPL v3.</footer>
 </main>
 </body>
