@@ -24,7 +24,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("sprayer radius", s.radius, 4);
  eq("sprayer semicircle", s.semicircle, true);
  eq("sprayer skip", s.skip, 0);
- eq("sprayer options", s.options.map(o => o.key).join(","), "semicircle");
+ eq("sprayer options", s.options.map(o => o.key).join(","), "sagitta0");
  eq("sprayer no K-turn", s.kturn, null);   // a plain semicircle needs no backing up
  eq("sprayer nose reach", s.noseReach, 1.7);
  eq("sprayer tool reach", s.toolReach, 4.2);
@@ -34,6 +34,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("sprayer extension", s.extension, 8);
  eq("sprayer tram", s.tram.whole && s.tram.passes, 1);
  eq("sprayer rows", s.rows.map(r => r.key).join(","), "spacing,rMin,radius,style,distance,headland,extension,goAround,tram");
+ eq("sprayer chosen", s.chosen, "sagitta0");
 }
 
 // a 3 m no-till seed drill trailed 3 m behind the rear axle (1 m to the hitch pin, a 2 m drawbar), spraying with the 8 m sprayer:
@@ -52,11 +53,17 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("drill nose reach", s.noseReach, 1.7);
  eq("drill distance", s.distance, 2.7);
  eq("drill axle to tool", s.axleToTool, 3);
- eq("drill options", s.options.map(o => o.key).join(","), "skip,keyhole");
+ eq("drill options, the smallest headland first", s.options.map(o => o.key).join(","), "sagitta2,keyhole1,sagitta1,keyhole0,sagitta0");   // no K-turn: it jackknifes
  if (!/No K-turn: .*jackknife/.test(s.rows.find(r => r.key === "style").why)) fail.push("drill: should say why there is no K-turn");
- eq("drill headland with skip", s.options[0].headland.width, 12);   // 4 + 2.7 + 3.1 (straight on the pass 3.1 m back) = 9.8 m, 4 passes
- eq("drill low with skip", s.options[0].low, -3.1);
- eq("drill headland keyhole", s.options[1].headland.width, 18);   // 9.8 + 2.7 + 3 (the drill finishing its pass) = 15.5 m, 6 passes
+ const byKey = k => s.options.find(o => o.key === k);
+ eq("drill headland with skip", byKey("sagitta2").headland.width, 12);   // 4 + 2.7 + 3.1 (straight on the pass 3.1 m back) = 9.8 m, 4 passes
+ eq("drill low with skip", byKey("sagitta2").low, -3.1);
+ eq("drill headland keyhole", byKey("keyhole0").headland.width, 18);   // 9.8 + 2.7 + 3 (the drill finishing its pass) = 15.5 m, 6 passes
+ eq("drill headland keyhole skip 1", byKey("keyhole1").headland.width, 15);   // between the two: lands 6 m away, loops less deep
+ eq("drill rows follow the smallest headland", s.rows.find(r => r.key === "style").value + " / " + s.rows.find(r => r.key === "headland").value, "Sagitta, skip 2 / 12 m (4 passes)");
+ const picked = S.suggest(Object.assign({mount: "trailed", sections: 19, sectionWidth: 15.8, overlap: 0.002, hitchLength: 1, drawbar: 2, pivotToTool: 0, sprayerWidth: 8}, tractor), "keyhole0");
+ eq("drill rows follow the pick", picked.chosen + " / " + picked.rows.find(r => r.key === "headland").value, "keyhole0 / 18 m (6 passes)");
+ eq("an unknown pick falls back", S.suggest(Object.assign({mount: "trailed", sections: 19, sectionWidth: 15.8, overlap: 0.002, hitchLength: 1, drawbar: 2, pivotToTool: 0}, tractor), "nothing").chosen, "sagitta2");
  eq("drill extension", s.extension, 9);
  eq("drill tram", s.tram.whole, false);
 }
@@ -68,9 +75,13 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  near("keyhole lands on the pass", khEnd.e, 3, 0.02);
  near("keyhole ends level with its start", khEnd.n, 0, 0.02);
  near("keyhole heading", khEnd.h, Math.PI, 0.01);
- const sk = S.turnPath("skip", 4, 9, 0), skEnd = sk.poses[sk.turnEnd];
+ const sk = S.turnPath("sagitta", 4, 9, 0), skEnd = sk.poses[sk.turnEnd];
  near("skip turn lands on the pass", skEnd.e, 9, 0.02);
  near("skip turn depth", S.depthOf(sk.poses), 4, 0.02);
+ const sg = S.turnPath("sagitta", 4, 3, 0), sgEnd = sg.poses[sg.turnEnd];   // closer than 2 × 4: the offset arc
+ near("sagitta arc lands on the pass", sgEnd.e, 3, 0.02);
+ near("sagitta arc heading", sgEnd.h, Math.PI, 0.01);
+ near("sagitta arc depth", S.depthOf(sg.poses), S.depthOf(S.sagittaPath(4, 3)), 0.05);
  // K-turn: the 126° arc and the 4.5 m tail forward, then straight back and the last 54° backing up onto the pass
  const b = S.kTurnBack(4, 3);
  near("K-turn back", b.back, 6.6, 0.05);
@@ -124,10 +135,10 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("harvester header reach", h.toolReach, 3.4);     // √((4 + 3)² + 2.5²) − 4
  eq("harvester distance", h.distance, 4.5);     // 3.43 + 1, rounded up
  eq("harvester skip", h.skip, 1);
- eq("harvester low", h.options[0].low, -2.5);   // the header 2.5 m ahead of the pivot on the next pass when the turn ends
- eq("harvester headland with skip", h.options[0].headland.width, 11.4);   // 4 + 4 = 8 m, 2 passes of 5.7
+ eq("harvester low", h.options.find(o => o.key === "sagitta1").low, -2.5);   // the header 2.5 m ahead of the pivot on the next pass when the turn ends
+ eq("harvester headland with skip", h.options.find(o => o.key === "sagitta1").headland.width, 11.4);   // 4 + 4 = 8 m, 2 passes of 5.7
  eq("harvester extension", h.extension, 8); // a rigid implement: 2 × the radius only
- eq("harvester K-turn distance", h.options.find(o => o.key === "kturn").distance, 6.7);   // backing up, the header goes 5.7 m past the deepest point
+ eq("harvester K-turn distance", h.options.find(o => o.key === "kturn0").distance, 6.7);   // backing up, the header goes 5.7 m past the deepest point
 }
 
 // an offset sprayer, a long mounted implement, a TBT
@@ -137,7 +148,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("offset distance", o.distance, 6.2);
  const l = S.suggest(Object.assign({mount: "rear", width: 3, overlap: 0, axleToTool: 1.5, hitchLength: 1, length: 4}, tractor));
  near("long implement rear corner", l.toolReach, Math.sqrt(5.5 * 5.5 + 25) - 4, 0.06);   // 1 + 4 m behind the axle, not the 1.5 m working line
- if (!/rear corner/.test(l.rows[4].why)) fail.push("long implement: the reason should name the rear corner");
+ if (!/rear corner/.test(l.rows.find(r => r.key === "distance").why)) fail.push("long implement: the reason should name the rear corner");
  const t = S.suggest(Object.assign({mount: "tbt", width: 3, overlap: 0, hitchLength: 1, tankHitch: 3, drawbar: 2, pivotToTool: 0.5}, tractor));
  eq("tbt axle to tool", t.axleToTool, 6.5);     // 1 + 3 + 2 + 0.5
  eq("tbt extension", t.extension, 19.5);        // 3 × 6.5
@@ -167,10 +178,12 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("front sprayer distance", s.distance, 6.2);
  eq("front sprayer hitch row", s.rows.find(r => r.key === "hitch").value, "4.7 m ahead of the rear axle");
  // the boom 4.7 m ahead of the pivot is already on the next pass when the turn ends, that far back into the field
- eq("front sprayer headland", s.rows.find(r => r.key === "headland").value, "16 m (2 passes) or 24 m (3 passes) or 24 m (3 passes)");
+ eq("front sprayer options", s.options.map(o => o.key).join(","), "sagitta1,sagitta0,kturn0,keyhole0");   // the smallest headland first, the shallowest on a tie
+ eq("front sprayer headland", s.rows.find(r => r.key === "headland").value, "16 m (2 passes)");
  eq("front sprayer low", s.options[0].low, -4.7);
+ eq("front sprayer keyhole headland", s.options.find(o => o.key === "keyhole0").headland.width, 24);
  // the K-turn backs the boom up first: its own distance from boundary, and its tail takes the boom 9.3 m back into the field
- const k = s.options.find(o => o.key === "kturn");
+ const k = s.options.find(o => o.key === "kturn0");
  eq("front sprayer K-turn distance", k.distance, 6.2);
  eq("front sprayer K-turn low", k.low, -9.3);
  eq("front boom behind the nose", S.suggest(Object.assign({}, f, {axleToTool: 0})).problems.length, 1);
@@ -198,10 +211,12 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("Renato's drill spacing", d.spacing, 3.05);         // the 5 cm gap shows
  eq("Renato's drill radius", d.radius, 4.3);           // 4.15 m ÷ sin 75°
  eq("Renato's drill axle to the discs", d.axleToTool, 4.1);   // 1.54 + 4.15 − 1.6
- eq("Renato's drill options", d.options.map(o => o.key).join(","), "skip,keyhole");
+ eq("Renato's drill options", d.options.map(o => o.key).join(","), "keyhole1,keyhole0,sagitta2,sagitta1,sagitta0");
  if (!/lifted rigid on the 3-point linkage .* Rear fixed/.test(d.rows.find(r => r.key === "style").why)) fail.push("Renato's drill: should say a lifted 3-point implement is Rear fixed");
  eq("Renato's drill distance", d.distance, 2.8);       // the tractor's nose
- eq("Renato's drill headland", d.rows.find(r => r.key === "headland").value, "21.35 m (7 passes) or 18.3 m (6 passes)");   // the 18 m he uses
+ eq("Renato's drill turn", d.rows.find(r => r.key === "style").value, "Keyhole, skip 1");   // the smallest headland: lands 6.1 m away, loops 8.8 m deep
+ eq("Renato's drill headland", d.rows.find(r => r.key === "headland").value, "18.3 m (6 passes)");   // the 18 m he uses
+ eq("Renato's drill Sagitta skip 2 headland", d.options.find(o => o.key === "sagitta2").headland.width, 21.35);   // the drill takes 11 m to get straight on the pass
  eq("Renato's drill extension", d.extension, 12.5);
 }
 
@@ -216,7 +231,8 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("spreader touches the tyre", m.touchDeg, 57);
  eq("spreader radius", m.radius, 6.7);                // the drawbar kept under 52° on the turn's circle, not 4.8 ÷ sin 75° = 5 m
  if (!/touches a rear tyre when it folds 57°: kept under 52°/.test(row(m, "radius").why)) fail.push("spreader: the radius should give the tyre as its reason");
- eq("spreader turn", row(m, "style").value, "Sagitta, skip 1 or Keyhole, skip 0");
+ eq("spreader turn", row(m, "style").value, "Sagitta, skip 1");
+ eq("spreader options", m.options.map(o => o.key).join(","), "sagitta1,keyhole0,sagitta0");   // no K-turn: the drawbar would fold onto the tyre
  eq("spreader headland", row(m, "headland").value, "30 m (3 passes)");
  eq("spreader tyres row", row(m, "fold").value, "touches the tyres at 57°");
  if (!(Math.max(...m.options.map(o => o.sweep.firstFoldDeg)) <= 52)) fail.push("spreader: a turn folds the drawbar onto the tyre");
@@ -230,8 +246,9 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  const h = S.suggest(Object.assign({mount: "trailed", width: 4, overlap: 0.2, hitchLength: 0.7, drawbar: 3.5, pivotToTool: 0, length: 1.5}, caseTractor));
  eq("harrow spacing", h.spacing, 3.8);
  eq("harrow radius", h.radius, 5);                    // the tyre again, not 4 m
- eq("harrow options", h.options.map(o => o.key).join(","), "skip,keyhole");
- eq("harrow headland", row(h, "headland").value, "19 m (5 passes) or 22.8 m (6 passes)");   // the nose's outer corner needs 3.6 m from the edge
+ eq("harrow options", h.options.map(o => o.key).join(","), "sagitta2,keyhole1,sagitta1,keyhole0,sagitta0");
+ eq("harrow headland", row(h, "headland").value, "19 m (5 passes)");
+ eq("harrow keyhole skip 0 headland", h.options.find(o => o.key === "keyhole0").headland.width, 22.8);   // the nose's outer corner needs 3.6 m from the edge
  // the drawbar sits 0.5 m up, where the 1.8 m tyre reaches 0.81 m behind the axle, not 0.9: it touches later (65°), so a tighter turn
  const hl = S.suggest(Object.assign({mount: "trailed", width: 4, overlap: 0.2, hitchLength: 0.7, drawbar: 3.5, pivotToTool: 0, length: 1.5, drawbarHeight: 0.5}, caseTractor));
  eq("harrow at the drawbar's height touches", hl.touchDeg, 65);
@@ -249,9 +266,11 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  // a 4-furrow reversible plough on the 3-point linkage, 4.5 m long: a K-turn backs its rear corner towards the edge
  const plough = {mount: "rear", width: 1.6, overlap: 0, axleToTool: 3, hitchLength: 1, length: 4.5};
  const p = S.suggest(Object.assign({}, plough, caseTractor));
- eq("plough options", p.options.map(o => o.key).join(","), "skip,keyhole,kturn");
- eq("plough distances", row(p, "distance").value, "4.3 m (Sagitta), 4.3 m (Keyhole), 6.6 m (K-turn)");
- const pk = p.options.find(o => o.key === "kturn"), short = S.suggest(Object.assign({}, plough, caseTractor, {length: 0})).options.find(o => o.key === "kturn");
+ eq("plough options", p.options.map(o => o.key).join(","), "sagitta4,keyhole3,keyhole2,sagitta3,keyhole1,kturn0,keyhole0,sagitta2,sagitta1,sagitta0");
+ eq("plough distance", row(p, "distance").value, "4.3 m");
+ const pK = S.suggest(Object.assign({}, plough, caseTractor), "kturn0");
+ eq("plough K-turn picked", pK.rows.find(r => r.key === "style").value + " / " + row(pK, "distance").value, "K-turn, skip 0 / 6.6 m");
+ const pk = p.options.find(o => o.key === "kturn0"), short = S.suggest(Object.assign({}, plough, caseTractor, {length: 0})).options.find(o => o.key === "kturn0");
  if (!pk.corner || short.corner) fail.push("plough: the rear corner is followed only when the implement is longer than its working line");
  if (!(pk.distance > short.distance)) fail.push("plough: backing up the 4.5 m plough should need more room than its working line alone");
 }
@@ -276,7 +295,8 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("drill with its tyres row", d.rows.find(r => r.key === "fold").value, "touches the tyres at 111.5°");
  eq("drill with the tractor's width nose", d.noseReach, 2.6);     // the Case's front corner, 1.23 m off the centre line
  eq("drill with the tractor's width distance", d.distance, 3.7);
- eq("drill with the tractor's width headland", d.rows.find(r => r.key === "headland").value, "21.35 m (7 passes)");
+ eq("drill with the tractor's width headland", d.rows.find(r => r.key === "headland").value, "18.3 m (6 passes)");   // Keyhole, skip 1
+ eq("drill with the tractor's width, the Keyhole onto the next pass", d.options.find(o => o.key === "keyhole0").headland.width, 21.35);
  if (d.rows.find(r => r.key === "fold").why.indexOf("behind the tyres' back edge") < 0) fail.push("drill: its pivot is behind the tyres' back edge");
  eq("no tyre check for a front implement", S.suggest({mount: "front", width: 8, axleToTool: 2, trackWidth: 1.81}).rows.some(r => r.key === "fold"), false);
  // Renato's roller, semi-mounted: its pivot turns 60° to each side (120° in all) and that stop, not the tyres, sets the radius
@@ -287,6 +307,11 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("roller fold row", r.rows.find(x => x.key === "fold").value, "touches the tyres at 110°, at most 60°");
  if (!(Math.max(...r.options.map(o => o.sweep.firstFoldDeg)) <= 55)) fail.push("roller: a turn folds it past its stop");
  eq("a stop out of range", S.suggest({mount: "trailed", width: 3, swingDeg: 200}).problems.length, 1);
+ eq("clearance out of range", S.suggest({mount: "trailed", width: 3, foldClearanceDeg: 60}).problems.length, 1);
+ const c10 = S.suggest({machine: "tractor", wheelbase: 2.7, maxSteerDeg: 42, overhang: 1.5, margin: 1, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, drawbarWidth: 0.3,
+  mount: "trailed", width: 3.2, hitchLength: 1.5, drawbar: 2.5, pivotToTool: 0, swingDeg: 60, foldClearanceDeg: 10});
+ eq("roller with 10° of room", c10.radius, 4.6);   // kept under 50° instead of 55°: 4.2 m was enough for 55°
+ if (!/kept under 50°/.test(c10.rows.find(x => x.key === "radius").why)) fail.push("roller: the radius should give the 10° of room");
  eq("track narrower than a tyre", S.suggest({mount: "trailed", width: 3, trackWidth: 0.6, tyreWidth: 0.65}).problems.length, 1);
  eq("track narrower than a tyre, rigid", S.suggest({mount: "rear", width: 3, trackWidth: 0.6, tyreWidth: 0.65}).problems.length, 1);
  eq("drawbar below the ground", S.suggest({mount: "trailed", width: 3, trackWidth: 1.81, tyreWidth: 0.65, drawbarHeight: -1}).problems.length, 1);
@@ -309,4 +334,6 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
 }
 
 if (fail.length) { console.log("FAILED:\n " + fail.join("\n ")); process.exit(1); }
+eq("version is a number pair, as the page shows it", /^\d+\.\d+$/.test(S.VERSION), true);
+
 console.log("settings.js: all checks passed");
