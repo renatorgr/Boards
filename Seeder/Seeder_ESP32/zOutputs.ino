@@ -12,6 +12,8 @@
 //     (the 19-section seed drill has more sections than the program's pin config knows).
 //   - cfg.firstSection 0: what the program gives each relay (PGN 236, kept in cfg.pin): sections 1-16 and
 //     the other functions, for the first 24 relays.
+//   - cfg.numSections 1-64: the seed drill has that many sections, so a relay that would follow a section past
+//     them does nothing (0: no limit). The page draws that many sections before the program has asked for any.
 // Everything is off while the program is silent.
 //
 // RELAY_ON_HIGH (Seeder_ESP32.ino) says how the board's relays close: on a HIGH 74HC595 output on the
@@ -36,15 +38,16 @@ static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 // tramline right, tramline left, geo stop
 uint8_t relayFn(uint8_t i)
 {
+    const uint8_t top = cfg.numSections ? cfg.numSections : MAX_SECTIONS;   // the last section the drill has
     if (cfg.firstSection)
     {
         const uint16_t s = cfg.firstSection + i;
-        return s <= MAX_SECTIONS ? s : 0;
+        return s <= top ? s : 0;
     }
     if (i >= 24) return 0;
     const uint8_t p = cfg.pin[i];
     if (p >= PIN_HYD_LOWER && p <= PIN_GEO_STOP) return FN_OTHER + (p - PIN_HYD_LOWER + 1);
-    return p <= 16 ? p : 0;
+    return p <= 16 && p <= top ? p : 0;
 }
 
 #if BOARD == BOARD_RELAY24

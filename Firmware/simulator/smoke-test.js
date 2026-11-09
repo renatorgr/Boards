@@ -300,7 +300,8 @@ async function teensy(browser, port, q, name) {
   await pg.close();
  }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
- // section 1 and so on); Settings: the relays set back to the program's pin config (the password asked in a prompt);
+ // section 1 and so on, 19 sections set); Settings: the relays set back to the program's pin config (the password asked in a
+ // prompt);
  // Module: the search for Wi-Fi networks; Firmware: the program on GitHub (none until the .bin is on main), wrong files
  // refused, the report downloaded
  {
@@ -322,8 +323,10 @@ async function teensy(browser, port, q, name) {
   if (!(await pg.locator("#t-settings").isVisible())) fail.push(what + ": tab Settings does not show");
   if ((await pg.locator("#relays span").count()) !== 24) fail.push(what + ": expected the Relay24_ESP32's 24 relays");
   if ((await pg.locator("#relays span.on").count()) !== 19) fail.push(what + ": expected 19 relays on while sowing");
-  await expect(pg, what, "#relayNote", /^24 relays, 24 of them sections: relay 1 follows section 1/);
+  await expect(pg, what, "#relayNote", /^24 relays, 19 of them sections: relay 1 follows section 1/);
   await expect(pg, what, "#r18", /^19S19$/);
+  await expect(pg, what, "#r19", /^20–$/);
+  if ((await pg.locator("#drillSecs").inputValue()) !== "19") fail.push(what + ": the Settings tab should show 19 sections on the seed drill");
   await pg.fill("#first", "0");
   await pg.click("button[onclick='saveRelays()']"); await pg.waitForTimeout(1500);
   await expectSoon(pg, what, "#msgRelays", /done/);
@@ -552,6 +555,18 @@ async function teensy(browser, port, q, name) {
   if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
   if ((await pg.locator("#secs span.req").count()) !== 19) fail.push(what + ": expected 19 sections asked for but closed");
   await shot(pg, "seeder-lost");
+  await pg.close();
+ }
+ // the seed drill's module before the program ever talked (the cable not plugged in): the 19 sections set on the Settings
+ // tab show, not the 16 of the program's pin config
+ {
+  const what = "Seed drill page, cable unplugged";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/?wifi=ap", what);
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#sub", /not on the tractor network · program silent/);
+  if ((await pg.locator("#secs span").count()) !== 19) fail.push(what + ": expected the 19 sections set, with the program silent");
+  if ((await pg.locator("#secs span.on, #secs span.req").count()) !== 0) fail.push(what + ": a section is open or asked for with the program silent");
+  await expect(pg, what, "#detail", /^0 of 19 open/);
   await pg.close();
  }
  // the sprayer's module that lost the tractor's Wi-Fi

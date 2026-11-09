@@ -210,6 +210,7 @@ static void apiStatus()
     j += ",\"raise\":" + String(cfg.raiseTime) + ",\"lower\":" + String(cfg.lowerTime) + "}";
 
     j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn) + ",\"first\":" + String(cfg.firstSection);
+    j += ",\"secs\":" + String(cfg.numSections);
     j += ",\"onHigh\":" + String(RELAY_ON_HIGH ? "true" : "false") + ",\"fn\":[";
     for (uint8_t i = 0; i < NUM_RELAYS; i++) { if (i) j += ","; j += String(relayFn(i)); }
     j += "]}";
@@ -235,6 +236,7 @@ static void apiSettingsGet()
     String j = "{\"apSsid\":" + jsonStr(cfg.apSsid) + ",\"staOn\":" + String(cfg.staOn ? "true" : "false");
     j += ",\"staSsid\":" + jsonStr(cfg.staSsid) + ",\"staPassSet\":" + String(cfg.staPass.length() ? "true" : "false");
     j += ",\"host\":" + jsonStr(cfg.host) + ",\"eth\":true,\"ipLast\":" + String(cfg.ipLast) + ",\"first\":" + String(cfg.firstSection);
+    j += ",\"secs\":" + String(cfg.numSections);
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"}";
     sendJson(j);
 }
@@ -319,16 +321,21 @@ static void apiScan()
 }
 // ==== end shared "network-settings-post"
 
-// Relay 1 follows section "first", the next relays the next sections (0 = the program's pin config)
+// Relay 1 follows section "first", the next relays the next sections (0 = the program's pin config); the seed drill has
+// "secs" sections (0 = as many as the program asks for)
 static void apiRelaysPost()
 {
     if (!passwordOk()) return;
-    long first = 0;
+    long first = 0, secs = cfg.numSections;
     if (!argNumber("first", 0, MAX_SECTIONS, first)) { sendError(400, "first section: 0 to 64"); return; }
+    if (server.hasArg("secs") && !argNumber("secs", 0, MAX_SECTIONS, secs)) { sendError(400, "sections: 0 to 64"); return; }
     cfg.firstSection = first;
+    cfg.numSections = secs;
     settingsSave();
-    if (first) logEvent("relays 1-%u follow sections %ld-%ld", (unsigned)NUM_RELAYS, first, min((long)MAX_SECTIONS, first + NUM_RELAYS - 1));
+    const long top = secs ? secs : MAX_SECTIONS;
+    if (first) logEvent("relays 1-%u follow sections %ld-%ld", (unsigned)NUM_RELAYS, first, min(top, first + NUM_RELAYS - 1));
     else logEvent("relays follow the program's pin config");
+    if (secs) logEvent("the seed drill has %ld sections", secs);
     applyOutputs();
     sendJson("{\"ok\":true}");
 }

@@ -20,6 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* on the Settings tab: the Sowing tab shows them all before the program has asked for any (it showed 16), relays past them stay idle ([How it works](#how-it-works)). |
 | 7 Nov 2026 | **0.2.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.2.3**: four tabs as the sprayer's ([How it works](#how-it-works)). **0.2.4**: Module tab: Module card, one Network settings card. Code shared with the sprayer marked ([Notes](#notes)). |
 | 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
 | 28 Oct 2026 | **0.2**: runs on the [Relay24_ESP32](#hardware-relay24_esp32) board of this repository, now the default; the [KC868-A32](#hardware-kc868-a32) stays as a choice. |
@@ -46,6 +47,10 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   KC868-A32). The page's *Relay 1 follows section* setting can start the row at another
   section; 0 there gives the relays back to the program's pin config, which only knows
   sections 1–16.
+- **Sections on the seed drill** (Settings tab, 19 for this one): the Sowing tab draws that
+  many sections from the start, before the program has asked for any (it used to draw 16 until
+  section 19 was asked for), and a relay past the last section does nothing. 0 = as many as
+  the program asks for.
 - No message from the program for **2 seconds** (cable pulled, tablet frozen): every
   relay drops and every row closes.
 - No pressure or flow sensor: no PGN 160 (that is the sprayer's).
@@ -138,6 +143,8 @@ other board.
    their widths. With more than 16 sections AgOpenWeb sends PGN 229 by itself, and the
    page shows *Sections 17-64 (PGN 229): now*. The actuators take a few seconds for their
    stroke, so set *Tool → Timing → Look ahead on / off* to that time.
+5. **Page, Settings tab**: *Sections on the seed drill* = 19 (and *Relay 1 follows section* = 1),
+   then *Save*: the Sowing tab shows the 19 sections even before AgOpenWeb has opened one.
 
 ## Wiring: Relay24_ESP32
 

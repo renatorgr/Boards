@@ -8,7 +8,8 @@
 // The seed drill module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiScan, apiRelaysPost, apiRestartPost, the
 // program update on /api/update). The sections the program asks for come from the pretend tractor of sim-common.js, the
 // same the Teensy page's Machine tab shows: Renato's no-till seed drill, 19 sections on the Relay24_ESP32 board (24 relays,
-// relay 1 follows section 1 and so on), on the network cable. No pressure or flow sensor.
+// relay 1 follows section 1 and so on, "Sections on the seed drill" set to 19 on its Settings tab), on the network cable.
+// No pressure or flow sensor.
 // The own-network password is the module's default, agopengps.
 "use strict";
 (function () {
@@ -19,7 +20,7 @@ const AP = "Seeder-4E7C";                                       // from the ESP3
 // sta: on the tractor network (the cable); lost: was, until LOST_AT s (the cable unplugged); ap: the cable not plugged in
 const NET = S.opt.wifi, LOST_AT = 24;
 const X = S.load(KEY, () => ({t0: Date.now() - S.RUNNING * 1000, ap: AP, pass: "agopengps", staOn: false, sta: "", staPassSet: false,
- host: "seeder", subnet: "192.168.5", ipLast: 123, first: 1, secTop: 0, ev: [], evAt: -1}));
+ host: "seeder", subnet: "192.168.5", ipLast: 123, first: 1, secs: IMPL.sections, secTop: 0, ev: [], evAt: -1}));
 const T = () => (Date.now() - X.t0) / 1000;
 S.bar("No board behind this page: the values are made up. The own-network password is agopengps. Park the tractor to see the sections closed." +
  " The Relay24_ESP32 board is on the network cable: \"tractor network lost\" = the cable unplugged.",
@@ -70,8 +71,10 @@ function seeder() {
  return {req: req, on: on, kmh: sp.main ? M.tractor(Math.max(0, M.T())).kmh : 0};
 }
 
-// what relay i does (relayFn): with X.first, sections in a row from that one; else the program's pin config (sections 1-8)
-const relayFn = i => X.first ? (X.first + i <= 64 ? X.first + i : 0) : i < 8 ? i + 1 : 0;
+// what relay i does (relayFn): with X.first, sections in a row from that one; else the program's pin config (sections 1-8);
+// nothing past the seed drill's last section (X.secs; 0 = no limit)
+const top = () => X.secs || 64;
+const relayFn = i => X.first ? (X.first + i <= top() ? X.first + i : 0) : i < 8 && i + 1 <= top() ? i + 1 : 0;
 const hex = v => v.toString(16);                                    // sections as the module sends them (jsonHex)
 
 function status() {
@@ -89,11 +92,11 @@ function status() {
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sd.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: bits, on: hex(on), first: X.first, onHigh: true, fn: fn},
+  out: {bits: bits, on: hex(on), first: X.first, secs: X.secs, onHigh: true, fn: fn},
   log: X.ev.slice()};
 }
 const settings = () => ({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host, eth: true, ipLast: X.ipLast,
- first: X.first, subnet: X.subnet});
+ first: X.first, secs: X.secs, subnet: X.subnet});
 const number = (v, lo, hi) => /^\d{1,5}$/.test(String(v)) && +v >= lo && +v <= hi;   // argNumber
 
 const printable = (v, lo, hi) => typeof v === "string" && v.length >= lo && v.length <= hi && /^[\x20-\x7E]*$/.test(v);
@@ -135,8 +138,11 @@ function scan() {
 function relaysPost(b) {
  if (b.pw !== X.pass) return S.err(403, "wrong password");
  if (!number(b.first, 0, 64)) return S.err(400, "first section: 0 to 64");
+ if (b.secs !== undefined && !number(b.secs, 0, 64)) return S.err(400, "sections: 0 to 64");
  X.first = +b.first;
- event(X.first ? "relays 1-" + RELAYS + " follow sections " + X.first + "-" + Math.min(64, X.first + RELAYS - 1) : "relays follow the program's pin config");
+ if (b.secs !== undefined) X.secs = +b.secs;
+ event(X.first ? "relays 1-" + RELAYS + " follow sections " + X.first + "-" + Math.min(top(), X.first + RELAYS - 1) : "relays follow the program's pin config");
+ if (X.secs) event("the seed drill has " + X.secs + " sections");
  return S.ok();
 }
 function restartPost(b) {
