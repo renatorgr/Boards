@@ -48,12 +48,12 @@ jobs:
       group: simulator-build-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the simulator
         run: python3 Firmware/simulator/build.py _site
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: Keep the screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: simulator-screenshots
           path: shots
@@ -94,7 +94,7 @@ jobs:
 
       - name: Pack the site for Pages
         if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -115,5 +115,5 @@ jobs:
     steps:
       - name: Publish on GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
         # fails with "Get Pages site failed" until Pages is switched on: Settings → Pages → Source "GitHub Actions"
