@@ -29,7 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 9 Nov 2026 | **Set up AgOpenWeb from your measures** (new name, version 1.2): the turn clears the tractor's front corner, the drawbar meets the tyre at its height, every turn listed by headland, reasons behind arrows, a legend line per colour ([the page](#set-up-agopenweb-from-your-measures)). |
+| 9 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.3): the turn clears the tractor's front corner, the drawbar meets the tyre at its height, every turn listed by headland, reasons behind arrows, legend per colour, fresh script ([the page](#set-up-agopenweb-from-your-measures)). |
 | 8 Nov 2026 | **Set up AgOpenWeb from your measures**: a calculator that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons, a drawing, examples and drawbars kept off the rear tyres ([the page](#set-up-agopenweb-from-your-measures)). |
 | 7 Nov 2026 | The seed drill page's four tabs and Firmware tab checked, with a made-up newer `.bin` "on GitHub"; `firmware.json` lists the seed drill `.bin` once it is on `main`; the modules' names on the network ([How it is built](#how-it-is-built)). |
 | 4 Nov 2026 | The Teensy's clock and temperature, the receivers' and the TM171's temperatures and the XIAO's in the pretend modules' answers. |
@@ -68,7 +68,7 @@ The rules are AgOpenWeb's own (its `SagittaTurnGeometry`, `YouTurnCreationServic
 | File | What it does |
 |---|---|
 | `aow-settings/settings.js` | the arithmetic, with no page: runs in the browser and in Node, and is the model for a C# version on AgOpenWeb's Vehicle & Tool page |
-| `aow-settings/index.html` | the form, the table of suggestions, the list of turns, the drawing and its legend; the version under the title is `VERSION` at the top of `settings.js`, raised with every change |
+| `aow-settings/index.html` | the form, the table of suggestions, the list of turns, the drawing and its legend; the version under the title is `VERSION` at the top of `settings.js`, raised with every change together with the `settings.js?v=` address in the page, so a browser fetches the new file with the new page (`test.js` checks the two agree) |
 | `aow-settings/test.js` | the check of the arithmetic with known machines: `node Firmware/simulator/aow-settings/test.js`, a step of the Action |
 
 ## When the firmware changes
