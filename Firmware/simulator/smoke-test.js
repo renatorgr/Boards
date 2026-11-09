@@ -11,19 +11,30 @@
 // page and the seed drill and sprayer modules' pages, waits for the pretend module, clicks every tab and fails on
 // a script error in the page or a tab that shows nothing. GitHub itself is not asked: the version check gets the
 // site's firmware.json (or a copy with a newer build in it) instead of https://renatorgr.github.io/Boards/firmware.json. Also installs the firmware's own .hex on a parked module, end to end, saves the first section the
-// seed drill's relays follow and the sprayer's calibration (their password prompt is answered).
+// seed drill's relays follow and the sprayer's calibration (the pages' own password question is answered). Also opens the sprayer
+// and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card, where the browser's confirm() and prompt() do
+// nothing: the pages' own question box must show there, fit the card and answer. A browser dialog on any page fails the check.
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
 const {chromium} = require("playwright");
 const site = path.resolve(process.argv[2] || "_site"), shots = process.argv[3] ? path.resolve(process.argv[3]) : "";
 const TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css"};
 const fail = [];
+// an AgOpenWeb web card's frame (AgOpenWeb Docs/ADD_ON_CARDS.md): no allow-modals, so alert / confirm / prompt show nothing in it
+const CARD_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-popups allow-downloads";
 // the whole check takes about two minutes; a browser that hangs must not hold the Action for hours
 const watchdog = setTimeout(() => { console.log("FAILED: the check did not finish in 6 minutes"); process.exit(1); }, 6 * 60 * 1000);
 
 const server = http.createServer((q, r) => {
  const u = decodeURIComponent(q.url.split("?")[0]);
  if (!u.startsWith("/Boards/")) { r.writeHead(404); r.end(); return; }
+ if (u === "/Boards/_card") {   // the check only: a pretend AgOpenWeb web card around a page of the site (?src=/Boards/...), served from
+  // the same address as the page because Chromium refuses a loopback page inside a frame of a page from nowhere (about:blank)
+  const src = (new URL(q.url, "http://127.0.0.1").searchParams.get("src") || "").replace(/"/g, "&quot;");
+  r.writeHead(200, {"Content-Type": "text/html; charset=utf-8"});
+  r.end('<!doctype html><html><body style="margin:0"><iframe sandbox="' + CARD_SANDBOX + '" src="' + src + '" style="width:480px;height:320px;border:0;display:block"></iframe></body></html>');
+  return;
+ }
  let f = path.join(site, u.slice("/Boards/".length));
  if (!f.startsWith(site)) { r.writeHead(403); r.end(); return; }
  if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
@@ -40,6 +51,9 @@ async function page(browser, url, what, newer) {
  const pg = await browser.newPage({viewport: {width: 1000, height: 1100}});
  pg.on("pageerror", e => fail.push(what + ": " + e));
  pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) fail.push(what + ": console " + m.text()); });
+ // inside an AgOpenWeb web card the browser's alert / confirm / prompt show nothing (the frame has no allow-modals): the pages ask
+ // with their own question box (#ask) instead, so a browser dialog is a fault
+ pg.on("dialog", d => { fail.push(what + ": the browser's own dialog opened («" + d.message() + "»); it would show nothing in a web card"); d.dismiss(); });
  await pg.route(/^https:\/\/(api\.github\.com|github\.com|raw\.githubusercontent\.com)\//, r => r.abort());
  await pg.route("https://renatorgr.github.io/Boards/firmware.json", r => r.fulfill({status: 200, contentType: "application/json",
   headers: {"Access-Control-Allow-Origin": "*"}, body: published(newer)}));
@@ -58,6 +72,48 @@ async function expectSoon(pg, what, sel, re, ms = 5000) {
    [sel, re.source, re.flags], {timeout: ms});
  } catch (e) { /* reported by expect() below */ }
  await expect(pg, what, sel, re);
+}
+// the pages' own question box (ask / askText in the pages) answered with OK as soon as it opens, as a person would; `text` is typed
+// into its field first (the module's password, when it asks for one). Stays on after the page reloads itself (a restart)
+async function answerAsk(pg, text) {
+ const js = "(()=>{if(window.__askAuto)return;window.__askAuto=1;" +
+  "const go=()=>{const a=document.getElementById('ask');if(!a||a.hidden)return;const i=document.getElementById('askIn');" +
+  "if(i&&!i.hidden)i.value=" + JSON.stringify(text || "") + ";document.getElementById('askYes').click();};" +
+  "const start=()=>{const a=document.getElementById('ask');if(!a)return;new MutationObserver(go).observe(a,{attributes:true,attributeFilter:['hidden']});go();};" +
+  "document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start):start();})()";
+ await pg.addInitScript(js);
+ await pg.evaluate(js);
+}
+// a page of the site inside an AgOpenWeb web card: the server's /Boards/_card, an iframe with the card's sandbox at the smallest
+// card size, 480 x 320. There the browser's confirm() and prompt() return false / null without showing anything, which the check
+// first makes sure of (otherwise the frame is not testing what a card does). Gives the page and its frame (null: not loaded)
+async function card(browser, port, src, what) {
+ const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/_card?src=" + encodeURIComponent(src), what);
+ pg.removeAllListeners("dialog"); pg.removeAllListeners("console");
+ let native = 0, probing = true;   // the check's own confirm() and prompt() below: Chromium logs "Ignored call to 'confirm()'" for them
+ pg.on("dialog", d => { native++; d.dismiss(); });
+ pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text()) && !(probing && /Ignored call to '(confirm|prompt)\(\)'/.test(m.text()))) fail.push(what + ": console " + m.text()); });
+ await pg.waitForTimeout(2500);
+ const base = "http://127.0.0.1:" + port + src.split("#")[0], fr = pg.frames().find(f => f.url().startsWith(base));
+ if (!fr) { fail.push(what + ": the page did not load inside the frame"); return [pg, null]; }
+ const r = await fr.evaluate(() => [window.confirm("test"), window.prompt("test")]);
+ if (native || r[0] !== false || r[1] !== null) fail.push(what + ": the frame does not behave as a web card (confirm " + r[0] + ", prompt " + r[1] + ", dialogs " + native + ")");
+ await pg.waitForTimeout(300); probing = false;
+ return [pg, fr];
+}
+// the question box open in the card: its text, whether it asks to type something, inside the 480 x 320, the OK button 44 px high
+async function askShown(fr, what, re, withInput) {
+ await fr.waitForTimeout(200);
+ if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": the question box did not open"); return; }
+ await expect(fr, what, "#askText", re);
+ if ((await fr.locator("#askIn").isVisible()) !== withInput) fail.push(what + ": the question " + (withInput ? "has no field to type in" : "should not ask to type anything"));
+ const b = await fr.locator(".askBox").boundingBox(), y = await fr.locator("#askYes").boundingBox();
+ if (!b || b.x < 0 || b.y < 0 || b.x + b.width > 480 || b.y + b.height > 320) fail.push(what + ": the question box does not fit the card (" + JSON.stringify(b) + ")");
+ if (!y || y.height < 44) fail.push(what + ": the OK button is under 44 px high (" + (y && y.height) + ")");
+}
+async function askClosed(fr, what, how) {
+ await fr.waitForTimeout(200);
+ if (await fr.locator("#ask").isVisible()) fail.push(what + ": " + how + " does not close the question");
 }
 
 async function teensy(browser, port, q, name) {
@@ -206,7 +262,7 @@ async function teensy(browser, port, q, name) {
   await pg.click('nav button[data-t="settings"]'); await pg.waitForTimeout(500);
   await pg.click("#fs button[type=submit]"); await pg.waitForTimeout(800);
   await expect(pg, what, "#setMsg", /Saved/);
-  pg.on("dialog", d => d.accept());
+  await answerAsk(pg);
   await pg.click('nav button[data-t="imu"]'); await pg.waitForTimeout(300);
   await pg.click("#tmCalBtn"); await pg.waitForTimeout(2500);
   await expect(pg, what, "#tmCal2", /in progress|starting/);
@@ -265,7 +321,7 @@ async function teensy(browser, port, q, name) {
  if (hex) {
   const what = "XIAO page, module firmware over the link";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?park=1", what);
-  pg.on("dialog", d => d.accept());
+  await answerAsk(pg);
   await pg.waitForTimeout(2500);
   await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(800);
   await expect(pg, what, "#tFw", /_AiO_WEB/);
@@ -307,7 +363,7 @@ async function teensy(browser, port, q, name) {
  {
   const what = "Seed drill page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/seeder/", what);
-  pg.on("dialog", d => d.accept("agopengps"));
+  await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   await expect(pg, what, "h1", /^Seeder module$/);
   await expect(pg, what, "#sub", /^on the cable as 192\.168\.5\.123 · program talking/);
@@ -400,7 +456,7 @@ async function teensy(browser, port, q, name) {
   await pg.route("https://api.github.com/repos/renatorgr/Boards/contents/Seeder/Seeder_ESP32?ref=main", r => r.fulfill({status: 200,
    contentType: "application/json", headers: cors, body: JSON.stringify([{type: "file", name: "Seeder_ESP32.ino.bin", size: bin.length, download_url: raw}])}));
   await pg.route(raw, r => r.fulfill({status: 200, contentType: "application/octet-stream", headers: cors, body: bin}));
-  pg.on("dialog", d => d.accept("agopengps"));
+  await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
@@ -424,7 +480,7 @@ async function teensy(browser, port, q, name) {
  {
   const what = "Sprayer page";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/sprayer/", what);
-  pg.on("dialog", d => d.accept("agopengps"));
+  await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   await expect(pg, what, "h1", /^Sprayer module$/);
   await expect(pg, what, "#sub", /^on Farm WiFi as 192\.168\.5\.123 · program talking/);
@@ -526,7 +582,7 @@ async function teensy(browser, port, q, name) {
   await pg.route("https://api.github.com/repos/renatorgr/Boards/contents/Sprayer/Sprayer_ESP32?ref=main", r => r.fulfill({status: 200,
    contentType: "application/json", headers: cors, body: JSON.stringify([{type: "file", name: "Sprayer_ESP32.ino.bin", size: bin.length, download_url: raw}])}));
   await pg.route(raw, r => r.fulfill({status: 200, contentType: "application/octet-stream", headers: cors, body: bin}));
-  pg.on("dialog", d => d.accept("agopengps"));
+  await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
@@ -541,6 +597,48 @@ async function teensy(browser, port, q, name) {
    if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is still marked new after the update");
   }
   await shot(pg, "sprayer-firmware-updated");
+  await pg.close();
+ }
+ // the sprayer page inside a web card: Save and restart (Module tab) asks yes / no (Escape is a no), Restart (Firmware tab) asks
+ // the password in the box (Cancel does nothing, Enter after the password restarts the module)
+ {
+  const what = "Sprayer page in a web card";
+  const [pg, fr] = await card(browser, port, "/Boards/sprayer/#module", what);
+  if (fr) {
+   if (!(await fr.locator("#t-module").isVisible())) fail.push(what + ": #module in the address does not open the Module tab");
+   await fr.fill("#pwW", "agopengps");
+   await fr.click("button:has-text('Save and restart the module')");
+   await askShown(fr, what, /^Save and restart the module\? Its Wi-Fi goes off/, false);
+   await shot(pg, "sprayer-card-ask");
+   await fr.locator("#askYes").press("Escape"); await askClosed(fr, what, "Escape");
+   await expect(fr, what, "#msgWifi", /^$/);
+   await fr.click('nav button[data-t="firmware"]'); await fr.waitForTimeout(300);
+   await fr.click("button[onclick*='/api/restart']");
+   await askShown(fr, what, /^Password of the own Wi-Fi network$/, true);
+   await shot(pg, "sprayer-card-password");
+   await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
+   await expect(fr, what, "#msgProg", /^$/);
+   await fr.click("button[onclick*='/api/restart']");
+   await fr.fill("#askIn", "agopengps"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Enter");
+   await expectSoon(fr, what, "#msgProg", /^done, restarting/);
+  }
+  await pg.close();
+ }
+ // the Teensy page inside a web card: Restart Teensy asks yes / no
+ {
+  const what = "Teensy page in a web card";
+  const [pg, fr] = await card(browser, port, "/Boards/teensy/?park=1", what);
+  if (fr) {
+   await fr.click('nav button[data-t="firmware"]'); await fr.waitForTimeout(300);
+   await fr.click("#reboot");
+   await askShown(fr, what, /^Restart the Teensy\? Autosteer and GPS stop for a few seconds\.$/, false);
+   await shot(pg, "teensy-card-ask");
+   await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
+   await expect(fr, what, "#fwMsg", /^$/);
+   await fr.click("#reboot");
+   await fr.click("#askYes"); await askClosed(fr, what, "OK");
+   await expectSoon(fr, what, "#fwMsg", /^Restarting/);
+  }
   await pg.close();
  }
  // the seed drill's module with the network cable unplugged: sections closed, the program's request still outlined

@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 9 Nov 2026 | The page's questions (save and restart, install, the module's firmware, subnet) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([What it does](#what-it-does)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under the XIAO's own WiFi name ([What it does](#what-it-does)). Program → module shows up to 64 sections (PGN 229); the WiFi settings save in one row; a shorter note in the Module firmware card; short file headers. |
 | 4 Nov 2026 | The XIAO's temperature in its card, here and on the Teensy page; the Teensy's clock and temperature in the [Module card](#what-it-does). |
 | 3 Nov 2026 | An [update over Wi-Fi](#update-over-wifi-from-a-file) on a weak link no longer stops after a 5 s pause (it waits up to 20 s), and an upload that is cut off is written in Messages. |
@@ -61,6 +62,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 | **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. **Module (Teensy) firmware**: the module's firmware installed from this page over the link, and its previous firmware put back (see below). **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
+  - The question before each one (save and restart, install, the module's firmware, the subnet) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
   - Typed once, it is filled in both tabs until the page is closed.
   - The page never shows or stores it.
   - Just viewing the page needs nothing more than being on the network.

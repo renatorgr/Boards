@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
 | 3 Nov 2026 | [Steering loop at 100 Hz](#settings) as a choice. [IMU frozen](#imu-tm171-or-bno085) warning. [Notes about this installation](#settings). [Main loop](#main-loop) fixes: GNSS data lost on the two-F9P board, page loads held the steering. [Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port) says why there is no heading. Old [update marker](#firmware-update-over-the-network) gone. |
@@ -72,6 +73,8 @@ Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number f
 **Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
+
+Every question the page asks (write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`).
 
 **Without a module:** the [simulator](https://renatorgr.github.io/Boards/) shows this page and the XIAO's with a pretend module behind them (any GPS, IMU, steering and program; tractor driving or parked), rebuilt from the code on every change. See [`Firmware/simulator`](../simulator).
 

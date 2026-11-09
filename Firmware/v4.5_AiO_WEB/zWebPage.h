@@ -111,6 +111,15 @@ progress{width:100%;height:14px}
 a{color:var(--acc)}
 .tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
+/* the page's own question box (ask / askText in the script): the browser's confirm() and prompt() show nothing inside an
+   AgOpenWeb web card (its frame has no allow-modals), so the page never uses them; buttons 44 px high, as the cards ask */
+.ask{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:12px}
+.ask[hidden],.ask [hidden]{display:none!important}
+.askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.askBox p{margin:0 0 12px;white-space:pre-line}
+.askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end}
+.askBtns button{min-height:44px;min-width:96px}
 </style>
 </head>
 <body>
@@ -406,9 +415,25 @@ a{color:var(--acc)}
 </div>
 </section>
 </main>
+<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
+// ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
+// no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
+// true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+let askDone=null;
+function askShow(text,withInput){
+ if(askDone)askEnd(false);
+ $("askText").textContent=text;const i=$("askIn");i.hidden=!withInput;i.value="";$("ask").hidden=false;
+ (withInput?i:$("askYes")).focus();
+ return new Promise(r=>{askDone=r;});}
+function askEnd(v){const r=askDone;askDone=null;$("ask").hidden=true;if(r)r(v);}
+const ask=text=>askShow(text,false);
+const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
+$("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
+$("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
+$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else if(e.key==="Enter"&&e.target===$("askIn"))askEnd(true);});
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
 // The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
@@ -821,7 +846,7 @@ function renderTmSet(s){
 $("tsRead").addEventListener("click",()=>{tsSeen=null;delete $("tsMsg").dataset.err;tmCalPost("setread");});
 $("tsAog").addEventListener("click",()=>{tsFill({mag:0,gyroErr:1,selfAdapt:1,status:1,boot:0,accGain:350,magGain:100,odr:25});set("tsMsg","AgOpenGPS defaults loaded into the form (magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, 25 Hz, Auto boot). Click \"Write to TM171\" to apply.","warn");$("tsMsg").dataset.err="1";});
 $("tsWrite").addEventListener("click",async()=>{
- if(!confirm("Write these settings to the TM171"+($("tsSave").checked?" and save them to its flash memory":"")+"?"))return;
+ if(!await ask("Write these settings to the TM171"+($("tsSave").checked?" and save them to its flash memory":"")+"?"))return;
  const n=id=>Math.round(parseFloat($(id).value)||0),rate=n("tsRate");
  const b="act=setwrite&mag="+(+$("tsMag").checked)+"&gyroErr="+(+$("tsGyroErr").checked)+"&selfAdapt="+(+$("tsSelfAdapt").checked)+"&status="+(+$("tsStatus").checked)+"&save="+(+$("tsSave").checked)
   +"&boot="+$("tsBoot").value+"&accGain="+Math.round(parseFloat($("tsAcc").value)*100)+"&magGain="+Math.round(parseFloat($("tsMagG").value)*100)+"&odr="+rate;
@@ -832,20 +857,20 @@ $("tsWrite").addEventListener("click",async()=>{
 async function tmCalPost(act){
  try{const j=await getJ("/api/imu",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"act="+act});
   if(!j.ok)set("tmCal","Error"+": "+ptErr(j.error),"bad");}catch(e){set("tmCal","Cannot reach the module.","bad");}}
-$("tmCalBtn").addEventListener("click",()=>{
+$("tmCalBtn").addEventListener("click",async()=>{
  const busy=$("tmCalBtn").textContent==="Stop";
- if(!busy&&!confirm("Calibrate the TM171 gyro?\nKeep the tractor parked for 20 s (the engine can stay running). Autosteer must be off."))return;
+ if(!busy&&!await ask("Calibrate the TM171 gyro?\nKeep the tractor parked for 20 s (the engine can stay running). Autosteer must be off."))return;
  tmCalPost(busy?"calibstop":"calib");});
-$("tmFixBtn").addEventListener("click",()=>{
- if(!confirm("Write the AgOpenGPS setup to the TM171?\nUART 115200, magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status output, 25 Hz, Auto boot. Saved to the TM171's flash. Autosteer must be off."))return;
+$("tmFixBtn").addEventListener("click",async()=>{
+ if(!await ask("Write the AgOpenGPS setup to the TM171?\nUART 115200, magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status output, 25 Hz, Auto boot. Saved to the TM171's flash. Autosteer must be off."))return;
  tmCalPost("fixsetup");});
-$("tmInstBtn").addEventListener("click",()=>{
- if(!confirm("Run the TM171 new install calibration?\nKeep the tractor parked for about 20 s and do NOT cut power while it runs (SYD warns this can damage the TM171). It cannot be stopped once started. The result is saved to flash; switch the whole module off and on afterwards."))return;
+$("tmInstBtn").addEventListener("click",async()=>{
+ if(!await ask("Run the TM171 new install calibration?\nKeep the tractor parked for about 20 s and do NOT cut power while it runs (SYD warns this can damage the TM171). It cannot be stopped once started. The result is saved to flash; switch the whole module off and on afterwards."))return;
  tmCalPost("install");});
 $("gIdent").addEventListener("click",()=>{ubxAsked=false;ubxShown=-1;umAsked=false;umShown=-1;gpsAct("act=identify");});
-$("gUbxOn").addEventListener("click",()=>{if(confirm("Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver."))gpsAct("act=ubxon");});
+$("gUbxOn").addEventListener("click",async()=>{if(await ask("Switch the UBX output of the receiver's UART1 on (u-blox only)? It is saved in the receiver."))gpsAct("act=ubxon");});
 $("uRead").addEventListener("click",()=>gpsAct("act=read"));
-$("fu").addEventListener("submit",e=>{e.preventDefault();
+$("fu").addEventListener("submit",async e=>{e.preventDefault();
  if(!gpsJ||!gpsJ.ubx)return;
  const f=$("fu"),v=gpsJ.ubx.v||{},p=new URLSearchParams();p.set("act","write");const ch=[];
  for(const n of UBX_SEL){if(v[n]===undefined||f[n].disabled)continue;const nv=Number(f[n].value);if(nv!==v[n]){p.set(n,String(nv));ch.push(n);}}
@@ -854,7 +879,7 @@ $("fu").addEventListener("submit",e=>{e.preventDefault();
  let q=("Write "+ch.length+(ch.length===1?" change":" changes")+" to the receiver?");
  if(ch.some(n=>UBX_SIG.includes(n)))q+="\n\n"+"Changing the constellations restarts the receiver's GNSS: RTK is lost for a few seconds.";
  if(p.get("inRtcm")==="0")q+="\n\n"+"Without RTCM3 corrections the receiver gets no RTK.";
- if(!confirm(q))return;
+ if(!await ask(q))return;
  gpsAct(p.toString());});
 // ---- the UM982 settings (zReceiver.ino)
 const UM_SEL=["rate","mode","rtkTo","sbas","hdMode"],UM_NUM=["hdLen","hdTol","hdOff","ptOff"],
@@ -907,7 +932,7 @@ function renderUm(u){
  if(!u.op&&u.readAgo<0&&!umAsked&&tab==="gps"&&!ckBusy0(gpsJ)){umAsked=true;gpsAct("act=umread",mSay);}   /* read once, the first time the tab shows a UM982 */
 }
 $("mRead").addEventListener("click",()=>gpsAct("act=umread",mSay));
-$("fm").addEventListener("submit",e=>{e.preventDefault();
+$("fm").addEventListener("submit",async e=>{e.preventDefault();
  if(!gpsJ||!gpsJ.um)return;
  const f=$("fm"),u=gpsJ.um,v=u.v||{},p=new URLSearchParams();p.set("act","umwrite");const ch=[];
  for(const n of UM_SEL){const s=f[n];if(s.disabled||s.value==="")continue;const nv=Number(s.value);if(nv!==v[n]){p.set(n,String(nv));ch.push(n);}}
@@ -926,7 +951,7 @@ $("fm").addEventListener("submit",e=>{e.preventDefault();
  let q=("Write "+ch.length+(ch.length===1?" change":" changes")+" to the UM982 (and SAVECONFIG)?");
  if(ch.some(n=>UM_SYSN.includes(n))||ch.includes("mode"))q+="\n\n"+"Changing the constellations or the working mode can lose RTK for a few seconds.";
  if(ch.includes("hdLen")&&p.get("hdLen")!=="0")q+="\n\n"+"With a wrong distance between the antennas, the UM982 gives no heading.";
- if(!confirm(q))return;
+ if(!await ask(q))return;
  gpsAct(p.toString(),mSay);});
 async function pollUm(){
  try{const j=await getJ("/api/um982?after="+umAfter);if(j.error)return;
@@ -1046,23 +1071,23 @@ function renderCk(j){
  }
 }
 const ckAct=(port,act,extra)=>gpsAct("act=ck"+act+"&port="+port+(extra||""),(t,c)=>ckSay(port,t,c));
-function ckLoad(port){
+async function ckLoad(port){
  const j=gpsJ;if(!j||!j.ck)return;const p=j.ck.ports[port];
  if(port===0&&j.kind==="um982"){
   const s=$("ck0Um").value==="s",n=(s?j.ck.um982s:j.ck.um982d).length,f=s?"ConfigUM982S.txt":"ConfigUM982D.txt";
-  if(confirm(("Load the AgOpenGPS settings into the UM982 ("+(s?"one antenna":"two antennas")+")?\n\nAOGConfigOMatic "+f+": "+n+" commands, one at a time, then SAVECONFIG (kept after a power off). They replace the receiver's settings these commands change. The GPS can drop out for a few seconds.")))ckAct(0,"load","&um="+(s?"s":"d"));
+  if(await ask(("Load the AgOpenGPS settings into the UM982 ("+(s?"one antenna":"two antennas")+")?\n\nAOGConfigOMatic "+f+": "+n+" commands, one at a time, then SAVECONFIG (kept after a power off). They replace the receiver's settings these commands change. The GPS can drop out for a few seconds.")))ckAct(0,"load","&um="+(s?"s":"d"));
   return;}
  let q=("Load the AgOpenGPS settings into the receiver?\n\nAOGConfigOMatic "+p.file+" ("+p.role+"): "+p.keys+" settings, written to the receiver's RAM, BBR and flash (kept after a power off). They replace its current settings: rate, constellations, messages and ports. The GPS can drop out for a few seconds.");
  if(p.fwSt&&p.fwSt!=="same")q+="\n\n"+("These settings are for firmware "+p.setFw+"; the receiver has "+p.fw+".");
- if(confirm(q))ckAct(port,"load");}
+ if(await ask(q))ckAct(port,"load");}
 for(const port of [0,1]){
  $("ck"+port+"Check").addEventListener("click",()=>ckAct(port,"check"));
- $("ck"+port+"Baud").addEventListener("click",()=>{const p=gpsJ&&gpsJ.ck&&gpsJ.ck.ports[port];if(!p)return;
+ $("ck"+port+"Baud").addEventListener("click",async()=>{const p=gpsJ&&gpsJ.ck&&gpsJ.ck.ports[port];if(!p)return;
   const uni=port===0&&p.foundKind!=="ublox",ubx=p.foundKind!=="unicore";
   let q=("Set the receiver to 460800 baud and save? It is at "+p.found+" baud.");
   if(ubx)q+="\n\n"+"u-blox: the UART1 speed is written to all the receiver's layers (RAM, BBR and flash).";
   if(uni)q+="\n\n"+"Unicore: CONFIG COM1, COM2 and COM3 460800, then SAVECONFIG.";
-  if(confirm(q+"\n\n"+"Only with autosteer off: the GPS stops for a few seconds."))ckAct(port,"baud");});
+  if(await ask(q+"\n\n"+"Only with autosteer off: the GPS stops for a few seconds."))ckAct(port,"baud");});
  $("ck"+port+"Load").addEventListener("click",()=>ckLoad(port));
 }
 let ckUmAt=0;
@@ -1099,25 +1124,25 @@ async function postSettings(body){
   if(j.ok){fillSettings(j.settings);m.textContent="Saved.";m.className="note ok";}else{m.textContent="Error"+": "+ptErr(j.error);m.className="note bad";}
  }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
 }
-$("fs").addEventListener("submit",e=>{e.preventDefault();const f=$("fs");
+$("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
  const p=new URLSearchParams();p.set("outputMode",f.querySelector("input[name=outputMode]:checked").value);
  p.set("hprAcceptFloat",f.hprAcceptFloat.checked?"1":"0");p.set("epochWaitMs",f.epochWaitMs.value);
  p.set("tm171SwapRollPitch",f.tm171SwapRollPitch.checked?"1":"0");p.set("tm171YawSign",f.tm171YawSign.value);
  p.set("xiaoOff",f.xiaoOff.value);
- if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!confirm("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
+ if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!await ask("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
- if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!confirm("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
+ if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
  p.set("simMode",f.simMode.checked?"1":"0");
  p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
  p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
  postSettings(p.toString());});
-$("defaults").addEventListener("click",()=>{if(confirm("Restore the defaults of this page?"))postSettings("defaults=1");});
+$("defaults").addEventListener("click",async()=>{if(await ask("Restore the defaults of this page?"))postSettings("defaults=1");});
 
 // ---- UM982
 for(const b of document.querySelectorAll("[data-c]"))b.addEventListener("click",()=>{$("umCmd").value=b.dataset.c;$("umCmd").focus();});
 async function umSend(){
  const c=$("umCmd").value.trim();if(!c)return;
- if(/^(FRESET|RESET|UNLOG\b)/i.test(c)||/^CONFIG\s+COM\d\s+\d+/i.test(c)){if(!confirm("This command can cut the link between the UM982 and the Teensy. Send it anyway?"))return;}
+ if(/^(FRESET|RESET|UNLOG\b)/i.test(c)||/^CONFIG\s+COM\d\s+\d+/i.test(c)){if(!await ask("This command can cut the link between the UM982 and the Teensy. Send it anyway?"))return;}
  addLines($("umOut"),["> "+c],false);
  try{const j=await getJ("/api/um982",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"cmd="+encodeURIComponent(c)});
   if(!j.ok)addLines($("umOut"),["error"+": "+ptErr(j.error)],false);}catch(e){addLines($("umOut"),["no connection to the module"],false);}
@@ -1153,18 +1178,18 @@ $("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];hexBui
  r.onerror=()=>{inf.textContent="The file could not be read.";inf.className="note bad";};
  r.readAsText(f);
 });
-$("install").addEventListener("click",()=>{
+$("install").addEventListener("click",async()=>{
  const f=$("hexFile").files[0];if(!f||busy)return;
  if(!f.name.toLowerCase().endsWith(".hex")){fwMsg("Choose a .hex file.","bad");return;}
  const b=hexBuild&&hexBuild.fw?" ("+hexBuild.fw+", built "+hexBuild.built+")":"";
- if(!confirm(("Install "+f.name+b+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ if(!await ask(("Install "+f.name+b+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;$("revert").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  sendHex(f,$("force").checked,0);
 });
 // The previous firmware back (POST /api/revert): the Teensy has it in its flash, nothing is sent
 $("revert").addEventListener("click",async()=>{
  const pv=lastS&&lastS.prev;if(!pv||busy)return;
- if(!confirm(("Go back to the previous firmware, "+pv.fw.split(" ")[0]+" built "+pv.built+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
+ if(!await ask(("Go back to the previous firmware, "+pv.fw.split(" ")[0]+" built "+pv.built+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
  busy=true;$("revert").disabled=true;$("install").disabled=true;$("ghInstall").disabled=true;fwMsg("Asking the Teensy…");
  const back=()=>{busy=false;$("revert").disabled=false;$("install").disabled=!$("hexFile").files[0];renderGh();};
  try{const j=await getJ("/api/revert",{method:"POST"});
@@ -1266,7 +1291,7 @@ function renderGh(){
 async function ghInstall(){
  if(!ghNewer()||busy)return;
  const names=[gh.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
- if(!confirm(("Install "+verText(gh.ver,gh.built)+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
+ if(!await ask(("Install "+verText(gh.ver,gh.built)+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{
@@ -1283,7 +1308,7 @@ async function ghInstall(){
 }
 $("ghCheck").addEventListener("click",ghCheck);
 $("ghInstall").addEventListener("click",ghInstall);
-$("reboot").addEventListener("click",async()=>{if(!confirm("Restart the Teensy? Autosteer and GPS stop for a few seconds."))return;
+$("reboot").addEventListener("click",async()=>{if(!await ask("Restart the Teensy? Autosteer and GPS stop for a few seconds."))return;
  try{await getJ("/api/reboot",{method:"POST"});}catch(e){}fwMsg("Restarting…","warn");});
 $("logPause").addEventListener("click",()=>{logPaused=!logPaused;$("logPause").textContent=(logPaused?"Resume":"Pause");});
 $("logClear").addEventListener("click",()=>{$("log").textContent="";});

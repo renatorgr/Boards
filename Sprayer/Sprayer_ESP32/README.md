@@ -4,7 +4,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOp
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.10.4 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.5 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## Changelog
@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 9 Nov 2026 | **0.10.5**: the page's questions (save and restart, install, password) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([How it works](#how-it-works)). |
 | 7 Nov 2026 | **0.10.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.10.3**: alarms also as PGN 221 ([Messages](#messages)). **0.10.4**: Module tab: Module card, one Network settings card. Code shared with the seed drill marked ([Notes](#notes)). |
 | 2 Nov 2026 | **0.10**: rate (L/ha), target pressure and alarms worked out on the module and sent to the program (PGN 161); the page gets Spraying, [Settings](#setup), Module and Firmware tabs, with Install from GitHub. **0.10.1**: Wi-Fi settings as on the XIAO page. |
 | 27 Oct 2026 | **0.7.1** sensor dividers from a common resistor kit. **0.7.2** the page says which sensors there are. **0.8** up to 64 sections, relays from any section. **0.9** sprayer boards only (the seed drill got its own folder). **0.9.1** PGN 237 in the AiO v26 layout. |
@@ -77,6 +78,9 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
     something goes wrong (no passwords in it). The phone or tablet asks GitHub, so it needs
     internet: open the page over the tractor network, not over the module's own Wi-Fi.
     A `.bin` for another board, another module's program or the `.merged.bin` is refused.
+  Every question the page asks (save and restart, install a program, the password) opens in
+  a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's
+  pop-ups show nothing, so those buttons did nothing there.
   Without the board, the page can be tried in the
   [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
@@ -144,7 +148,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.4` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.5` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 

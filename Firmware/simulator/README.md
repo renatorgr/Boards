@@ -29,7 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 9 Nov 2026 | **Set up AgOpenWeb from your measures** 1.3: the turn clears the front corner, the drawbar meets the tyre, turns by headland, reasons ([the page](#set-up-agopenweb-from-your-measures)). Seed drill page: 19 sections offline. Shorter start page and strip notes. [Action](#how-it-is-built) on Node 24. |
+| 9 Nov 2026 | **Set up AgOpenWeb from your measures** 1.3: front corner, drawbar at the tyre, turns by headland, reasons ([the page](#set-up-agopenweb-from-your-measures)). Seed drill: 19 sections offline; short start page. [Action](#how-it-is-built) on Node 24. Check: pages in a web card's frame ([How it is built](#how-it-is-built)). |
 | 8 Nov 2026 | **Set up AgOpenWeb from your measures**: a calculator that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons, a drawing, examples and drawbars kept off the rear tyres ([the page](#set-up-agopenweb-from-your-measures)). |
 | 7 Nov 2026 | The seed drill page's four tabs and Firmware tab checked, with a made-up newer `.bin` "on GitHub"; `firmware.json` lists the seed drill `.bin` once it is on `main`; the modules' names on the network ([How it is built](#how-it-is-built)). |
 | 4 Nov 2026 | The Teensy's clock and temperature, the receivers' and the TM171's temperatures and the XIAO's in the pretend modules' answers. |
@@ -55,7 +55,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 | `sim-xiao.js` | the XIAO page's requests (v4.5_XIAO_ESP32.ino) answered by a pretend XIAO, with the module behind it |
 | `sim-seeder.js` | the seed drill module page's requests (Seeder_ESP32 zNet.ino) answered by a pretend Relay24_ESP32, sowing what the tractor sows |
 | `sim-sprayer.js` | the sprayer module page's requests (Sprayer_ESP32 zNet.ino) answered by a pretend ESP32, spraying what the tractor sprays |
-| `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package) |
+| `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package). It also opens the sprayer and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card (`/Boards/_card`, served by the check only), where the browser's own pop-ups show nothing: the pages' own question box must open, fit 480 × 320 and answer; a browser pop-up on any page fails the check |
 
 To run it on your own computer: `python3 Firmware/simulator/build.py` and open `_site/index.html` in a browser (a `file://` page works). The check needs Node and `npm install playwright && npx playwright install chromium`.
 
