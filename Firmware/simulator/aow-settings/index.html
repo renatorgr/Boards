@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- index.html - AgOpenWeb settings from the tractor and implement dimensions: the form, the suggestions and the drawing.
+<!-- index.html - Set up AgOpenWeb from your measures: the form, the suggestions, every turn by its headland and the drawing.
      Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator/aow-settings, see README.md there).
      Written 2026 by Claude (Anthropic) for renatorgr.
      The history of changes is in the README changelog and in the git log.
@@ -10,7 +10,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
-<title>AgOpenWeb settings from the dimensions</title>
+<title>Set up AgOpenWeb from your measures</title>
 <script src="settings.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
@@ -18,7 +18,9 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:960px;margin:0 auto;padding:24px 16px 40px}
-h1{font-size:24px;margin:0 0 6px;font-weight:700}
+.titlebar{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 6px}
+h1{font-size:24px;margin:0;font-weight:700}
+.ver{color:var(--mute);font-size:14px;white-space:nowrap}
 h2{font-size:17px;margin:0 0 10px}
 .lead{color:var(--mute);margin:0 0 18px;max-width:720px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start}
@@ -39,20 +41,39 @@ td.w{color:var(--mute)}
 .problem{background:color-mix(in srgb,var(--warn) 16%,var(--card));border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:12px 0 0;font-size:14.5px}
 .problem:empty{display:none}
 #draw{margin-top:14px}
-svg{width:100%;height:auto;display:block;background:var(--soft);border-radius:10px}
-svg text{paint-order:stroke;stroke:var(--soft);stroke-width:4px;stroke-linejoin:round}
-.opt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:14.5px}
+#draw svg{width:100%;height:auto;display:block;background:var(--soft);border-radius:10px}
+#draw svg text{paint-order:stroke;stroke:var(--soft);stroke-width:4px;stroke-linejoin:round}
+/* the reasons: hidden behind an arrow on each row, and one arrow in the header for all of them */
+td.t{width:1%;white-space:nowrap;padding-left:0}
+button.why{font:inherit;font-size:14px;line-height:1.2;padding:2px 9px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink);cursor:pointer;white-space:nowrap}
+button.why:hover{border-color:var(--acc)}
+th button.why{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+tr.why td{border-top:0;padding-top:0;color:var(--mute)}
+tr.why[hidden]{display:none}
+/* the turns: one row each, the smallest headland first; the chosen one is drawn and the rows above follow it */
+h3{font-size:16px;margin:18px 0 2px}
+#turns tbody tr{cursor:pointer}
+#turns tbody tr:hover td{background:var(--soft)}
+#turns tbody tr.on td{font-weight:650}
+#turns td:first-child{width:1%;padding-right:0}
+#turns input[type=radio]{accent-color:var(--acc);cursor:pointer}
 .notes{color:var(--mute);font-size:14px;margin-top:16px}
+ul.legend{list-style:none;padding:0;margin:10px 0 0;color:var(--mute);font-size:14px}
+.legend li{display:flex;align-items:center;gap:10px;line-height:1.5}
+.legend svg{flex:none;width:30px;height:12px}
 .notes ul{margin:4px 0 0;padding-left:20px}
 footer{color:var(--mute);font-size:13.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
-/* a phone: each suggestion as a block (name, value, why), not three narrow columns */
+/* a phone: each suggestion as a block (name, value, the arrow and its reason), not three narrow columns */
 @media (max-width:640px){
  #results thead{display:none}
  #results,#results tbody,#results tr,#results td{display:block;width:100%}
  #results tr{border-top:1px solid var(--line);padding:8px 0}
+ #results tr.why{border-top:0;padding-top:0}
+ #results tr.why[hidden]{display:none}
  #results td{border:0;padding:1px 4px}
  #results td.v{white-space:normal}
  #results td:first-child{color:var(--mute);font-size:13px}
+ #turns th:nth-child(3),#turns td:nth-child(3){display:none}
 }
 a{color:var(--acc)}
 code{background:var(--soft);border-radius:4px;padding:0 4px}
@@ -60,8 +81,8 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 </head>
 <body>
 <main>
-<h1>AgOpenWeb settings from the dimensions</h1>
-<p class="lead">Type the tractor and implement measures. The page suggests the U-turn, headland and tramline settings of AgOpenWeb and says why, with the same rules its U-turn code uses. A starting point for the Vehicle &amp; Tool page, not a replacement for a test in the field.</p>
+<div class="titlebar"><h1>Set up AgOpenWeb from your measures</h1><span class="ver" id="version"></span></div>
+<p class="lead">A calculator, not part of AgOpenWeb: type the tractor and implement measures and it suggests the U-turn, headland and tramline settings to put in AgOpenWeb, with the reasons behind an arrow, using the same rules its U-turn code uses. A starting point for the Vehicle &amp; Tool page, not a replacement for a test in the field.</p>
 
 <div class="presets">
  <button type="button" onclick="preset('sprayer')">8 m sprayer, front</button>
@@ -101,6 +122,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row" data-for="trailed"><label for="drawbar" id="drawbarLabel">Trailing hitch (m)<small>hitch pin (or pivot) to the implement's wheels; with two axles close together, to the middle between them</small></label><input id="drawbar" type="number" step="0.1" min="0.1" value="2"></div>
   <div class="row" data-for="trailed"><label for="drawbarWidth">Drawbar width (m)<small>its widest in the first metre behind the hitch, where it can reach the rear tyres</small></label><input id="drawbarWidth" type="number" step="0.05" min="0" value="0.3"></div>
   <div class="row" data-for="trailed"><label for="swingDeg">Most the drawbar may turn (°)<small>to each side, against the tractor: a semi-mounted pivot's stop (half its whole swing), or what you know your drawbar takes; 0 = from the rear tyres only</small></label><input id="swingDeg" type="number" step="1" min="0" max="180" value="0"></div>
+  <div class="row" data-for="trailed"><label for="foldClearanceDeg">Room kept before it touches (°)<small>the turn's circle folds the drawbar this much less than the angle where it touches a tyre or its stop: 5° is about 5 to 8 cm at the tyre</small></label><input id="foldClearanceDeg" type="number" step="1" min="0" max="45" value="5"></div>
   <div class="row" data-for="trailed"><label for="pivotToTool">Pivot distance (m)<small>the implement's wheels to the working line; behind them = positive, ahead (wheels at the back) = negative</small></label><input id="pivotToTool" type="number" step="0.1" value="0"></div>
   <div class="row" data-for="notFront"><label for="length">Implement length (m)<small>from its attachment (the 3-point hitch, or its own axle when trailed) to its rearmost point; 0 = not known</small></label><input id="length" type="number" step="0.1" min="0" value="0"></div>
   <div class="row"><label for="sprayerWidth">Sprayer width for tramlines (m)<small>0 = no tramline check</small></label><input id="sprayerWidth" type="number" step="0.5" min="0" value="8"></div>
@@ -110,20 +132,25 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <div class="card" style="margin-top:14px">
  <h2>Suggested settings</h2>
  <div id="problems" class="problem"></div>
- <table id="results"><thead><tr><th>Setting</th><th>Suggested</th><th>Why</th></tr></thead><tbody></tbody></table>
- <div class="opt" id="opt"></div>
+ <table id="results"><thead><tr><th>Setting</th><th>Suggested</th><th class="t"><button type="button" class="why" id="allWhy" aria-expanded="false" title="Show or hide every reason">Why ▸</button></th></tr></thead><tbody></tbody></table>
+ <div id="turnsWrap">
+  <h3>Every turn AgOpenWeb can make here, the smallest headland first</h3>
+  <p class="notes" style="margin:0 0 4px">Pick one: the rows above and the drawing follow it. Skipped passes are worked on the way back; a plough skips none.</p>
+  <table id="turns"><thead><tr><th></th><th>Turn</th><th>Depth</th><th>Distance from boundary</th><th>Headland</th></tr></thead><tbody></tbody></table>
+  <p class="notes" id="turnsNote" style="margin-top:6px"></p>
+ </div>
  <div id="draw"></div>
- <div class="notes" id="legend"></div>
+ <ul class="legend" id="legend"></ul>
  <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the outer corner of the tractor's nose or the implement's outer end) the safety margin inside the field edge (1 m by default; more where the edge is irregular); with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
 </div>
 
-<footer>Rules from AgOpenWeb's U-turn code (SagittaTurnGeometry, YouTurnCreationService, VehicleToolLimits). Source: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware/simulator/aow-settings">github.com/renatorgr/Boards</a>. GPL v3.</footer>
+<footer>Calculator version <span id="versionFoot"></span>. Rules from AgOpenWeb's U-turn code (SagittaTurnGeometry, YouTurnCreationService, VehicleToolLimits). Source: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware/simulator/aow-settings">github.com/renatorgr/Boards</a>. GPL v3.</footer>
 </main>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
 const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin",
- "trackWidth", "tyreWidth", "wheelDiameter", "drawbarHeight", "drawbarWidth", "swingDeg"];
+ "trackWidth", "tyreWidth", "wheelDiameter", "drawbarHeight", "drawbarWidth", "swingDeg", "foldClearanceDeg"];
 const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
  tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included"],
  articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose"],
@@ -147,14 +174,15 @@ const PRESETS = {
   note: "Typical measures, change them to yours. On the drawbar, its pin 0.7 m behind the rear axle, inside the tyres' back edge: the drawbar touches a tyre long before 90° (at the drawbar's height, where the tyre is shorter than at its axle), and that sets the radius. Two axles close together turn about the middle between them (their tyres scrub sideways in a tight turn): measure the trailing hitch to that middle. The beaters 3 m behind it swing out as the tractor straightens."},
  harrow: {mount: "trailed", sections: 1, sectionWidth: 400, width: 4, overlap: 0.2, offset: 0, hitch: 0.7, drawbar: 3.5, pivotToTool: 0, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
   note: "Typical measures, change them to yours: on the drawbar, its pin inside the rear tyres' back edge; the wheels between the front and the rear gangs, 20 cm of overlap so no strip is missed. With its wheels at the back (a roller), the discs are ahead of them: a negative pivot distance. A semi-mounted harrow's hitch is its pivot, further back."},
- plough: {mount: "rear", sections: 1, sectionWidth: 160, width: 1.6, overlap: 0, offset: 0, axleToTool: 3, hitch: 1, length: 4.5, sprayerWidth: 0, turn: "kturn",
+ plough: {mount: "rear", sections: 1, sectionWidth: 160, width: 1.6, overlap: 0, offset: 0, axleToTool: 3, hitch: 1, length: 4.5, sprayerWidth: 0, turn: "kturn0",
   note: "Typical measures, change them to yours: 4 bodies of 40 cm, lifted on the 3-point linkage for the turn. Each pass needs the open furrow of the one before, so no skipped rows: a K-turn (drawn) or a Keyhole. Its working strip sits towards the open furrow, on the other side of the tractor every pass: leave the tool offset at 0."},
  quickHarrow: {mount: "rear", sections: 1, sectionWidth: 270, width: 2.7, overlap: 0, offset: 0, axleToTool: 1.9, hitch: 1, length: 2.8, sprayerWidth: 0,
   note: "Renato's quick disc harrow on the 3-point linkage, its measures guessed until he takes them: the middle of the discs 1.9 m behind the rear axle, 2.8 m long with its roller."},
  roller: {mount: "trailed", sections: 1, sectionWidth: 320, width: 3.2, overlap: 0, offset: 0, hitch: 1.5, drawbar: 2.5, pivotToTool: 0, drawbarWidth: 0.3, swingDeg: 60, length: 0, sprayerWidth: 0,
   note: "Renato's 3.2 m roller on a bar on the lower links, semi-mounted: its pivot turns about 120° in all, 60° to each side, and that stop sets the radius. Pivot and roller guessed until he measures them: the pivot 1.5 m behind the rear axle, the roller 2.5 m behind the pivot."}
 };
-let chosen = "";   // the turn option drawn when there are several (skip, keyhole or K-turn)
+let chosen = "";   // the key of the turn picked in the list (empty: the one with the smallest headland)
+const openWhy = new Set();   // the suggestion rows whose reason is shown
 
 function preset(name) {
  const p = PRESETS[name];
@@ -166,7 +194,8 @@ function input() {
  return {machine: $("machine").value, wheelbase: n("wheelbase"), maxSteerDeg: n("steer"), overhang: n("overhang"), mount: $("mount").value, width: n("width"),
   sections: n("sections") || 0, sectionWidth: n("sectionWidth") || 0, overlap: n("overlap") || 0, offset: n("offset") || 0, axleToTool: n("axleToTool"), hitchLength: n("hitch"),
   tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0, margin: n("margin"),
-  trackWidth: n("trackWidth"), tyreWidth: n("tyreWidth"), wheelDiameter: n("wheelDiameter"), drawbarHeight: n("drawbarHeight") || 0, drawbarWidth: n("drawbarWidth") || 0, swingDeg: n("swingDeg") || 0};
+  trackWidth: n("trackWidth"), tyreWidth: n("tyreWidth"), wheelDiameter: n("wheelDiameter"), drawbarHeight: n("drawbarHeight") || 0, drawbarWidth: n("drawbarWidth") || 0, swingDeg: n("swingDeg") || 0,
+  foldClearanceDeg: n("foldClearanceDeg")};
 }
 function update() {
  labels();
@@ -175,31 +204,47 @@ function update() {
  document.querySelectorAll("[data-for]").forEach(e => { e.style.display = show[e.dataset.for] ? "" : "none"; });
  $("drawbarLabel").firstChild.textContent = mount === "tbt" ? "Trailing hitch (m)" : "Trailing hitch (m)";
  $("drawbarLabel").lastChild.textContent = mount === "tbt" ? "the tank's axle to the implement's wheels" : "hitch pin (or pivot) to the implement's wheels";
- const i = input(), s = AowSettings.suggest(i);
+ const i = input(), s = AowSettings.suggest(i, chosen);
  $("problems").textContent = s.problems.join(" ");
+ // the suggestions, each reason behind its own arrow (the header's arrow opens or closes them all)
  const tb = $("results").tBodies[0];
  tb.innerHTML = "";
+ const arrow = (b, open) => { b.textContent = (b.id === "allWhy" ? "Why " : "") + (open ? "▾" : "▸"); b.setAttribute("aria-expanded", open ? "true" : "false"); };
  for (const r of s.rows) {
-  const tr = tb.insertRow();
+  const tr = tb.insertRow(); tr.dataset.key = r.key;
   tr.insertCell().textContent = r.name;
   const v = tr.insertCell(); v.className = "v"; v.textContent = r.value;
-  const w = tr.insertCell(); w.className = "w"; w.textContent = r.why;
+  const t = tr.insertCell(); t.className = "t";
+  const b = document.createElement("button"); b.type = "button"; b.className = "why"; b.title = "Why";
+  const open = openWhy.has(r.key);
+  arrow(b, open);
+  b.onclick = () => { if (openWhy.has(r.key)) openWhy.delete(r.key); else openWhy.add(r.key); update(); };
+  t.appendChild(b);
+  const wr = tb.insertRow(); wr.className = "why"; wr.hidden = !open;
+  const w = wr.insertCell(); w.colSpan = 3; w.className = "w"; w.textContent = r.why;
  }
- const opt = $("opt");
- opt.innerHTML = "";
- if (s.options.length > 1) {
-  if (!s.options.some(o => o.key === chosen)) chosen = s.options[0].key;
-  opt.appendChild(document.createTextNode("Drawn: "));
-  for (const o of s.options) {
-   const b = document.createElement("button"); b.type = "button"; b.textContent = o.style + ", skip " + o.skip;
-   if (o.key === chosen) b.className = "on";
-   b.onclick = () => { chosen = o.key; update(); };
-   opt.appendChild(b);
-  }
+ const allOpen = s.rows.length > 0 && s.rows.every(r => openWhy.has(r.key));
+ arrow($("allWhy"), allOpen);
+ $("allWhy").onclick = () => { if (allOpen) openWhy.clear(); else for (const r of s.rows) openWhy.add(r.key); update(); };
+ // the turns, the smallest headland first; the picked one is drawn and the rows above describe it
+ const tt = $("turns").tBodies[0];
+ tt.innerHTML = "";
+ for (const o of s.options) {
+  const tr = tt.insertRow(); tr.dataset.key = o.key;
+  if (o.key === s.chosen) tr.className = "on";
+  const c = tr.insertCell(), rb = document.createElement("input");
+  rb.type = "radio"; rb.name = "turn"; rb.checked = o.key === s.chosen; rb.setAttribute("aria-label", o.style + ", skip " + o.skip); c.appendChild(rb);
+  tr.insertCell().textContent = o.style + ", skip " + o.skip + (o.reverse ? " (backs up)" : "");
+  tr.insertCell().textContent = o.depth + " m";
+  tr.insertCell().textContent = o.distance + " m";
+  tr.insertCell().textContent = s.headlandOf(o);
+  tr.onclick = () => { chosen = o.key; update(); };
  }
- const drawn = s.options.find(o => o.key === chosen) || s.options[0];
+ $("turnsWrap").hidden = !s.rows.length;
+ $("turnsNote").textContent = s.kTurnOut ? s.kTurnOut + "." : "";
+ const drawn = s.options.find(o => o.key === s.chosen) || s.options[0];
  $("draw").innerHTML = s.rows.length ? drawing(i, s, drawn) : "";
- $("legend").textContent = s.rows.length ? legend(i, drawn) : "";
+ $("legend").innerHTML = s.rows.length ? legend(i, s, drawn) : "";
 }
 
 // Top view, metres, north (the field edge) up: the passes, the field edge, the safety margin, the pivot's limit and the
@@ -207,7 +252,7 @@ function update() {
 // and the machine's far end (grey dots), from the same steps AowSettings works the headland out with.
 function drawing(i, s, o) {
  const R = s.radius, D = o.distance, P = o.path.poses, sw = o.sweep, end = o.path.turnEnd, fwdEnd = o.path.forwardEnd;
- const L = Math.round((o.key === "skip" || o.key === "semicircle" ? (o.skip + 1) * s.spacing : s.spacing) * 100) / 100;
+ const L = o.lateral;
  const depth = o.depth, fence = depth + D, headland = o.headland.width, leg = Math.max(s.extension, 6);
  const bottom = Math.min(-leg, fence - headland - 2, o.low - 1.5);
  let last = end;                                     // down the next pass to the bottom of the picture
@@ -271,11 +316,24 @@ function drawing(i, s, o) {
  g += `<text x="6" y="${(H - 8).toFixed(1)}" font-size="${fs}" fill="var(--ink)">next pass ${L} m away: ${o.style}, radius ${R} m, ${depth} m deep${o.reverse ? " (the backing up included)" : ""}</text>`;
  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top view of the U-turn">${g}</svg>`;
 }
-function legend(i, o) {
- const harvester = i.machine === "harvester";
- return "Black: the centre of the " + (harvester ? "front" : "rear") + " axle, the pivot AgOpenWeb steers along" + (o.reverse ? "; orange dashes: backing up" : "") + ". Blue: the two ends of the implement's working line, the outer one thick" + (o.reverse ? " (dashed while backed up)." : ".")
-  + (o.corner ? " Blue dots: the implement's outer rear corner (its length)." : "")
-  + (i.machine === "articulated" ? "" : " Grey dots: the outer corner of " + (harvester ? "the back end" : "the nose") + " of the machine" + (i.trackWidth > 0 ? "" : " (type its rear track for its width)") + ".");
+// The drawing's colours, one line each, with a sample of the stroke in front of the words.
+function legend(i, s, o) {
+ const harvester = i.machine === "harvester", axle = harvester ? "front" : "rear";
+ const line = (text, colour, width, dash) => `<li><svg width="30" height="12" aria-hidden="true"><line x1="1" y1="6" x2="29" y2="6" stroke="${colour}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}" stroke-linecap="round"` : ""}/></svg><span>${text}</span></li>`;
+ return [
+  line("Black line: the centre of the " + axle + " axle, the pivot AgOpenWeb steers along; the arrows show the way.", "var(--ink)", 2.5),
+  o.reverse ? line("Orange dashes: the pivot backing up (a K-turn).", "var(--warn)", 3, "7 5") : "",
+  line("Thick blue line: the outer end of the implement's working line" + (o.reverse ? ", dashed while backed up" : "") + ".", "var(--tool)", 3),
+  line("Thin blue line: the inner end of the working line.", "var(--tool)", 1.2),
+  line("Blue box: the implement where the turn starts, as wide as it works.", "var(--tool)", 10),
+  o.corner ? line("Blue dots: the implement's outer rear corner (its length).", "var(--tool)", 2, "1 4") : "",
+  i.machine === "articulated" ? "" : line("Grey dots: the outer corner of " + (harvester ? "the back end" : "the nose") + " of the machine" + (i.trackWidth > 0 ? "" : " (type its rear track for its width)") + ".", "var(--mute)", 2, "1 5"),
+  line("Red line: the field edge.", "var(--fence)", 3),
+  s.margin > 0 ? line("Red dots: the safety margin, " + s.margin + " m inside the edge.", "var(--fence)", 1, "2 4") : "",
+  line("Red dashes: the distance from boundary, " + o.distance + " m, where the pivot's turn stays.", "var(--fence)", 1, "6 4"),
+  line("Green dashes: the headland line, " + o.headland.width + " m from the edge (" + o.headland.passes + " passes).", "var(--acc)", 1.5, "8 5"),
+  line("Thin grey lines: the passes, " + s.spacing + " m apart.", "var(--pass)", 1),
+ ].join("");
 }
 
 for (const id of F) $(id).addEventListener("input", update);
@@ -283,6 +341,7 @@ for (const id of ["sections", "sectionWidth"]) $(id).addEventListener("input", (
 $("mount").addEventListener("change", update);
 $("machine").addEventListener("change", () => { if ($("machine").value === "harvester") $("mount").value = "front"; update(); });
 $("presetNote").textContent = PRESETS.sprayer.note;   // it opens on Renato's sprayer
+for (const id of ["version", "versionFoot"]) $(id).textContent = (id === "version" ? "version " : "") + AowSettings.VERSION;
 update();
 </script>
 </body>

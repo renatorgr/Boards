@@ -29,8 +29,8 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 9 Nov 2026 | **AgOpenWeb settings**: the turn clears the tractor's front corner (its width from the rear track and tyres), and the drawbar meets the tyre at its own height, where the wheel is shorter than at the axle ([the page](#agopenweb-settings-from-the-dimensions)). |
-| 8 Nov 2026 | **AgOpenWeb settings from the dimensions**: a calculator that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons, a drawing, examples and drawbars kept off the rear tyres ([the page](#agopenweb-settings-from-the-dimensions)). |
+| 9 Nov 2026 | **Set up AgOpenWeb from your measures** (new name, version 1.2): the turn clears the tractor's front corner, the drawbar meets the tyre at its height, every turn listed by headland, reasons behind arrows, a legend line per colour ([the page](#set-up-agopenweb-from-your-measures)). |
+| 8 Nov 2026 | **Set up AgOpenWeb from your measures**: a calculator that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons, a drawing, examples and drawbars kept off the rear tyres ([the page](#set-up-agopenweb-from-your-measures)). |
 | 7 Nov 2026 | The seed drill page's four tabs and Firmware tab checked, with a made-up newer `.bin` "on GitHub"; `firmware.json` lists the seed drill `.bin` once it is on `main`; the modules' names on the network ([How it is built](#how-it-is-built)). |
 | 4 Nov 2026 | The Teensy's clock and temperature, the receivers' and the TM171's temperatures and the XIAO's in the pretend modules' answers. |
 | 3 Nov 2026 | The pretend Teensy answers the new fields: the distance to the line and the program's steering limits, the RELPOSNED flags, the loop times in the report, the steering loop rate, the frozen-IMU flag, the installation note. |
@@ -59,7 +59,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 To run it on your own computer: `python3 Firmware/simulator/build.py` and open `_site/index.html` in a browser (a `file://` page works). The check needs Node and `npm install playwright && npx playwright install chromium`.
 
-## AgOpenWeb settings from the dimensions
+## Set up AgOpenWeb from your measures
 
 **https://renatorgr.github.io/Boards/aow-settings/** is not a module page: a calculator. Choose the machine (a tractor, an articulated one that bends at its joint, a harvester steered from the back, each with its own turning geometry), type its wheelbase, the angle on the stop and the overhang, and the implement as AgOpenWeb's Tool page has it (front fixed, rear fixed, trailing or TBT, the sections and their width, the overlap, the tool offset, the hitch, trailing hitch and pivot distances, the implement length), and it suggests what to put in AgOpenWeb's Vehicle & Tool page, each value with its reason, and draws the turn from above: the U-turn radius, the turn style and the rows to skip, the distance from boundary, the headland width, the extension, the Go around radius and the tramline passes. It opens on Renato's Case (2.7 m, 42°) with his 8 m sprayer on the front linkage; a second button fills in his semi-mounted 3 m no-till drill (its pivot behind the lower links, its wheels behind the discs). Three more buttons have typical measures: a manure spreader on two axles (measured to the middle between them; its beaters swing out as the tractor straightens), a trailed disc harrow and a 4-furrow reversible plough on the 3-point linkage, drawn with a K-turn since a plough skips no rows. A long implement's rear corner (its length) is followed through the turn too: a K-turn backs it towards the edge first. A trailed implement's drawbar must stay off the rear tyres: from the hitch pin, the drawbar's width, the rear track and the tyres' width and height, the page finds the angle where the drawbar touches a tyre and keeps the turn 5° under it; the tyre counts at the drawbar's height (a field, 0.5 m by default), where it is shorter than at its axle, so the drawbar touches it later than the whole wheel would say. A drawbar pin inside the tyres' back edge touches them long before 90° and then sets the radius; a semi-mounted implement's pivot, further back, does not, but its own stop may: a field takes the most the drawbar may turn to each side, from its stop or from what the farmer knows. Two more buttons hold Renato's quick disc harrow on the 3-point linkage and his semi-mounted roller (120° of swing in all), their measures guessed until he takes them. A rigid implement is measured with a tape from the axle nearest to it (a front sprayer from the front axle); AgOpenWeb measures it from the pivot, so for a front implement on a tractor the page adds the wheelbase and shows the hitch length to type in.
 
@@ -68,7 +68,7 @@ The rules are AgOpenWeb's own (its `SagittaTurnGeometry`, `YouTurnCreationServic
 | File | What it does |
 |---|---|
 | `aow-settings/settings.js` | the arithmetic, with no page: runs in the browser and in Node, and is the model for a C# version on AgOpenWeb's Vehicle & Tool page |
-| `aow-settings/index.html` | the form, the table of suggestions and the drawing |
+| `aow-settings/index.html` | the form, the table of suggestions, the list of turns, the drawing and its legend; the version under the title is `VERSION` at the top of `settings.js`, raised with every change |
 | `aow-settings/test.js` | the check of the arithmetic with known machines: `node Firmware/simulator/aow-settings/test.js`, a step of the Action |
 
 ## When the firmware changes

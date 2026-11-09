@@ -1,4 +1,4 @@
-// settings.js - the AgOpenWeb settings worked out from the tractor and implement dimensions.
+// settings.js - the AgOpenWeb settings worked out from the tractor and implement measures, and every turn it can make.
 // Part of AiO_WEB, Teensy 4.1 firmware for the AiO v4.5 boards (Firmware/simulator/aow-settings, see README.md there).
 // Written 2026 by Claude (Anthropic) for renatorgr.
 // The history of changes is in the README changelog and in the git log.
@@ -12,6 +12,7 @@
 // (Sagitta or Keyhole), a pass at twice the radius or more gets a plain semicircle.
 "use strict";
 (function (root) {
+ const VERSION = "1.2";       // shown under the page's title: raise it with every change to the results or the page
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
@@ -145,9 +146,10 @@
   return {poses, ends};
  }
 
- // The pivot's path for a turn option ("semicircle" or "skip": quarter, straight, quarter; "keyhole"; "kturn") from (0, 0)
- // heading north onto the pass `lateral` metres to the right, then `exit` metres down that pass. `turnEnd`: where the
- // turn ends; a K-turn's `arcEnd` and `forwardEnd` (the tail between them), the backing up after it.
+ // The pivot's path for a turn kind ("sagitta": a semicircle with a straight middle when the pass is 2 × radius or more
+ // away, else the offset arc with its counter-arc lead-in; "keyhole"; "kturn") from (0, 0) heading north onto the pass
+ // `lateral` metres to the right, then `exit` metres down that pass. `turnEnd`: where the turn ends; a K-turn's `arcEnd`
+ // and `forwardEnd` (the tail between them), the backing up after it.
  function turnPath(key, radius, lateral, exit) {
   const R = radius, pieces = [];
   if (key === "keyhole") {
@@ -156,6 +158,9 @@
   } else if (key === "kturn") {
    pieces.push({len: K_TURN_ARC * R, turn: 1, r: R}, {len: 1.5 * lateral, turn: 0},
     {len: kTurnBack(R, lateral).back, dir: -1, turn: 0}, {len: (Math.PI - K_TURN_ARC) * R, dir: -1, turn: 1, r: R});
+  } else if (lateral < 2 * R - 1e-9) {
+   const offset = 2 * R - lateral, first = Math.acos(Math.min(1, Math.max(-1, 1 - (offset * 0.5) / R)));
+   pieces.push({len: first * R, turn: -1, r: R}, {len: (Math.PI + first) * R, turn: 1, r: R});
   } else pieces.push({len: Math.PI / 2 * R, turn: 1, r: R}, {len: Math.max(0, lateral - 2 * R), turn: 0}, {len: Math.PI / 2 * R, turn: 1, r: R});
   pieces.push({len: exit, turn: 0});
   const w = walk(pieces), turnEnd = w.ends[w.ends.length - 2];
@@ -218,12 +223,15 @@
  // rear wheel's height), drawbarHeight (the hitch pin above the ground: the tyre is shorter there than at the axle; 0 = the
  // whole wheel counts), drawbarWidth (a trailed implement's drawbar near the hitch, where it can reach those tyres),
  // swingDeg (the most the drawbar may turn to each side against the machine: a semi-mounted pivot's stop, or what the
- // farmer knows it takes; 0 = only the tyres limit it), margin (the room kept between what sweeps the widest in the turn and the field edge: 1 m by default,
- // more where the edge is irregular). Returns the numbers and `rows`, one per suggestion, with the reason.
- function suggest(input) {
+ // farmer knows it takes; 0 = only the tyres limit it), foldClearanceDeg (how far short of that the turn keeps the drawbar:
+ // 5° by default), margin (the room kept between what sweeps the widest in the turn and the field edge: 1 m by default,
+ // more where the edge is irregular). `pick`: the key of the turn option the rows describe (the one with the smallest
+ // headland when missing or unknown). Returns the numbers, `options` (every turn AgOpenWeb can make here, the smallest
+ // headland first), `chosen` (the key described) and `rows`, one per suggestion, with the reason.
+ function suggest(input, pick) {
   const i = Object.assign({machine: "tractor", wheelbase: 2.5, maxSteerDeg: 35, overhang: 1.2, mount: "rear", width: 6, sections: 0, sectionWidth: 0,
    overlap: 0, offset: 0, axleToTool: 1.8, hitchLength: 1.0, tankHitch: 3.0, drawbar: 3.0, pivotToTool: 0, length: 0, sprayerWidth: 0, margin: MARGIN,
-   trackWidth: 0, tyreWidth: 0.6, wheelDiameter: 1.8, drawbarHeight: 0, drawbarWidth: 0.3, swingDeg: 0}, input);
+   trackWidth: 0, tyreWidth: 0.6, wheelDiameter: 1.8, drawbarHeight: 0, drawbarWidth: 0.3, swingDeg: 0, foldClearanceDeg: FOLD_CLEARANCE_DEG}, input);
   if (i.frontOverhang !== undefined && input.overhang === undefined) i.overhang = i.frontOverhang;
   if (i.sections > 0 && i.sectionWidth > 0 && !(input.width > 0)) i.width = i.sections * i.sectionWidth / 100;
   const trailed = i.mount === "trailed" || i.mount === "tbt", tbt = i.mount === "tbt", front = i.mount === "front", problems = [];
@@ -242,6 +250,7 @@
   if (tyreCheck && tyresOk && !(i.wheelDiameter > 0 && i.drawbarWidth >= 0 && i.drawbarWidth < i.trackWidth - i.tyreWidth && i.drawbarHeight >= 0))
    problems.push("The rear wheels need a height, the drawbar must pass between the tyres, and its height cannot be negative.");
   if (trailed && !(i.swingDeg >= 0 && i.swingDeg <= 180)) problems.push("The most the drawbar may turn must be between 0 (the tyres only) and 180°.");
+  if (trailed && !(i.foldClearanceDeg >= 0 && i.foldClearanceDeg <= 45)) problems.push("The room kept before the drawbar touches must be between 0 and 45°.");
   if (problems.length) return {problems, rows: [], options: []};
   // the working line from the pivot axle, along the machine. A rigid implement is measured from the axle nearest to it; the
   // pivot is a tractor's rear axle and a harvester's front axle, so a front implement on a tractor (or a rear one on a
@@ -271,7 +280,7 @@
   if (touchDeg !== null) limits.push({at: touchDeg, what: "touches a rear tyre", onto: "onto a rear tyre (it touches at " + touchDeg + "°)"});
   if (stopDeg !== null) limits.push({at: stopDeg, what: "reaches the most it may turn", onto: "past the most it may turn (" + stopDeg + "° to each side)"});
   const limit = limits.length ? limits.reduce((a, b) => b.at < a.at ? b : a) : null;
-  const foldLimit = limit ? limit.at - FOLD_CLEARANCE_DEG : null;
+  const clearance = i.foldClearanceDeg, foldLimit = limit ? limit.at - clearance : null;
   if (limit) {
    let r = radius;
    while (steadyFoldDeg(r, i.hitchLength, firstBar) > foldLimit && r < 200) r += 0.1;
@@ -370,16 +379,24 @@
    return {path: Object.assign(path, {aligned}), sweep: sw, corner, distance: dist, top: r1(top), low: r1(low), lowText,
     headland: {sum: r1(sum), passes, width: r2(passes * spacing)}};
   }
-  const option = (key, style, skipRows, lateral, depth, text) => Object.assign({key, style, skip: skipRows, depth}, study(key, lateral, depth), {text});
+  // Every turn AgOpenWeb can make onto the passes within reach: Sagitta with 0 to `skip` rows skipped (a plain semicircle
+  // once the landing pass is 2 × radius away, the offset arc before that), Keyhole with the rows that still need a loop,
+  // and the K-turn onto the next pass. Sorted by the headland each one needs, the shallowest turn first on a tie.
+  const option = (kind, style, skipRows, lateral, depth, text) => Object.assign({key: kind + skipRows, kind, style, skip: skipRows, lateral: r2(lateral), depth}, study(kind, lateral, depth), {text});
   const options = [];
   let kTurnOut = "";
-  if (semicircle) options.push(option("semicircle", "Sagitta", 0, spacing, r1(radius),
-   "Sagitta, skip 0: the next pass is " + r2(spacing) + " m away, 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep"));
-  else {
-   options.push(option("skip", "Sagitta", skip, landing, r1(radius),
-    "Sagitta, skip " + skip + " row" + (skip > 1 ? "s" : "") + ": the turn lands " + r1(landing) + " m away, 2 × " + r1(radius) + " m or more, a plain semicircle " + r1(radius) + " m deep; the skipped passes are worked on the way back"));
-   options.push(option("keyhole", "Keyhole", 0, spacing, keyhole,
-    "Keyhole, skip 0: the next pass is only " + r2(spacing) + " m away, closer than 2 × " + r1(radius) + " m, so the turn loops " + keyhole + " m deep (a Sagitta turn would go " + sagitta + " m deep and swing further out)"));
+  const rows_ = s => s + " row" + (s > 1 ? "s" : "");
+  for (let s = 0; s <= skip; s++) {
+   const lat = (s + 1) * spacing, plain = lat >= 2 * radius - 1e-9, where = s ? "the turn lands " + r2(lat) + " m away" : "the next pass is " + r2(lat) + " m away";
+   const worked = s ? "; the skipped passes are worked on the way back" : "";
+   if (plain) options.push(option("sagitta", "Sagitta", s, lat, r1(radius), "Sagitta, skip " + rows_(s) + ": " + where + ", 2 × " + r1(radius) + " m or more, so the turn is a plain semicircle " + r1(radius) + " m deep" + worked));
+   else {
+    const sag = r1(depthOf(sagittaPath(radius, lat))), key = r1(keyholeDepth(radius, lat));
+    options.push(option("sagitta", "Sagitta", s, lat, sag, "Sagitta, skip " + rows_(s) + ": " + where + ", closer than 2 × " + r1(radius) + " m, so the turn first swings out the other way, then loops " + sag + " m deep" + worked));
+    options.push(option("keyhole", "Keyhole", s, lat, key, "Keyhole, skip " + rows_(s) + ": " + where + ", closer than 2 × " + r1(radius) + " m, so the turn loops " + key + " m deep (a Sagitta turn would go " + sag + " m deep and swing further out)" + worked));
+   }
+  }
+  if (!semicircle) {
    // the K-turn backs up: a trailed implement pushed back along that path folds; past the hitch limit it is left out
    const k = option("kturn", "K-turn", 0, spacing, kturn, "");
    const kb = kTurnBack(radius, spacing), backed = r1(kb.back + (Math.PI - K_TURN_ARC) * radius);
@@ -389,6 +406,9 @@
    else if (trailed && k.sweep.foldDeg > MAX_HITCH_DEG) kTurnOut = "No K-turn: backing the " + (tbt ? "TBT" : "trailed") + " implement up those " + backed + " m folds its drawbar past " + MAX_HITCH_DEG + "° (a jackknife); an implement lifted rigid on the 3-point linkage for the turn is Rear fixed here";
    else { if (trailed) k.text += "; backing up a trailed implement takes care: its drawbar folds to " + Math.round(k.sweep.foldDeg) + "°"; options.push(k); }
   }
+  options.sort((a, b) => a.headland.width - b.headland.width || a.depth - b.depth || a.skip - b.skip);
+  const chosen = options.find(o => o.key === pick) || options[0];
+  const headlandOf = o => o.headland.width + " m (" + o.headland.passes + " pass" + (o.headland.passes > 1 ? "es" : "") + ")";
   const extension = up(Math.max(2 * radius, trailed ? 3 * axleToTool : 0), 0.5);
   const extensionWhy = !trailed || 2 * radius >= 3 * axleToTool ? "2 × the radius" : "3 × the " + r1(axleToTool) + " m from the rear axle to the working line, so the " + (tbt ? "TBT" : "trailed") + " implement is straight behind the tractor before the sections come on";
   let tram = null;
@@ -397,19 +417,18 @@
    tram = {width: i.sprayerWidth, passes: whole ? Math.round(passes) : r1(passes), whole};
   }
 
-  const widths = options.map(o => o.headland.width + " m (" + o.headland.passes + " pass" + (o.headland.passes > 1 ? "es" : "") + ")");
-  const sameHeadland = widths.every(w => w === widths[0]);
+  const o = chosen, others = options.length > 1 ? ". The other turns are in the list below, the smallest headland first; pick one and these rows follow it" : "";
   const rows = [
    {key: "spacing", name: "Track spacing (not a setting)", value: r2(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
    {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
-   {key: "style", name: "U-Turn → Turn style and skip rows", value: options.map(o => o.style + ", skip " + o.skip).join(" or "), why: options.map(o => o.text).join(". ") + (kTurnOut ? ". " + kTurnOut : "")},
-   {key: "distance", name: "U-Turn → Distance from boundary", value: options.some(o => o.distance !== distance) ? options.map(o => o.distance + " m" + (options.length > 1 ? " (" + o.style + ")" : "")).join(", ") : distance + " m",
-    why: distanceWhy + options.filter(o => o.distance !== distance).map(o => ". " + o.style + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
-     : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin").join("")},
-   {key: "headland", name: "Headland width (Field builder → Headland)", value: sameHeadland ? widths[0] : widths.join(" or "),
-    why: options.map(o => (options.length > 1 ? o.style + ", skip " + o.skip + ": " : "") + "turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m").join("; ")
-     + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line" + (sameHeadland && options.length > 1 ? "; the same headland for every turn" : "")},
+   {key: "style", name: "U-Turn → Turn style and skip rows", value: o.style + ", skip " + o.skip, why: o.text + (kTurnOut ? ". " + kTurnOut : "") + others},
+   {key: "distance", name: "U-Turn → Distance from boundary", value: o.distance + " m",
+    why: distanceWhy + (o.distance !== distance ? ". " + o.style + ", skip " + o.skip + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
+     : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin" : "")},
+   {key: "headland", name: "Headland width (Field builder → Headland)", value: headlandOf(o),
+    why: o.style + ", skip " + o.skip + ": turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m"
+     + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line"},
    {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
    {key: "goAround", name: "U-Turn → Going around obstacles", value: "radius " + r1(radius) + " m, margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
   ];
@@ -428,16 +447,16 @@
    }
    if (stopDeg !== null) { value.push("at most " + stopDeg + "°"); parts.push("the drawbar may turn " + stopDeg + "° to each side at most (its stop, or what you typed)"); }
    rows.push({key: "fold", name: "How far the drawbar may fold (not a setting)", value: value.join(", "),
-    why: parts.join("; ") + "; the turns here fold it " + Math.round(most) + "° at most" + (limit ? " (" + FOLD_CLEARANCE_DEG + "° or more away)" : "")});
+    why: parts.join("; ") + "; the turns here fold it " + Math.round(most) + "° at most" + (limit ? " (" + clearance + "° or more away)" : "")});
   }
   if (front && !harvester && i.axleToTool < i.overhang) problems.push("The front implement's working line is " + i.axleToTool + " m ahead of the front axle, behind the nose (" + i.overhang + " m): measure from the front axle to the boom or the cutter bar.");
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
   return {problems, rows, machine: i.machine, spacing: r2(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
-   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension, options, tram,
-   goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}, touchDeg, stopDeg, foldLimit, bodyHalf: r2(bodyHalf), tyreBack: r2(tyreBack)};
+   bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension,
+   options, chosen: o.key, kTurnOut, headlandOf, tram, goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}, touchDeg, stopDeg, foldLimit, bodyHalf: r2(bodyHalf), tyreBack: r2(tyreBack)};
  }
 
  const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnBack, kTurnDepth, turnPath, sweep, depthOf, drawbarTouchDeg, steadyFoldDeg, tyreReach,
-  RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, FOLD_CLEARANCE_DEG, K_TURN_ARC};
+  VERSION, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, FOLD_CLEARANCE_DEG, K_TURN_ARC};
  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AowSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);
