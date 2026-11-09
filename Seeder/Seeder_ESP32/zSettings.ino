@@ -6,8 +6,8 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // What is kept: the two Wi-Fi networks (the own one and the tractor's), the host name, the program's subnet
-// (PGN 201) and the module IP's last number, the first section the relays follow, the machine config
-// (PGN 238) and the output functions (PGN 236). Anything missing in flash keeps the default from the
+// (PGN 201) and the module IP's last number, the first section the relays follow and the seed drill's
+// section count, the machine config (PGN 238) and the output functions (PGN 236). Anything missing in flash keeps the default from the
 // Settings struct in Seeder_ESP32.ino.
 
 String defaultApSsid()
@@ -37,6 +37,7 @@ void settingsLoad()
     cfg.ipLast       = prefs.getUChar("ipLast", d.ipLast);
     // ==== end shared "settings-wifi-load"
     cfg.firstSection = prefs.getUChar("first", d.firstSection);
+    cfg.numSections  = prefs.getUChar("secs", d.numSections);
     cfg.raiseTime     = prefs.getUChar("raise", d.raiseTime);
     cfg.lowerTime     = prefs.getUChar("lower", d.lowerTime);
     cfg.hydEnable     = prefs.getUChar("hyd", d.hydEnable);
@@ -54,6 +55,7 @@ void settingsLoad()
     if (cfg.host.length() < 1 || cfg.host.length() > 24)    cfg.host = DEFAULT_HOST;
     if (cfg.ipLast < 2 || cfg.ipLast > 254) cfg.ipLast = d.ipLast;
     if (cfg.firstSection > MAX_SECTIONS) cfg.firstSection = d.firstSection;
+    if (cfg.numSections > MAX_SECTIONS) cfg.numSections = d.numSections;
     for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > PIN_GEO_STOP) cfg.pin[i] = 0;
 }
 
@@ -71,6 +73,7 @@ void settingsSave()
     prefs.putUChar("ipLast", cfg.ipLast);
     // ==== end shared "settings-wifi-save"
     prefs.putUChar("first", cfg.firstSection);
+    prefs.putUChar("secs", cfg.numSections);
     prefs.putUChar("raise", cfg.raiseTime);
     prefs.putUChar("lower", cfg.lowerTime);
     prefs.putUChar("hyd", cfg.hydEnable);

@@ -62,7 +62,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.4"
+#define FW_VERSION          "0.2.5"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -143,6 +143,8 @@ struct Settings
     uint8_t subnet[3] = { 192, 168, 5 };    // the program's subnet (PGN 201); the module is <subnet>.<ipLast>
     uint8_t ipLast = 123;                   // 123 = the machine module; another number for a second module
     uint8_t firstSection = 1;               // relay 1 = this section, then in a row (0 = the program's pin config)
+    uint8_t numSections = 0;                // sections on the seed drill: the page shows that many, a relay past them does
+                                            // nothing (0 = as many as the program asks for)
     String  apSsid, apPass;                 // the module's own Wi-Fi network
     bool    staOn = false;                  // the tractor's Wi-Fi network instead of the network cable
     String  staSsid, staPass;

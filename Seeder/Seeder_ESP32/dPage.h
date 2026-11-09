@@ -103,6 +103,7 @@ a{color:var(--acc)}
 <div class="secs rl" id="relays"></div>
 <p class="note" id="relayNote">What each relay does comes from the program (Tool → Machine → Pin config).</p>
 <div class="field"><span>Relay 1 follows section (the next relays the next sections). 0 = what the program's pin config says (sections 1-16 only)</span><input type="number" id="first" min="0" max="64" step="1"></div>
+<div class="field"><span>Sections on the seed drill: the Sowing tab shows that many, a relay past them does nothing. 0 = as many as the program asks for</span><input type="number" id="drillSecs" min="0" max="64" step="1"></div>
 <div class="row"><button class="act" onclick="saveRelays()">Save</button></div>
 <div class="msg" id="msgRelays"></div>
 <p class="note">A seed drill with more than 16 sections needs the relays in a row from section 1: AgOpenWeb's pin config only knows sections 1-16, and sends sections 17-64 in PGN 229.</p>
@@ -229,10 +230,11 @@ async function refresh(){
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
     $('dot').className='dot'+(d.aog.link?' on':'');
     $('sub').textContent=(d.wifi.up?'on '+(d.wifi.staUp?d.wifi.sta:'the cable')+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
-    // Sowing tab: as many sections as the program has asked for (secTop), at least those the relays follow (up to 16)
+    // Sowing tab: the sections set on the Settings tab (secs), else as many as the program has asked for (secTop), at
+    // least those the relays follow (up to 16)
     $('silent').hidden=d.aog.link;
     let mapped=0,nSec=0;for(const f of d.out.fn)if(f>=1&&f<=64){nSec++;mapped=Math.max(mapped,f)}
-    const n=Math.max(8,d.aog.secTop||0,Math.min(16,mapped));
+    const n=Math.max(8,d.out.secs||0,d.aog.secTop||0,Math.min(16,mapped));
     if(nSecs!==n){nSecs=n;$('secs').innerHTML=cells('s',n,0);$('secs').style.gridTemplateColumns='repeat('+Math.min(n,8)+',1fr)'}
     let open=0;
     for(let i=0;i<nSecs;i++){const e=$('s'+i),on=bit(d.out.on,i);if(on)open++;e.className=(on?'on':'')+(bit(d.aog.req,i)&&!on?' req':'')}
@@ -267,7 +269,7 @@ async function refresh(){
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();
   $('apSsid').value=d.apSsid;$('staOn').checked=d.staOn;$('staSsid').value=d.staSsid;$('host').value=d.host;$('subnetIn').value=d.subnet;
-  $('hostShow').textContent=d.host;$('ipLast').value=d.ipLast||123;$('first').value=d.first||0;
+  $('hostShow').textContent=d.host;$('ipLast').value=d.ipLast||123;$('first').value=d.first||0;$('drillSecs').value=d.secs||0;
   $('apPass').value='';$('staPass').value='';$('staPass').placeholder=d.staPassSet?'(saved)':'';
 }
 async function post(url,fields,msgId,pass){
@@ -306,7 +308,7 @@ async function scanNets(){const m=$('scanMsg'),b=$('scan');m.textContent='search
       await new Promise(r=>setTimeout(r,800))}
     m.textContent='no answer'}
   finally{b.disabled=false}}
-function saveRelays(){post('/api/relays',{first:$('first').value},'msgRelays')}
+function saveRelays(){post('/api/relays',{first:$('first').value,secs:$('drillSecs').value},'msgRelays')}
 // the report for an analysis: every answer of the module in one .json file, downloaded by this browser
 async function report(){
   const b=$('dumpBtn'),m=$('dumpMsg');b.disabled=true;m.className='note';m.textContent='Gathering…';
