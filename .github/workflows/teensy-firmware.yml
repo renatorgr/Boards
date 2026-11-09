@@ -46,7 +46,7 @@ jobs:
       run:
         shell: bash   # -eo pipefail: a failed compile is not hidden by tee
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Find the newest firmware folder
         id: fw
@@ -58,7 +58,7 @@ jobs:
           echo "sha=${sha::7}" >> "$GITHUB_OUTPUT"
           echo "Firmware folder: $dir"
 
-      - uses: arduino/setup-arduino-cli@v2
+      - uses: arduino/setup-arduino-cli@v2   # built for Node 20 (no Node 24 release yet); the runner runs it on Node 24 and says so in a warning, which is harmless
 
       - name: Install Teensyduino ${{ env.TEENSYDUINO }}
         run: |
@@ -118,7 +118,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.fw.outputs.name }}-${{ steps.fw.outputs.sha }}
           path: ${{ steps.fw.outputs.name }}.hex
