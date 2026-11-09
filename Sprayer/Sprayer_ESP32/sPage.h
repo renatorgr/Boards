@@ -89,6 +89,15 @@ p.grp{margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--line);font-w
 progress{width:100%;height:14px;margin-top:10px;accent-color:var(--acc)}
 a{color:var(--acc)}
 [hidden]{display:none!important}
+/* the page's own question box (ask / askText in the script): the browser's confirm() and prompt() show nothing inside an
+   AgOpenWeb web card (its frame has no allow-modals), so the page never uses them; buttons 44 px high, as the cards ask */
+.ask{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:12px}
+.ask[hidden],.ask [hidden]{display:none!important}
+.askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.askBox p{margin:0 0 12px;white-space:pre-line}
+.askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end}
+.askBtns button{min-height:44px;min-width:96px}
 </style>
 </head>
 <body>
@@ -246,8 +255,24 @@ a{color:var(--acc)}
 </section>
 
 </main>
+<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 const $=id=>document.getElementById(id);
+// ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
+// no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
+// true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+let askDone=null;
+function askShow(text,withInput){
+  if(askDone)askEnd(false);
+  $('askText').textContent=text;const i=$('askIn');i.hidden=!withInput;i.value='';$('ask').hidden=false;
+  (withInput?i:$('askYes')).focus();
+  return new Promise(r=>{askDone=r})}
+function askEnd(v){const r=askDone;askDone=null;$('ask').hidden=true;if(r)r(v)}
+const ask=text=>askShow(text,false);
+const askText=text=>askShow(text,true).then(ok=>ok?$('askIn').value:null);
+$('askYes').onclick=()=>askEnd(true);$('askNo').onclick=()=>askEnd(false);
+$('ask').onclick=e=>{if(e.target===$('ask'))askEnd(false)};
+$('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);else if(e.key==='Enter'&&e.target===$('askIn'))askEnd(true)};
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
@@ -256,7 +281,7 @@ const ALARMS=[[1,'Low pressure'],[2,'High pressure'],[4,'Flow too low'],[8,'Flow
 const RATE_TOLERANCE=0.10;   // the rate is green within 10 % of the target, orange outside (as AgOpenWeb's strip)
 // sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
 function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
-function pw(){return prompt('Password of the own Wi-Fi network')}
+const pw=()=>askText('Password of the own Wi-Fi network');   // a Promise: await it
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
 let nSecs=0,nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
@@ -358,7 +383,7 @@ async function loadSettings(){
   for(const k of ['rate','nzSp','nzFl','nzBar','pLow','pHigh','fTol'])if(d[k]!==undefined)$(k).value=d[k];
 }
 async function post(url,fields,msgId,pass){
-  const p=pass!==undefined?pass:pw();if(p===null)return;
+  const p=pass!==undefined?pass:await pw();if(p===null)return;
   const body=new URLSearchParams(Object.assign({pw:p},fields));
   const m=$(msgId);m.textContent='…';
   try{const r=await fetch(url,{method:'POST',body});const d=await r.json();
@@ -369,10 +394,10 @@ async function post(url,fields,msgId,pass){
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
 // Wi-Fi settings, as on the XIAO page: the password typed in the Save card, a question before the restart
-function saveWifi(){const m=$('msgWifi');
+async function saveWifi(){const m=$('msgWifi');
   if($('apPass').value&&$('apPass').value.length<8){m.innerHTML='<span class="bad">The password must have 8 characters or more.</span>';return}
   if(!$('pwW').value){m.innerHTML='<span class="bad">Type the password of the own Wi-Fi network.</span>';$('pwW').focus();return}
-  if(!confirm('Save and restart the module? Its Wi-Fi goes off for a few seconds and every section closes.'))return;
+  if(!await ask('Save and restart the module? Its Wi-Fi goes off for a few seconds and every section closes.'))return;
   post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi',$('pwW').value)}
 // "Search for networks": the networks the module hears (GET /api/scan, asked again until the list comes), one per
 // line, strongest first; a tap chooses one (as on the XIAO page)
@@ -445,8 +470,8 @@ async function installFile(){
   if(!fwNow){progMsg('No answer from the module yet.','bad');return}
   const i=await binInfo(f,f.name);
   if(i.error){progMsg(i.error,'bad');return}
-  if(!confirm('Install '+infoText(i)+' on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
-  const p=pw();if(p===null)return;
+  if(!await ask('Install '+infoText(i)+' on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const p=await pw();if(p===null)return;
   busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
   sendBin(f,f.name,p,0);
 }
@@ -506,8 +531,8 @@ function renderGh(){
 async function ghInstall(){
   if(!ghNewer()||busy)return;
   const name=gh.file.split('/').pop(),want=gh.size||0;
-  if(!confirm('Install '+(fwNow.fw+' '+verText(gh.version,gh.built))+' from GitHub on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
-  const pass=pw();if(pass===null)return;
+  if(!await ask('Install '+(fwNow.fw+' '+verText(gh.version,gh.built))+' from GitHub on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
+  const pass=await pw();if(pass===null)return;
   busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
   progMsg('Downloading from GitHub…');
   try{

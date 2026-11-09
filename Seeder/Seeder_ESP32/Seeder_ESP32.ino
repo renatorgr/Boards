@@ -9,7 +9,7 @@
    Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Seeder_ESP32.ino  v0.2.3 (2026-11-07), not yet run on a board.
+// Seeder_ESP32.ino  v0.2.6 (2026-11-09), not yet run on a board.
 //
 // Boards (BOARD below):
 //   - Relay24_ESP32 (folder Relay24_ESP32 of this repository): an ESP32 DevKitC V4 plugged into a board with
@@ -62,7 +62,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.5"
+#define FW_VERSION          "0.2.6"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

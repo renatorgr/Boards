@@ -88,6 +88,15 @@ h3{font-size:14px;margin:14px 0 4px}
 a{color:var(--acc)}
 .tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
+/* the page's own question box (ask / askText in the script): the browser's confirm() and prompt() show nothing inside an
+   AgOpenWeb web card (its frame has no allow-modals), so the page never uses them; buttons 44 px high, as the cards ask */
+.ask{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:12px}
+.ask[hidden],.ask [hidden]{display:none!important}
+.askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.askBox p{margin:0 0 12px;white-space:pre-line}
+.askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end}
+.askBtns button{min-height:44px;min-width:96px}
 </style>
 </head>
 <body>
@@ -194,9 +203,25 @@ a{color:var(--acc)}
 </div>
 </section>
 </main>
+<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
+// ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
+// no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
+// true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+let askDone=null;
+function askShow(text,withInput){
+ if(askDone)askEnd(false);
+ $("askText").textContent=text;const i=$("askIn");i.hidden=!withInput;i.value="";$("ask").hidden=false;
+ (withInput?i:$("askYes")).focus();
+ return new Promise(r=>{askDone=r;});}
+function askEnd(v){const r=askDone;askDone=null;$("ask").hidden=true;if(r)r(v);}
+const ask=text=>askShow(text,false);
+const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
+$("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
+$("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
+$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else if(e.key==="Enter"&&e.target===$("askIn"))askEnd(true);});
 // ---- light / dark: the phone's setting until the header button is used, then this phone's choice
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");}
 function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
@@ -341,7 +366,7 @@ async function loadSettings(){try{const s=await getJ("/api/settings");if(s.error
  f.apPass.value="";f.staPass.value="";f.staPass.placeholder=s.staPassSet?"(saved)":"";}catch(e){}}
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m=$("setMsg");
  if(f.apPass.value&&f.apPass.value.length<8){m.textContent="The password must have 8 characters or more.";m.className="note bad";return;}
- if(!confirm("Save and restart the XIAO? The XIAO WiFi goes off for a few seconds."))return;
+ if(!await ask("Save and restart the XIAO? The XIAO WiFi goes off for a few seconds."))return;
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
   if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
@@ -353,7 +378,7 @@ $("subnetBtn").addEventListener("click",async()=>{
  if(!ok||ok.slice(1).some(x=>+x>255)){m.textContent="Three numbers, like 192.168.5.";m.className="note bad";return;}
  const cur=lastTeensy&&lastTeensy.s&&lastTeensy.s.ip?lastTeensy.s.ip:"",last=cur?cur.split(".")[3]:"126";
  if(cur&&cur.split(".").slice(0,3).join(".")===v){m.textContent="The module is on that subnet already.";m.className="note";return;}
- if(!confirm("Change the module's subnet to "+v+" and restart it?\n\nThe module will be at "+v+"."+last+"; its page opens at that IP from a device on that network, and AgOpenWeb / AgOpenGPS must use subnet "+v+"."))return;
+ if(!await ask("Change the module's subnet to "+v+" and restart it?\n\nThe module will be at "+v+"."+last+"; its page opens at that IP from a device on that network, and AgOpenWeb / AgOpenGPS must use subnet "+v+"."))return;
  m.textContent="Sending…";m.className="note";
  try{const j=await getJ("/api/subnet",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"subnet="+encodeURIComponent(v)+"&pw="+encodeURIComponent($("pwN").value)});
   if(j.ok){m.textContent="Sent. The module saves it and restarts as "+v+"."+last+" (see Messages; the IP above changes when it is back).";m.className="note ok";}
@@ -389,11 +414,11 @@ $("binFile").addEventListener("change",async()=>{const f=$("binFile").files[0];$
   const id=h[12]|h[13]<<8;
   if(id!==chipId){fwMsg(("This file is for "+(CHIPS[id]?"the XIAO "+CHIPS[id]:"another kind of XIAO")+"; this XIAO is "+chipName+"."),"bad");$("install").disabled=true;}
  }catch(e){}});
-$("install").addEventListener("click",()=>{
+$("install").addEventListener("click",async()=>{
  const f=$("binFile").files[0];if(!f||busy)return;
  if(!f.name.toLowerCase().endsWith(".bin")){fwMsg("Choose a .bin file.","bad");return;}
  if(/merged|bootloader|partitions/i.test(f.name)){fwMsg("This is the wrong file: use the ….ino.bin.","bad");return;}
- if(!confirm(("Install "+f.name+" on the XIAO?")))return;
+ if(!await ask(("Install "+f.name+" on the XIAO?")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  sendBin(f,f.name,0);});
 // The .bin to the XIAO (a chosen file, or one downloaded from GitHub); progress from p0 to 95 %
@@ -461,7 +486,7 @@ async function ghInstall(){
  if(!chip){fwMsg("It is not known whether this XIAO is a C3 or an S3.","bad");return;}
  if(!$("pwP").value){fwMsg("Type the XIAO network password.","bad");$("pwP").focus();return;}
  const bdir="v"+gh.ver+"_XIAO_ESP32_bin",name="v"+gh.ver+"_XIAO_ESP32"+chip+".bin";
- if(!confirm(("Install "+verText(gh.ver,ghBuilt())+" from GitHub ("+name+") on the XIAO?")))return;
+ if(!await ask(("Install "+verText(gh.ver,ghBuilt())+" from GitHub ("+name+") on the XIAO?")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{
@@ -523,12 +548,12 @@ $("tHexFile").addEventListener("change",()=>{const f=$("tHexFile").files[0];tHex
  r.readAsText(f);
 });
 function tPassword(){if($("pwP").value)return true;tMsg("Type the XIAO network password (Update or restart card).","bad");$("pwP").focus();return false;}
-$("tInstall").addEventListener("click",()=>{
+$("tInstall").addEventListener("click",async()=>{
  const f=$("tHexFile").files[0];if(!f||tBusy)return;
  if(!f.name.toLowerCase().endsWith(".hex")){tMsg("Choose a .hex file.","bad");return;}
  if(!tPassword())return;
  const b=tHex&&tHex.fw?" ("+tHex.fw+", built "+tHex.built+")":"";
- if(!confirm(("Install "+f.name+b+" on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
+ if(!await ask(("Install "+f.name+b+" on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
  sendTeensyHex(f,f.name,$("tForce").checked,0);
 });
 // The .hex to the XIAO and on to the Teensy; progress from p0 to 95 %, then the Teensy's answer
@@ -559,7 +584,7 @@ async function tGhInstall(){
  const g=gh&&gh.teensy;if(!g||tBusy)return;
  if(!tPassword())return;
  const names=[g.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
- if(!confirm(("Install "+verText(gh.ver,g.built)+" from GitHub on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
+ if(!await ask(("Install "+verText(gh.ver,g.built)+" from GitHub on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=0;tMsg("Downloading from GitHub…");
  try{
   const l=await ghList(gh.dir),f=names.map(n=>l.find(e=>e.type==="file"&&e.name===n)).find(Boolean);
@@ -576,14 +601,14 @@ $("tGhInstall").addEventListener("click",tGhInstall);
 $("tRevert").addEventListener("click",async()=>{
  const s=lastTeensy&&lastTeensy.s,p=s&&s.prev;if(!p||tBusy)return;
  if(!tPassword())return;
- if(!confirm(("Put the module (Teensy) back to its previous firmware, "+tName(p.fw)+" built "+(builtText(p.built)||p.built)+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
+ if(!await ask(("Put the module (Teensy) back to its previous firmware, "+tName(p.fw)+" built "+(builtText(p.built)||p.built)+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
  tBusy=true;renderTeensyFw();tMsg("Asking the module…");
  try{const j=await getJ("/api/teensy-revert",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
   if(j.ok)tWaitStart("The module is going back to its previous firmware and restarting — do not switch the power off…");
   else{tBusy=false;renderTeensyFw();tMsg("Not done: "+j.error+". The module's current firmware keeps running.","bad");}
  }catch(e){tBusy=false;renderTeensyFw();tMsg("No connection to the XIAO.","bad");}
 });
-$("reboot").addEventListener("click",async()=>{if(busy||!confirm("Restart the XIAO?"))return;
+$("reboot").addEventListener("click",async()=>{if(busy||!await ask("Restart the XIAO?"))return;
  try{const j=await getJ("/api/restart",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
   fwMsg(j.ok?"Restarting…":"Error: "+j.error,j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});
 
