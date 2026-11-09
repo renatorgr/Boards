@@ -231,7 +231,21 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("harrow spacing", h.spacing, 3.8);
  eq("harrow radius", h.radius, 5);                    // the tyre again, not 4 m
  eq("harrow options", h.options.map(o => o.key).join(","), "skip,keyhole");
- eq("harrow headland", row(h, "headland").value, "19 m (5 passes)");
+ eq("harrow headland", row(h, "headland").value, "19 m (5 passes) or 22.8 m (6 passes)");   // the nose's outer corner needs 3.6 m from the edge
+ // the drawbar sits 0.5 m up, where the 1.8 m tyre reaches 0.81 m behind the axle, not 0.9: it touches later (65°), so a tighter turn
+ const hl = S.suggest(Object.assign({mount: "trailed", width: 4, overlap: 0.2, hitchLength: 0.7, drawbar: 3.5, pivotToTool: 0, length: 1.5, drawbarHeight: 0.5}, caseTractor));
+ eq("harrow at the drawbar's height touches", hl.touchDeg, 65);
+ eq("harrow at the drawbar's height radius", hl.radius, 4.5);
+ eq("harrow at the drawbar's height headland", row(hl, "headland").value, "19 m (5 passes)");
+ const mh = S.suggest(Object.assign({mount: "trailed", width: 10, overlap: 0, hitchLength: 0.7, drawbar: 4.8, pivotToTool: 3, length: 3.3, drawbarHeight: 0.5}, caseTractor));
+ eq("spreader at the drawbar's height radius", mh.radius, 6);
+ eq("spreader at the drawbar's height row", row(mh, "fold").value, "touches the tyres at 65°");
+ if (!/0\.81 m at the drawbar's 0\.5 m height/.test(row(mh, "fold").why)) fail.push("spreader: the tyres row should give the tyre's reach at the drawbar's height");
+ // the tractor's width: its nose's outer corner, (1.81 + 0.65) ÷ 2 = 1.23 m off the centre line, sweeps 2.6 m past the pivot's path, not 1.7
+ eq("tractor half width", m.bodyHalf, 1.23);
+ eq("nose corner reach", m.noseReach, 2.3);   // √((6.7 + 1.23)² + 4.2²) − 6.7
+ if (!/outer corner 1\.23 m off the centre line/.test(row(h, "distance").why)) fail.push("harrow: the distance should name the nose's outer corner");
+ eq("nose on the centre line without a track", S.suggest(Object.assign({mount: "trailed", width: 10, hitchLength: 0.7, drawbar: 4.8, pivotToTool: 3}, caseTractor, {trackWidth: 0})).noseReach, 1.5);   // no tyre check either: radius 5
  // a 4-furrow reversible plough on the 3-point linkage, 4.5 m long: a K-turn backs its rear corner towards the edge
  const plough = {mount: "rear", width: 1.6, overlap: 0, axleToTool: 3, hitchLength: 1, length: 4.5};
  const p = S.suggest(Object.assign({}, plough, caseTractor));
@@ -246,6 +260,10 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
 // can never fold to 90°; a semi-mounted implement's pivot is further back)
 {
  eq("pin inside the tyres", S.drawbarTouchDeg(0.7, 0.3, 4.8, 1.81, 0.65, 1.8), 57);
+ eq("pin inside the tyres, drawbar 0.5 m up", S.drawbarTouchDeg(0.7, 0.3, 4.8, 1.81, 0.65, 1.8, 0.5), 65);
+ near("tyre reach at 0.5 m", S.tyreReach(1.8, 0.5), 0.806, 0.001);   // √(0.9² − 0.4²)
+ eq("tyre reach not known", S.tyreReach(1.8, 0), 0.9);
+ eq("tyre reach at the axle", S.tyreReach(1.8, 1.2), 0.9);
  if (!(S.drawbarTouchDeg(0.5, 0.3, 4.8, 1.81, 0.65, 1.8) < 57)) fail.push("tyres: a pin further in should touch sooner");
  if (!(S.drawbarTouchDeg(0.7, 0.6, 4.8, 1.81, 0.65, 1.8) < 57)) fail.push("tyres: a wider drawbar should touch sooner");
  if (!(S.drawbarTouchDeg(0.7, 0.3, 4.8, 2.1, 0.65, 1.8) > 57)) fail.push("tyres: a wider track should touch later");
@@ -256,6 +274,9 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
   mount: "trailed", width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6});
  eq("drill with its tyres radius", d.radius, 4.3);
  eq("drill with its tyres row", d.rows.find(r => r.key === "fold").value, "touches the tyres at 111.5°");
+ eq("drill with the tractor's width nose", d.noseReach, 2.6);     // the Case's front corner, 1.23 m off the centre line
+ eq("drill with the tractor's width distance", d.distance, 3.7);
+ eq("drill with the tractor's width headland", d.rows.find(r => r.key === "headland").value, "21.35 m (7 passes)");
  if (d.rows.find(r => r.key === "fold").why.indexOf("behind the tyres' back edge") < 0) fail.push("drill: its pivot is behind the tyres' back edge");
  eq("no tyre check for a front implement", S.suggest({mount: "front", width: 8, axleToTool: 2, trackWidth: 1.81}).rows.some(r => r.key === "fold"), false);
  // Renato's roller, semi-mounted: its pivot turns 60° to each side (120° in all) and that stop, not the tyres, sets the radius
@@ -267,6 +288,8 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  if (!(Math.max(...r.options.map(o => o.sweep.firstFoldDeg)) <= 55)) fail.push("roller: a turn folds it past its stop");
  eq("a stop out of range", S.suggest({mount: "trailed", width: 3, swingDeg: 200}).problems.length, 1);
  eq("track narrower than a tyre", S.suggest({mount: "trailed", width: 3, trackWidth: 0.6, tyreWidth: 0.65}).problems.length, 1);
+ eq("track narrower than a tyre, rigid", S.suggest({mount: "rear", width: 3, trackWidth: 0.6, tyreWidth: 0.65}).problems.length, 1);
+ eq("drawbar below the ground", S.suggest({mount: "trailed", width: 3, trackWidth: 1.81, tyreWidth: 0.65, drawbarHeight: -1}).problems.length, 1);
 }
 
 // every distance printed with one decimal at most (51 × 0.1 is 5.1000000000000005 in floating point)
