@@ -81,9 +81,10 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row"><label for="wheelbase">Wheelbase (m)<small>front axle to rear axle</small></label><input id="wheelbase" type="number" step="0.01" min="0.5" value="2.7"></div>
   <div class="row"><label for="steer" id="steerLabel">Maximum steering angle (°)<small>the front wheels on the stop, what the steer wizard measured</small></label><input id="steer" type="number" step="1" min="10" max="89" value="42"></div>
   <div class="row"><label for="overhang" id="overhangLabel">Front overhang (m)<small>front axle to the nose, weights included</small></label><input id="overhang" type="number" step="0.1" min="0" value="1.5"></div>
-  <div class="row" data-for="trailed"><label for="trackWidth">Rear track width (m)<small>centre to centre of the rear tyres: the Vehicle page's track width</small></label><input id="trackWidth" type="number" step="0.01" min="0.5" value="1.81"></div>
-  <div class="row" data-for="trailed"><label for="tyreWidth">Rear tyre width (m)<small>0.65 for a 650/65 R38</small></label><input id="tyreWidth" type="number" step="0.01" min="0.1" value="0.65"></div>
-  <div class="row" data-for="trailed"><label for="wheelDiameter">Rear wheel height (m)<small>its diameter: 1.8 for a 650/65 R38</small></label><input id="wheelDiameter" type="number" step="0.01" min="0.3" value="1.8"></div>
+  <div class="row"><label for="trackWidth">Rear track width (m)<small>centre to centre of the rear tyres: the Vehicle page's track width. With the tyre width it gives the machine's width, whose front corner sweeps wider than its centre line</small></label><input id="trackWidth" type="number" step="0.01" min="0.5" value="1.81"></div>
+  <div class="row"><label for="tyreWidth">Rear tyre width (m)<small>0.65 for a 650/65 R38</small></label><input id="tyreWidth" type="number" step="0.01" min="0.1" value="0.65"></div>
+  <div class="row" data-for="trailed"><label for="wheelDiameter">Rear wheel height (m)<small>its diameter: 1.8 for a 650/65 R38, 1.9 for a 650/65 R42</small></label><input id="wheelDiameter" type="number" step="0.01" min="0.3" value="1.8"></div>
+  <div class="row" data-for="trailed"><label for="drawbarHeight">Drawbar height (m)<small>the hitch pin above the ground, 0.35 to 0.55 m on most tractors: the tyre is shorter there than at its axle; 0 = count the whole wheel</small></label><input id="drawbarHeight" type="number" step="0.05" min="0" value="0.5"></div>
   <div class="row"><label for="margin">Safety margin to the field edge (m)<small>room between what sweeps the widest in the turn and the boundary; more where the edge is irregular</small></label><input id="margin" type="number" step="0.1" min="0" value="1"></div>
  </div>
  <div class="card">
@@ -113,7 +114,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <div class="opt" id="opt"></div>
  <div id="draw"></div>
  <div class="notes" id="legend"></div>
- <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the tractor's nose or the implement's outer end) the safety margin inside the field edge (1 m by default; more where the edge is irregular); with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
+ <div class="notes" id="notes">Not geometry, so not suggested here: the section timing (look ahead on and off: the time the valves take, measured with a stopwatch), the steering gains, the look-ahead of the guidance, the U-turn compensation and the antenna and IMU positions. The U-turn radius keeps the steering 20 % off its stop; AgOpenWeb's simple turn path goes no tighter than 4 m. The distance from boundary keeps what sweeps the widest (the outer corner of the tractor's nose or the implement's outer end) the safety margin inside the field edge (1 m by default; more where the edge is irregular); with a hard boundary AgOpenWeb checks the implement itself and pulls the turn further in.</div>
 </div>
 
 <footer>Rules from AgOpenWeb's U-turn code (SagittaTurnGeometry, YouTurnCreationService, VehicleToolLimits). Source: <a href="https://github.com/renatorgr/Boards/tree/main/Firmware/simulator/aow-settings">github.com/renatorgr/Boards</a>. GPL v3.</footer>
@@ -122,7 +123,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 "use strict";
 const $ = id => document.getElementById(id);
 const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin",
- "trackWidth", "tyreWidth", "wheelDiameter", "drawbarWidth", "swingDeg"];
+ "trackWidth", "tyreWidth", "wheelDiameter", "drawbarHeight", "drawbarWidth", "swingDeg"];
 const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
  tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included"],
  articulated: ["Maximum articulation angle (°)", "how far the machine bends at its joint, on the stop", "Front overhang (m)", "front axle to the nose"],
@@ -141,9 +142,9 @@ const PRESETS = {
  sprayer: {mount: "front", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 2, hitch: 1, length: 0, sprayerWidth: 8,
   note: "Measured on Renato's sprayer: the 8 m boom on the front linkage, 2 m ahead of the front axle."},
  drill: {mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: -0.05, offset: 0, hitch: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3, swingDeg: 0, length: 0, sprayerWidth: 8,
-  note: "Measured on Renato's no-till drill: semi-mounted, its pivot 1.54 m behind the rear axle, its wheels 4.15 m behind the pivot and the discs 1.6 m ahead of the wheels. Its pivot is behind the rear tyres' back edge, so the tyres do not limit its turn. It never backs up in the ground: no K-turn."},
+  note: "Measured on Renato's no-till drill: semi-mounted, its pivot 1.54 m behind the rear axle, its wheels 4.15 m behind the pivot and the discs 1.6 m ahead of the wheels. Its pivot is behind the rear tyres' back edge, so the tyres do not limit its turn; its own headstock or stop does: watch how far it folds and type that in 'Most the drawbar may turn'. It never backs up in the ground: no K-turn."},
  spreader: {mount: "trailed", sections: 1, sectionWidth: 1000, width: 10, overlap: 0, offset: 0, hitch: 0.7, drawbar: 4.8, pivotToTool: 3, drawbarWidth: 0.3, swingDeg: 0, length: 3.3, sprayerWidth: 0,
-  note: "Typical measures, change them to yours. On the drawbar, its pin 0.7 m behind the rear axle, inside the tyres' back edge: the drawbar touches a tyre long before 90°, and that sets the radius. Two axles close together turn about the middle between them (their tyres scrub sideways in a tight turn): measure the trailing hitch to that middle. The beaters 3 m behind it swing out as the tractor straightens."},
+  note: "Typical measures, change them to yours. On the drawbar, its pin 0.7 m behind the rear axle, inside the tyres' back edge: the drawbar touches a tyre long before 90° (at the drawbar's height, where the tyre is shorter than at its axle), and that sets the radius. Two axles close together turn about the middle between them (their tyres scrub sideways in a tight turn): measure the trailing hitch to that middle. The beaters 3 m behind it swing out as the tractor straightens."},
  harrow: {mount: "trailed", sections: 1, sectionWidth: 400, width: 4, overlap: 0.2, offset: 0, hitch: 0.7, drawbar: 3.5, pivotToTool: 0, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
   note: "Typical measures, change them to yours: on the drawbar, its pin inside the rear tyres' back edge; the wheels between the front and the rear gangs, 20 cm of overlap so no strip is missed. With its wheels at the back (a roller), the discs are ahead of them: a negative pivot distance. A semi-mounted harrow's hitch is its pivot, further back."},
  plough: {mount: "rear", sections: 1, sectionWidth: 160, width: 1.6, overlap: 0, offset: 0, axleToTool: 3, hitch: 1, length: 4.5, sprayerWidth: 0, turn: "kturn",
@@ -165,7 +166,7 @@ function input() {
  return {machine: $("machine").value, wheelbase: n("wheelbase"), maxSteerDeg: n("steer"), overhang: n("overhang"), mount: $("mount").value, width: n("width"),
   sections: n("sections") || 0, sectionWidth: n("sectionWidth") || 0, overlap: n("overlap") || 0, offset: n("offset") || 0, axleToTool: n("axleToTool"), hitchLength: n("hitch"),
   tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0, margin: n("margin"),
-  trackWidth: n("trackWidth"), tyreWidth: n("tyreWidth"), wheelDiameter: n("wheelDiameter"), drawbarWidth: n("drawbarWidth") || 0, swingDeg: n("swingDeg") || 0};
+  trackWidth: n("trackWidth"), tyreWidth: n("tyreWidth"), wheelDiameter: n("wheelDiameter"), drawbarHeight: n("drawbarHeight") || 0, drawbarWidth: n("drawbarWidth") || 0, swingDeg: n("swingDeg") || 0};
 }
 function update() {
  labels();
@@ -212,7 +213,7 @@ function drawing(i, s, o) {
  let last = end;                                     // down the next pass to the bottom of the picture
  while (last + 1 < P.length && P[last + 1].n >= bottom && sw.left[last + 1].n >= bottom - 3) last++;
  const upto = (arr, k) => arr.slice(0, k + 1);
- const seen = [].concat(upto(P, last), upto(sw.left, last), upto(sw.right, last), sw.body.length ? upto(sw.body, end) : [], o.corner ? upto(o.corner.left, last) : []);
+ const seen = [].concat(upto(P, last), upto(sw.left, last), upto(sw.right, last), sw.body.length ? upto(sw.bodyLeft, end) : [], o.corner ? upto(o.corner.left, last) : []);
  const minX = Math.min(...seen.map(p => p.e), sw.centre[0].e - i.width / 2) - 1, maxX = Math.max(...seen.map(p => p.e), L + i.width / 2) + 1;
  const minN = Math.min(bottom, ...seen.map(p => p.n)), maxN = fence + 1.5;
  const W = 900, scale = W / (maxX - minX), H = Math.round((maxN - minN) * scale);
@@ -253,7 +254,7 @@ function drawing(i, s, o) {
  g += `<line x1="${X(0)}" y1="${Y(c0.n)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--tool)" stroke-width="2"/>`;
  g += endLine(sw.right, 1.2) + endLine(sw.left, 3);
  if (o.corner) g += `<polyline points="${line(upto(o.corner.left, last))}" fill="none" stroke="var(--tool)" stroke-width="2" stroke-dasharray="1 4" stroke-linecap="round"/>`;
- if (sw.body.length) g += `<polyline points="${line(upto(sw.body, end))}" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round"/>`;
+ if (sw.body.length) g += `<polyline points="${line(upto(sw.bodyLeft, end))}" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round"/>`;
  const outerTop = upto(sw.left, end).reduce((m, p) => p.n > m.n ? p : m);
  g += `<text x="${X(outerTop.e)}" y="${(parseFloat(Y(outerTop.n)) - 6).toFixed(1)}" font-size="${fs}" fill="var(--tool)" text-anchor="middle">outer end of the implement</text>`;
  // the pivot's path: the leg in, the turn (a K-turn's backing up dashed), down the next pass
@@ -274,7 +275,7 @@ function legend(i, o) {
  const harvester = i.machine === "harvester";
  return "Black: the centre of the " + (harvester ? "front" : "rear") + " axle, the pivot AgOpenWeb steers along" + (o.reverse ? "; orange dashes: backing up" : "") + ". Blue: the two ends of the implement's working line, the outer one thick" + (o.reverse ? " (dashed while backed up)." : ".")
   + (o.corner ? " Blue dots: the implement's outer rear corner (its length)." : "")
-  + (i.machine === "articulated" ? "" : " Grey dots: " + (harvester ? "the back end" : "the nose") + " of the machine.");
+  + (i.machine === "articulated" ? "" : " Grey dots: the outer corner of " + (harvester ? "the back end" : "the nose") + " of the machine" + (i.trackWidth > 0 ? "" : " (type its rear track for its width)") + ".");
 }
 
 for (const id of F) $(id).addEventListener("input", update);

@@ -120,7 +120,7 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "aow-settings-sprayer");
   await pg.click("button:has-text('3 m no-till drill')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0$/);   // backing it up jackknifes: no K-turn
-  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^21\.35 m \(7 passes\) or 18\.3 m \(6 passes\)$/);
+  await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^21\.35 m \(7 passes\)$/);   // the Case's front corner needs 3.7 m from the edge, on both turns
   await expect(pg, what, "#results tbody tr:nth-child(9) td.v", /^no match$/);     // tramlines: 8 ÷ 3 is not whole
   if ((await pg.locator("#opt button").count()) !== 2) fail.push(what + ": expected the two turn options to draw");
   await expect(pg, what, "#draw svg text:last-child", /^next pass 9\.15 m away: Sagitta, radius 4\.3 m, 4\.3 m deep$/);   // 3 × 3.05, no float tail
@@ -130,16 +130,17 @@ async function teensy(browser, port, q, name) {
   // the three examples with typical measures: a tandem-axle manure spreader, a trailed disc harrow, a reversible plough
   await pg.click("button:has-text('10 m manure spreader')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#presetNote", /^Typical measures/);
-  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^6\.7 m$/);     // its drawbar pin inside the rear tyres: they set the radius
+  await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^6 m$/);       // its drawbar pin inside the rear tyres: they set the radius (the tyre at the drawbar's 0.5 m height)
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 1 or Keyhole, skip 0$/);
   await expect(pg, what, "#results tbody tr:nth-child(6) td.v", /^30 m \(3 passes\)$/);
-  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 57°$/);
-  if (!(await pg.locator("#tyreWidth").isVisible())) fail.push(what + ": a trailed implement needs the rear tyres");
+  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 65°$/);
+  if (!(await pg.locator("#drawbarHeight").isVisible())) fail.push(what + ": a trailed implement needs the drawbar's height");
   await shot(pg, "aow-settings-spreader");
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0$/);
   await pg.click("button:has-text('4-furrow reversible plough')"); await pg.waitForTimeout(300);
-  if (await pg.locator("#tyreWidth").isVisible()) fail.push(what + ": the rear tyres are for trailed implements only");
+  if (await pg.locator("#drawbarHeight").isVisible()) fail.push(what + ": the drawbar height is for trailed implements only");
+  if (!(await pg.locator("#trackWidth").isVisible())) fail.push(what + ": the rear track gives the tractor's width for every implement");
   await expect(pg, what, "#results tbody tr:nth-child(5) td.v", /^4\.3 m \(Sagitta\), 4\.3 m \(Keyhole\), 6\.6 m \(K-turn\)$/);
   await expect(pg, what, "#draw svg text:last-child", /^next pass 1\.6 m away: K-turn, radius 4 m, 8\.7 m deep \(the backing up included\)$/);   // a plough skips no rows
   if ((await pg.locator("#draw svg polyline[stroke-dasharray='1 4']").count()) !== 1) fail.push(what + ": the plough's rear corner should be drawn dotted");
@@ -148,7 +149,7 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "aow-settings-plough");
   await pg.click("button:has-text('3.2 m roller')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(3) td.v", /^4\.2 m$/);     // its own 60° stop sets the radius
-  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 110°, at most 60°$/);
+  await expect(pg, what, "#results tbody tr:last-child td.v", /^touches the tyres at 113\.5°, at most 60°$/);
   await shot(pg, "aow-settings-roller");
   await pg.click("button:has-text('2.7 m quick disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr:nth-child(4) td.v", /^Sagitta, skip 2 or Keyhole, skip 0 or K-turn, skip 0$/);
