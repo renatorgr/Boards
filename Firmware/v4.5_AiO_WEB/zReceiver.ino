@@ -3,7 +3,7 @@
    Written 2026 by Claude (Anthropic) for renatorgr.
    The u-blox messages and configuration keys are those of the u-blox ZED-F9P / ZED-X20P
    interface descriptions (UBX-MON-VER, UBX-CFG-VALGET, UBX-CFG-VALSET, UBX-ACK); the Unicore
-   commands (VERSIONA, CONFIG, MASK, UNMASK, UNILOGLIST, MODE, UNLOG, SAVECONFIG and the log
+   commands (VERSIONA, HWSTATUSA, CONFIG, MASK, UNMASK, UNILOGLIST, MODE, UNLOG, SAVECONFIG and the log
    commands) are those of the Unicore N4 high precision commands and logs reference.
    The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
@@ -62,9 +62,10 @@ static uint32_t rxIdAskMs     = 0;
 static uint32_t rxByteMs      = 0;       // last byte from the receiver
 static uint32_t rxTalkSinceMs = 0;       // talking without a gap since
 static bool     rxSilentSeen  = true;    // silent for RXID_SILENT_MS since the last round
-// AiO_WEB 4 Nov 2026: its temperature (UBX-MON-SYS, zReceiver.h)
+// AiO_WEB 4 Nov 2026: its temperature (UBX-MON-SYS; a UM982: HWSTATUSA; zReceiver.h)
 int8_t   rxTemp   = RX_TEMP_NONE;
 uint32_t rxTempMs = 0;
+uint32_t rxTempQuietUntil = 0;
 static uint32_t rxTempAskMs = 0;
 static uint8_t  rxTempAsks  = 0;         // unanswered polls (stops at RX_TEMP_TRIES)
 static bool     rxTempReal  = false;     // a value other than 0 came (0 every time = the field is not filled)
@@ -1143,8 +1144,8 @@ const char* umWriteRaw(const char* const* cmds, uint8_t n, const char* what)
 
 // ---------------------------------------------------------------- temperature (AiO_WEB 4 Nov 2026)
 // For the page: "ok" reported lately, "old" (no answer for a while), "ask" (not answered yet), "none" (asked
-// RX_TEMP_TRIES times, never answered: a firmware without UBX-MON-SYS), "zero" (it answers, always with 0: the field
-// is not filled). Also used for the second F9P (zDualF9P.ino).
+// RX_TEMP_TRIES times, never answered: a firmware without UBX-MON-SYS or HWSTATUSA), "zero" (it answers, always with 0,
+// or a UM982 with something that is not a temperature: the field is not filled). Also used for the second F9P (zDualF9P.ino).
 const char* rxTempState(uint32_t reportedMs, uint8_t asks, bool real)
 {
     if (reportedMs) return !real ? "zero" : millis() - reportedMs < 3 * RX_TEMP_MS ? "ok" : "old";
@@ -1154,7 +1155,41 @@ const char* rxTempState(uint32_t reportedMs, uint8_t asks, bool real)
 FLASHMEM void rxTempJson(Json& j)
 {
     if (rxTemp != RX_TEMP_NONE) j.i("temp", rxTemp);
-    j.str("tempSt", rxKind == RX_UBLOX ? rxTempState(rxTempMs, rxTempAsks, rxTempReal) : "");
+    j.str("tempSt", rxKind == RX_UBLOX || rxKind == RX_UM982 ? rxTempState(rxTempMs, rxTempAsks, rxTempReal) : "");
+}
+
+// The UM982's answer to HWSTATUSA, its hardware status (zHandlers.ino, rawNmeaTee), as Renato's sent it on 10 Nov 2026:
+// #HWSTATUSA,71,GPS,FINE,2444,241114900,0,0,18,13;59493,0.914,1.025,1.805,1,-0.822,0.0,0x84,1,0x0377,0,0*6e81c92f
+// After the ';' come the first field, the 0.9 V, 1.0 V and 1.8 V supplies, the clock flag and drift and the hardware
+// flags. What could be read of Unicore's manual does not name the first field. Read as thousandths of a degree C it
+// is the chip's temperature: 59.5 C here, in the closed box after 40 minutes; the manual's own example has 66807.
+// It is taken only from a line with the right CRC-32 and between -40 and 125 C; anything else reads "not reported"
+// on the page. The first answer goes to Messages with the number as it came, to compare a cold start with a warm one.
+FLASHMEM void rxTempLine(const char* l)
+{
+    if (rxKind != RX_UM982) return;
+    const char* star = strrchr(l, '*');
+    const char* s = strchr(l, ';');
+    if (!star || !s || s > star) return;
+    uint32_t crc = 0;                                      // Unicore: CRC-32 (0xEDB88320, from 0) of the text between '#' and '*'
+    for (const char* p = l + 1; p < star; p++)
+    {
+        crc ^= (uint8_t)*p;
+        for (uint8_t b = 0; b < 8; b++) crc = (crc & 1) ? (crc >> 1) ^ 0xEDB88320UL : crc >> 1;
+    }
+    if (crc != strtoul(star + 1, nullptr, 16)) return;     // damaged line: wait for the next one
+    char* end = nullptr;
+    const long m = strtol(s + 1, &end, 10);
+    const bool ok = end != s + 1 && *end == ',' && m >= -40000L && m <= 125000L;
+    const int8_t v = ok ? (int8_t)((m + (m >= 0 ? 500 : -500)) / 1000) : RX_TEMP_NONE;
+    if (!rxTempMs)
+    {
+        if (ok) StatusLog.line("[status] GPS receiver: temperature %d C (UM982 HWSTATUSA, first field %ld, read as thousandths of a degree)", (int)v, m);
+        else    StatusLog.line("[status] GPS receiver: temperature not reported (UM982 HWSTATUSA: the first field, %.*s, is not a temperature)", (int)min(strcspn(s + 1, ",*"), (size_t)12), s + 1);
+    }
+    rxTempReal = ok;                                       // not ok: "zero" for the page, which reads "not reported"
+    rxTemp     = v;
+    rxTempMs   = millis() | 1;
 }
 
 // The first UBX-MON-SYS answer with 0 C, in Messages with its bytes: tempValue is byte 18 (counted from 0), after
@@ -1214,6 +1249,19 @@ void receiverLoop()
                      && now - rxTempAskMs >= RX_TEMP_MS && (rxTempMs || rxTempAsks < RX_TEMP_TRIES))
             {
                 if (ubxSend(0x0A, 0x39, nullptr, 0)) { rxTempAskMs = now; if (!rxTempMs) rxTempAsks++; }
+            }
+            // a UM982 is asked HWSTATUSA at the same pace (rxTempLine), but not while the page reads or writes its
+            // settings, nor while a command typed in the console waits for its answer
+            else if (talks && rxKind == RX_UM982 && !umQuiet() && (int32_t)(rxReplyUntilMs - now) <= 0 && !rxTxLen && !rxCkBusy(RXCK_GPS)
+                     && now - rxTempAskMs >= RX_TEMP_MS && (rxTempMs || rxTempAsks < RX_TEMP_TRIES))
+            {
+                static const uint8_t HWSTATUSA[] = "HWSTATUSA\r\n";
+                if (rxTxQueue(HWSTATUSA, sizeof(HWSTATUSA) - 1))
+                {
+                    rxTempAskMs = now;
+                    rxTempQuietUntil = now + 2000;         // its "$command,HWSTATUSA,response: OK" stays out of the console
+                    if (!rxTempMs) rxTempAsks++;
+                }
             }
             break;
     }

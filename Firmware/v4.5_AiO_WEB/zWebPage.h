@@ -500,7 +500,7 @@ function render(s){
  set("alt",(g.lat!==null&&g.alt)?Number(g.alt).toFixed(2)+" m":"–");
  set("crc",String(g.crcErr),g.crcErr?"warn":"");
  set("rxModel",g.model?g.model+(g.rxFw?" · "+g.rxFw:""):"–");
- {const gt=g.temp!==undefined;for(const id of ["rxTempT","rxTemp"])$(id).classList.toggle("hidden",!gt);if(gt)set("rxTemp",g.temp+" °C"+(g.tempSt==="old"?" (old reading)":""));}   /* its temperature when it reports it (UBX-MON-SYS) */
+ {const gt=g.temp!==undefined;for(const id of ["rxTempT","rxTemp"])$(id).classList.toggle("hidden",!gt);if(gt)set("rxTemp",g.temp+" °C"+(g.tempSt==="old"?" (old reading)":""));}   /* its temperature when it reports it (UBX-MON-SYS; a UM982: HWSTATUSA) */
  const d=s.dual,f2=d.f9p2||null;
  // AiO_WEB: the dual heading comes from the UM982 (HPR) or from a second F9P on the GPS2 port (RELPOSNED)
  const f9=d.src==="f9p"||(!d.src&&!!f2&&f2.on);
@@ -794,14 +794,14 @@ function fillUbx(u){
   s.disabled=v[n]===undefined;}
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
 }
-// a receiver's temperature row: a reading always shows (u-blox: UBX-MON-SYS, polled every 10 s); without one (an older u-blox
-// firmware that never answers, one that answers 0, the UM982 that the firmware does not ask yet) it reads just "not reported"
-function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982"||st==="zero"||st==="none")return NO_TEMP;if(st==="ask")return "asking…";return "–";}
+// a receiver's temperature row: a reading always shows (u-blox: UBX-MON-SYS, UM982: HWSTATUSA, polled every 10 s); without one
+// (a receiver firmware that never answers, or that answers with no temperature) it reads just "not reported"
+function tempText(v,st){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(st==="zero"||st==="none")return NO_TEMP;if(st==="ask")return "asking…";return "–";}
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
  set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?"asking…":"not identified"),j.model||k?"":"warn");
  set("gKind",k==="ublox"?"u-blox":k==="um982"?"Unicore":"–");
- set("gFw",j.fw||"–");set("gProt",j.prot||"–");set("gTemp",tempText(j.temp,j.tempSt,k));$("gProtT").classList.toggle("hidden",k!=="ublox");$("gProt").classList.toggle("hidden",k!=="ublox");   /* u-blox only */
+ set("gFw",j.fw||"–");set("gProt",j.prot||"–");set("gTemp",tempText(j.temp,j.tempSt));$("gProtT").classList.toggle("hidden",k!=="ublox");$("gProt").classList.toggle("hidden",k!=="ublox");   /* u-blox only */
  const um=k==="um982";                                  /* NMEA version: UM982 only, from its CONFIG (zReceiver.ino) */
  set("gNmea",um&&j.um&&j.um.nmea||"–");$("gNmeaT").classList.toggle("hidden",!um);$("gNmea").classList.toggle("hidden",!um);
  set("gId",!j.talks?"the receiver sends nothing":j.id==="done"?ago(j.idAgo):j.id==="none"?(j.hpr?"no answer (it sends HPR: Unicore)":"no answer"):"asking…",!j.talks||j.id==="none"?"warn":"");
@@ -1019,7 +1019,7 @@ function renderCk(j){
  const ublox=j.kind==="ublox",um=j.kind==="um982";
  for(const port of [0,1]){
   const p=c.ports[port],id="ck"+port;
-  if(port===1){$("ck1").classList.toggle("hidden",!p.on);if(!p.on)continue;set("ck1Model",p.model||"–");set("ck1Temp",tempText(p.temp,p.tempSt,"ublox"));}
+  if(port===1){$("ck1").classList.toggle("hidden",!p.on);if(!p.on)continue;set("ck1Model",p.model||"–");set("ck1Temp",tempText(p.temp,p.tempSt));}
   ckHealth(id+"Data",p);
   const fast=p.health==="ok"&&Math.abs(p.hz[0]-100)>5?"warn":"";
   if(port===0){const n=["GGA","VTG","HPR"].slice(0,um||p.hz[2]?3:2),hzs=n.map((x,i)=>p.hz[i]);

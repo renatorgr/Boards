@@ -78,9 +78,10 @@ void EthernetStart()
 // of the Teensy's own serial id (mdnsName; the Ethernet MAC is the same on every AiO board). It is FNET's own
 // responder (fnet_mdns, built into NativeEthernet), run from loop() by netPoll() like the rest of the stack; it
 // answers queries sent from any port by unicast (RFC 6762 6.7), which is how AgOpenWeb asks. A name clash on
-// the network is settled by FNET (it adds a number to the name).
+// the network is settled by FNET (it adds a number to the name). The name is written like the XIAO's ("XIAO-3F2A") and the
+// sprayer's ("Sprayer-5F28"): a hyphen, no space.
 #define MDNS_HOST "aio"
-char mdnsName[12] = "";                         // "AiO 3F2A": the instance name of both services (the Connections card, zWeb.ino)
+char mdnsName[12] = "";                         // "AiO-3F2A": the instance name of both services (the Connections card, zWeb.ino)
 
 #ifdef ARDUINO_TEENSY41
 static const fnet_mdns_txt_key_t* aowcardTxt()  // the TXT record of "_aowcard._tcp"
@@ -93,7 +94,7 @@ static const fnet_mdns_txt_key_t* aowcardTxt()  // the TXT record of "_aowcard._
 static void mdnsStart()
 {
 #ifdef ARDUINO_TEENSY41
-  snprintf(mdnsName, sizeof(mdnsName), "AiO %04X", (unsigned)(HW_OCOTP_MAC0 & 0xFFFF));
+  snprintf(mdnsName, sizeof(mdnsName), "AiO-%04X", (unsigned)(HW_OCOTP_MAC0 & 0xFFFF));
   MDNS.begin(MDNS_HOST, 2);                     // the host name and room for two services
   MDNS.setServiceName(mdnsName);                // NativeEthernet: one instance name for every service
   MDNS.addService("_http._tcp", 80);            // the web page, for the fork's "Search the network"

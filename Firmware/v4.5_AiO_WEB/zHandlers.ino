@@ -390,6 +390,8 @@ static void rxReplyNote(const char* l)
     const bool answer = !strncmp(l, "$command", 8);
     // the answer to the Teensy's own VERSIONA (zReceiver.ino) is not shown in the console
     if (answer && (int32_t)(rxIdQuietUntil - millis()) > 0 && (int32_t)(rxReplyUntilMs - millis()) <= 0 && strstr(l, "VERSIONA")) return;
+    // nor is the one to its HWSTATUSA, the UM982's temperature poll
+    if (answer && (int32_t)(rxTempQuietUntil - millis()) > 0 && (int32_t)(rxReplyUntilMs - millis()) <= 0 && strstr(l, "HWSTATUSA")) return;
     // nor are the answers to the page's UM982 settings (zReceiver.ino), unless a command was typed in the console
     if (answer && umQuiet() && (int32_t)(rxReplyUntilMs - millis()) <= 0) return;
     if (!answer && ((int32_t)(rxReplyUntilMs - millis()) <= 0 || isNormalOutput(l))) return;
@@ -422,6 +424,7 @@ void rawNmeaTee(char c)
             rawLine[rawLen] = '\0';
             if (nmeaLineOk(rawLine)) rxCkGood[RXCK_GPS]++;     // valid data at 460800 (zRxCheck.ino)
             if (!strncmp(rawLine, "#VERSIONA", 9)) rxIdLine(rawLine);   // the Unicore receiver's answer (zReceiver.ino)
+            else if (!strncmp(rawLine, "#HWSTATUSA", 10)) rxTempLine(rawLine);   // the UM982's temperature (zReceiver.ino)
             else if (!umIsReply(rawLine)) noteRxType(rawLine);           // answers to commands are not sentence types
         }
         if (rawLen > 6 && rawLine[0] == '$')
