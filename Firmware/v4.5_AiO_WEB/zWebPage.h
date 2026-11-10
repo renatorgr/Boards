@@ -442,6 +442,7 @@ const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
 // PGN 254 byte 10, the lightbar byte: 127 on the line, 2 cm per step (under 127 = left of it), 255 no line
 const lineText=v=>{if(v===null||v===undefined)return "–";if(v===255)return "no line";const cm=(v-127)*2,a=Math.abs(cm);
  return cm===0?"on the line":(a>=254?"254+ cm":a+" cm")+(cm>0?" right":" left");};
+const NO_TEMP="not reported";   // a temperature the device does not give: the same words on every row (10 Nov 2026)
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
 // a value with a link after it (the XIAO's page, the module's page at its real IP): url "" = text only
 function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
@@ -654,7 +655,7 @@ function render(s){
    setLink("xAp",(xi.ap||"–")+(xi.cl!==undefined?" · "+xi.cl+" "+(xi.cl==1?"client":"clients"):""),xi.apIp?"http://"+xi.apIp+"/":"");   /* its page, on its own network */
    set("xSta",!xi.sta?"not set":xi.st==="ok"?xi.sta+" · "+xi.rssi+" dBm":xi.sta+" · "+"not connected",xi.sta&&xi.st!=="ok"?"warn":"");
    setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");   /* its page on that network */
-   set("xTemp",xi.t!==undefined?Number(xi.t).toFixed(1)+" °C":"–");}   /* the ESP32's own sensor, in its PGN 143 */
+   set("xTemp",xi.t!==undefined?Number(xi.t).toFixed(1)+" °C":NO_TEMP);}   /* the ESP32's own sensor, in its PGN 143 (a XIAO program before 4 Nov 2026 sends none) */
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");set("xTemp","–");}
   // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
   const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
@@ -793,8 +794,9 @@ function fillUbx(u){
   s.disabled=v[n]===undefined;}
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
 }
-// a receiver's temperature row: u-blox report it with UBX-MON-SYS (polled every 10 s), an older firmware never answers
-function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982")return "the UM982 does not report it";if(st==="zero")return "not reported (its firmware answers 0 °C)";if(st==="ask")return "asking…";if(st==="none")return "not reported (this firmware has no UBX-MON-SYS)";return "–";}
+// a receiver's temperature row: u-blox report it with UBX-MON-SYS (polled every 10 s); a receiver that gives none (the UM982, an
+// older u-blox firmware that never answers, one that answers 0) reads just "not reported" (10 Nov 2026)
+function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982"||st==="zero"||st==="none")return NO_TEMP;if(st==="ask")return "asking…";return "–";}
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
  set("gModel",j.model||(k==="um982"?"Unicore":asking&&j.talks?"asking…":"not identified"),j.model||k?"":"warn");

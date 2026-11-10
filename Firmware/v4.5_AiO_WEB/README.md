@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 10 Nov 2026 | A temperature that a device does not give (UM982, some u-blox firmware, an older XIAO program) now reads just *not reported* ([Identification](#identification)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
@@ -161,7 +162,7 @@ After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
-**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers: after three tries the GPS tab says so. A receiver that answers 0 every time does not fill the field: the GPS tab says *not reported* too, and Messages has the bytes of its first answer. The UM982 has no command for it.
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer), and the UM982 has no command for it: in all three cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026.
 
 Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So for now no receiver here shows a temperature; a newer receiver firmware may.
 
