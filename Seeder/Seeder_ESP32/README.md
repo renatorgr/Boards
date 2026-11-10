@@ -10,7 +10,7 @@ by a 12 V DPDT relay. Two boards:
 - a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an
   external DPDT relay.
 
-Version 0.2.6, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
+Version 0.2.7, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
 got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
 not run on either board yet.
 
@@ -20,6 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* (Settings): the Sowing tab shows all before the program asks, relays past them idle. **0.2.6**: questions in the page's own box: the browser's pop-ups show nothing in an AgOpenWeb web card ([How it works](#how-it-works)). |
 | 7 Nov 2026 | **0.2.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.2.3**: four tabs as the sprayer's ([How it works](#how-it-works)). **0.2.4**: Module tab: Module card, one Network settings card. Code shared with the sprayer marked ([Notes](#notes)). |
 | 2 Nov 2026 | **0.2.1**: the Wi-Fi settings on the page as on the XIAO page, with a search for networks ([Setup](#setup)). |
@@ -66,7 +67,9 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on
   every change. Every question the page asks (save and restart, install a program, the
   password) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web
-  card the browser's pop-ups show nothing, so those buttons did nothing there.
+  card the browser's pop-ups show nothing, so those buttons did nothing there. The tabs at the
+  top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits
+  on the cab's screen.
 
 ## Choosing the board
 
@@ -121,7 +124,7 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
 4. Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be
    powered or not). KC868-A32: power it with 12 V and plug its USB socket in, as in
    KinCony's guide. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.6` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.7` and `ready`.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
 page's *Firmware* tab *Choose .bin* (`Seeder_ESP32.ino.bin` from this folder, not the

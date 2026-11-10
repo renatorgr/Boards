@@ -540,6 +540,7 @@ static void apiScan()
 // Program update: the .bin from "Sketch > Export Compiled Binary"
 static bool    updOk = false;
 static String  updErr;
+static size_t  updBytes = 0;            // size of the program received (Update.progress() reads 0 once Update.end() has run)
 
 // How long an upload may wait for the next data from the browser (3 Nov 2026). The web server gives up after 5 s
 // (HTTP_MAX_SEND_WAIT), and a weak Wi-Fi link can pause longer than that: the upload was then cut off with nothing
@@ -577,6 +578,7 @@ static void updateUpload()
     {
         if (updErr.length() == 0)
         {
+            updBytes = up.totalSize;
             if (Update.end(true)) updOk = true;
             else updErr = Update.errorString();
         }
@@ -596,7 +598,7 @@ static void updateDone()
 {
     if (updOk)
     {
-        logEvent("Program update: %u bytes checked, restarting", (unsigned)Update.progress());
+        logEvent("Program update: %u bytes checked, restarting", (unsigned)updBytes);
         server.send(200, "application/json", "{\"ok\":true}");
         rebootAtMs = millis() + 1500;
     }

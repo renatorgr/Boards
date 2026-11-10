@@ -30,8 +30,8 @@ header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
-nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
-nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
 nav button.new::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
 nav button.on.new::after{background:var(--accInk)}

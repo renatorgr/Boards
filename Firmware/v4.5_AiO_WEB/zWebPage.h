@@ -39,14 +39,14 @@ const char WEB_PAGE[] PROGMEM = R"WEBPAGE(<!doctype html>
 @media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);accent-color:var(--acc);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:10px;padding:2px 16px;min-height:48px;background:var(--card);border-bottom:1px solid var(--line)}
 #top{position:sticky;top:0;z-index:3}   /* header and tabs stay in view while the page scrolls (small windows, the program's web cards) */
 header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
-nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
-nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
@@ -109,7 +109,7 @@ progress{width:100%;height:14px}
 .alert{background:color-mix(in srgb,var(--bad) 18%,transparent);border:1px solid var(--bad);border-radius:12px;padding:9px 12px;margin:0 0 12px;white-space:pre-line;font-weight:600}
 .info{background:color-mix(in srgb,var(--acc) 16%,transparent);border:1px solid var(--acc);border-radius:12px;padding:9px 12px;margin:0 0 12px;font-weight:600}
 a{color:var(--acc)}
-.tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;min-width:44px;min-height:44px;padding:0;font:inherit;font-size:18px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
 /* the page's own question box (ask / askText in the script): the browser's confirm() and prompt() show nothing inside an
    AgOpenWeb web card (its frame has no allow-modals), so the page never uses them; buttons 44 px high, as the cards ask */

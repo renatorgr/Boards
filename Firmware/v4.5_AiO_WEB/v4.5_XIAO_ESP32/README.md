@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 10 Nov 2026 | Tabs and the light/dark button 44 px high with 8 px corners; the WiFi tab's password to confirm in a card of its own, no longer a field across the page ([What it does](#what-it-does)). Messages give the size of an updated program, not 0 bytes. |
 | 9 Nov 2026 | The page's questions (save and restart, install, the module's firmware, subnet) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([What it does](#what-it-does)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under the XIAO's own WiFi name ([What it does](#what-it-does)). Program → module shows up to 64 sections (PGN 229); the WiFi settings save in one row; a shorter note in the Module firmware card; short file headers. |
 | 4 Nov 2026 | The XIAO's temperature in its card, here and on the Teensy page; the Teensy's clock and temperature in the [Module card](#what-it-does). |
@@ -63,6 +64,8 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - The question before each one (save and restart, install, the module's firmware, the subnet) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
+  - The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+  - On the WiFi tab the password and **Save and restart the XIAO** have a card of their own, *Confirm and save*, as wide as the other two.
   - Typed once, it is filled in both tabs until the page is closed.
   - The page never shows or stores it.
   - Just viewing the page needs nothing more than being on the network.
