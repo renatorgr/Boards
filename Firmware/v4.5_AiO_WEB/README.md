@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 10 Nov 2026 | A temperature that a device does not give (UM982, some u-blox firmware, an older XIAO program) now reads just *not reported* ([Identification](#identification)). Tabs and the light/dark button 44 px high with 8 px corners ([Web page](#web-page)). |
+| 10 Nov 2026 | The UM982's temperature is read (`HWSTATUSA`); one a device does not give reads *not reported* ([Identification](#identification)). Tabs and light/dark button 44 px high, 8 px corners; network name `AiO-xxxx`, with a hyphen ([Web page](#web-page)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
@@ -69,7 +69,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 ## Web page
 
-Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second under the module's name on the network, **AiO** and four digits of the Teensy's own id (e.g. `AiO 3F2A`, shown on the Connections card), next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
+Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second under the module's name on the network, **AiO** and four digits of the Teensy's own id (e.g. `AiO-3F2A`, shown on the Connections card), next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
 
 **Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
@@ -162,9 +162,11 @@ After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
-**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), and a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer). The UM982 is not asked yet (Unicore's manual lists a `HWSTATUS` hardware status log; the firmware does not read it). In these cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026. A temperature that does arrive is always shown.
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), and a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer). In these cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026. A temperature that does arrive is always shown.
 
-Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So for now no receiver here shows a temperature; a newer receiver firmware may.
+A **UM982** is asked `HWSTATUSA` (its hardware status) at the same pace, since 10 Nov 2026. The answer, as Renato's receiver (R4.10Build13495) gave it: `#HWSTATUSA,…;59493,0.914,1.025,1.805,1,-0.822,0.0,0x84,1,0x0377,0,0*6e81c92f`. After the `;` come one number, then the 0.9 V, 1.0 V and 1.8 V supplies, the clock and the hardware flags. The firmware shows that first number, divided by 1000, as the temperature in °C (59 °C here, in the closed box after 40 minutes). What could be read of Unicore's manual does not name that field, so this is a deduction, not a documented fact: the manual's own example has 66807 there, and a number that starts lower on a cold morning and climbs as the box warms confirms it. The first answer after start-up goes to Messages with the number as it came (`GPS receiver: temperature 59 C (UM982 HWSTATUSA, first field 59493, …)`), to compare a cold start with a warm one. A line with a wrong CRC is dropped, and a value outside -40 to 125 °C reads *not reported*. The poll waits while the page reads or writes the UM982's settings, and its answer stays out of the UM982 console.
+
+Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So of the receivers here only the UM982 shows a temperature; a newer u-blox firmware may.
 
 ### Receiver check (GPS tab)
 
@@ -393,7 +395,7 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 
 NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
 
-The mDNS responder (`aio.local`; the page announced as `_http._tcp` for the fork's **Search the network** and as `_aowcard._tcp` with TXT `v=1` and `path=/` for the official AgOpenWeb's add-on cards, `Docs/ADD_ON_CARDS.md`, both under the instance name `AiO xxxx`) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
+The mDNS responder (`aio.local`; the page announced as `_http._tcp` for the fork's **Search the network** and as `_aowcard._tcp` with TXT `v=1` and `path=/` for the official AgOpenWeb's add-on cards, `Docs/ADD_ON_CARDS.md`, both under the instance name `AiO-xxxx`) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
 
 ## Main loop
 

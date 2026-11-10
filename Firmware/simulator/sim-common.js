@@ -342,6 +342,7 @@ function Module(key) {
   L.push([9.0, "[status] GPS: RTK float (fix 5, 25 satellites, correction age 1.0 s)"]);
   L.push([9.5, "[status] GPS: the receiver sends (last 5 s): " + rxTypes()]);
   if (hasImu) L.push([10.0, "[status] " + h.imu + ": data OK (roll, and heading without dual antenna)"]);
+  if (um) L.push([11.0, "[status] GPS receiver: temperature 59 C (UM982 HWSTATUSA, first field 59493, read as thousandths of a degree)"]);
   if (dual && rx.dual === "um982" && cfg.hprAcceptFloat) L.push([12.0, "[status] Dual: dual-antenna heading OK (HPR QF 5 float), sent as " + (classic ? "$PAOGI" : "$GNTHS")]);
   L.push([22.0, "[status] GPS: RTK fixed (fix 4, 26 satellites, correction age 0.8 s)"]);
   if (dual) L.push([22.0, "[status] Dual: dual-antenna heading OK (" + (rx.dual === "f9p" ? "second F9P, RELPOSNED, RTK" : "HPR QF 4") + " fixed), sent as " + (classic ? "$PAOGI" : "$GNTHS")]);
@@ -437,9 +438,11 @@ function Module(key) {
   if (p === 1 && !f9p2Here()) return "none";          // GPS2 set to a second F9P, but a XIAO is there
   return T() < 3 ? "wait" : "ok";
  }
- // the receiver's temperature (UBX-MON-SYS, polled every 10 s): the X20P answers 0 (not filled), an F9P on HPG 1.13 does not answer
+ // the receiver's temperature (UBX-MON-SYS, polled every 10 s): the X20P answers 0 (not filled), an F9P on HPG 1.13 does not answer;
+ // a UM982 answers HWSTATUSA (thousandths of a degree in its first field)
  function rxTemp(p, t) {
   const kind = p === 0 ? rx.kind : "ublox", fw = p === 0 ? rx.fw : "HPG 1.13";
+  if (kind === "um982") return t < 11 ? {tempSt: "ask"} : {temp: 59, tempSt: "ok"};
   if (kind !== "ublox") return {tempSt: ""};
   if (fw === "HPG 1.13") return {tempSt: t < 35 ? "ask" : "none"};
   return {tempSt: t < 15 ? "ask" : "zero"};   // the X20P (HPG 2.11) answers, always with 0 (bench, 4 Nov 2026): not filled
@@ -493,7 +496,7 @@ function Module(key) {
   const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
    cpuMhz: 450, cpuTemp: r2(46.2 + wob(t, 1.5, 0.05), 1), cpuTempMax: 51.2, cpuHot: false,   // the Teensy's clock and temperature (zSafety.ino)
    prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
-  j.net = {link: true, mdns: "AiO 3F2A", aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
+  j.net = {link: true, mdns: "AiO-3F2A", aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
    rtcm: rtcm, rtcmKB: r2(rtcmT * 1.31, 1), rtcmBps: rtcm ? Math.round(1310 + wob(t, 60, 0.2)) : 0, rtcmOk: Math.floor(rtcmT * 4.6), rtcmBad: t > 60 ? 1 : 0,
    rtcmTypes: rtcm ? (um ? "1006 1008 1033 1075 1085 1095 1125 1230" : "1005 1074 1084 1094 1124 1230") : "",
    radio: false, radioKB: 0, radioBps: 0, radioOk: 0, radioBad: 0, radioTypes: ""};
