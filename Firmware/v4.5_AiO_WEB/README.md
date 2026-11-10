@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 10 Nov 2026 | A temperature that a device does not give (UM982, some u-blox firmware, an older XIAO program) now reads just *not reported* ([Identification](#identification)). |
+| 10 Nov 2026 | A temperature that a device does not give (UM982, some u-blox firmware, an older XIAO program) now reads just *not reported* ([Identification](#identification)). Tabs and the light/dark button 44 px high with 8 px corners ([Web page](#web-page)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
 | 4 Nov 2026 | Built at **450 MHz** (cooler; the loop has time to spare). Temperatures on the cards: the Teensy with its clock ([Firmware tab](#web-page)), the u-blox [receivers](#identification), the [TM171](#imu-tm171-or-bno085) and the [XIAO](#xiao-esp32c3--esp32s3). |
@@ -75,7 +75,7 @@ Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number f
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
-Every question the page asks (write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`).
+Every question the page asks (write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`). The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
 
 **Without a module:** the [simulator](https://renatorgr.github.io/Boards/) shows this page and the XIAO's with a pretend module behind them (any GPS, IMU, steering and program; tractor driving or parked), rebuilt from the code on every change. See [`Firmware/simulator`](../simulator).
 

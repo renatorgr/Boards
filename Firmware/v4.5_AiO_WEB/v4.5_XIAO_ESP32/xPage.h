@@ -29,19 +29,18 @@ const char XIAO_PAGE[] PROGMEM = R"XIAOPAGE(<!doctype html>
 @media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--ok:#2e7d32;--warn:#b45309;--bad:#c62828;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);accent-color:var(--acc);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:10px;padding:2px 16px;min-height:48px;background:var(--card);border-bottom:1px solid var(--line)}
 #top{position:sticky;top:0;z-index:3}   /* header and tabs stay in view while the page scrolls (small windows, the program's web cards) */
 header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
-nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
-nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.saverow{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 12px;align-items:end;padding:0 14px}.saverow .note{grid-column:1/-1}
 @media (max-width:760px){.grid3{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
 .card h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:0 0 8px;font-weight:650}
@@ -86,7 +85,7 @@ h3{font-size:14px;margin:14px 0 4px}
 .info{background:color-mix(in srgb,var(--acc) 16%,transparent);border:1px solid var(--acc);border-radius:12px;padding:9px 12px;margin:0 0 12px;font-weight:600}
 .info.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);border-color:var(--warn)}
 a{color:var(--acc)}
-.tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 11px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.tbtn{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;min-width:44px;min-height:44px;padding:0;font:inherit;font-size:18px;font-weight:650;cursor:pointer}
 @media (max-width:520px){header .sub{display:none}}
 /* the page's own question box (ask / askText in the script): the browser's confirm() and prompt() show nothing inside an
    AgOpenWeb web card (its frame has no allow-modals), so the page never uses them; buttons 44 px high, as the cards ask */
@@ -156,10 +155,10 @@ a{color:var(--acc)}
  <label class="field"><span>That network's password (blank: keeps the current one; for a new network, blank = open network)</span><input type="password" name="staPass" maxlength="63"></label>
  <label class="field"><span>XIAO name on that network</span><input type="text" name="host" maxlength="24"></label>
 </div>
-<div class="saverow">
+<div class="card"><h2>Confirm and save</h2>
  <label class="field"><span>Current password of the XIAO network (to confirm)</span><input type="password" name="pw" id="pwW" maxlength="63"></label>
  <div class="row"><button class="act" type="submit">Save and restart the XIAO</button><span id="setMsg" class="note"></span></div>
- <p class="note">The XIAO restarts to apply them. If you change the name or the password of the XIAO network, connect the phone to the new network again. Forgot the password? Through the USB port on the panel, in the serial monitor: <span class="mono">wifi-reset</span>.</p>
+ <p class="note">The XIAO restarts to apply the new settings. If you change the name or the password of the XIAO network, connect the phone to the new network again. Forgot the password? Through the USB port on the panel, in the serial monitor: <span class="mono">wifi-reset</span>.</p>
 </div>
 </form>
 <div class="grid3" style="margin-top:12px">
