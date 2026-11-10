@@ -162,7 +162,7 @@ After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
-**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer), and the UM982 has no command for it: in all three cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026.
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), and a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer). The UM982 is not asked yet (Unicore's manual lists a `HWSTATUS` hardware status log; the firmware does not read it). In these cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026. A temperature that does arrive is always shown.
 
 Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So for now no receiver here shows a temperature; a newer receiver firmware may.
 

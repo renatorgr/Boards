@@ -794,8 +794,8 @@ function fillUbx(u){
   s.disabled=v[n]===undefined;}
  for(const n of UBX_CB){const c=f[n];c.checked=!!v[n];c.disabled=v[n]===undefined||((n==="gga"||n==="vtg")&&v[n]>0);}
 }
-// a receiver's temperature row: u-blox report it with UBX-MON-SYS (polled every 10 s); a receiver that gives none (the UM982, an
-// older u-blox firmware that never answers, one that answers 0) reads just "not reported" (10 Nov 2026)
+// a receiver's temperature row: a reading always shows (u-blox: UBX-MON-SYS, polled every 10 s); without one (an older u-blox
+// firmware that never answers, one that answers 0, the UM982 that the firmware does not ask yet) it reads just "not reported"
 function tempText(v,st,kind){if(v!==undefined)return v+" °C"+(st==="old"?" (old reading)":"");if(kind==="um982"||st==="zero"||st==="none")return NO_TEMP;if(st==="ask")return "asking…";return "–";}
 function renderGps(j){
  const k=j.kind,asking=j.id==="wait"||j.id==="ask";
