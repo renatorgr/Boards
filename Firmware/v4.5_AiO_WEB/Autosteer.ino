@@ -9,12 +9,13 @@
    for the web page (see zSafety.ino); wheel angle sent as 0 on the bench (WAS check off, WAS
    out of range), IMU hello only when an IMU was found (zImu.ino); the ADS1115 / autosteer state as one
    [boot] line (on the USB serial and the web page).
-   AiO_WEB 4.5 (Claude (Anthropic) for renatorgr), from the AiO firmware 27.04.2025: its Keya (motor slip as the kickout, the motor
+   AiO_WEB 4.5 (Claude (Anthropic) for renatorgr), from the AiO firmware 27.04.2025: its Keya (motor slip as a kickout, the motor
    position as the wheel angle when there is no WAS, faults turn autosteer off), autosteer cut-off beyond
    the WAS map (+-50 deg; only with the WAS voltage in range, zSafety.ino) or above 25 km/h, the WAS
    map, no steering below 0.2 km/h, PWM at 122 Hz and LOW_HIGH_DEGREES 1.5.
    Ideas of the AgOpenGPS AiO 26 firmware: the minimum and maximum speed set on the web page, the current kickout
-   delay, the soft start (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino).
+   delay, the soft start (AutosteerPID.ino), autosteer off when the Keya heartbeat stops (KeyaCANBUS.ino), the
+   Keya's own current as the kickout sensor, on its 0-255 scale (amps x 32).
    The history of changes is in the README changelog and in the git log.
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
@@ -47,8 +48,13 @@
 #define STEER_MIN_KMH_X10   2     // below 0.2 km/h (the program's speed) the wheels are not turned (was fixed)
 #define STEER_MAX_KMH       25    // above 25 km/h autosteer is cut (was fixed)
 #define SOFT_START_X10MS    0     // soft start (x 10 ms): 0 = off, as before; the AiO 26 firmware uses 500 ms
-#define CURRENT_KICK_X10MS  50    // pressure / current sensor kickout: the reading must stay high 0.5 s (AiO 26: 1 s for the current)
+#define CURRENT_KICK_X10MS  50    // pressure / current sensor kickout (a Keya: its current): the reading must stay high 0.5 s (AiO 26: 1 s for the current)
 #define STEER_LOOP_100      0     // 1 = steering loop at 100 Hz (the AiO 26 firmware, AgOpenWeb's 100 Hz steering packets); 0 = 40 Hz as before
+
+// The Keya's current on the kickout sensor's 0-255 scale (the program's "Current Turn"): amps x 32, so 255 is
+// 8 A and 1 % of the program's limit is 0.08 A (63 % = 5 A). The same scale as the AiO 26 firmware
+// (KickoutMonitor.cpp), so a limit set in the program means the same current with either firmware.
+#define KEYA_AMPS_X         32.0f
 
 /////////////////////////////////////////////
 
@@ -454,14 +460,35 @@ void autosteerLoop()
 		if (steerConfig.CurrentSensor)
 		{
 			if (isKeya) {
-				// AiO_WEB: as in the AiO firmware, the Keya's slip (it turns slower than told: the driver
-				// holds the wheel) is the kickout sensor (KeyaCANBUS.ino)
-				sensorReading = keyaSlip;
-				if (sensorReading >= steerConfig.PulseCountMax) {
+				// AiO_WEB: the Keya is its own current sensor (KeyaCANBUS.ino). A driver who holds the wheel stalls
+				// the motor: its current rises, but its speed error is never large enough to count as slip, so the
+				// slip alone (the AiO firmware's kickout) let a held wheel be fought for as long as it was held.
+				// As in the AiO 26 firmware, the current on the 0-255 scale (255 = 8 A) is compared with the
+				// program's limit; like the analog current sensor below, it must stay above it for the kickout
+				// delay set on the web page. This is also the value the program shows (PGN 250).
+				sensorReading = min(keyaAmps * KEYA_AMPS_X, 255.0f);
+				static uint32_t keyaHighMs = 0;      // when it went above the limit (0 = below)
+				if (sensorReading >= steerConfig.PulseCountMax)
+				{
+					if (keyaHighMs == 0) keyaHighMs = currentTime | 1;
+					if (currentTime - keyaHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+					{
+						steerSwitch = 1; // reset values like it turned off
+						currentState = 1;
+						previous = 0;
+						steerKick(SO_CURRENT, (int)sensorReading);
+					}
+				}
+				else keyaHighMs = 0;
+
+				// The slip stays as a second kickout, at once and whatever the limit (the limit is a current
+				// now, and the AiO 26 firmware does not compare the slip with it either): the wheel turned
+				// against the motor, or faster than it was told, for 9 heartbeats in a row (KeyaCANBUS.ino)
+				if (keyaSlip > 0) {
 					steerSwitch = 1; // reset values like it turned off
 					currentState = 1;
 					previous = 0;
-					steerKick(SO_KEYA, (int)sensorReading);
+					steerKick(SO_KEYA, (int)keyaSlip);
 				}
 			}
 			else {

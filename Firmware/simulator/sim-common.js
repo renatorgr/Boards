@@ -493,6 +493,7 @@ function Module(key) {
   const rtcm = t >= 7.5 && t > 0, rtcmT = Math.max(0, t - 7.5);
   const wasRaw = Math.round(6805 + was * sc.counts / 2), wasV = wasRaw / 2668;
   const kick = sc.pressure || sc.current ? sc.kickMax : 0;
+  const keyaAmps = !keya ? 0 : engaged ? 1.8 + Math.min(2.2, Math.abs(sp - was) * 0.6) : 0.2;   // the Keya's smoothed current (KeyaCANBUS.ino)
   const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
    cpuMhz: 450, cpuTemp: r2(46.2 + wob(t, 1.5, 0.05), 1), cpuTempMax: 51.2, cpuHot: false,   // the Teensy's clock and temperature (zSafety.ino)
    prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
@@ -542,12 +543,14 @@ function Module(key) {
    line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
    loopMs: cfg.steerLoop100 ? 10 : 25, loopHz: cfg.steerLoop100 ? 100 : 40,
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
-   sensor: sc.pressure ? "pressure" : sc.current ? "current" : "", sensorV: kick ? Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2) : 0,
-   sensorMax: kick ? 31 : 0, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
+   sensor: sc.pressure ? "pressure" : sc.current ? "current" : "",
+   // a Keya is its own current sensor: its smoothed current x 32 on the 0-255 scale (KEYA_AMPS_X, Autosteer.ino)
+   sensorV: !kick ? 0 : keya ? Math.round(keyaAmps * 32) : Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2),
+   sensorMax: !kick ? 0 : keya ? 83 : 31, kick: kick, enc: -1, off: "", offAgo: -1, offVal: 0, wasless: false, keyaLost: false, keyaBlock: false};
   if (full) j.steer.keya = keya ? {found: true, lost: false, block: false, lostCount: 0, ago: 12, pos: Math.round(was * 25), speed: engaged ? Math.round((sp - was) * 20) : 0,
-   set: engaged ? Math.round((sp - was) * 22) : 0, current: engaged ? Math.round(4 + Math.abs(sp - was) * 3) : 1, slip: 0, faults: "",
+   set: engaged ? Math.round((sp - was) * 22) : 0, current: Math.round(keyaAmps), amps: r2(keyaAmps, 1), slip: 0, faults: "",
    gpsWas: r2(tr.steer + wob(t, 0.4, 0.5), 1), gpsWasOk: tr.kmh > 1}
-   : {found: false, lost: false, block: false, lostCount: 0, ago: -1, pos: 0, speed: 0, set: 0, current: 0, slip: 0, faults: "", gpsWas: 0, gpsWasOk: false};
+   : {found: false, lost: false, block: false, lostCount: 0, ago: -1, pos: 0, speed: 0, set: 0, current: 0, amps: 0, slip: 0, faults: "", gpsWas: 0, gpsWasOk: false};
   if (full) {
    const got = t >= 6.5 ? Math.floor(t - 6.5) : -1;
    j.steerCfg = Object.assign({got252: got, got251: got, got247: hostName === "AgOpenWeb" ? got : -1, wheelbase: hostName === "AgOpenWeb" && got >= 0 ? 2.85 : 3.2,
@@ -574,10 +577,11 @@ function Module(key) {
  function steerCfg() {
   const base = {kp: 12, hiPwm: 235, minPwm: 9, lowPwm: 28, counts: 134, offset: -36, ackerman: 97, invertWas: false, singleWas: true, relayHigh: false,
    motorDir: false, cytron: true, danfoss: false, sw: false, btn: true, encoder: false, pressure: true, current: false, kickMax: 92, yAxis: false};
-  // a valve (Cytron, Danfoss) with a pressure sensor; a motor (IBT2, Keya) with the current sensor (the Keya: its slip)
+  // a valve (Cytron, Danfoss) with a pressure sensor; a motor (IBT2, Keya) with the current sensor (the Keya: its own
+  // current, 0-255 = 0-8 A, so 160 is a limit of 5 A)
   if (h.motor === "Danfoss") Object.assign(base, {cytron: false, danfoss: true, sw: true, btn: false, counts: 118, offset: 12});
   if (h.motor === "IBT2") Object.assign(base, {cytron: false, pressure: false, current: true, kickMax: 70, sw: true, btn: false, counts: 118, offset: 12});
-  if (h.motor === "Keya") Object.assign(base, {kp: 40, minPwm: 20, lowPwm: 30, counts: 1, offset: 0, cytron: false, pressure: false, current: true, kickMax: 60});
+  if (h.motor === "Keya") Object.assign(base, {kp: 40, minPwm: 20, lowPwm: 30, counts: 1, offset: 0, cytron: false, pressure: false, current: true, kickMax: 160});
   return base;
  }
  // the sentences sent to the program (zHandlers.ino sendStandard / sendClassic)

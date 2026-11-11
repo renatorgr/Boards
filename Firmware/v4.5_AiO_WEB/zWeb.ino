@@ -454,7 +454,8 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.bo("wasBlock", wasBlock);
     j.bo("wasZero", wasBenchZero());   // angle sent as 0 deg (bench)
     j.bo("wasCheck", cfg.wasCheckOff == 0);
-    j.str("sensor", steerConfig.PressureSensor ? "pressure" : steerConfig.CurrentSensor ? "current" : "");
+    // (a Keya with "Current Turn" on: the value is its own current, whatever else is ticked in the program)
+    j.str("sensor", (isKeya && steerConfig.CurrentSensor) ? "current" : steerConfig.PressureSensor ? "pressure" : steerConfig.CurrentSensor ? "current" : "");
     j.num("sensorV", sensorView, 0);
     j.num("sensorMax", sensorPeakNow(), 0);
     j.i("kick", steerConfig.PulseCountMax);

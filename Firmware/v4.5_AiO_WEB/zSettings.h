@@ -69,7 +69,7 @@ struct WebSettings
     uint8_t  steerMaxKmh;         // above this speed (km/h) autosteer is cut (default 25)
     uint8_t  softStartX10ms;      // soft start of the valve / motor (x 10 ms; 0 = off, the default): the output rises over
                                   //       this time when autosteer engages, and over half of it on a hard step or a reversal
-    uint8_t  currentKickX10ms;    // pressure / current sensor kickout only after the reading is high this long (x 10 ms;
+    uint8_t  currentKickX10ms;    // pressure / current sensor (a Keya: its current) kickout only after the reading is high this long (x 10 ms;
                                   //       0 = at once; default 50 = 0.5 s), so a short peak does not switch autosteer off
                                   //       (the pressure sensor since 3 Nov 2026; the name stays, it is the EEPROM field)
     uint8_t  steerLoop100;        // 1 = steering loop at 100 Hz (10 ms, the WAS read 250 times a second), 0 = 40 Hz (25 ms,

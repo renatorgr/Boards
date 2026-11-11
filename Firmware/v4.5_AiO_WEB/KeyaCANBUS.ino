@@ -6,6 +6,7 @@
    kickout sensor, SteerKeya() and keyaCommand().
    Changes by Claude (Anthropic) 2026 for renatorgr (v4.5_AiO_WEB): the names the rest of this
    firmware uses (isKeya, disableKeyaSteer), the motor current and the faults kept for the web page,
+   the motor current smoothed as the kickout sensor (the scale of the AiO 26 firmware, GPL v3),
    the faults reported once in the [status] messages and as the reason autosteer went off
    (zSafety.ino) instead of being printed on every heartbeat; no prints on the USB serial while steering;
    the fault name "less phase" written "phase loss".
@@ -17,8 +18,12 @@
 // The Keya is found by its heartbeat (CAN id 0x07000001, every 20 ms), at any time after start-up.
 // Its heartbeat gives: bytes 0-1 the motor position (cumulative angle), 2-3 its speed, 4-5 its
 // current, 6-7 its fault bits. Autosteer.ino uses:
-//   - the motor slip as the kickout sensor (AgOpenGPS "current sensor" kickout): when the motor
-//     turns slower than it was told (the driver holds the wheel), keyaSlip grows;
+//   - the motor current as the kickout sensor (the program's "Current Turn"): a driver who holds the wheel
+//     stalls the motor and its current rises, while its speed error stays too small to count as slip.
+//     keyaAmps is the heartbeat's current (whole amps) smoothed; x KEYA_AMPS_X (Autosteer.ino) it is on the
+//     program's 0-255 scale, compared with the program's limit;
+//   - the motor slip as a second kickout: when the wheel is turned against the motor, or faster than it was
+//     told, keyaSlip is above 0;
 //   - the motor position as the wheel angle when AgOpenGPS has the WAS on "differential" (no WAS on
 //     the board): position / counts per degree, corrected slowly by the wheel angle measured from
 //     the GPS heading (zHandlers.ino), as in the AiO firmware;
@@ -27,6 +32,11 @@
 //     and blocks it until the heartbeat is back (keyaCheck, below).
 
 #define KEYA_LOST_MS 500        // as in the AiO 26 firmware (the Keya sends every 20 ms)
+
+// The current is smoothed per heartbeat, as in the AiO 26 firmware (KeyaCANDriver.h): the Keya reports whole
+// amps, and one high reading (the motor starting, a reversal) must not look like a held wheel. 0.9 of the
+// old value per heartbeat: about 0.2 s to follow a change. (KEYA_AMPS_X, its scale, is in Autosteer.ino.)
+#define KEYA_AMPS_KEEP 0.9f
 
 #ifndef lowByte
 #define lowByte(w) ((uint8_t)((w) & 0xFF))
@@ -109,6 +119,8 @@ void KeyaBus_Receive()
             keyaSteeringPosition = (int16_t)((int16_t)KeyaBusReceiveData.buf[0] << 8 | (int16_t)KeyaBusReceiveData.buf[1]) * -1;
             keyaCurrentActualSpeed = (int16_t)((int16_t)KeyaBusReceiveData.buf[2] << 8 | (int16_t)KeyaBusReceiveData.buf[3]);
             keyaCurrent = (int16_t)((int16_t)KeyaBusReceiveData.buf[4] << 8 | (int16_t)KeyaBusReceiveData.buf[5]);
+            // the kickout by current (Autosteer.ino): the size of the current, smoothed
+            keyaAmps = keyaAmps * KEYA_AMPS_KEEP + (float)abs((int)keyaCurrent) * (1.0f - KEYA_AMPS_KEEP);
 
             int16_t error = abs(keyaCurrentActualSpeed - keyaCurrentSetSpeed);
             static int16_t counter = 0;
@@ -225,6 +237,7 @@ bool keyaCheck()
         keyaBlock = true;
         keyaLostCount++;
         keyaSlip  = 0;                                // (its last value would trip the kickout when it comes back)
+        keyaAmps  = 0;                                // (the same for the current: it is not read while there is no heartbeat)
         StatusLog.line("[status] Keya motor: no heartbeat for %u ms (CAN cable, plug, motor power?) - autosteer off and blocked",
                        (unsigned)KEYA_LOST_MS);
         hwMessage("Keya not responding (CAN cable?): autosteer off", 8, true);
@@ -261,7 +274,8 @@ FLASHMEM void keyaJson(Json& j)
     j.i("pos", keyaSteeringPosition);
     j.i("speed", keyaCurrentActualSpeed);
     j.i("set", keyaCurrentSetSpeed);
-    j.i("current", keyaCurrent);
+    j.i("current", keyaCurrent);               // as the Keya sends it: whole amps, signed
+    j.num("amps", keyaAmps, 1);                // smoothed, without the sign: what the kickout compares
     j.num("slip", keyaSlip, 0);
     j.str("faults", t);
     j.num("gpsWas", wheelAngleGPS, 1);         // wheel angle from the GPS heading (zHandlers.ino)
