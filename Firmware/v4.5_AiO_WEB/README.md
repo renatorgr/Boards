@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 11 Nov 2026 | The page checks that it is the page of the firmware running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([Web page](#web-page)). |
 | 10 Nov 2026 | The UM982's temperature is read (`HWSTATUSA`); one a device does not give reads *not reported* ([Identification](#identification)). Tabs and light/dark button 44 px high, 8 px corners; network name `AiO-xxxx`, with a hyphen ([Web page](#web-page)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
@@ -76,6 +77,8 @@ Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number f
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
 Every question the page asks (write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`). The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+
+The page carries the date its own firmware was compiled, and compares it with the one the module reports every second. When they differ, the page on the screen is an old one (seen on 11 Nov 2026 in Firefox after an update: the cards showed the new firmware's data, the top bar was still the old one until a refresh). It then fetches the page again at an address the browser has never seen (`/?b=<build date>`), so no kept copy can answer. If the page that comes is still old, a notice at the top says to reload it by hand (Ctrl+F5). After an update or *Go back* asked from the page, the page takes the module as restarted when its time on went back or is behind where it would be had it kept running: a *Go back* a few seconds after start-up used to leave the page waiting for ever.
 
 **Without a module:** the [simulator](https://renatorgr.github.io/Boards/) shows this page and the XIAO's with a pretend module behind them (any GPS, IMU, steering and program; tractor driving or parked), rebuilt from the code on every change. See [`Firmware/simulator`](../simulator).
 

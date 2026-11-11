@@ -29,6 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 11 Nov 2026 | `build.py` leaves the pages' own build date (`PAGE_BUILT`) empty, so the Teensy and XIAO pages' new "is this the running firmware's page" check stays off here. |
 | 10 Nov 2026 | Teensy page: the pretend UM982 reports its temperature (59 °C, from `HWSTATUSA`) and the module's name on the network reads `AiO-3F2A`, as the firmware now does. |
 | 9 Nov 2026 | **Set up AgOpenWeb from your measures** 1.3: front corner, drawbar at the tyre, turns by headland, reasons ([the page](#set-up-agopenweb-from-your-measures)). Seed drill: 19 sections offline; short start page. [Action](#how-it-is-built) on Node 24. Check: pages in a web card's frame ([How it is built](#how-it-is-built)). |
 | 8 Nov 2026 | **Set up AgOpenWeb from your measures**: a calculator that turns the tractor and implement measures into the U-turn, headland and tramline settings, with the reasons, a drawing, examples and drawbars kept off the rear tyres ([the page](#set-up-agopenweb-from-your-measures)). |
