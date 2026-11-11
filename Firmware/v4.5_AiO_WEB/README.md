@@ -363,6 +363,7 @@ A Keya needs no kickout sensor: it reports its own current and speed in every he
 - AgOpenWeb reads the same value (PGN 250) and also switches its AutoSteer off by itself the moment the value reaches its limit, so with AgOpenWeb the kickout delay rarely gets to count. AgOpenGPS only shows the value.
 - With Current Turn off there is no Keya kickout at all. At 0 % AgOpenWeb sends "no limit": the current then cuts only at 8 A (the slip still cuts).
 - Keep **Pressure Turn** off with a Keya: with both on, AgOpenWeb sends the pressure's limit, not the current's.
+- Coming from gunicsba's Keya firmware (`AOG-Keya-CANBUS_lazykickoff95`): it reads the same current from the Keya, but puts it on the scale as amps × 20 and smooths it longer instead of waiting for the delay. The same current is a lower % there: 5 A is 39 % there and 63 % here.
 
 At the top of `Autosteer.ino`:
 
