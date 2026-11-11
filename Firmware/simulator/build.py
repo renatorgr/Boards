@@ -67,7 +67,9 @@ def newest_folder():
 
 def raw_string(path, name):
     """The C++ raw string literal of `name` (const char name[] PROGMEM = R"TAG(...)TAG";)."""
-    m = re.search(r"\b" + name + r"\[\]\s*PROGMEM\s*=\s*R\"(\w*)\((.*?)\)\1\"", read(path), re.S)
+    # the page's own build date (PAGE_BUILT: the literal closed, __DATE__ " " __TIME__, opened again) is left empty here
+    text = re.sub(r"\)(\w+)\"\s*__DATE__\s*\" \"\s*__TIME__\s*R\"\1\(", "", read(path))
+    m = re.search(r"\b" + name + r"\[\]\s*PROGMEM\s*=\s*R\"(\w*)\((.*?)\)\1\"", text, re.S)
     if not m:
         fail("no raw string %s in %s" % (name, path))
     return m.group(2)

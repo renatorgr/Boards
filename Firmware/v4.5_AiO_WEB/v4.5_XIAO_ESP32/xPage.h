@@ -108,6 +108,7 @@ a{color:var(--acc)}
 <section id="t-status">
 <div id="verNote" class="info warn hidden"></div>
 <div id="ghNote" class="info hidden"></div>
+<div id="stale" class="info hidden">This page is older than the XIAO program running now. Reload it: Ctrl+F5 on a computer; on a phone or in a web card, close the page and open it again.</div>
 <div class="grid3">
  <div class="card"><h2>Module (Teensy)<span class="age" id="mAge"></span></h2>
   <div class="big" id="mFix">–</div>
@@ -227,6 +228,7 @@ function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
 try{const t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}
 $("theme").addEventListener("click",()=>{const t=themeNow()==="light"?"dark":"light";document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}themeShow();});
 themeShow();
+const PAGE_BUILT=")XIAOPAGE" __DATE__ " " __TIME__ R"XIAOPAGE(";
 let lastState=null,lastTeensy=null,lastNets=null,tab="status",chipId=-1,chipName="",setLoaded=false,online=false,logAfter=0,xAfter=0,epoch=0,busy=false,waitBoot=false,upBefore=0,lastUp=0;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
@@ -319,13 +321,26 @@ $("dumpBtn").addEventListener("click",async()=>{
  m.className="note ok";m.textContent="Downloaded: "+name;b.disabled=false;});
 // The XIAO restarted (its time on went back, or another build runs): the whole page again from the XIAO,
 // on the same tab - a new program brings its own page, and every card and list starts afresh.
-function reloadAfterRestart(msg){
+function reloadAfterRestart(msg,b){
  try{sessionStorage.setItem("tab",tab);if(msg)sessionStorage.setItem("fwMsg",msg);}catch(e){}
- location.reload();
+ if(PAGE_BUILT&&b&&b!==PAGE_BUILT)location.replace(location.pathname+"?b="+encodeURIComponent(b));   // another build: its page, never a kept copy
+ else location.reload();
+}
+// PAGE_BUILT is when this page's own program was compiled (the compiler puts it in; empty in the simulator). When the
+// XIAO reports another build, this page is an old one: one a browser kept, or one that missed the restart. It is
+// asked again at an address the browser has never seen (?b=<build>), so no kept copy can answer; if the page that
+// comes is still the old one, a notice says how to reload it by hand.
+function pageStale(b){
+ if(!PAGE_BUILT||!b||b===PAGE_BUILT)return false;
+ const q="?b="+encodeURIComponent(b);
+ if(location.search===q){$("stale").classList.remove("hidden");return false;}
+ try{sessionStorage.setItem("tab",tab);}catch(e){}
+ location.replace(location.pathname+q);return true;
 }
 async function pollState(){
  try{const x=await getJ("/api/state");if(x.error)throw 0;
-  if(lastState&&(x.up+3<lastState.up||x.built!==lastState.built)){reloadAfterRestart(waitBoot?"Updated. Running: "+x.fw+", built "+x.built+".":"");return;}
+  if(lastState&&(x.up+3<lastState.up||x.built!==lastState.built)){reloadAfterRestart(waitBoot?"Updated. Running: "+x.fw+", built "+x.built+".":"",x.built);return;}
+  if(pageStale(x.built))return;
   if(waitBoot&&x.up<upBefore){waitBoot=false;busy=false;$("prog").classList.add("hidden");fwMsg(("Updated. Running: "+x.fw+", built "+x.built+"."),"ok");}
   setOnline(true);renderState(x);
   if(tab==="status"||tab==="prog"||tWait){const t=await getJ("/api/teensy");renderModule(t);tWaitCheck(t);}

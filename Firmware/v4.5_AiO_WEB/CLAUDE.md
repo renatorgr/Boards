@@ -320,7 +320,10 @@ The addresses must not move: settings must survive a firmware update.
    `built` field (`__DATE__ " " __TIME__`) in `/api/status` and the XIAO's `/api/state`.
 9. **Debug switches** at the top of `zHandlers.ino` (`FUSION_DEBUG`, `RAW_NMEA_DEBUG`, `SEND_TO_USB`) must
    be 0 in a published build.
-10. **Web page size**: `zWebPage.h` is one big string in flash; keep the JavaScript plain (no libraries).
+10. **Web page size**: `zWebPage.h` is one big string in flash; keep the JavaScript plain (no libraries). The string is
+    closed and opened again once, around `__DATE__ " " __TIME__` (`PAGE_BUILT`, the page's own build date, compared with
+    `built` of `/api/status`; the XIAO's `xPage.h` does the same): keep that line as it is, `Firmware/simulator/build.py`
+    looks for it, and include the page header only from the `.ino` files (one build time).
 11. **No `EthernetServer`**: the web server listens and accepts with FNET directly (`zWeb.ino`, `webListenStart`,
     `webAccept`). NativeEthernet's `EthernetServer::poll()` calls `fnet_socket_accept()` with an address length it
     never sets; FNET refuses the accept when that stack garbage is below 16, the one-place listen queue stays full

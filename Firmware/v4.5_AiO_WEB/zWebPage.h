@@ -132,6 +132,7 @@ a{color:var(--acc)}
 <section id="t-status">
 <div id="alert" class="alert hidden"></div>
 <div id="ghNote" class="info hidden"></div>
+<div id="stale" class="info hidden">This page is older than the firmware running now. Reload it: Ctrl+F5 on a computer; on a phone or in a web card, close the page and open it again.</div>
 <div class="grid">
  <div class="card"><h2>GNSS</h2>
   <div class="big" id="fixName">–</div>
@@ -434,6 +435,7 @@ const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
 $("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
 $("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else if(e.key==="Enter"&&e.target===$("askIn"))askEnd(true);});
+const PAGE_BUILT=")WEBPAGE" __DATE__ " " __TIME__ R"WEBPAGE(";
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
 // The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
@@ -737,13 +739,26 @@ function machSecs(box,cmd,sec,have,top){
 
 // The Teensy restarted (its time on went back, or another build runs): the whole page again from the
 // module, on the same tab - a new firmware brings its own page, and every card, list and form starts afresh.
-function reloadAfterRestart(msg){
+function reloadAfterRestart(msg,b){
  try{sessionStorage.setItem("tab",tab);if(msg)sessionStorage.setItem("fwMsg",msg);}catch(e){}
- location.reload();
+ if(PAGE_BUILT&&b&&b!==PAGE_BUILT)location.replace(location.pathname+"?b="+encodeURIComponent(b));   // another build: its page, never a kept copy
+ else location.reload();
+}
+// PAGE_BUILT is when this page's own firmware was compiled (the compiler puts it in; empty in the simulator). When the
+// firmware reports another build, this page is an old one: one a browser kept, or one that missed the restart. It is
+// asked again at an address the browser has never seen (?b=<build>), so no kept copy can answer; if the page that
+// comes is still the old one, a notice says how to reload it by hand.
+function pageStale(b){
+ if(!PAGE_BUILT||!b||b===PAGE_BUILT)return false;
+ const q="?b="+encodeURIComponent(b);
+ if(location.search===q){$("stale").classList.remove("hidden");return false;}
+ try{sessionStorage.setItem("tab",tab);}catch(e){}
+ location.replace(location.pathname+q);return true;
 }
 async function pollStatus(){
  try{const s=await getJ("/api/status");if(s.error)throw 0;
-  if(lastS&&(s.up+3<lastS.up||s.built!==lastS.built)){reloadAfterRestart(waitingBoot?"Updated. Running: "+s.fw+", built "+s.built+".":"");return;}
+  if(lastS&&(s.up+3<lastS.up||s.built!==lastS.built)){reloadAfterRestart(waitingBoot?"Updated. Running: "+s.fw+", built "+s.built+".":"",s.built);return;}
+  if(pageStale(s.built))return;
   if(waitingBoot&&s.up<upBefore){waitingBoot=false;busy=false;$("prog").classList.add("hidden");$("install").disabled=!$("hexFile").files[0];
    fwMsg(("Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
   setOnline(true);render(s);
