@@ -330,6 +330,10 @@ function reloadAfterRestart(msg,b){
 // XIAO reports another build, this page is an old one: one a browser kept, or one that missed the restart. It is
 // asked again at an address the browser has never seen (?b=<build>), so no kept copy can answer; if the page that
 // comes is still the old one, a notice says how to reload it by hand.
+// After an update or a restart asked from this page: has the module restarted? Its time on went back, or it is
+// behind where it would be had it kept running (a restart asked seconds after start-up leaves it no room to go back).
+let bootAt=0;
+function restarted(up){return up<upBefore||up+2<upBefore+(Date.now()-bootAt)/1000;}
 function pageStale(b){
  if(!PAGE_BUILT||!b||b===PAGE_BUILT)return false;
  const q="?b="+encodeURIComponent(b);
@@ -341,7 +345,7 @@ async function pollState(){
  try{const x=await getJ("/api/state");if(x.error)throw 0;
   if(lastState&&(x.up+3<lastState.up||x.built!==lastState.built)){reloadAfterRestart(waitBoot?"Updated. Running: "+x.fw+", built "+x.built+".":"",x.built);return;}
   if(pageStale(x.built))return;
-  if(waitBoot&&x.up<upBefore){waitBoot=false;busy=false;$("prog").classList.add("hidden");fwMsg(("Updated. Running: "+x.fw+", built "+x.built+"."),"ok");}
+  if(waitBoot&&restarted(x.up)){waitBoot=false;busy=false;$("prog").classList.add("hidden");fwMsg(("Updated. Running: "+x.fw+", built "+x.built+"."),"ok");}
   setOnline(true);renderState(x);
   if(tab==="status"||tab==="prog"||tWait){const t=await getJ("/api/teensy");renderModule(t);tWaitCheck(t);}
  }catch(e){setOnline(false);}
@@ -443,7 +447,7 @@ function sendBin(blob,name,p0){
  x.upload.onprogress=e=>{if(e.lengthComputable)p.value=p0+Math.round(e.loaded/e.total*(95-p0));};
  const fail=t=>{busy=false;$("install").disabled=!$("binFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
-  if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
+  if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;bootAt=Date.now();waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
   else fail("Not installed: "+(j.error||("error "+x.status))+". The current program keeps running.");};
  x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current program keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/) with a downloaded .bin.");
  x.send(fd);}

@@ -748,6 +748,10 @@ function reloadAfterRestart(msg,b){
 // firmware reports another build, this page is an old one: one a browser kept, or one that missed the restart. It is
 // asked again at an address the browser has never seen (?b=<build>), so no kept copy can answer; if the page that
 // comes is still the old one, a notice says how to reload it by hand.
+// After an update or a restart asked from this page: has the module restarted? Its time on went back, or it is
+// behind where it would be had it kept running (a restart asked seconds after start-up leaves it no room to go back).
+let bootAt=0;
+function restarted(up){return up<upBefore||up+2<upBefore+(Date.now()-bootAt)/1000;}
 function pageStale(b){
  if(!PAGE_BUILT||!b||b===PAGE_BUILT)return false;
  const q="?b="+encodeURIComponent(b);
@@ -759,7 +763,7 @@ async function pollStatus(){
  try{const s=await getJ("/api/status");if(s.error)throw 0;
   if(lastS&&(s.up+3<lastS.up||s.built!==lastS.built)){reloadAfterRestart(waitingBoot?"Updated. Running: "+s.fw+", built "+s.built+".":"",s.built);return;}
   if(pageStale(s.built))return;
-  if(waitingBoot&&s.up<upBefore){waitingBoot=false;busy=false;$("prog").classList.add("hidden");$("install").disabled=!$("hexFile").files[0];
+  if(waitingBoot&&restarted(s.up)){waitingBoot=false;busy=false;$("prog").classList.add("hidden");$("install").disabled=!$("hexFile").files[0];
    fwMsg(("Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
   setOnline(true);render(s);
  }catch(e){setOnline(false);}
@@ -1210,7 +1214,7 @@ $("revert").addEventListener("click",async()=>{
  busy=true;$("revert").disabled=true;$("install").disabled=true;$("ghInstall").disabled=true;fwMsg("Asking the Teensy…");
  const back=()=>{busy=false;$("revert").disabled=false;$("install").disabled=!$("hexFile").files[0];renderGh();};
  try{const j=await getJ("/api/revert",{method:"POST"});
-  if(j.ok){upBefore=lastUp;waitingBoot=true;setOnline(false);fwMsg(("Going back to "+pv.fw.split(" ")[0]+", built "+pv.built+". Installing and restarting — do not switch the power off…"),"warn");}
+  if(j.ok){upBefore=lastUp;bootAt=Date.now();waitingBoot=true;setOnline(false);fwMsg(("Going back to "+pv.fw.split(" ")[0]+", built "+pv.built+". Installing and restarting — do not switch the power off…"),"warn");}
   else{back();fwMsg("Not done: "+ptErr(j.error)+". The current firmware keeps running.","bad");}
  }catch(e){back();fwMsg("The connection failed. The current firmware keeps running.","bad");}
 });
@@ -1224,7 +1228,7 @@ function sendHex(blob,force,p0){
  x.upload.onload=()=>fwMsg("File sent; the Teensy is checking and writing it…");
  const fail=t=>{busy=false;$("install").disabled=!$("hexFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
-  if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;waitingBoot=true;setOnline(false);
+  if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;bootAt=Date.now();waitingBoot=true;setOnline(false);
    fwMsg(("Checked ("+Math.round(j.size/1024)+" kB). Installing and restarting — do not switch the power off…"),"warn");}
   else fail("Not installed: "+ptErr(j.error||("error"+" "+x.status))+". The current firmware keeps running.");};
  x.onerror=()=>fail("The connection failed. The current firmware keeps running.");
