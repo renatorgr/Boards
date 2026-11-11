@@ -88,7 +88,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 |------|---------|
 | `Autosteer.ino` | Pins, steer settings / config (EEPROM 10 / 40 / 60), WAS (ADS1115) and WAS map, switches, min / max speed, UDP 8888 PGNs (`ReceiveUdp`), 40 / 100 Hz `autosteerLoop()` (`steerLoopApply`), PGN 253 / 250 |
 | `AutosteerPID.ino` | PID and output: Cytron, IBT2, Danfoss, Keya; soft start |
-| `KeyaCANBUS.ino` | Keya on CAN3 (250 kbit/s): heartbeat, enable / speed commands, slip |
+| `KeyaCANBUS.ino` | Keya on CAN3 (250 kbit/s): heartbeat, enable / speed commands, its current smoothed (`keyaAmps`, the kickout sensor), slip |
 | `zSafety.ino` / `.h` | WAS check, why autosteer went off, PGN 221 text to the program, watchdog, crash hook, boot reason, `loopStep` names, the chip's temperature (`cpuTempTick`) |
 | `zADS1115.cpp` / `.h` | ADS1115-Lite (WAS on I2C, Wire1) |
 
@@ -210,7 +210,7 @@ byte before it (low 8 bits).
 | PGN | Name |
 |-----|------|
 | 253 (0xFD) | Steer status: actual angle, switches, PWM |
-| 250 (0xFA) | Sensor: pressure / current / Keya slip |
+| 250 (0xFA) | Sensor: pressure / current / a Keya's own current (amps x 32, `KEYA_AMPS_X`) |
 | 221 | Text on the program's screen (autosteer off reason, restart) |
 | 126 / 121 | Hello replies (steer, IMU) |
 | 203 | Scan reply |

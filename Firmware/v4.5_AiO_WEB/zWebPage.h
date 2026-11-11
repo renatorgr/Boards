@@ -246,7 +246,7 @@ a{color:var(--acc)}
  <div class="opt"><span style="flex:1">Minimum speed<small>Below it (the program's speed) the wheels are not turned. Default 0.2 km/h.</small></span><select name="steerMinKmhX10"><option value="1">0.1 km/h</option><option value="2">0.2 km/h</option><option value="3">0.3 km/h</option><option value="5">0.5 km/h</option><option value="10">1.0 km/h</option><option value="15">1.5 km/h</option><option value="20">2.0 km/h</option><option value="30">3.0 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
- <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor (not the Keya's slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
+ <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor, a Keya's own current too (not its slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
  <div class="opt"><span style="flex:1">Steering loop<small>How often the wheel angle is read and the valve or motor output updated. 100 Hz: as the AiO 26 firmware and AgOpenWeb's steering packets (the WAS read 250 times a second instead of 128); the gains stay the same. Try it once the tractor steers well at 40 Hz.</small></span><select name="steerLoop100"><option value="0">40 Hz</option><option value="1">100 Hz</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
 <p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
@@ -438,9 +438,11 @@ $("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else i
 const PAGE_BUILT=")WEBPAGE" __DATE__ " " __TIME__ R"WEBPAGE(";
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
-// The kickout sensor (pressure, current, Keya slip) and its trip point go 0-255 between the program and the
-// module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
+// The kickout sensor (pressure, current, a Keya's own current) and its trip point go 0-255 between the program
+// and the module; AgOpenWeb / AgOpenGPS show them in % (the trip point x 2.55 = the byte), so the page does too.
 const pct255=v=>fmt(v===null||v===undefined?v:v*100/255,0," %");
+// A Keya is its own current sensor: 0-255 is 0-8 A (amps x 32, KEYA_AMPS_X in Autosteer.ino), so the page adds the amps
+const amps255=v=>fmt(v===null||v===undefined?v:v/32,1," A");
 // PGN 254 byte 10, the lightbar byte: 127 on the line, 2 cm per step (under 127 = left of it), 255 no line
 const lineText=v=>{if(v===null||v===undefined)return "–";if(v===255)return "no line";const cm=(v-127)*2,a=Math.abs(cm);
  return cm===0?"on the line":(a>=254?"254+ cm":a+" cm")+(cm>0?" right":" left");};
@@ -452,7 +454,7 @@ function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.create
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
-const OFF={keya:"Keya motor slip",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program (its screen says why: its button, boundary, speed, RTK)",speed:"speed below 0.1 km/h",other:"other"};
+const OFF={keya:"Keya: wheel turned by hand",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program (its screen says why: its button, boundary, speed, RTK)",speed:"speed below 0.1 km/h",other:"other"};
 const BW={power:"power on (or button / USB)",upload:"programming",restart:"restart requested (page, update or program)",watchdog:"watchdog (the firmware stopped)",crash:"firmware fault","crash-wdt":"firmware fault, restarted by the watchdog",temp:"high temperature",other:"other",unknown:"other"};
 const WHYF={1:"no RELPOSNED from the second F9P (GPS2 port: UART1 at 460800, UBX-NAV-RELPOSNED on)",2:"the RELPOSNED does not come with the GGA",3:"the second F9P has no RTK fixed solution between the antennas",4:"empty heading"};
 const WHY={1:"no HPR from the receiver (single antenna, or HPR off in the UM982)",2:"the HPR does not arrive with the GGA",3:"the UM982 has no heading solution from its two antennas",4:"empty heading in the HPR"};
@@ -576,16 +578,17 @@ function render(s){
  else if(!st.adc)set("wasV","no ADS1115","bad");
  else{const neg=st.wasOut&&sc&&!sc.singleWas&&st.wasV<-0.5;   // differential input, WAS_H under WAS_L: nothing on pin 3
   set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(neg?" · negative on the differential input: nothing on pin 3? Choose Single in the program":st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":""),st.wasOut?"bad":!st.wasCheck?"warn":"");}
- set("sensT",(st.sensor==="current"?(st.motor==="Keya"?"Keya slip":"Current sensor"):"Pressure sensor"));
- set("sens",pct255(st.sensorV),st.sensor&&st.sensorV>=st.kick?"bad":"");   // the value read; the cut is in the steering settings card
+ const kyA=st.sensor==="current"&&st.motor==="Keya";   // the Keya's current is the kickout sensor: amps next to the %
+ set("sensT",(st.sensor==="current"?(st.motor==="Keya"?"Keya current":"Current sensor"):"Pressure sensor"));
+ set("sens",pct255(st.sensorV)+(kyA?" · "+amps255(st.sensorV)+" (limit "+amps255(st.kick)+")":""),st.sensor&&st.sensorV>=st.kick?"bad":"");   // the value read; the cut is in the steering settings card
  let ot="–";
- if(st.off){ot=(OFF[st.off]||st.off);if(st.off==="pressure"||st.off==="current"||st.off==="keya")ot+=" ("+pct255(st.offVal)+" / "+pct255(st.kick)+")";else if(st.off==="keyafault")ot+=" (0x"+(st.offVal>>>0).toString(16).toUpperCase().padStart(4,"0")+")";else if(st.off==="angle")ot+=" ("+st.offVal+"°)";else if(st.off==="fast")ot+=" ("+st.offVal+" km/h)";else if(st.off==="encoder")ot+=" ("+st.offVal+" pulses"+")";if(st.offAgo>=0)ot+=" ("+ago(st.offAgo)+")";}
+ if(st.off){ot=(OFF[st.off]||st.off);if(st.off==="current"&&st.motor==="Keya")ot="Keya current kickout ("+amps255(st.offVal)+" / "+amps255(st.kick)+")";else if(st.off==="pressure"||st.off==="current")ot+=" ("+pct255(st.offVal)+" / "+pct255(st.kick)+")";else if(st.off==="keya")ot+=" ("+st.offVal+" rpm)";else if(st.off==="keyafault")ot+=" (0x"+(st.offVal>>>0).toString(16).toUpperCase().padStart(4,"0")+")";else if(st.off==="angle")ot+=" ("+st.offVal+"°)";else if(st.off==="fast")ot+=" ("+st.offVal+" km/h)";else if(st.off==="encoder")ot+=" ("+st.offVal+" pulses"+")";if(st.offAgo>=0)ot+=" ("+ago(st.offAgo)+")";}
  set("off",ot,st.off==="keyafault"?"bad":["pressure","current","encoder","was","silent","keya","angle","fast","keyalost"].includes(st.off)?"warn":"");
  set("hwMsg",b&&b.hwMsg?b.hwMsg:"–");
  const k=st.keya;
  if(!k||!k.found){set("keya","not detected");set("gpsWas","–");}
  else{const live=k.ago>=0&&k.ago<1000;
-  set("keya",(k.lost?"NOT RESPONDING"+" · ":live?"":"no heartbeat"+" · ")+(k.lostCount?"lost "+k.lostCount+"× · ":"")+"position "+k.pos+" · "+"current "+k.current+" · "+"slip "+pct255(k.slip)+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
+  set("keya",(k.lost?"NOT RESPONDING"+" · ":live?"":"no heartbeat"+" · ")+(k.lostCount?"lost "+k.lostCount+"× · ":"")+"position "+k.pos+" · "+"current "+(k.amps===undefined?k.current+" A":fmt(k.amps,1," A"))+" · "+"slip "+fmt(k.slip,0," rpm")+(k.faults?" · "+k.faults:""),k.faults||!live?"bad":"");
   set("gpsWas",k.gpsWasOk?fmt(k.gpsWas,1,"°"):"only above 1 km/h, with a heading");}
  if(sc){
   set("scGot",sc.got252>=0?ago(sc.got252):"not yet (saved in the Teensy)");
@@ -597,7 +600,7 @@ function render(s){
   set("scRelay",(sc.relayHigh?"high":"low"));
   set("scSw",(sc.sw?"steer switch":sc.btn?"steer button":"none (the program's button)"));
   set("scSens",[sc.pressure?"pressure":"",sc.current?"current":"",sc.encoder?"encoder":""].filter(x=>x).join(" · ")||"none");
-  set("scKick",sc.pressure||sc.current?pct255(sc.kickMax):sc.encoder?sc.kickMax+" pulses":"–");
+  set("scKick",sc.pressure||sc.current?pct255(sc.kickMax)+(sc.current&&!sc.pressure&&st.motor==="Keya"?" · "+amps255(sc.kickMax)+" of the Keya's current":""):sc.encoder?sc.kickMax+" pulses":"–");
   set("scAxis",sc.yAxis?"Y":"X");
   // the program's own limits, shown only: the firmware cuts beyond ±50° and below / above the speeds in Settings
   set("scMaxDeg",sc.aowMaxDeg?sc.aowMaxDeg+"°":"not sent");

@@ -222,13 +222,16 @@ static void offText(char* b, size_t n, uint8_t c, int v)
         case SO_SWITCH:   snprintf(b, n, "steer switch"); break;
         case SO_BUTTON:   snprintf(b, n, "steer button"); break;
         case SO_PRESSURE: snprintf(b, n, "pressure kickout (%d %%, limit %d %%)", pct255(v), lim); break;
-        case SO_CURRENT:  snprintf(b, n, "current kickout (%d %%, limit %d %%)", pct255(v), lim); break;
+        case SO_CURRENT:  // a Keya: its own current, in amps (0-255 = 0-8 A, KEYA_AMPS_X in Autosteer.ino)
+            if (isKeya) snprintf(b, n, "Keya current kickout (%.1f A, limit %.1f A)", v / KEYA_AMPS_X, steerConfig.PulseCountMax / KEYA_AMPS_X);
+            else        snprintf(b, n, "current kickout (%d %%, limit %d %%)", pct255(v), lim);
+            break;
         case SO_ENCODER:  snprintf(b, n, "wheel encoder kickout (%d pulses)", v); break;
         case SO_WAS:      snprintf(b, n, "WAS fault (%.2f V)", wasVolts); break;
         case SO_SILENT:   snprintf(b, n, "no steering data from the program for 2.5 s"); break;
         case SO_PROGRAM:  snprintf(b, n, "by the program (its screen says why)"); break;
         case SO_SPEED:    snprintf(b, n, "speed below 0.1 km/h"); break;
-        case SO_KEYA:     snprintf(b, n, "Keya kickout (%d %%, limit %d %%)", pct255(v), lim); break;
+        case SO_KEYA:     snprintf(b, n, "Keya kickout: wheel turned by hand (%d rpm)", v); break;
         case SO_KEYA_FAULT: snprintf(b, n, "Keya motor fault (0x%04X)", v & 0xFFFF); break;
         case SO_ANGLE:    snprintf(b, n, "wheel angle %d deg, beyond +-50", v); break;
         case SO_FAST:     snprintf(b, n, "speed %d km/h, above %u", v, (unsigned)cfg.steerMaxKmh); break;

@@ -29,7 +29,7 @@ enum SteerOff : uint8_t
     SO_PROGRAM,     // the program turned it off (its button, end of the line, ...)
     SO_SPEED,       // the program sends a speed below 0.1 km/h
     SO_OTHER,
-    SO_KEYA,        // AiO_WEB: Keya motor slip kickout (the driver holds the wheel)
+    SO_KEYA,        // AiO_WEB: Keya motor slip kickout (the driver turns the wheel against the motor)
     SO_KEYA_FAULT,  // AiO_WEB: the Keya reports a fault
     SO_ANGLE,       // AiO_WEB: wheel angle beyond the WAS map (+-50 deg)
     SO_FAST,        // AiO_WEB: the program's speed above the maximum (web page, default 25 km/h)

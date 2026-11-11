@@ -15,7 +15,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **GPS receiver** | set up with AOGConfigOMatic on a PC | the Teensy finds the receiver's baud rate, identifies it (F9P, X20P, UM982, a second F9P), checks what it needs and loads the AgOpenGPS settings itself; u-blox and UM982 settings and a UM982 console on the page. |
 | **IMU** | BNO085 | TM171 or BNO085 (RVC or I2C), found at start-up. TM171: gyro and new-install calibration, set-up check with one-click fix, and its settings, all from the page. |
 | **Output to the program** | `$PAOGI` / `$PANDA` | the same, plus the standard sentence set AgOpenWeb reads (`GGA`, `VTG`, `THS`, `HPR`), chosen automatically from the program's hello. |
-| **Autosteer safety** | kickouts | WAS voltage check (broken wire = autosteer blocked), Keya heartbeat lost = autosteer off, outputs off at once on a crash or a watchdog restart, and the reason autosteer went off on the program's screen. |
+| **Autosteer safety** | kickouts | WAS voltage check (broken wire = autosteer blocked), a Keya cut by its own current when the wheel is held, Keya heartbeat lost = autosteer off, outputs off at once on a crash or a watchdog restart, and the reason autosteer went off on the program's screen. |
 | **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, kickout delay (pressure or current sensor). The wheelbase comes from AgOpenWeb; its maximum wheel angle and minimum steering speed are shown. |
 | **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 11 Nov 2026 | The page checks that it is the page of the firmware running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([Web page](#web-page)). |
+| 11 Nov 2026 | **Keya**: holding the wheel cuts autosteer, by the motor's own current against the program's Current Turn limit ([Keya kickout](#keya-kickout)). After an update, an old page a browser kept fetches the new one by itself ([Web page](#web-page)). |
 | 10 Nov 2026 | The UM982's temperature is read (`HWSTATUSA`); one a device does not give reads *not reported* ([Identification](#identification)). Tabs and light/dark button 44 px high, 8 px corners; network name `AiO-xxxx`, with a hyphen ([Web page](#web-page)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
 | 7 Nov 2026 | Add-on card (`_aowcard._tcp`) under a unique name, on the Connections card. Status cards reordered, steering settings folded into Steering; Machine tab reads the sprayer's PGN 161 (rate, alarms) ([Web page](#web-page)). Shorter notes, short headers. |
@@ -115,7 +115,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
 | Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
 | Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
-| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor (not the Keya): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). |
+| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor, a [Keya's own current](#keya-kickout) too (not its slip): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). |
 | Steering loop (Steering) | 40 Hz | 40 or 100 Hz: how often the wheel angle is read and the valve / motor output updated (every 25 or 10 ms). 100 Hz is what the AiO 26 firmware runs and AgOpenWeb's steering packets come at; the WAS (ADS1115) is then read at 250 samples a second (4 ms each, 128 at 40 Hz). The program's gains are per degree, not per loop, so they stay the same; a Keya gets its command 100 times a second (untested). Try it once the tractor steers well at 40 Hz. Applied at once; the [boot] / [web] Steering lines and the Steering card say the rate. |
 
 ### Firmware update over the network
@@ -337,7 +337,7 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 **Keya** (the AiO firmware's code):
 
-- Kickout: with "current sensor" on in the program, the Keya's slip is compared with the program's limit.
+- Kickout: with **Current Turn** on in the program, the motor's own current is compared with the program's limit, and a wheel turned by hand against the motor cuts at once ([Keya kickout](#keya-kickout)).
 - A motor fault (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
 - No heartbeat for 0.5 s (cable, plug, power) turns autosteer off and blocks it until the heartbeat is back, as in the AiO 26 firmware.
 - **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts); until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m). The Steering settings card shows which one is in use.
@@ -345,6 +345,24 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
 AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
+
+### Keya kickout
+
+A Keya needs no kickout sensor: it reports its own current and speed in every heartbeat. With **Current Turn** on in the program (AutoSteer settings, Turn Sensors) the firmware uses both:
+
+- **Current** (since 11 Nov 2026). A driver who holds the wheel stalls the motor, and its current rises to the most it can draw. The Keya reports whole amps; the firmware smooths them (about 0.2 s) and puts them on the program's 0-255 scale as amps × 32, the scale of the AiO 26 firmware: 100 % is 8 A, 1 % is 0.08 A. When the value stays at or above the program's limit for the [kickout delay](#settings) (0.5 s by default), autosteer goes off: `Autosteer off: Keya current kickout (5.2 A, limit 4.5 A)`.
+- **Slip**. The wheel turned against the motor (by more than 10 rpm), or much faster than the motor was told, for 9 heartbeats in a row: autosteer goes off at once, whatever the limit: `Autosteer off: Keya kickout: wheel turned by hand (26 rpm)`. Until 11 Nov 2026 the slip was the only kickout and it was compared with the program's limit; a wheel held still never counted as slip, so the motor went on fighting the driver's hand.
+
+**Choosing the limit.** The Status tab's Steering card shows the current next to the limit, in amps (row *Keya current*), and the program shows the same value in %. Watch it while autosteer steers normally, then hold the wheel and watch it again, and put the limit between the two. The Keya reports whole amps (the smoothed value moves between them), so a limit half-way between two whole amps is the clear choice:
+
+| Limit in the program | 31 % | 44 % | 56 % | 69 % | 81 % |
+|---|---|---|---|---|---|
+| In amps | 2.5 A | 3.5 A | 4.5 A | 5.5 A | 6.5 A |
+| Cuts when the Keya reports | 3 A or more | 4 A or more | 5 A or more | 6 A or more | 7 A or more |
+
+- AgOpenWeb reads the same value (PGN 250) and also switches its AutoSteer off by itself the moment the value reaches its limit, so with AgOpenWeb the kickout delay rarely gets to count. AgOpenGPS only shows the value.
+- With Current Turn off there is no Keya kickout at all. At 0 % AgOpenWeb sends "no limit": the current then cuts only at 8 A (the slip still cuts).
+- Keep **Pressure Turn** off with a Keya: with both on, AgOpenWeb sends the pressure's limit, not the current's.
 
 At the top of `Autosteer.ino`:
 
@@ -373,7 +391,7 @@ Autosteer stops at the next steering loop (25 ms; 10 ms with the loop at 100 Hz)
 | steer switch / button | `Autosteer off: steer switch` |
 | pressure / current kickout | `Autosteer off: pressure kickout (40 %, limit 36 %)` |
 | wheel encoder | `Autosteer off: wheel encoder kickout (5 pulses)` |
-| Keya slip / fault | `Autosteer off: Keya kickout (34 %, limit 31 %)` / `Keya motor fault (0x0002)` |
+| Keya current / slip / fault | `Autosteer off: Keya current kickout (5.2 A, limit 4.5 A)` / `Keya kickout: wheel turned by hand (26 rpm)` / `Keya motor fault (0x0002)` |
 | Keya not responding (no heartbeat for 0.5 s) | `Keya not responding (CAN cable?): autosteer off` |
 | wheel angle / speed beyond the limits | `Autosteer off: wheel angle 63 deg, beyond +-50` / `speed 27 km/h, above 25` (the maximum set on the web page) |
 | WAS out of range | `WAS fault (0.03 V): autosteer blocked` |
@@ -554,7 +572,7 @@ This firmware is built on other people's work:
 | Part | From |
 |---|---|
 | Structure of the main file, steering (`Autosteer.ino`, `AutosteerPID.ino`), Ethernet, NTRIP | the AgOpenGPS AiO v4 Teensy firmware (AgOpenGPS project) |
-| The soft start, the Keya heartbeat timeout (0.5 s), the current kickout delay, the steering speeds as settings (ideas, rewritten for this board) | the AgOpenGPS AiO 26 firmware (`AgOpenGPS-Official/Firmware_Teensy_AiO_26`, GPL v3) |
+| The soft start, the Keya heartbeat timeout (0.5 s), the current kickout delay, the steering speeds as settings, the Keya's current as the kickout sensor on the 0-255 scale (ideas, rewritten for this board) | the AgOpenGPS AiO 26 firmware (`AgOpenGPS-Official/Firmware_Teensy_AiO_26`, GPL v3) |
 | Keya CAN (`KeyaCANBUS.ino`), dual F9P RELPOSNED (heading + 90°, roll, the flags), wheel angle from the GPS heading for the Keya without a WAS, the cut beyond ±50° or above 25 km/h, no steering below 0.2 km/h, the WAS map | the AgOpenGPS AiO v4 Teensy firmware `AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025` (AgOpenGPS project, GPL v3) |
 | UM982 dual heading from HPR, the first `zHandlers.ino` | chriskinal, AOG_Teensy_UM982 (github.com/chriskinal/AOG_Teensy_UM982), Copyright 2024 chriskinal, GPL v3 |
 | TM171, Danfoss and IBT2 output, the version of the AgOpenGPS files used here | Balázs Gunics, fork of the AgOpenGPS boards (github.com/gunicsba/agopengps_boards, firmware V4.1) |

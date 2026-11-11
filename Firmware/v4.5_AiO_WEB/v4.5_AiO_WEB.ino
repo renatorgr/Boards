@@ -153,8 +153,9 @@ bool keyaIntendToSteer = false;         // Autosteer.ino: steering now (the Keya
 int16_t  keyaSteeringPosition   = 0;    // motor position (heartbeat bytes 0-1, sign as in the AiO firmware)
 int16_t  keyaCurrentActualSpeed = 0;    // motor speed
 int16_t  keyaCurrentSetSpeed    = 0;    // the speed it was told (x 0.1)
-int16_t  keyaCurrent            = 0;    // motor current (heartbeat bytes 4-5)
-float    keyaSlip               = 0;    // the AiO firmware's "sensorReading": how much slower than told (kickout)
+int16_t  keyaCurrent            = 0;    // motor current (heartbeat bytes 4-5, whole amps, signed)
+float    keyaAmps               = 0;    // the same without its sign, smoothed (amps): the kickout by current
+float    keyaSlip               = 0;    // the AiO firmware's "sensorReading": how far off the speed it was told (kickout)
 uint16_t keyaFaults             = 0;    // byte 6 << 8 | byte 7 (byte 7 bit 0 = disabled, not a fault)
 uint32_t keyaHeartbeatMs        = 0;    // last heartbeat (millis; keyaHeartbeats 0 = never)
 uint32_t keyaHeartbeats         = 0;
