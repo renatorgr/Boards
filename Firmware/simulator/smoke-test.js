@@ -219,6 +219,11 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);     // its lower 540/65 R34 tyres let the drawbar fold to 76°
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 76°$/);
   await shot(pg, "aow-settings-farmall-spreader");
+  await pg.click("button:has-text('Case IH Puma 180 CVX')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#tractors button.on", /^Case IH Puma 180 CVX$/);
+  if ((await pg.inputValue("#wheelbase")) !== "2.9" || (await pg.inputValue("#hitch")) !== "0.9") fail.push(what + ": the Puma button should set its wheelbase and its drawbar pin");
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.2 m$/);     // the 2 m track keeps the tyres further out: the drawbar folds to 82.5°
+  await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 82\.5°$/);
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
   if ((await pg.inputValue("#hitch")) !== "0.7") fail.push(what + ": the Maxxum button should put the spreader back on its 0.7 m pin");
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6 m$/);
