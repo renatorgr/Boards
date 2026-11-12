@@ -41,7 +41,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15          # a build and check take about 4 minutes; a stuck browser must not hold the queue for hours
     # a newer push to the same branch replaces the check of the older one; each branch has its own queue
     concurrency:
@@ -101,7 +101,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pages: write      # to publish
       id-token: write   # Pages checks that the publication comes from this workflow
