@@ -88,9 +88,9 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 
 <div class="presets" id="tractors">
  <span class="plabel">Tractor</span>
+ <button type="button" data-name="farmall" onclick="tractor('farmall')">Case IH Farmall 115C</button>
  <button type="button" data-name="maxxum" onclick="tractor('maxxum')">Case IH Maxxum 135</button>
  <button type="button" data-name="puma" onclick="tractor('puma')">Case IH Puma 180 CVX</button>
- <button type="button" data-name="farmall" onclick="tractor('farmall')">Case IH Farmall 115C</button>
 </div>
 <div class="presets" id="implements">
  <span class="plabel">Implement</span>
@@ -174,7 +174,7 @@ function labels() {
  else set("axleToToolLabel", "Rear axle to the working line (m)", "the boom, the discs, the rows behind the rear axle, with a tape");
 }
 const TRACTORS = {
- // Renato's tractors: they fill the Machine card. `pin`: the drawbar's hitch pin behind the rear axle, the hitch length of the implements
+ // Renato's tractors, by power (the buttons' order too): they fill the Machine card. `pin`: the drawbar's hitch pin behind the rear axle, the hitch length of the implements
  // that go on the drawbar (`onDrawbar` below); a semi-mounted implement brings its own pivot instead.
  maxxum: {machine: "tractor", wheelbase: 2.7, steer: 42, overhang: 1.5, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, pin: 0.7,
   note: "Renato's Case IH Maxxum 135: 2.7 m wheelbase, 42° measured with the steer wizard, 1.81 m rear track. Its rear tyres (650/65 R38) and the drawbar pin 0.7 m behind the rear axle are guessed until he measures them."},
