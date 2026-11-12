@@ -267,16 +267,18 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("Farmall spreader radius", fs.radius, 5.4);
  eq("Farmall spreader headland", row(fs, "headland").value, "30 m (3 passes)");
  eq("Farmall tightest turn", fs.rMin, 2.3);                 // 2.3 m ÷ tan 45°: AgOpenWeb's 4 m floor is wider anyway
- // Renato's Puma 180 CVX: tall 650/65 R42 tyres (1.91 m) but a wide 2 m track and the pin 0.9 m back: the drawbar touches at 82.5°
- const puma = {machine: "tractor", wheelbase: 2.9, maxSteerDeg: 42, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, drawbarHeight: 0.5, margin: 1};
+ // Renato's Puma 180 CVX: tall 650/65 R42 tyres (1.91 m) but a wide 2 m track and the pin 0.9 m back: the drawbar touches at 82.5°;
+ // its manual's turning circle (8.87 m at the rear axle's centre, 2.884 m wheelbase) gives 33° of steering, so the tractor sets the radius
+ const puma = {machine: "tractor", wheelbase: 2.88, maxSteerDeg: 33, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, drawbarHeight: 0.5, margin: 1};
  const ps = S.suggest(Object.assign({mount: "trailed", width: 10, overlap: 0, hitchLength: 0.9, drawbar: 4.8, pivotToTool: 3, length: 3.3, drawbarWidth: 0.3}, puma));
  eq("Puma spreader touches the tyre", ps.touchDeg, 82.5);
- eq("Puma spreader radius", ps.radius, 5.2);
+ eq("Puma spreader radius", ps.radius, 5.4);   // 1.2 × 2.88 ÷ tan 33° = 5.3: wider than the tyres need
  eq("Puma spreader headland", row(ps, "headland").value, "30 m (3 passes)");
  const pf = S.suggest(Object.assign({mount: "front", width: 8, overlap: 0, axleToTool: 2, hitchLength: 1, length: 0, sprayerWidth: 8}, puma));
- eq("Puma front sprayer radius", pf.radius, 4);              // 1.2 × 2.9 ÷ tan 42° = 3.9: any angle over 41° keeps AgOpenWeb's 4 m floor
- const pf40 = S.suggest(Object.assign({mount: "front", width: 8, overlap: 0, axleToTool: 2, hitchLength: 1, length: 0, sprayerWidth: 8}, puma, {maxSteerDeg: 40}));
- eq("Puma front sprayer radius at 40°", pf40.radius, 4.2);
+ eq("Puma tightest turn", pf.rMin, 4.4);                     // 2.88 ÷ tan 33° = 4.43: half the manual's 8.87 m circle
+ eq("Puma front sprayer radius", pf.radius, 5.4);
+ eq("Puma front sprayer turn", row(pf, "style").value, "Sagitta, skip 1");   // 8 m passes no longer fit a plain semicircle (twice 5.4 m)
+ eq("Puma front sprayer headland", row(pf, "headland").value, "24 m (3 passes)");
  const fd = S.suggest(Object.assign({mount: "trailed", width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3}, farmall));
  eq("Farmall drill distance", row(fd, "distance").value, "3.3 m");   // the nose's corner: (1.7 + 0.54) ÷ 2 = 1.12 m off the centre line, 1.3 m ahead
  eq("Farmall drill turn", row(fd, "style").value, "Keyhole, skip 1");
