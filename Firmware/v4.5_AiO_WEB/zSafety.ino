@@ -133,6 +133,44 @@ bool wasCheck(int16_t raw)
     return wasBlock;
 }
 
+// The program asks to steer while the WAS check or a lost Keya blocks autosteer: say why again on the
+// program's screen. wasCheck() and keyaCheck() say it once, when the fault starts, and that is often
+// before the program runs (a bench board with no WAS reads about 4.9 V from power-on); after that the
+// module just does not steer, and the program only shows its AutoSteer button red. Once each time the
+// program's button goes on (PGN 254 status bit 0 from 0 to 1), at most every 3 s. Not when the block
+// starts while the program already asks: wasCheck() / keyaCheck() have just said it.
+FLASHMEM void blockedSay()
+{
+    static uint32_t saidMs = 0;
+    const uint32_t now = millis();
+    if (saidMs && now - saidMs < 3000) return;
+    saidMs = now | 1;
+    char m[64];
+    if (wasBlock)
+    {
+        if (!steerConfig.SingleInputWAS && wasVolts < WAS_DIFF_LOW_V)
+            snprintf(m, sizeof(m), "WAS %.2f V differential: pin 3 empty? Choose Single", wasVolts);
+        else
+            snprintf(m, sizeof(m), "WAS fault (%.2f V): autosteer blocked", wasVolts);
+        StatusLog.line("[status] The program asks to steer: autosteer blocked by the WAS check (%.2f V)", wasVolts);
+    }
+    else
+    {
+        snprintf(m, sizeof(m), "Keya not responding (CAN cable?): autosteer off");
+        StatusLog.line("[status] The program asks to steer: autosteer blocked, the Keya motor does not answer");
+    }
+    hwMessage(m, 8, true);
+}
+
+// Called from the steering loop (40 or 100 Hz, Autosteer.ino), after wasCheck() and keyaCheck()
+void blockedAskNote()
+{
+    static bool asked = false;
+    const bool ask = (guidanceStatus & 1) != 0;
+    if (ask && !asked && (wasBlock || keyaBlock)) blockedSay();
+    asked = ask;
+}
+
 // WAS check off (bench) and the WAS out of range: the wheel angle goes to the program as 0
 // degrees (no WAS on the bench reads about 0 V = full lock to one side on the program's screen).
 // With the check on, a WAS fault keeps its real reading: autosteer is blocked and the program

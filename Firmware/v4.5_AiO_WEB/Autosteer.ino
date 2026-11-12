@@ -573,6 +573,9 @@ void autosteerLoop()
 			previous = 0;
 		}
 
+		// the program asks to steer while one of the two blocks: say why on its screen (zSafety.ino)
+		blockedAskNote();
+
 		switchByte = 0;                    // (after the WAS check, so it shows its block too)
 		switchByte |= (remoteSwitch << 2); //put remote in bit 2
 		switchByte |= (steerSwitch << 1);   //put steerswitch status in bit 1 position

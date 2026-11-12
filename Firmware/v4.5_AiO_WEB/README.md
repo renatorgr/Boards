@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 12 Nov 2026 | A WAS fault or a silent Keya is told on the program's screen again when its AutoSteer button goes on: on a bench with no WAS the button only went red, with no reason ([WAS check](#was-check)). |
 | 11 Nov 2026 | **Keya**: holding the wheel cuts autosteer, by the motor's own current against the program's Current Turn limit ([Keya kickout](#keya-kickout)). After an update, an old page a browser kept fetches the new one by itself ([Web page](#web-page)). |
 | 10 Nov 2026 | The UM982's temperature is read (`HWSTATUSA`); one a device does not give reads *not reported* ([Identification](#identification)). Tabs and light/dark button 44 px high, 8 px corners; network name `AiO-xxxx`, with a hyphen ([Web page](#web-page)). |
 | 9 Nov 2026 | The page's questions (TM171, receiver set-up, settings, firmware, restart) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([Web page](#web-page)). |
@@ -382,6 +383,7 @@ The WAS voltage (single input) must stay between **0.2 and 4.8 V**. A broken wir
 - Back in range for 1 s: the block ends, and autosteer must be engaged again by hand.
 - Differential input (A/D converter "Differential" in the program): −0.5 to 4.8 V. A negative reading means WAS_H is under WAS_L: nothing is wired to WAS_L (AmpSeal pin 3), the usual case of a 3-wire sensor (signal on pin 2, ground on pin 4) with the program set to Differential. The reading would be a large angle to one side (−98° for −3.67 V). The message, the Status page and the program's screen say to choose Single (AutoSteer, Hardware, A/D converter) or to wire the sensor's ground to pin 3 too. A wire that floats mid-range still cannot be told from a real reading.
 - **Bench without a WAS**: switch the check off on the page. While off: a warning on Status, a `[boot]` line, a note on the program's screen, and an out-of-range angle goes to the program as 0°. Switch it back on before using the tractor.
+- The fault is told on the program's screen when it starts and again each time the program's AutoSteer button goes on while it blocks (at most every 3 s; since 12 Nov 2026). A bench board with no WAS reads about 4.9 V from power-on, before the program runs: until then, pressing AutoSteer only showed the button red, with no reason. The same for a Keya that does not answer.
 
 ### Why autosteer went off
 
@@ -393,9 +395,9 @@ Autosteer stops at the next steering loop (25 ms; 10 ms with the loop at 100 Hz)
 | pressure / current kickout | `Autosteer off: pressure kickout (40 %, limit 36 %)` |
 | wheel encoder | `Autosteer off: wheel encoder kickout (5 pulses)` |
 | Keya current / slip / fault | `Autosteer off: Keya current kickout (5.2 A, limit 4.5 A)` / `Keya kickout: wheel turned by hand (26 rpm)` / `Keya motor fault (0x0002)` |
-| Keya not responding (no heartbeat for 0.5 s) | `Keya not responding (CAN cable?): autosteer off` |
+| Keya not responding (no heartbeat for 0.5 s; also each time the program's AutoSteer button goes on while it blocks) | `Keya not responding (CAN cable?): autosteer off` |
 | wheel angle / speed beyond the limits | `Autosteer off: wheel angle 63 deg, beyond +-50` / `speed 27 km/h, above 25` (the maximum set on the web page) |
-| WAS out of range | `WAS fault (0.03 V): autosteer blocked` |
+| WAS out of range (also each time the program's AutoSteer button goes on while it blocks) | `WAS fault (0.03 V): autosteer blocked` |
 | no steering data for 2.5 s | `Autosteer off: no steering data from the program for 2.5 s` |
 
 When the program itself turns autosteer off (its button, the tractor outside the field boundary, its speed limits, RTK lost, the steer wizard), the module only sees the program's bit go to zero: Messages and the web page say `by the program (its screen says why)`, nothing goes to the program's screen (it knows), and with Button as the steer switch the physical button alone reads `steer button` (until 27 Oct 2026 the program's button read `steer button` too).
