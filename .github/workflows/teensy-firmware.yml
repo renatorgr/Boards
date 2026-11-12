@@ -36,12 +36,13 @@ permissions:
 env:
   ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS: https://www.pjrc.com/teensy/package_teensy_index.json
   TEENSYDUINO: '1.58'
+  ARDUINO_CLI: '1.6.0'   # the Arduino CLI release the build installs (the newest on 12 Nov 2026)
   # Tools menu as in the README: Teensy 4.1, USB type Serial, CPU 450 MHz, Optimize "Faster"
   FQBN: teensy:avr:teensy41:usb=serial,speed=450,opt=o2std,keys=en-us   # 450 MHz since 4 Nov 2026: cooler, the loop has time to spare
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         shell: bash   # -eo pipefail: a failed compile is not hidden by tee
@@ -58,7 +59,18 @@ jobs:
           echo "sha=${sha::7}" >> "$GITHUB_OUTPUT"
           echo "Firmware folder: $dir"
 
-      - uses: arduino/setup-arduino-cli@v2   # built for Node 20 (no Node 24 release yet); the runner runs it on Node 24 and says so in a warning, which is harmless
+      - name: Install the Arduino CLI ${{ env.ARDUINO_CLI }}
+        run: |
+          # straight from Arduino's GitHub release, checked against its checksum file; the setup-arduino-cli action
+          # did this before, but it is built for Node 20 (no Node 24 release) and the runner warned on every build
+          base="https://github.com/arduino/arduino-cli/releases/download/v$ARDUINO_CLI"
+          file="arduino-cli_${ARDUINO_CLI}_Linux_64bit.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -fsSL -O "$base/$file"
+          curl -fsSL "$base/$ARDUINO_CLI-checksums.txt" | grep " $file\$" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          tar xzf "$file" -C "$HOME/.local/bin" arduino-cli
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install Teensyduino ${{ env.TEENSYDUINO }}
         run: |
