@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Set up AgOpenWeb from your measures</title>
-<script src="settings.js?v=1.4"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
+<script src="settings.js?v=1.5"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
@@ -88,8 +88,9 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 
 <div class="presets" id="tractors">
  <span class="plabel">Tractor</span>
- <button type="button" data-name="maxxum" onclick="tractor('maxxum')">Case IH Maxxum 135</button>
  <button type="button" data-name="farmall" onclick="tractor('farmall')">Case IH Farmall 115C</button>
+ <button type="button" data-name="maxxum" onclick="tractor('maxxum')">Case IH Maxxum 135</button>
+ <button type="button" data-name="puma" onclick="tractor('puma')">Case IH Puma 180 CVX</button>
 </div>
 <div class="presets" id="implements">
  <span class="plabel">Implement</span>
@@ -173,10 +174,12 @@ function labels() {
  else set("axleToToolLabel", "Rear axle to the working line (m)", "the boom, the discs, the rows behind the rear axle, with a tape");
 }
 const TRACTORS = {
- // Renato's tractors: they fill the Machine card. `pin`: the drawbar's hitch pin behind the rear axle, the hitch length of the implements
+ // Renato's tractors, by power (the buttons' order too): they fill the Machine card. `pin`: the drawbar's hitch pin behind the rear axle, the hitch length of the implements
  // that go on the drawbar (`onDrawbar` below); a semi-mounted implement brings its own pivot instead.
  maxxum: {machine: "tractor", wheelbase: 2.7, steer: 42, overhang: 1.5, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, pin: 0.7,
   note: "Renato's Case IH Maxxum 135: 2.7 m wheelbase, 42° measured with the steer wizard, 1.81 m rear track. Its rear tyres (650/65 R38) and the drawbar pin 0.7 m behind the rear axle are guessed until he measures them."},
+ puma: {machine: "tractor", wheelbase: 2.88, steer: 33, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, pin: 0.9,
+  note: "Renato's Case IH Puma 180 CVX: 2.88 m wheelbase (its manual), 2 m rear track, 650/65 R42 rear tyres, the drawbar pin 0.9 m behind the rear axle as his AgOpenWeb profile has it. 33° of steering from the manual: the middle of the rear axle turns on an 8.87 m circle with a 1.83 m front track (5.15 m with 1.55 m). It turns wider than AgOpenWeb's 4 m floor, so the tractor sets the radius. A wider front track may let it steer a little more: the steer wizard will tell. The front overhang is guessed."},
  farmall: {machine: "tractor", wheelbase: 2.3, steer: 45, overhang: 1.3, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, pin: 0.74,
   note: "Renato's Case IH Farmall 115C: 2.3 m wheelbase, 1.7 m rear track, 540/65 R34 rear tyres, the drawbar pin 0.74 m behind the rear axle. About 45° of steering, by eye until a wheel angle sensor measures it: any angle over 35° gives the same turn, AgOpenWeb's 4 m floor. The front overhang is guessed."}
 };
