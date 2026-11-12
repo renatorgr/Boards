@@ -258,6 +258,18 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("spreader at the drawbar's height radius", mh.radius, 6);
  eq("spreader at the drawbar's height row", row(mh, "fold").value, "touches the tyres at 65°");
  if (!/0\.81 m at the drawbar's 0\.5 m height/.test(row(mh, "fold").why)) fail.push("spreader: the tyres row should give the tyre's reach at the drawbar's height");
+ // Renato's Farmall 115C: 540/65 R34 tyres (1.57 m) reach only 0.73 m back at the drawbar's 0.5 m height and its pin is 0.74 m back,
+ // so the drawbar touches late (76°) and the spreader turns tighter than on the Maxxum; its shorter, narrower nose needs less room
+ const farmall = {machine: "tractor", wheelbase: 2.3, maxSteerDeg: 45, overhang: 1.3, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, drawbarHeight: 0.5, margin: 1};
+ const fs = S.suggest(Object.assign({mount: "trailed", width: 10, overlap: 0, hitchLength: 0.74, drawbar: 4.8, pivotToTool: 3, length: 3.3, drawbarWidth: 0.3}, farmall));
+ eq("Farmall spreader problems", fs.problems.length, 0);
+ eq("Farmall spreader touches the tyre", fs.touchDeg, 76);
+ eq("Farmall spreader radius", fs.radius, 5.4);
+ eq("Farmall spreader headland", row(fs, "headland").value, "30 m (3 passes)");
+ eq("Farmall tightest turn", fs.rMin, 2.3);                 // 2.3 m ÷ tan 45°: AgOpenWeb's 4 m floor is wider anyway
+ const fd = S.suggest(Object.assign({mount: "trailed", width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3}, farmall));
+ eq("Farmall drill distance", row(fd, "distance").value, "3.3 m");   // the nose's corner: (1.7 + 0.54) ÷ 2 = 1.12 m off the centre line, 1.3 m ahead
+ eq("Farmall drill turn", row(fd, "style").value, "Keyhole, skip 1");
  // the tractor's width: its nose's outer corner, (1.81 + 0.65) ÷ 2 = 1.23 m off the centre line, sweeps 2.6 m past the pivot's path, not 1.7
  eq("tractor half width", m.bodyHalf, 1.23);
  eq("nose corner reach", m.noseReach, 2.3);   // √((6.7 + 1.23)² + 4.2²) − 6.7

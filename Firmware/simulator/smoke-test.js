@@ -209,6 +209,19 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 65°$/);
   if (!(await pg.locator("#drawbarHeight").isVisible())) fail.push(what + ": a trailed implement needs the drawbar's height");
   await shot(pg, "aow-settings-spreader");
+  // the tractor buttons: the Farmall fills the Machine card and moves the spreader to its own drawbar pin, then back to the Maxxum
+  await expect(pg, what, "#tractors button.on", /^Case IH Maxxum 135$/);
+  await expect(pg, what, "#implements button.on", /^10 m manure spreader/);
+  await pg.click("button:has-text('Case IH Farmall 115C')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#tractors button.on", /^Case IH Farmall 115C$/);
+  await expect(pg, what, "#tractorNote", /^Renato's Case IH Farmall 115C: 2\.3 m wheelbase/);
+  if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "0.74") fail.push(what + ": the Farmall button should set its wheelbase and its drawbar pin");
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);     // its lower 540/65 R34 tyres let the drawbar fold to 76°
+  await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 76°$/);
+  await shot(pg, "aow-settings-farmall-spreader");
+  await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
+  if ((await pg.inputValue("#hitch")) !== "0.7") fail.push(what + ": the Maxxum button should put the spreader back on its 0.7 m pin");
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6 m$/);
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 2$/);
   await pg.click("button:has-text('4-furrow reversible plough')"); await pg.waitForTimeout(300);
