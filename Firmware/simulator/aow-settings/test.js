@@ -299,6 +299,16 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("own spreader on the Farmall radius", of.radius, 4.8);
  eq("own spreader on the Farmall turn", row(of, "style").value, "Sagitta, skip 0");
  eq("own spreader on the Farmall headland", row(of, "headland").value, "30 m (3 passes)");
+ // Renato's centre-pivot mower conditioner on the Farmall's drawbar, typical measures (13 Nov 2026): its long tongue reaches
+ // the tyres at 76°, so the drawbar kept under 71° on the turn's circle sets the radius, not the tractor's 2.3 m
+ const mw = S.suggest(Object.assign({mount: "trailed", width: 3.2, overlap: 0.1, offset: 0, hitchLength: 0.74, drawbar: 5, pivotToTool: -1, length: 0.6, drawbarWidth: 0.3}, farmall));
+ eq("mower problems", mw.problems.length, 0);
+ eq("mower spacing", mw.spacing, 3.1);                 // 10 cm of overlap
+ eq("mower touches the tyre", mw.touchDeg, 76);
+ eq("mower radius", mw.radius, 5.6);
+ eq("mower turn", row(mw, "style").value, "Keyhole, skip 2");
+ eq("mower headland", row(mw, "headland").value, "21.7 m (7 passes)");
+ eq("mower distance", row(mw, "distance").value, "2.9 m");
  // the tractor's width: its nose's outer corner, (1.81 + 0.65) ÷ 2 = 1.23 m off the centre line, sweeps 2.6 m past the pivot's path, not 1.7
  eq("tractor half width", m.bodyHalf, 1.23);
  eq("nose corner reach", m.noseReach, 2.3);   // √((6.7 + 1.23)² + 4.2²) − 6.7

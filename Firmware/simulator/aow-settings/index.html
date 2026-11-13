@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Set up AgOpenWeb from your measures</title>
-<script src="settings.js?v=1.7"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
+<script src="settings.js?v=1.8"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
@@ -97,6 +97,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <button type="button" data-name="sprayer" onclick="preset('sprayer')">8 m sprayer, front</button>
  <button type="button" data-name="drill" onclick="preset('drill')">3 m no-till drill, semi-mounted</button>
  <button type="button" data-name="spreader" onclick="preset('spreader')">10 m manure spreader, one axle</button>
+ <button type="button" data-name="mower" onclick="preset('mower')">3.2 m mower conditioner, centre pivot</button>
  <button type="button" data-name="harrow" onclick="preset('harrow')">4 m disc harrow, trailed</button>
  <button type="button" data-name="plough" onclick="preset('plough')">4-furrow reversible plough</button>
  <button type="button" data-name="quickHarrow" onclick="preset('quickHarrow')">2.7 m quick disc harrow, 3-point</button>
@@ -184,7 +185,7 @@ const TRACTORS = {
   note: "Renato's Case IH Farmall 115C: 2.3 m wheelbase, 1.7 m rear track, 540/65 R34 rear tyres, the drawbar pin 0.74 m behind the rear axle, its nose 0.85 m ahead of the front axle. About 45° of steering, by eye until a wheel angle sensor measures it: any angle over 35° gives the same turn, AgOpenWeb's 4 m floor."}
 };
 const PRESETS = {
- // the example buttons: Renato's sprayer, drill and manure spreader, measured; a disc harrow and a plough with typical measures; his quick harrow and roller, guessed. `note`: shown under the buttons;
+ // the example buttons: Renato's sprayer, drill and manure spreader, measured; his mower conditioner (`tractor`: the button pressed with it), guessed; a disc harrow and a plough with typical measures; his quick harrow and roller, guessed. `note`: shown under the buttons;
  // `turn`: the turn option drawn first (a plough cannot skip rows); `onDrawbar`: its hitch is the tractor's drawbar pin
  sprayer: {mount: "front", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 2.1, hitch: 1, length: 0, sprayerWidth: 8,
   note: "Measured on Renato's sprayer: the 8 m boom on the front quick hitch (1.1 m ahead of the front axle), 2.1 m ahead of the front axle."},
@@ -192,6 +193,8 @@ const PRESETS = {
   note: "Measured on Renato's no-till drill: semi-mounted, its pivot 1.54 m behind the rear axle, its wheels 4.15 m behind the pivot and the discs 1.6 m ahead of the wheels. Its pivot is behind the rear tyres' back edge, so the tyres do not limit its turn; its own headstock or stop does: watch how far it folds and type that in 'Most the drawbar may turn'. It never backs up in the ground: no K-turn."},
  spreader: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 1000, width: 10, overlap: 0, offset: 0, drawbar: 4.2, pivotToTool: 1.5, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
   note: "Renato's manure spreader: one axle 4.2 m behind the drawbar pin, the body 1.5 m past the axle with the beaters at its back; it spreads 10 m wide. On the tractor's drawbar, its pin (the tractor button's) near the rear tyres' back edge: the drawbar touches a tyre before 90° (at the drawbar's height, where the tyre is shorter than at its axle), and that sets the radius."},
+ mower: {mount: "trailed", onDrawbar: true, tractor: "farmall", sections: 1, sectionWidth: 320, width: 3.2, overlap: 0.1, offset: 0, drawbar: 5, pivotToTool: -1, drawbarWidth: 0.3, swingDeg: 0, length: 0.6, sprayerWidth: 0,
+  note: "Renato's centre-pivot mower conditioner, used with the Farmall (its button is pressed with it), 3.2 m wide; typical measures until he takes his: on the drawbar pin, its wheels 5 m behind the pin, the discs 1 m ahead of the wheels, the conditioner 0.6 m past them, 10 cm of overlap so no strip is left standing. Mowing back and forth it swings to the uncut side, the other side of the tractor every pass, and across the middle in the turn: leave the tool offset at 0 (it is drawn in the middle)."},
  harrow: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 400, width: 4, overlap: 0.2, offset: 0, drawbar: 3.5, pivotToTool: 0, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
   note: "Typical measures, change them to yours: on the tractor's drawbar, its pin (the tractor button's) near the rear tyres' back edge; the wheels between the front and the rear gangs, 20 cm of overlap so no strip is missed. With its wheels at the back (a roller), the discs are ahead of them: a negative pivot distance. A semi-mounted harrow's hitch is its pivot, further back."},
  plough: {mount: "rear", sections: 1, sectionWidth: 160, width: 1.6, overlap: 0, offset: 0, axleToTool: 3, hitch: 1, length: 4.5, sprayerWidth: 0, turn: "kturn0",
@@ -207,9 +210,11 @@ const openWhy = new Set();   // the suggestion rows whose reason is shown
 
 function preset(name) {
  const p = PRESETS[name];
- for (const [k, v] of Object.entries(p)) if (k !== "turn" && k !== "note" && k !== "onDrawbar") $(k).value = v;
+ for (const [k, v] of Object.entries(p)) if (!["turn", "note", "onDrawbar", "tractor"].includes(k)) $(k).value = v;
+ implementName = name; $("presetNote").textContent = p.note || ""; chosen = p.turn || "";
+ if (p.tractor && p.tractor !== tractorName) return tractor(p.tractor);   // the tractor it works with: tractor() puts it on that drawbar
  if (p.onDrawbar) $("hitch").value = TRACTORS[tractorName].pin;
- implementName = name; $("presetNote").textContent = p.note || ""; chosen = p.turn || ""; marks(); update();
+ marks(); update();
 }
 function tractor(name) {
  const t = TRACTORS[name];
