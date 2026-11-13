@@ -94,7 +94,10 @@ a{color:var(--acc)}
 .askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .askBox p{margin:0 0 12px;white-space:pre-line}
 .askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
-.askBtns{display:flex;gap:10px;justify-content:flex-end}
+/* the buttons stay in sight at the bottom of a box taller than the screen (a web card of 480 x 320): the rest scrolls under
+   them, and the password field, when it has the focus, is scrolled above them */
+.askBox{scroll-padding-bottom:76px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:-16px;background:var(--card);padding:8px 0 16px;margin:-8px 0 -16px}
 .askBtns button{min-height:44px;min-width:96px}
 /* the question box's other parts (askShow): a title, rows of what is in a file, the verdict, a tick, the password's label */
 .askBox h3{margin:0 0 10px;font-size:17px}
