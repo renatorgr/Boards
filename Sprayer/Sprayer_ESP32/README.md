@@ -4,7 +4,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOp
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.10.7 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.8 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## Changelog
@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 13 Nov 2026 | **0.10.7**: Enter in the password at the end of *Network settings* saves, as its button does; in the page's question box an empty password or a held Enter answers nothing ([How it works](#how-it-works)). |
+| 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.10.5**: the page's questions (save and restart, install, password) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([How it works](#how-it-works)). |
 | 7 Nov 2026 | **0.10.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.10.3**: alarms also as PGN 221 ([Messages](#messages)). **0.10.4**: Module tab: Module card, one Network settings card. Code shared with the seed drill marked ([Notes](#notes)). |
@@ -72,14 +72,19 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
     own network's password, so nothing changes by a touch while driving.
   - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings (laid out as on the XIAO
     page, with *Search for networks*) and the events.
-  - **Firmware**, as on the Teensy and XIAO pages: the program installed (version, build
-    date, board), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this folder;
-    checked when the page opens, every 6 hours and with *Check now*) with **Install from
-    GitHub**, install a chosen `.bin` with a progress bar, Restart, and **Download the
-    report**: the module's state, settings and events in one `.json` file to send when
-    something goes wrong (no passwords in it). The phone or tablet asks GitHub, so it needs
-    internet: open the page over the tractor network, not over the module's own Wi-Fi.
-    A `.bin` for another board, another module's program or the `.merged.bin` is refused.
+  - **Firmware**, as on the Teensy and XIAO pages: one card with the program installed
+    (version, build date), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this
+    folder; checked when the page opens, every 6 hours and with *Check now*) tagged *newer*,
+    *installed* or *older*, the two ways to install, **Install from GitHub** and **Install
+    from a file…**, the progress bar, and **Restart module** at the bottom of the card. A
+    second card, **Download the report**: the module's state, settings and events in one
+    `.json` file to send when something goes wrong (no passwords in it). The phone or tablet
+    asks GitHub, so it needs internet: open the page over the tractor network, not over the
+    module's own Wi-Fi. Each install and the restart are confirmed in one box: it says what
+    the file holds (version, build date, board) against what runs now, newer, the same or
+    older, and asks the own network's password (offered again while the page stays open).
+    A `.bin` for another board, another module's program or the `.merged.bin` is refused in
+    that box as soon as it is chosen, with the reason.
   Every question the page asks (save and restart, install a program, the password) opens in
   a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's
   pop-ups show nothing, so those buttons did nothing there. Enter is its OK, but not in an empty
@@ -154,7 +159,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.7` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.8` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -201,10 +206,11 @@ divider (to-GND ÷ total) in the page's calibration.
    them and shows what the module sends.
 
 Later program updates, on the page's **Firmware** tab:
-- **Install from GitHub** when it says "newer than the installed one": the page downloads
+- **Install from GitHub** when the version there is tagged *newer*: the page downloads
   `Sprayer_ESP32.ino.bin` from this folder on GitHub and sends it to the module.
-- Or *Sketch → Export compiled binary* in the Arduino IDE, then *Choose .bin*
-  (`Sprayer_ESP32.ino.bin` in the sketch folder, not the `.merged.bin`) and *Install*.
+- Or *Sketch → Export compiled binary* in the Arduino IDE, then **Install from a file…**
+  (`Sprayer_ESP32.ino.bin` in the sketch folder, not the `.merged.bin`) and *Install* in the
+  box that says what the file holds.
 
 The page knows which version is on GitHub from the `.bin` itself (its version, board and
 build date, published in `firmware.json` with the simulator). So after a code change,

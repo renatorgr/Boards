@@ -10,7 +10,7 @@ by a 12 V DPDT relay. Two boards:
 - a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an
   external DPDT relay.
 
-Version 0.2.8, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
+Version 0.2.9, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
 got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
 not run on either board yet.
 
@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 13 Nov 2026 | **0.2.8**: Enter in the password at the end of *Network settings* saves, as its button does; in the page's question box an empty password or a held Enter answers nothing ([How it works](#how-it-works)). |
+| 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* (Settings): the Sowing tab shows all before the program asks, relays past them idle. **0.2.6**: questions in the page's own box: the browser's pop-ups show nothing in an AgOpenWeb web card ([How it works](#how-it-works)). |
 | 7 Nov 2026 | **0.2.2**: add-on card (`_aowcard._tcp`) under its Wi-Fi name; `_aow-ui` and `/aow/status` gone. **0.2.3**: four tabs as the sprayer's ([How it works](#how-it-works)). **0.2.4**: Module tab: Module card, one Network settings card. Code shared with the sprayer marked ([Notes](#notes)). |
@@ -62,9 +62,12 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list it by name
   in a second). It has four tabs, as the sprayer page: **Sowing** (the sections, big enough
   for the cab), **Settings** (which section each relay follows), **Module** (AgOpenWeb, the
-  network and its settings, the events) and **Firmware** (the program installed, the version
-  on GitHub with *Install from GitHub*, a `.bin` update, a restart and *Download the report*,
-  a `.json` file to send when something goes wrong). Without the board, the page can be tried
+  network and its settings, the events) and **Firmware** (one card with the program installed,
+  the version on GitHub tagged *newer*, *installed* or *older*, *Install from GitHub*,
+  *Install from a file…* and *Restart module*; then *Download the report*, a `.json` file to
+  send when something goes wrong). Each install and the restart are confirmed in one box: what
+  the file holds against what runs now, and the own network's password (offered again while
+  the page stays open). Without the board, the page can be tried
   in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on
   every change. Every question the page asks (save and restart, install a program, the
   password) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web
@@ -128,15 +131,15 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
 4. Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be
    powered or not). KC868-A32: power it with 12 V and plug its USB socket in, as in
    KinCony's guide. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.8` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.9` and `ready`.
 
 Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
-page's *Firmware* tab *Choose .bin* (`Seeder_ESP32.ino.bin` from this folder, not the
-`.merged.bin`) and *Install*. Or **Install from GitHub**: the phone fetches
+page's *Firmware* tab **Install from a file…** (`Seeder_ESP32.ino.bin` from this folder, not
+the `.merged.bin`) and *Install* in the box that says what the file holds. Or **Install from GitHub**: the phone fetches
 `Seeder_ESP32.ino.bin` from this folder on `main` (once it is committed there: the simulator's
 `build.py` then lists its version, board and build date in `firmware.json`, as it does for the
 sprayer) and sends it to the module. The page refuses a `.bin` of another program or for the
-other board.
+other board in that box, as soon as it is chosen.
 
 ## Setup
 

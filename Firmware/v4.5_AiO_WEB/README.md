@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 13 Nov 2026 | A held Enter no longer answers the page's question too: Enter on a button such as *Restart Teensy* asks once and waits for the answer ([Web page](#web-page)). |
+| 13 Nov 2026 | A held Enter no longer answers the page's question too ([Web page](#web-page)). Firmware tab: one card for the firmware, and one box that says what a `.hex` holds before it is installed ([update](#firmware-update-over-the-network)). |
 | 12 Nov 2026 | A WAS fault or a silent Keya is told on the program's screen again when its AutoSteer button goes on: on a bench with no WAS the button only went red, with no reason ([WAS check](#was-check)). |
 | 11 Nov 2026 | **Keya**: holding the wheel cuts autosteer, by the motor's own current against the program's Current Turn limit ([Keya kickout](#keya-kickout)). After an update, an old page a browser kept fetches the new one by itself ([Web page](#web-page)). |
 | 10 Nov 2026 | The UM982's temperature is read (`HWSTATUSA`); one a device does not give reads *not reported* ([Identification](#identification)). Tabs and light/dark button 44 px high, 8 px corners; network name `AiO-xxxx`, with a hyphen ([Web page](#web-page)). |
@@ -67,7 +67,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 **Already compiled:** `v4.5_AiO_WEB.ino.hex` (Teensyduino 1.58, the name the Arduino IDE gives). The IDE ignores it and the XIAO folders.
 
-- From a firmware that already has this web page: web page → Firmware → choose the `.hex`.
+- From a firmware that already has this web page: web page → Firmware → **Install from a file…** → the `.hex`.
 - From any other firmware: over USB, Teensy Loader → File → Open HEX File → press the button on the Teensy.
 
 ## Web page
@@ -92,7 +92,7 @@ The page carries the date its own firmware was compiled, and compares it with th
 | **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
 | **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
 | **Machine** | Only once a machine module (IP .123: the official Machine_UDP_v5, the sprayer module, the seed drill module, or anything that talks like them) has been heard on UDP 9999. Its IP, last packet, checksum errors, hello replies, and one square per section (up to 64) in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254, and PGN 229 above 16) but still closed on the module, cyan asked off but still open. The modules' side comes from their PGN 237 (the AiO v26 layout; our seed drill module adds sections 17-64), else the sprayer PGN 160 or the hello reply (1-16 only); with several machine modules on the network (each its own IP, up to 4), their sections are shown together and the IP row lists them. The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed. The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives. Only to look at. |
-| **Firmware** | Firmware name and build date, the processor's clock and temperature (and the highest since start-up), why the Teensy last started, the watchdog, new versions on GitHub, update from a file, restart. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors); send it when something goes wrong. |
+| **Firmware** | **Teensy firmware**: installed (name and build date), on GitHub, the previous one kept, **Install from GitHub**, **Install from a file…**, **Go back to the previous firmware** ([update](#firmware-update-over-the-network)). **This Teensy**: the board, the processor's clock and temperature (and the highest since start-up), why the Teensy last started, the watchdog, **Restart Teensy**. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors); send it when something goes wrong. |
 
 While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
 
@@ -122,13 +122,14 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 
 ### Firmware update over the network
 
-Web page → Firmware → choose the `.hex` → Install.
+Web page → Firmware → **Install from a file…** → choose the `.hex` → **Install** in the box.
 
-- Once chosen, the page reads the file in the browser and shows what is inside, next to its name: the version and the build date and time (the `[boot] … built …` line the firmware prints at start-up), "the firmware running now" when it is the same build as the module's, a warning when it is not a Teensy 4.1 firmware, not an AiO_WEB one, or has no update page inside. Nothing is sent until Install.
+- The **Teensy firmware** card has the rows **Installed**, **On GitHub** (tagged *newer*, *installed* or *older*) and **Previous**, the two ways to install (**Install from GitHub**, **Install from a file…**), the progress bar and the messages, and **Go back to the previous firmware** at the bottom.
+- Once chosen, the page reads the file in the browser and opens one box: the file, what is inside (the version and the build date and time, from the `[boot] … built …` line the firmware prints at start-up), what runs now, and whether it is newer, the same or older. Nothing is sent until **Install**. A file that is not a `.hex` or not a Teensy 4.1 firmware is refused in that box with the reason. **Install from GitHub** and **Go back** are confirmed in the same box.
 - Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h). On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
 - The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`), reading back every sector. Since 3 Nov 2026 the image carries only that name: a module still on a firmware from before 22 Oct 2026 (which looks for `AOG-UM982-TM171-WEB-OTA-1`) takes a build from 22 Oct to 2 Nov 2026 first, or this one over USB. **If anything fails, the running firmware stays** and the page says why.
 - Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).
-- "Other firmware" installs an image without the family marker; the next update is then over USB.
+- A `.hex` without AiO_WEB build data or without the family marker (another firmware) is shown in the box with a warning, and **Install** waits for **Install it anyway** to be ticked; the next update is then over USB.
 
 ### Going back to the previous firmware
 
@@ -137,14 +138,14 @@ Web page → Firmware → **Go back to the previous firmware** (also on the XIAO
 - At each update, before the new firmware is copied over the old one, the module copies the firmware it is running into free flash (from 2 MB to 4 MB, with its name, build date and a checksum). The Firmware tab shows it in the **Previous firmware** row; the Status JSON carries it as `prev`.
 - The button puts that copy back (a few seconds, then a restart), with the same conditions as an update: autosteer off, tractor stopped. The settings in the EEPROM are kept. No file, no computer and no internet are needed: it is for a new build that misbehaves in the field.
 - Going back uses the copy up: after it there is no previous firmware until the next update. The copy exists only after the first update made with a firmware of 2 Nov 2026 or later (the first install of that firmware is by USB or from the page, as any other); a copy whose checksum no longer matches is not offered.
-- "Other firmware" images are copied too, so an update with that box ticked still has a way back to this firmware.
+- Firmware installed with **Install it anyway** is copied too, so such an update still has a way back to this firmware.
 
 ### Update from the XIAO page
 
 For a module whose own page cannot be reached (its network cable or network, a fault in the page, the box closed) while the XIAO on the GPS2 port still answers on WiFi.
 
-- XIAO page → Firmware → **Module (Teensy) firmware**: the firmware the module runs, the one on GitHub, the previous one kept; **Install from GitHub**, **Choose .hex** → **Install on the module**, and **Go back to the previous firmware**. The XIAO's network password (the one of the "Update or restart" card) is asked.
-- The `.hex` goes to the XIAO as its own update does, and on to the Teensy over the serial link in pieces of 252 bytes, each confirmed by the Teensy before the next one is sent (about a minute for the 2 MB file). The Teensy checks the file exactly as one from its own page (checksums, Teensy 4.1, the family marker unless "Other firmware" is ticked), refuses it with autosteer on or the tractor moving, and keeps autosteer off while it receives. The web page and UDP keep being served meanwhile. **If anything fails, the running firmware stays** and the XIAO page says why; without an answer from the Teensy for 15 s both sides give up.
+- XIAO page → Firmware → **Module (Teensy) firmware**: the firmware the module runs, the one on GitHub, the previous one kept; **Install from GitHub**, **Install from a file…** and **Go back to the previous firmware**, each confirmed in one box that says what the file holds and asks the XIAO's network password.
+- The `.hex` goes to the XIAO as its own update does, and on to the Teensy over the serial link in pieces of 252 bytes, each confirmed by the Teensy before the next one is sent (about a minute for the 2 MB file). The Teensy checks the file exactly as one from its own page (checksums, Teensy 4.1, the family marker unless **Install it anyway** was ticked), refuses it with autosteer on or the tractor moving, and keeps autosteer off while it receives. The web page and UDP keep being served meanwhile. **If anything fails, the running firmware stays** and the XIAO page says why; without an answer from the Teensy for 15 s both sides give up.
 - The XIAO page then watches the module come back (its time on starts again, or another build runs) and says which firmware it runs.
 - It needs a Teensy firmware of 2 Nov 2026 or later (the first one with PGN 145) and the XIAO program compiled from the same date or later: an older Teensy does not answer, and the page says so.
 

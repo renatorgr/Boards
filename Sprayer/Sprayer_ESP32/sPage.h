@@ -96,8 +96,26 @@ a{color:var(--acc)}
 .askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .askBox p{margin:0 0 12px;white-space:pre-line}
 .askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
-.askBtns{display:flex;gap:10px;justify-content:flex-end}
+/* the buttons stay in sight at the bottom of a box taller than the screen (a web card of 480 x 320): the rest scrolls under
+   them, and the password field, when it has the focus, is scrolled above them */
+.askBox{scroll-padding-bottom:76px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:-16px;background:var(--card);padding:8px 0 16px;margin:-8px 0 -16px}
 .askBtns button{min-height:44px;min-width:96px}
+/* the question box's other parts (askShow): a title, rows of what is in a file, the verdict, a tick, the password's label */
+.askBox h3{margin:0 0 10px;font-size:17px}
+.askBox dl{margin:0 0 10px}
+.askBox p.verdict{font-weight:650}
+.askBox label.opt{display:flex;gap:10px;align-items:center;margin:0 0 12px;font-weight:600}
+.askBox label.opt input{display:inline-block;width:22px;height:22px;margin:0}
+#askPwL{display:block;color:var(--mute);font-size:13.5px;margin:0 0 3px}
+/* the Firmware tab: one card for the firmware, Check now / See on GitHub in a line, the restart at the card's foot */
+.fwgrid{grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr))}
+label.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+label.sec.off{opacity:.45;cursor:default}
+button.lnk{border:0;background:none;padding:0;font:inherit;color:var(--acc);text-decoration:underline;cursor:pointer}
+p.chk{text-align:right;margin:4px 0 0}
+.foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 16%,transparent)}.pill.warn{background:color-mix(in srgb,var(--warn) 18%,transparent)}
 </style>
 </head>
 <body>
@@ -226,24 +244,16 @@ a{color:var(--acc)}
 </section>
 
 <section id="t-firmware" hidden>
-<div class="grid">
+<div class="grid fwgrid">
 
-<div class="card"><h2>Program installed</h2>
-<dl><dt>Program</dt><dd id="ver">–</dd><dt>Built</dt><dd id="built">–</dd></dl>
-</div>
-
-<div class="card"><h2>Version on GitHub</h2>
-<dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
-<div class="row"><button class="act" id="ghInstall" onclick="ghInstall()" disabled>Install from GitHub</button><button class="sec" id="ghCheck" onclick="ghCheck()">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Sprayer/Sprayer_ESP32" target="_blank" rel="noopener">See on GitHub</a></div>
-<p class="note">This phone or tablet asks GitHub, so it needs internet: on the module's own Wi-Fi network alone it usually has none. Open this page over the tractor network (the router with internet). The module's own-network password confirms the installation.</p>
-</div>
-
-<div class="card"><h2>Update or restart</h2>
-<div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="bin" accept=".bin" style="display:none" onchange="binChosen()"></label><span id="binName" class="note">no file</span></div>
-<div class="row"><button class="act" id="install" onclick="installFile()" disabled>Install</button><button class="danger" onclick="post('/api/restart',{},'msgProg')">Restart</button></div>
+<div class="card"><h2>Sprayer firmware</h2>
+<dl><dt>Installed</dt><dd id="ver">–</dd><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
+<p class="note chk"><span id="ghAt"></span><button type="button" class="lnk" id="ghCheck" onclick="ghCheck()">Check now</button> · <a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Sprayer/Sprayer_ESP32" target="_blank" rel="noopener">See on GitHub</a></p>
+<div class="row"><button class="act" id="ghInstall" onclick="ghInstall()" disabled>Install from GitHub</button><label class="sec" id="fileBtn">Install from a file…<input type="file" id="bin" accept=".bin" hidden onchange="binChosen()"></label></div>
 <progress id="prog" max="100" value="0" hidden></progress>
 <div class="msg" id="msgProg"></div>
-<p class="note">Arduino IDE: Sketch → Export compiled binary, then choose Sprayer_ESP32.ino.bin in the sketch folder (not the .merged.bin). The sections close during the update. If it fails, the current program keeps running.</p>
+<p class="note">The sections close during the update. If it fails, the current firmware keeps running. Install from GitHub needs internet on this phone or tablet: open the page over the tractor network (the router with internet), not the module's own Wi-Fi. A file of your own: Arduino IDE, Sketch → Export compiled binary, then Sprayer_ESP32.ino.bin.</p>
+<div class="foot"><button class="danger" id="restart" onclick="restartModule()">Restart module</button></div>
 </div>
 
 <div class="card"><h2>Report for an analysis</h2>
@@ -255,28 +265,42 @@ a{color:var(--acc)}
 </section>
 
 </main>
-<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
+<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 const $=id=>document.getElementById(id);
 // ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
 // no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
 // true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+// askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
+// o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
+// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words. Answers true for OK, false otherwise.
 let askDone=null;
-function askShow(text,withInput){
+function askShow(o){
   if(askDone)askEnd(false);
-  $('askText').textContent=text;const i=$('askIn');i.hidden=!withInput;i.value='';$('ask').hidden=false;
-  (withInput?i:$('askYes')).focus();
-  return new Promise(r=>{askDone=r})}
+  const t=$('askTitle'),r=$('askRows'),v=$('askVerdict'),x=$('askText'),l=$('askPwL'),i=$('askIn'),y=$('askYes');
+  t.textContent=o.title||'';t.hidden=!o.title;
+  r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=k;b.textContent=w;r.append(a,b)}r.hidden=!r.firstChild;
+  v.hidden=!o.verdict;v.textContent=o.verdict?o.verdict[0]:'';v.className='verdict '+(o.verdict&&o.verdict[1]||'');
+  x.textContent=o.text||'';x.hidden=!o.text;
+  $('askForce').hidden=!o.force;$('askForceT').textContent=o.force||'';$('askForceIn').checked=false;
+  l.textContent=o.pwLabel||'';l.hidden=!(o.input&&o.pwLabel);
+  i.hidden=!o.input;i.value=o.pw||'';
+  y.textContent=o.okText||'OK';y.hidden=o.okText===null;y.disabled=!!o.force;$('askNo').textContent=o.noText||'Cancel';
+  $('askBox').setAttribute('aria-labelledby',o.title?'askTitle':'askText');$('ask').hidden=false;
+  (o.input&&!i.value?i:y.hidden||y.disabled?$('askNo'):y).focus();
+  return new Promise(res=>{askDone=res})}
 function askEnd(v){const r=askDone;askDone=null;$('ask').hidden=true;if(r)r(v)}
-const ask=text=>askShow(text,false);
-const askText=text=>askShow(text,true).then(ok=>ok?$('askIn').value:null);
-$('askYes').onclick=()=>askEnd(true);$('askNo').onclick=()=>askEnd(false);
+const ask=text=>askShow({text});
+const askText=text=>askShow({text,input:true}).then(ok=>ok?$('askIn').value:null);
+$('askForceIn').onchange=()=>{$('askYes').disabled=!$('askForceIn').checked};
+// OK with the password field empty goes back to the field
+$('askYes').onclick=()=>{const i=$('askIn');if(!i.hidden&&!i.value){i.focus();return}askEnd(true)};$('askNo').onclick=()=>askEnd(false);
 $('ask').onclick=e=>{if(e.target===$('ask'))askEnd(false)};
-// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
-// that opened the question cannot also answer it
+// Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
+// nothing, so the key press that opened the question cannot also answer it
 $('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);
   else if(e.key==='Enter'){if(e.repeat){e.preventDefault();return}
-    if(e.target===$('askIn')){e.preventDefault();if($('askIn').value&&!e.isComposing)askEnd(true)}}};
+    if(e.target===$('askIn')){e.preventDefault();if($('askIn').value&&!e.isComposing&&!$('askYes').disabled&&!$('askYes').hidden)askEnd(true)}}};
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
@@ -371,7 +395,7 @@ async function refresh(){
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
     $('log').textContent=d.log.join('\n');
     // Firmware tab
-    $('ver').textContent=d.fw+' v'+d.ver;$('built').textContent=builtText(d.built)||d.built;$('board').textContent=d.board||'–';
+    $('ver').textContent=d.fw+' '+verText(d.ver,d.built);$('board').textContent=d.board||'–';
     $('up').textContent=Math.floor(d.up/60)+' min';$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
@@ -395,6 +419,7 @@ async function post(url,fields,msgId,pass){
     if(d.ok&&d.restart)settingsLoaded=false;
     else if(d.ok)try{await loadSettings()}catch(e){}
     m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
+    return d;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
 // Wi-Fi settings, as on the XIAO page: the password typed in the Save card, a question before the restart
@@ -439,7 +464,8 @@ async function report(){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
   m.className='note ok';m.textContent='Downloaded: '+name;b.disabled=false;
 }
-// ---- a new program: the one on GitHub, or a chosen .bin; both are checked here before they are sent
+// ---- the firmware: the one on GitHub, or a chosen .bin; both are checked here before they are sent, and every installation
+// is confirmed in one box (fwAsk) that shows what is in the file, compared with what runs now, and asks the own network's password.
 // What a .bin is: an ESP32 program (first byte 0xE9, chip 0 = the plain ESP32 of these boards) and, from the text every
 // build carries (the start of its /api/status answer, zNet.ino), which program, version, board and build.
 async function binInfo(blob,name){
@@ -457,29 +483,44 @@ async function binInfo(blob,name){
 }
 function infoText(i){return i.fw+' '+verText(i.ver,i.built)+(i.board?' for the '+i.board:'')}
 function progMsg(t,c){const m=$('msgProg');m.className='msg'+(c?' '+c:'');m.textContent=t}
-let busy=false,waitBoot=false,upBefore=0,fwNow=null;
+// pwKeep: the password typed in the box, offered again while this page stays open (forgotten when the module refuses it)
+let busy=false,waitBoot=false,upBefore=0,fwNow=null,pwKeep='';
 // what the module runs; after an installation, the restart is seen when it is up again for less time than before
 function running(d){
   const k=d.fw+' '+d.ver+' '+d.built+' '+d.board,was=fwNow&&fwNow.key;
   fwNow={fw:d.fw,ver:d.ver,built:d.built,board:d.board,key:k};
   if(waitBoot&&d.up<upBefore){waitBoot=false;busy=false;$('prog').hidden=true;
-    progMsg('Back: it runs '+infoText(fwNow)+'.','ok');$('install').disabled=!$('bin').files[0]}
+    progMsg('Back: it runs '+infoText(fwNow)+'.','ok');fwButtons()}
   upBefore=Math.max(upBefore,d.up);
   if(k!==was)renderGh();
   if(!busy&&(ghAt===0||Date.now()-ghAt>6*3600e3))ghCheck();   // GitHub, not waited for
 }
-function binChosen(){
-  const f=$('bin').files[0];$('binName').textContent=f?f.name+' ('+Math.round(f.size/1024)+' kB)':'no file';
-  $('install').disabled=!f||busy;progMsg('');
+// the card's buttons: off while an installation runs
+function fwButtons(){
+  $('ghInstall').disabled=!ghNewer()||busy;$('bin').disabled=busy;$('fileBtn').classList.toggle('off',busy);$('restart').disabled=busy;
 }
-async function installFile(){
-  const f=$('bin').files[0];if(!f||busy)return;
+// newer, the same or older than the firmware running now
+function cmpNow(ver,built){return fwNow?(ver&&fwNow.ver?verCmp(ver,fwNow.ver):0)||builtCmp(built,fwNow.built):NaN}
+function verdict(c){return c>0?['✓ Newer than the one installed.','ok']:c===0?['The same as the one installed.','']:c<0?['Older than the one installed.','warn']:null}
+// the one confirmation box of this tab, with the own network's password: answers the password, or null for Cancel
+async function fwAsk(o){
+  if(!await askShow(Object.assign({input:true,pw:pwKeep,pwLabel:'Password of the own Wi-Fi network'},o)))return null;
+  pwKeep=$('askIn').value;return pwKeep;
+}
+// Install from a file: the file is read as soon as it is chosen, and the box says what it is
+async function binChosen(){
+  const inp=$('bin'),f=inp.files[0];inp.value='';   // choosing the same file again is a new choice
+  if(!f||busy)return;
   if(!fwNow){progMsg('No answer from the module yet.','bad');return}
-  const i=await binInfo(f,f.name);
-  if(i.error){progMsg(i.error,'bad');return}
-  if(!await ask('Install '+infoText(i)+' on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
-  const p=await pw();if(p===null)return;
-  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  progMsg('');
+  const i=await binInfo(f,f.name),file=f.name+' · '+Math.round(f.size/1024)+' kB';
+  if(i.error){
+    if(await askShow({title:'This file cannot be installed',rows:[['File',file]],verdict:['✗ '+i.error,'bad'],okText:'Choose another file',noText:'Close'}))inp.click();
+    return}
+  const p=await fwAsk({title:'Install this file?',rows:[['File',file],['Inside',infoText(i)],['Runs now',infoText(fwNow)]],
+    verdict:verdict(cmpNow(i.ver,i.built)),text:'The sections close during the update.',okText:'Install'});
+  if(p===null)return;
+  busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;
   sendBin(f,f.name,p,0);
 }
 // the .bin to the module, progress from p0 to 95 %
@@ -488,15 +529,23 @@ function sendBin(blob,name,pass,p0){
   const fd=new FormData();fd.append('bin',blob,name);
   const x=new XMLHttpRequest();x.open('POST','/api/update?pw='+encodeURIComponent(pass));
   x.upload.onprogress=e=>{if(e.lengthComputable)g.value=p0+Math.round(e.loaded/e.total*(95-p0))};
-  const fail=t=>{busy=false;g.hidden=true;progMsg(t,'bad');$('install').disabled=!$('bin').files[0];renderGh()};
+  const fail=t=>{busy=false;g.hidden=true;progMsg(t,'bad');fwButtons()};
   x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
     if(x.status===200&&j.ok){g.value=100;waitBoot=true;progMsg('Installed. The module is restarting…','warn')}
-    else fail('Not installed: '+(j.error||('error '+x.status))+'. The current program keeps running.')};
-  x.onerror=()=>fail('The connection failed. The current program keeps running.');
+    else{if(x.status===403)pwKeep='';fail('Not installed: '+(j.error||('error '+x.status))+'. The current firmware keeps running.')}};
+  x.onerror=()=>fail('The connection failed. The current firmware keeps running.');
   x.send(fd);
 }
+// Restart module: the same box, with the password
+async function restartModule(){
+  if(busy)return;
+  const p=await fwAsk({title:'Restart the module?',text:'Every section closes for a few seconds.',okText:'Restart'});
+  if(p===null)return;
+  const d=await post('/api/restart',{},'msgProg',p);
+  if(d&&!d.ok&&/password/.test(d.error||''))pwKeep='';
+}
 
-// ---- a newer program on GitHub (renatorgr/Boards, Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin). firmware.json, written
+// ---- a newer firmware on GitHub (renatorgr/Boards, Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin). firmware.json, written
 // by Firmware/simulator/build.py on every change on main and published with the simulator, says which version that .bin
 // is, for which board and when it was compiled (read from the .bin itself), so a new build of the same version shows as
 // new. Asked by this browser when the page opens, every 6 hours, and with "Check now".
@@ -518,29 +567,35 @@ async function ghCheck(){
   ghAt=Date.now();renderGh();
 }
 function ghBoardOk(){return !gh||!gh.board||!fwNow||!fwNow.board||gh.board===fwNow.board}
-function ghCmp(){return gh&&fwNow?(gh.version?verCmp(gh.version,fwNow.ver):0)||builtCmp(gh.built,fwNow.built):NaN}   // >0: GitHub's is newer
+function ghCmp(){return gh?cmpNow(gh.version,gh.built):NaN}   // >0: GitHub's is newer
 function ghNewer(){return ghCmp()>0&&ghBoardOk()}
+// On GitHub: the version and a pill (newer, installed, older); when it was asked, in the line under it
 function renderGh(){
-  const c=ghCmp(),nw=ghNewer(),e=$('ghVer');let t='–',cls='';
+  const c=ghCmp(),nw=ghNewer(),e=$('ghVer');let t='–',cls='',pill=null;
   if(ghState==='busy')t='searching…';
   else if(ghState==='fail'){t='no answer from GitHub (does this phone or tablet have internet?)';cls='warn'}
-  else if(ghState==='none')t='no sprayer program on GitHub';
-  else if(gh){t=verText(gh.version,gh.built)||'a program';
+  else if(ghState==='none')t='no sprayer firmware on GitHub';
+  else if(gh){t=verText(gh.version,gh.built)||'a firmware';
     if(!ghBoardOk()){t+=' — for the '+gh.board+' board, but this module is on the '+fwNow.board+' board';cls='warn'}
-    else if(c>0){t+=' — newer than the installed one';cls='ok'}
-    else if(c===0)t+=' — the one installed';
-    else if(c<0)t+=' — older than the installed one (the new .bin is not on GitHub yet)'}
+    else if(c>0){pill=['newer','ok'];cls='ok'}
+    else if(c===0)pill=['installed',''];
+    else if(c<0)pill=['older','warn']}
   e.textContent=t;e.className=cls;
-  $('ghInstall').disabled=!nw||busy;
+  if(pill){const s=document.createElement('span');s.className='pill '+pill[1];s.textContent=pill[0];
+    if(c<0)s.title='The new .bin is not on GitHub yet';e.append(' ',s)}
+  const at=ghAt?new Date(ghAt):null;
+  $('ghAt').textContent=ghState!=='busy'&&at?'checked at '+String(at.getHours()).padStart(2,'0')+':'+String(at.getMinutes()).padStart(2,'0')+' · ':'';
+  fwButtons();
   $('ghLink').href=GH_WEB+(gh?gh.file.replace(/\/[^/]*$/,''):'Sprayer/Sprayer_ESP32');
-  const b=document.querySelector('nav button[data-t="firmware"]');b.classList.toggle('new',nw);b.title=nw?'A newer program is on GitHub':'';
+  const b=document.querySelector('nav button[data-t="firmware"]');b.classList.toggle('new',nw);b.title=nw?'A newer firmware is on GitHub':'';
 }
 async function ghInstall(){
   if(!ghNewer()||busy)return;
   const name=gh.file.split('/').pop(),want=gh.size||0;
-  if(!await ask('Install '+(fwNow.fw+' '+verText(gh.version,gh.built))+' from GitHub on this module? It now runs '+infoText(fwNow)+'. The sections close.'))return;
-  const pass=await pw();if(pass===null)return;
-  busy=true;$('install').disabled=true;renderGh();const g=$('prog');g.hidden=false;g.value=0;
+  const pass=await fwAsk({title:'Install from GitHub?',rows:[['On GitHub',fwNow.fw+' '+verText(gh.version,gh.built)],['Runs now',infoText(fwNow)]],
+    verdict:verdict(ghCmp()),text:'The sections close during the update.',okText:'Install'});
+  if(pass===null)return;
+  busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;
   progMsg('Downloading from GitHub…');
   try{
     const dir=gh.file.replace(/\/[^/]*$/,''),r=await fetch(GH_API+dir+'?ref=main');if(!r.ok)throw new Error('GitHub: HTTP '+r.status);
@@ -555,8 +610,8 @@ async function ghInstall(){
     const i=await binInfo(blob,name);if(i.error)throw new Error(i.error);
     if(gh.built&&i.built!==gh.built)throw new Error('GitHub is still publishing the new file: try again in a few minutes');
     sendBin(blob,name,pass,45);
-  }catch(e){busy=false;g.hidden=true;$('install').disabled=!$('bin').files[0];renderGh();
-    progMsg('Not downloaded: '+e.message+'. The current program keeps running.','bad')}
+  }catch(e){busy=false;g.hidden=true;fwButtons();
+    progMsg('Not downloaded: '+e.message+'. The current firmware keeps running.','bad')}
 }
 refresh();setInterval(refresh,1000);
 </script>

@@ -4,7 +4,7 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
-**Built:** 13 Nov 2026 (C3 16:14, S3 16:14), from the program as it is after the pull request that makes Enter in the page's password fields do what their buttons do. Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
+**Built:** 13 Nov 2026 (C3 16:54, S3 16:55), from the program as it is after the pull request that redoes the Firmware tab (one card per device, one box that confirms each install). Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
 When the program in `v4.5_XIAO_ESP32` changes, compile these files again and upload them over the old ones, with the same names. **Install from GitHub** on the XIAO page offers a file when it was compiled later than the program running on the XIAO (the date is read from the file).
 
 | File | What for |
@@ -32,7 +32,7 @@ It can also be installed from the Arduino IDE, by compiling the program (see the
 
 ## Later: update over WiFi
 
-- Phone on the XIAO's network → page → **Firmware** → choose the `.bin` **without** "_USB" for your XIAO → password → **Install**.
+- Phone on the XIAO's network → page → **Firmware** → **Install from a file…** → the `.bin` **without** "_USB" for your XIAO → the box says what is inside → password → **Install**. A `_USB.bin` is refused there.
 - The WiFi settings are kept.
 - Or, when the phone has internet: **Firmware → Install from GitHub** downloads the right file from github.com/renatorgr/Boards by itself (see the program's README).
 

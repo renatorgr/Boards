@@ -74,16 +74,26 @@ async function expectSoon(pg, what, sel, re, ms = 5000) {
  } catch (e) { /* reported by expect() below */ }
  await expect(pg, what, sel, re);
 }
-// the pages' own question box (ask / askText in the pages) answered with OK as soon as it opens, as a person would; `text` is typed
-// into its field first (the module's password, when it asks for one). Stays on after the page reloads itself (a restart)
+// the pages' own question box (ask / askText / askShow in the pages) answered with OK as soon as it opens, as a person would;
+// `text` is typed into its field first (the module's password, when it asks for one). What each box said is kept for asked()
+// below. Stays on after the page reloads itself (a restart); holdAsk(pg, true) leaves the boxes to the check for a while
 async function answerAsk(pg, text) {
- const js = "(()=>{if(window.__askAuto)return;window.__askAuto=1;" +
-  "const go=()=>{const a=document.getElementById('ask');if(!a||a.hidden)return;const i=document.getElementById('askIn');" +
+ const js = "(()=>{if(window.__askAuto)return;window.__askAuto=1;window.__asked=[];" +
+  "const go=()=>{const a=document.getElementById('ask');if(!a||a.hidden||window.__askHold)return;" +
+  "window.__asked.push(document.getElementById('askBox').innerText);const i=document.getElementById('askIn');" +
   "if(i&&!i.hidden)i.value=" + JSON.stringify(text || "") + ";document.getElementById('askYes').click();};" +
   "const start=()=>{const a=document.getElementById('ask');if(!a)return;new MutationObserver(go).observe(a,{attributes:true,attributeFilter:['hidden']});go();};" +
   "document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start):start();})()";
  await pg.addInitScript(js);
  await pg.evaluate(js);
+}
+// what the boxes answered by answerAsk said since the last call (title, rows, verdict, text and buttons, one string each)
+async function asked(pg) { return pg.evaluate(() => { const a = window.__asked || []; window.__asked = []; return a; }); }
+async function holdAsk(pg, on) { await pg.evaluate(v => { window.__askHold = v; }, on); }
+// the last box answered says `re`
+async function askedSays(pg, what, re) {
+ const a = await asked(pg);
+ if (!a.length || !re.test(a[a.length - 1])) fail.push(what + ": the box should say " + re + ", it said " + JSON.stringify(a.length ? a[a.length - 1] : "nothing"));
 }
 // a page of the site inside an AgOpenWeb web card: the server's /Boards/_card, an iframe with the card's sandbox at the smallest
 // card size, 480 x 320. There the browser's confirm() and prompt() return false / null without showing anything, which the check
@@ -103,10 +113,11 @@ async function card(browser, port, src, what) {
  return [pg, fr];
 }
 // the question box open in the card: its text, whether it asks to type something, inside the 480 x 320, the OK button 44 px high
-async function askShown(fr, what, re, withInput) {
+async function askShown(fr, what, re, withInput, title) {
  await fr.waitForTimeout(200);
  if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": the question box did not open"); return; }
  await expect(fr, what, "#askText", re);
+ if (title) await expect(fr, what, "#askTitle", title);
  if ((await fr.locator("#askIn").isVisible()) !== withInput) fail.push(what + ": the question " + (withInput ? "has no field to type in" : "should not ask to type anything"));
  const b = await fr.locator(".askBox").boundingBox(), y = await fr.locator("#askYes").boundingBox();
  if (!b || b.x < 0 || b.y < 0 || b.x + b.width > 480 || b.y + b.height > 320) fail.push(what + ": the question box does not fit the card (" + JSON.stringify(b) + ")");
@@ -121,7 +132,7 @@ async function teensy(browser, port, q, name) {
  const what = "Teensy page " + (q || "(defaults)");
  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/" + q, what);
  await pg.waitForTimeout(2500);
- await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — the one installed$/);
+ await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
  await expect(pg, what, "#hdr", /_AiO_WEB · 192\.168\.5\.126/);
  await expect(pg, what, "#simBar", /SIMULATOR/);
  if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
@@ -290,9 +301,10 @@ async function teensy(browser, port, q, name) {
    await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(300);
    await expect(pg, what, "#prevFw", /^none kept yet/);
    if (!(await pg.locator("#revert").isDisabled())) fail.push(what + ": Go back is offered with no previous firmware kept");
-   await pg.setInputFiles("#hexFile", hex); await pg.waitForTimeout(1500);
-   await expect(pg, what, "#hexInfo", /_AiO_WEB, built/);
-   await pg.click("#install");
+   await asked(pg);
+   await pg.setInputFiles("#hexFile", hex);   // Install from a file…: the box says what is inside, OK installs it
+   await pg.waitForTimeout(1500);
+   await askedSays(pg, what + " (Install from a file…)", /^Install this file\?\n[\s\S]*Inside\s+v[\d.]+_AiO_WEB, built [\s\S]*Runs now\s+v[\d.]+_AiO_WEB, built [\s\S]*Autosteer must be off and the tractor stopped/);
    await pg.waitForFunction(() => /Updated\. Running/.test(document.getElementById("fwMsg").textContent), null, {timeout: 60000}).catch(() => {});
    await expect(pg, what, "#fwMsg", /Updated\. Running/);
    await pg.waitForFunction(() => /_AiO_WEB, built/.test(document.getElementById("prevFw").textContent), null, {timeout: 10000}).catch(() => {});   // the next status poll fills it
@@ -300,6 +312,7 @@ async function teensy(browser, port, q, name) {
    await shot(pg, "parked-updated");
    await pg.click("#revert");
    await pg.waitForFunction(() => /Going back/.test(document.getElementById("fwMsg").textContent), null, {timeout: 5000}).catch(() => {});
+   await askedSays(pg, what + " (Go back)", /^Go back to the previous firmware\?\nPrevious\s+v[\d.]+_AiO_WEB, built /);
    await pg.waitForFunction(() => /Updated\. Running/.test(document.getElementById("fwMsg").textContent), null, {timeout: 60000}).catch(() => {});
    await expect(pg, what, "#fwMsg", /Updated\. Running/);
    await expect(pg, what, "#prevFw", /^none kept yet/);    // used up by going back
@@ -311,7 +324,7 @@ async function teensy(browser, port, q, name) {
   const what = "Teensy page, newer build on GitHub";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/", what, j => { j.teensy.built = LATER; });
   await pg.waitForTimeout(2500);
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   if (await pg.locator("#ghNote").isHidden()) fail.push(what + ": no note about the new firmware");
   await pg.close();
@@ -326,7 +339,7 @@ async function teensy(browser, port, q, name) {
   for (let i = 0; i < 40 && (await pg.locator("#aSecs span").count()) !== 19; i++) await pg.waitForTimeout(250);
   if ((await pg.locator("#aSecs span").count()) !== 19) fail.push(what + ": Program → module should show the seed drill's 19 sections");
   await expect(pg, what, "#mFw", /AiO/);
-  await expect(pg, what, "#ghVer", /^[\d.]+(, built [^—]+)? — the one installed$/);
+  await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
   await shot(pg, "xiao-status");
   for (const t of ["log", "wifi", "prog"]) {
    await pg.click('nav button[data-t="' + t + '"]'); await pg.waitForTimeout(800);
@@ -337,22 +350,22 @@ async function teensy(browser, port, q, name) {
   await pg.close();
  }
  // the XIAO page with the module parked: the firmware's own .hex installed on the module over the link, then the
- // previous firmware put back (the XIAO password typed in the Update or restart card)
+ // previous firmware put back (the XIAO password typed in the box that confirms each one, then remembered while the page is open)
  if (hex) {
   const what = "XIAO page, module firmware over the link";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?park=1", what);
-  await answerAsk(pg);
+  await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(800);
   await expect(pg, what, "#tFw", /_AiO_WEB/);
-  await expectSoon(pg, what, "#tGh", /the one the module runs$/);
+  await expectSoon(pg, what, "#tGh", / installed$/);
   await expect(pg, what, "#tPrev", /^none kept yet/);
   if (!(await pg.locator("#tRevert").isDisabled())) fail.push(what + ": Go back is offered with no previous firmware kept");
   if (!(await pg.locator("#tGhInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with the same build");
-  await pg.fill("#pwP", "agopengps");
-  await pg.setInputFiles("#tHexFile", hex); await pg.waitForTimeout(1500);
-  await expect(pg, what, "#tHexInfo", /_AiO_WEB, built/);
-  await pg.click("#tInstall");
+  await asked(pg);
+  await pg.setInputFiles("#tHexFile", hex);   // Install from a file… in the module card: the box says what is inside
+  await pg.waitForTimeout(1500);
+  await askedSays(pg, what + " (Install from a file…)", /^Install this file on the module\?\n[\s\S]*Inside\s+v[\d.]+_AiO_WEB, built [\s\S]*XIAO network password/);
   await pg.waitForFunction(() => /^Done\./.test(document.getElementById("tMsg").textContent), null, {timeout: 60000}).catch(() => {});
   await expect(pg, what, "#tMsg", /^Done\. The module runs/);
   await expect(pg, what, "#tPrev", /_AiO_WEB, built/);
@@ -360,6 +373,7 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "xiao-module-updated");
   await pg.click("#tRevert");
   await pg.waitForFunction(() => /going back/.test(document.getElementById("tMsg").textContent), null, {timeout: 5000}).catch(() => {});
+  await askedSays(pg, what + " (Go back)", /^Go back to the previous firmware\?\nPrevious\s+v[\d.]+_AiO_WEB, built /);
   await pg.waitForFunction(() => /^Done\./.test(document.getElementById("tMsg").textContent), null, {timeout: 60000}).catch(() => {});
   await expect(pg, what, "#tMsg", /^Done\. The module runs/);
   await expect(pg, what, "#tPrev", /^none kept yet/);
@@ -371,19 +385,21 @@ async function teensy(browser, port, q, name) {
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/?chip=s3", what, j => { if (j.xiao.S3) j.xiao.S3.built = LATER; });
   await pg.waitForTimeout(2500);
   await expect(pg, what, "#hdr", /_XIAO_ESP32S3/);
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   await pg.close();
  }
- // Enter in the XIAO page's password boxes: it does what the card's button does (here every action asks first, and the check
- // says no); an empty box does nothing, and a held Enter does not also answer the question it opened
+ // Enter on the XIAO page: in the Module network password it does what the card's button does (here the action asks first, and
+ // the check says no); in the box that confirms an installation an empty password does nothing, and a held Enter on Install
+ // from GitHub opens the box but never also answers it, even with the password already in it. Files for the first install over
+ // USB-C are refused in the box with the reason; a program without the XIAO firmware's name in it waits for "Install it anyway"
  {
   const what = "XIAO page, Enter in the password boxes";
   const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/", what, j => { if (j.xiao.C3) j.xiao.C3.built = LATER; });
-  const askOpen = async (re, how) => {
+  const askOpen = async (re, how, sel) => {
    await pg.waitForTimeout(300);
    if (!(await pg.locator("#ask").isVisible())) { fail.push(what + ": " + how + " did not ask anything"); return; }
-   await expect(pg, what, "#askText", re);
+   await expect(pg, what, sel || "#askText", re);
    await pg.keyboard.press("Escape"); await pg.waitForTimeout(200);
    if (await pg.locator("#ask").isVisible()) fail.push(what + ": Escape does not close the question");
   };
@@ -394,19 +410,41 @@ async function teensy(browser, port, q, name) {
   await pg.fill("#pwN", "agopengps"); await pg.locator("#pwN").press("Enter");
   await askOpen(/^Change the module's subnet to 192\.168\.7 and restart it\?/, "Enter in the Module network password");
   await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(300);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
-  await pg.click("#ghInstall"); await pg.waitForTimeout(200);
-  await expect(pg, what, "#fwMsg", /^Type the XIAO network password\.$/);
-  await pg.locator("#pwP").press("Enter"); await pg.waitForTimeout(300);
-  if (await pg.locator("#ask").isVisible()) fail.push(what + ": Enter in the empty password box asked something");
-  await pg.fill("#pwP", "agopengps"); await pg.locator("#pwP").press("Enter");   // the password typed after Install from GitHub asked for it
-  await askOpen(/^Install [\d.]+, built 31 Dec 2099 23:59 from GitHub \(v[\d.]+_XIAO_ESP32C3\.bin\) on the XIAO\?$/, "Enter after Install from GitHub asked for the password");
-  const bin = Buffer.alloc(4096); bin[0] = 0xE9; bin[12] = 5;   // an ESP32-C3 program's header (chip id 5)
-  await pg.setInputFiles("#binFile", {name: "v4.5_XIAO_ESP32C3.bin", mimeType: "application/octet-stream", buffer: bin}); await pg.waitForTimeout(300);
-  await pg.focus("#pwP");
+  await pg.click("#ghInstall"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#askTitle", /^Install from GitHub on the XIAO\?$/);
+  await expect(pg, what, "#askVerdict", /^✓ Newer than the one installed\.$/);
+  await expect(pg, what, "#askPwL", /^XIAO network password$/);
+  await pg.locator("#askIn").press("Enter"); await pg.waitForTimeout(300);
+  if (!(await pg.locator("#ask").isVisible())) fail.push(what + ": Enter in the empty password field answered the box");
+  await askOpen(/^Install from GitHub on the XIAO\?$/, "Install from GitHub", "#askTitle");
+  // the password typed in the WiFi tab is offered in the box; Install from GitHub with a held Enter: the box, not its answer
+  await pg.click('nav button[data-t="wifi"]'); await pg.fill("#pwW", "agopengps");
+  await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(300);
+  await pg.focus("#ghInstall");
   await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.up("Enter");   // held: repeats
-  await askOpen(/^Install v4\.5_XIAO_ESP32C3\.bin on the XIAO\?$/, "a held Enter in the password box");
-  if (await pg.locator("#prog").isVisible()) fail.push(what + ": the installation started");
+  await pg.waitForTimeout(300);
+  if (await pg.locator("#ask").isVisible() && (await pg.inputValue("#askIn")) !== "agopengps") fail.push(what + ": the password typed in the WiFi tab is not offered in the box");
+  await askOpen(/^Install from GitHub on the XIAO\?$/, "a held Enter on Install from GitHub", "#askTitle");
+  const bin = Buffer.alloc(4096); bin[0] = 0xE9; bin[12] = 5;   // an ESP32-C3 program's header (chip id 5), no name inside
+  for (const name of ["v4.5_XIAO_ESP32C3_USB.bin", "v4.5_XIAO_ESP32C3.merged.bin"]) {
+   await pg.setInputFiles("#binFile", {name, mimeType: "application/octet-stream", buffer: bin}); await pg.waitForTimeout(300);
+   await expect(pg, what + " (" + name + ")", "#askVerdict", /^✗ This is a file for the first install over USB-C\. Over WiFi choose v[\d.]+_XIAO_ESP32C3\.bin/);
+   if (await pg.locator("#askIn").isVisible()) fail.push(what + ": the box for a refused file asks for the password");
+   await askOpen(/^This file cannot be installed$/, "a file for USB-C (" + name + ")", "#askTitle");
+  }
+  await pg.setInputFiles("#binFile", {name: "v4.5_XIAO_ESP32C3.bin", mimeType: "application/octet-stream", buffer: bin}); await pg.waitForTimeout(300);
+  if (await pg.locator("#ask").isVisible()) {
+   await expect(pg, what, "#askVerdict", /^! Another program, not this XIAO firmware/);
+   if (!(await pg.locator("#askForce").isVisible()) || !(await pg.locator("#askYes").isDisabled())) fail.push(what + ": a program without the XIAO firmware's name should wait for Install it anyway");
+   await pg.locator("#askIn").press("Enter"); await pg.waitForTimeout(300);
+   if (!(await pg.locator("#ask").isVisible())) fail.push(what + ": Enter answered the box before Install it anyway was ticked");
+   await pg.check("#askForceIn");
+   if (await pg.locator("#askYes").isDisabled()) fail.push(what + ": Install it anyway does not turn Install on");
+  }
+  await askOpen(/^Install this file on the XIAO\?$/, "a chosen .bin", "#askTitle");
+  if (await pg.locator("#prog").isVisible()) fail.push(what + ": an installation started");
   await pg.close();
  }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
@@ -464,23 +502,29 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "seeder-network");
   await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(700);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": tab Firmware does not show");
-  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+$/);
+  await expect(pg, what, "#ver", /^Seeder_ESP32 v[\d.]+, built .+$/);
   await expect(pg, what, "#board", /^Relay24_ESP32$/);
   // the .bin on main, once there is one: the one the pretend module runs (or an older one, when the code changed and the
   // .bin did not yet); none yet: said so
-  await expect(pg, what, "#ghVer", /^(no seed drill program on GitHub|v[\d.]+, built [^—]+ — (the one installed|older than the installed one \(the new \.bin is not on GitHub yet\)))$/);
+  await expect(pg, what, "#ghVer", /^(no seed drill firmware on GitHub|v[\d.]+, built .+ (installed|older))$/);
   if (!(await pg.locator("#ghInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with nothing newer there");
   if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
   await shot(pg, "seeder-firmware");
-  // wrong files: the .merged.bin, a program for the other board, the sprayer's program
+  // wrong files, refused in the box as soon as they are chosen, with the reason and no password asked: the .merged.bin, a program
+  // for the other board, the sprayer's program
   const sdBin = (fw, ver, built, board) => Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31),
    Buffer.from('{"fw":"' + fw + '","ver":"' + ver + '","built":"' + built + '"\0' + (board ? ',"board":"' + board + '"\0' : ""))]);
-  for (const [name, buf, re] of [["Seeder_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^This is the wrong file: use Seeder_ESP32\.ino\.bin/],
-   ["Seeder_ESP32.ino.bin", sdBin("Seeder_ESP32", "0.2", LATER, "KC868-A32"), /^This program is for the KC868-A32 board, but this module is on the Relay24_ESP32 board/],
-   ["Sprayer_ESP32.ino.bin", sdBin("Sprayer_ESP32", "0.10", LATER, ""), /^This is the program Sprayer_ESP32, not this module's/]]) {
-   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf});
-   await pg.click("#install"); await pg.waitForTimeout(500);
-   await expect(pg, what + " (" + name + ")", "#msgProg", re);
+  for (const [name, buf, re] of [["Seeder_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^✗ This is the wrong file: use Seeder_ESP32\.ino\.bin/],
+   ["Seeder_ESP32.ino.bin", sdBin("Seeder_ESP32", "0.2", LATER, "KC868-A32"), /^✗ This program is for the KC868-A32 board, but this module is on the Relay24_ESP32 board/],
+   ["Sprayer_ESP32.ino.bin", sdBin("Sprayer_ESP32", "0.10", LATER, ""), /^✗ This is the program Sprayer_ESP32, not this module's/]]) {
+   await holdAsk(pg, true);
+   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf}); await pg.waitForTimeout(500);
+   await expect(pg, what + " (" + name + ")", "#askTitle", /^This file cannot be installed$/);
+   await expect(pg, what + " (" + name + ")", "#askVerdict", re);
+   if (await pg.locator("#askIn").isVisible()) fail.push(what + " (" + name + "): the box for a refused file asks for the password");
+   await pg.click("#askNo"); await pg.waitForTimeout(200);
+   if (await pg.locator("#ask").isVisible()) fail.push(what + " (" + name + "): Close does not close the box");
+   await holdAsk(pg, false);
   }
   if (/program update/.test(await pg.locator("#log").textContent())) fail.push(what + ": a wrong file was sent to the module");
   try {
@@ -513,7 +557,7 @@ async function teensy(browser, port, q, name) {
   await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (!(await pg.locator('nav button[data-t="firmware"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   else {
@@ -521,7 +565,8 @@ async function teensy(browser, port, q, name) {
    try { await pg.waitForFunction(() => /^Back:/.test(document.getElementById("msgProg").textContent), null, {timeout: 25000}); }
    catch (e) { fail.push(what + ": the module did not come back with the new program (" + (await pg.locator("#msgProg").textContent()) + ")"); }
    await expect(pg, what, "#msgProg", /^Back: it runs Seeder_ESP32 v[\d.]+, built 31 Dec 2099 23:59 for the Relay24_ESP32\.$/);
-   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — the one installed$/);
+   await askedSays(pg, what, /^Install from GitHub\?\nOn GitHub\s+Seeder_ESP32 v[\d.]+, built 31 Dec 2099 23:59\s+Runs now\s+Seeder_ESP32 v[\d.]+, built [\s\S]*✓ Newer than the one installed\.\s+Every section closes during the update\.\s+Password of the own Wi-Fi network/);
+   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 installed$/);
    if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is still marked new after the update");
   }
   await shot(pg, "seeder-firmware-updated");
@@ -591,22 +636,28 @@ async function teensy(browser, port, q, name) {
   await shot(pg, "sprayer-module");
   await pg.click('nav button[data-t="firmware"]'); await pg.waitForTimeout(700);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": tab Firmware does not show");
-  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+$/);
+  await expect(pg, what, "#ver", /^Sprayer_ESP32 v[\d.]+, built .+$/);
   await expect(pg, what, "#board", /^ESP32_Relay_X8$/);
   // the .bin on main: the one the pretend module runs (or an older one, when the code changed and the .bin did not yet)
-  await expect(pg, what, "#ghVer", /^v[\d.]+, built [^—]+ — (the one installed|older than the installed one \(the new \.bin is not on GitHub yet\))$/);
+  await expect(pg, what, "#ghVer", /^v[\d.]+, built .+ (installed|older)$/);
   if (!(await pg.locator("#ghInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with nothing newer there");
   if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
   await shot(pg, "sprayer-firmware");
-  // wrong files: the .merged.bin, and a program for another board
+  // wrong files, refused in the box as soon as they are chosen, with the reason and no password asked: the .merged.bin, a program
+  // for another board, the seed drill's program
   const sprBin = (ver, built, board) => Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31),
    Buffer.from('{"fw":"Sprayer_ESP32","ver":"' + ver + '","built":"' + built + '"\0,"board":"' + board + '"\0')]);
-  for (const [name, buf, re] of [["Sprayer_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^This is the wrong file: use Sprayer_ESP32\.ino\.bin/],
-   ["Sprayer_ESP32.ino.bin", sprBin("0.10.0", LATER, "ESP32 dev module"), /^This program is for the ESP32 dev module board, but this module is on the ESP32_Relay_X8 board/],
-   ["Seeder_ESP32.ino.bin", Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31), Buffer.from('{"fw":"Seeder_ESP32","ver":"0.2","built":"' + LATER + '"')]), /^This is the program Seeder_ESP32, not this module's/]]) {
-   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf});
-   await pg.click("#install"); await pg.waitForTimeout(500);
-   await expect(pg, what + " (" + name + ")", "#msgProg", re);
+  for (const [name, buf, re] of [["Sprayer_ESP32.ino.merged.bin", Buffer.alloc(64, 0xFF), /^✗ This is the wrong file: use Sprayer_ESP32\.ino\.bin/],
+   ["Sprayer_ESP32.ino.bin", sprBin("0.10.0", LATER, "ESP32 dev module"), /^✗ This program is for the ESP32 dev module board, but this module is on the ESP32_Relay_X8 board/],
+   ["Seeder_ESP32.ino.bin", Buffer.concat([Buffer.from([0xE9]), Buffer.alloc(31), Buffer.from('{"fw":"Seeder_ESP32","ver":"0.2","built":"' + LATER + '"')]), /^✗ This is the program Seeder_ESP32, not this module's/]]) {
+   await holdAsk(pg, true);
+   await pg.setInputFiles("#bin", {name: name, mimeType: "application/octet-stream", buffer: buf}); await pg.waitForTimeout(500);
+   await expect(pg, what + " (" + name + ")", "#askTitle", /^This file cannot be installed$/);
+   await expect(pg, what + " (" + name + ")", "#askVerdict", re);
+   if (await pg.locator("#askIn").isVisible()) fail.push(what + " (" + name + "): the box for a refused file asks for the password");
+   await pg.click("#askNo"); await pg.waitForTimeout(200);
+   if (await pg.locator("#ask").isVisible()) fail.push(what + " (" + name + "): Close does not close the box");
+   await holdAsk(pg, false);
   }
   if (/program update/.test(await pg.locator("#log").textContent())) fail.push(what + ": a wrong file was sent to the module");
   try {
@@ -639,7 +690,7 @@ async function teensy(browser, port, q, name) {
   await answerAsk(pg, "agopengps");
   await pg.waitForTimeout(2500);
   if (!(await pg.locator("#t-firmware").isVisible())) fail.push(what + ": #firmware in the address does not open the Firmware tab");
-  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — newer than the installed one$/);
+  await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (!(await pg.locator('nav button[data-t="firmware"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   else {
@@ -647,14 +698,16 @@ async function teensy(browser, port, q, name) {
    try { await pg.waitForFunction(() => /^Back:/.test(document.getElementById("msgProg").textContent), null, {timeout: 25000}); }
    catch (e) { fail.push(what + ": the module did not come back with the new program (" + (await pg.locator("#msgProg").textContent()) + ")"); }
    await expect(pg, what, "#msgProg", /^Back: it runs Sprayer_ESP32 v[\d.]+, built 31 Dec 2099 23:59 for the ESP32_Relay_X8\.$/);
-   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 — the one installed$/);
+   await askedSays(pg, what, /^Install from GitHub\?\nOn GitHub\s+Sprayer_ESP32 v[\d.]+, built 31 Dec 2099 23:59\s+Runs now\s+Sprayer_ESP32 v[\d.]+, built [\s\S]*✓ Newer than the one installed\.\s+The sections close during the update\.\s+Password of the own Wi-Fi network/);
+   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 installed$/);
    if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is still marked new after the update");
   }
   await shot(pg, "sprayer-firmware-updated");
   await pg.close();
  }
- // the sprayer page inside a web card: Save and restart (Module tab) asks yes / no (Escape is a no), Restart (Firmware tab) asks
- // the password in the box (Cancel does nothing, Enter after the password restarts the module)
+ // the sprayer page inside a web card: Save and restart (Module tab) asks yes / no (Escape is a no); Restart module (Firmware tab)
+ // and a chosen .bin ask in one box with the password (Cancel does nothing, Enter with no password typed does nothing, Enter after
+ // the password restarts the module); the box with the most in it still fits the smallest card
  {
   const what = "Sprayer page in a web card";
   const [pg, fr] = await card(browser, port, "/Boards/sprayer/#module", what);
@@ -670,20 +723,27 @@ async function teensy(browser, port, q, name) {
    await askShown(fr, what, /^Save and restart the module\? Its Wi-Fi goes off/, false);
    await fr.locator("#askYes").press("Escape"); await askClosed(fr, what, "Escape");
    await fr.click('nav button[data-t="firmware"]'); await fr.waitForTimeout(300);
-   await fr.click("button[onclick*='/api/restart']");
-   await askShown(fr, what, /^Password of the own Wi-Fi network$/, true);
+   const onMain = path.join(__dirname, "..", "..", "Sprayer", "Sprayer_ESP32", "Sprayer_ESP32.ino.bin");
+   await fr.setInputFiles("#bin", onMain);
+   await askShown(fr, what, /^The sections close during the update\.$/, true, /^Install this file\?$/);
+   await expect(fr, what, "#askPwL", /^Password of the own Wi-Fi network$/);
+   await shot(pg, "sprayer-card-file");
+   await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
+   await fr.click("#restart");
+   await askShown(fr, what, /^Every section closes for a few seconds\.$/, true, /^Restart the module\?$/);
    await shot(pg, "sprayer-card-password");
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await expect(fr, what, "#msgProg", /^$/);
-   await fr.click("button[onclick*='/api/restart']");
+   await fr.click("#restart");
    await fr.locator("#askIn").press("Enter"); await fr.waitForTimeout(200);
-   if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": Enter with no password typed answers the question"); await fr.click("button[onclick*='/api/restart']"); }
+   if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": Enter with no password typed answers the question"); await fr.click("#restart"); }
    await fr.fill("#askIn", "agopengps"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Enter");
    await expectSoon(fr, what, "#msgProg", /^done, restarting/);
   }
   await pg.close();
  }
- // the Teensy page inside a web card: Restart Teensy asks yes / no
+ // the Teensy page inside a web card: Restart Teensy asks yes / no; a chosen .hex without the update page inside is shown in the
+ // box with the warning, and Install waits for "Install it anyway"
  {
   const what = "Teensy page in a web card";
   const [pg, fr] = await card(browser, port, "/Boards/teensy/?park=1", what);
@@ -698,6 +758,23 @@ async function teensy(browser, port, q, name) {
    await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.up("Enter");
    await askShown(fr, what, /^Restart the Teensy\?/, false);
    if (await fr.locator("#ask").isVisible()) { await fr.click("#askNo"); await askClosed(fr, what, "Cancel"); }
+   await expect(fr, what, "#fwMsg", /^$/);
+   const hexOf = text => {   // text as an Intel HEX file, 16 bytes a line
+    const b = Buffer.from(text, "latin1"), l = [];
+    for (let i = 0; i < b.length; i += 16) {
+     const r = [Math.min(16, b.length - i), (i >> 8) & 255, i & 255, 0, ...b.subarray(i, i + 16)];
+     l.push(":" + [...r, (256 - r.reduce((x, y) => x + y, 0) % 256) % 256].map(x => x.toString(16).padStart(2, "0").toUpperCase()).join(""));
+    }
+    return l.join("\n") + "\n:00000001FF\n";
+   };
+   await fr.setInputFiles("#hexFile", {name: "v4.5_AiO_WEB.ino.hex", mimeType: "text/plain", buffer: Buffer.from(hexOf("fw_teensy41 [boot] v4.5_AiO_WEB, built Nov 13 2026 10:00:00 "))});
+   await askShown(fr, what, /^Autosteer must be off and the tractor stopped\./, false, /^Install this file\?$/);
+   await expect(fr, what, "#askVerdict", /^! No update page inside: the next update will have to be by USB\.$/);
+   if (!(await fr.locator("#askYes").isDisabled())) fail.push(what + ": Install is on before Install it anyway is ticked");
+   await fr.check("#askForceIn");
+   if (await fr.locator("#askYes").isDisabled()) fail.push(what + ": Install it anyway does not turn Install on");
+   await shot(pg, "teensy-card-file");
+   await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await expect(fr, what, "#fwMsg", /^$/);
    await fr.click("#reboot");
    await fr.click("#askYes"); await askClosed(fr, what, "OK");

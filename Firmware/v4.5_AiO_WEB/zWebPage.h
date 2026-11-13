@@ -118,8 +118,27 @@ a{color:var(--acc)}
 .askBox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:100%;max-width:440px;max-height:100%;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .askBox p{margin:0 0 12px;white-space:pre-line}
 .askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
-.askBtns{display:flex;gap:10px;justify-content:flex-end}
+/* the buttons stay in sight at the bottom of a box taller than the screen (a web card of 480 x 320): the rest scrolls under
+   them, and the password field, when it has the focus, is scrolled above them */
+.askBox{scroll-padding-bottom:76px}
+.askBtns{display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:-16px;background:var(--card);padding:8px 0 16px;margin:-8px 0 -16px}
 .askBtns button{min-height:44px;min-width:96px}
+/* the question box's other parts (askShow): a title, rows of what is in a file, the verdict, a tick */
+.askBox h3{margin:0 0 10px;font-size:17px}
+.askBox dl{margin:0 0 10px}
+.askBox p.verdict{font-weight:650}
+.askBox label.opt{display:flex;gap:10px;align-items:center;margin:0 0 12px;padding:0;font-weight:600}
+.askBox label.opt input{display:inline-block;width:22px;height:22px;margin:0}
+#askPwL{display:block;color:var(--mute);font-size:13.5px;margin:0 0 3px}
+/* the Firmware tab: a card for the firmware, one for the Teensy itself; Check now / See on GitHub in a line; Go back and
+   Restart at the card's foot */
+.fwgrid{grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr))}
+label.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+label.sec.off{opacity:.45;cursor:default}
+label.locked{opacity:.45;cursor:not-allowed}
+button.lnk{border:0;background:none;padding:0;font:inherit;color:var(--acc);text-decoration:underline;cursor:pointer}
+p.chk{text-align:right;margin:4px 0 0}
+.foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -391,24 +410,18 @@ a{color:var(--acc)}
 
 <section id="t-firmware" class="hidden">
 <p class="note warn hidden" data-locknote="m" style="margin:0 0 10px"></p>
-<div class="grid">
-<div class="card"><h2>Running firmware</h2>
- <dl><dt>Firmware</dt><dd id="fw" class="mono">–</dd><dt>Built</dt><dd id="built">–</dd><dt>Board</dt><dd id="target">–</dd><dt>Processor</dt><dd id="cpu">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
- <div class="row"><button class="danger" id="reboot">Restart Teensy</button></div></div>
-<div class="card"><h2>Version on GitHub</h2>
- <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
- <div class="row"><button class="act" id="ghInstall" data-lock="m" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
- <p class="note">The device this page is open on (tablet, phone, PC) needs internet. The Teensy does not go to the internet: it gets the file from this device and checks it as when a file is installed.</p></div>
-<div class="card"><h2>Update firmware</h2>
- <div class="row"><label class="act">Choose .hex<input type="file" id="hexFile" accept=".hex" class="hidden"></label><span id="hexName" class="note">no file</span></div>
- <p id="hexInfo" class="note hidden"></p>
- <label class="opt"><input type="checkbox" id="force"><span>Other firmware<small>Installs it even without this update page inside (the next update will then have to be by USB).</small></span></label>
- <div class="row"><button class="act" id="install" data-lock="m" disabled>Install</button></div>
+<div class="grid fwgrid">
+<div class="card"><h2>Teensy firmware</h2>
+ <dl><dt>Installed</dt><dd id="fw">–</dd><dt>On GitHub</dt><dd id="ghVer">–</dd><dt>Previous</dt><dd id="prevFw">–</dd></dl>
+ <p class="note chk"><span id="ghAt"></span><button type="button" class="lnk" id="ghCheck">Check now</button> · <a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></p>
+ <div class="row"><button class="act" id="ghInstall" data-lock="m" disabled>Install from GitHub</button><label class="sec" id="fileBtn" data-lock="m">Install from a file…<input type="file" id="hexFile" accept=".hex" class="hidden"></label></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
- <dl style="margin-top:8px"><dt>Previous firmware</dt><dd id="prevFw">–</dd></dl>
- <div class="row"><button class="sec" id="revert" data-lock="m" disabled>Go back to the previous firmware</button></div>
- <p class="note">Only with autosteer off and the tractor stopped (on a bench: simulator mode or no WAS). The file is checked before it replaces the firmware; if anything fails, the current one keeps running. In the last seconds <b>do not switch the power off</b>. The settings are kept. The firmware that ran before stays in the flash, so going back needs no file or internet (also from the XIAO page); nothing is kept until the first update made with this firmware.</p></div>
+ <p class="note">Only with autosteer off and the tractor stopped (on a bench: simulator mode or no WAS). The file is checked before it replaces the firmware; if anything fails, the current one keeps running. In the last seconds <b>do not switch the power off</b>. The settings are kept. Install from GitHub needs internet on this device (tablet, phone, PC): the Teensy gets the file from it. Going back needs no file or internet (also from the XIAO page).</p>
+ <div class="foot"><button class="sec" id="revert" data-lock="m" disabled>Go back to the previous firmware</button></div></div>
+<div class="card"><h2>This Teensy</h2>
+ <dl><dt>Board</dt><dd id="target">–</dd><dt>Processor</dt><dd id="cpu">–</dd><dt>Last start</dt><dd id="bootWhy">–</dd><dt>Watchdog</dt><dd id="wdt">–</dd></dl>
+ <div class="foot"><button class="danger" id="reboot">Restart Teensy</button></div></div>
 <div class="card"><h2>Report for an analysis</h2>
  <p class="note">Puts the status, the messages, the settings, the GPS receiver and the Teensy's inner workings in one file, to send when something goes wrong. The file is downloaded by this browser.</p>
  <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div>
@@ -416,29 +429,43 @@ a{color:var(--acc)}
 </div>
 </section>
 </main>
-<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
+<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 // ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
 // no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
 // true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+// askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
+// o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
+// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words. Answers true for OK, false otherwise.
 let askDone=null;
-function askShow(text,withInput){
+function askShow(o){
  if(askDone)askEnd(false);
- $("askText").textContent=text;const i=$("askIn");i.hidden=!withInput;i.value="";$("ask").hidden=false;
- (withInput?i:$("askYes")).focus();
- return new Promise(r=>{askDone=r;});}
+ const t=$("askTitle"),r=$("askRows"),v=$("askVerdict"),x=$("askText"),l=$("askPwL"),i=$("askIn"),y=$("askYes");
+ t.textContent=o.title||"";t.hidden=!o.title;
+ r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement("dt"),b=document.createElement("dd");a.textContent=k;b.textContent=w;r.append(a,b);}r.hidden=!r.firstChild;
+ v.hidden=!o.verdict;v.textContent=o.verdict?o.verdict[0]:"";v.className="verdict "+(o.verdict&&o.verdict[1]||"");
+ x.textContent=o.text||"";x.hidden=!o.text;
+ $("askForce").hidden=!o.force;$("askForceT").textContent=o.force||"";$("askForceIn").checked=false;
+ l.textContent=o.pwLabel||"";l.hidden=!(o.input&&o.pwLabel);
+ i.hidden=!o.input;i.value=o.pw||"";
+ y.textContent=o.okText||"OK";y.hidden=o.okText===null;y.disabled=!!o.force;$("askNo").textContent=o.noText||"Cancel";
+ $("askBox").setAttribute("aria-labelledby",o.title?"askTitle":"askText");$("ask").hidden=false;
+ (o.input&&!i.value?i:y.hidden||y.disabled?$("askNo"):y).focus();
+ return new Promise(res=>{askDone=res;});}
 function askEnd(v){const r=askDone;askDone=null;$("ask").hidden=true;if(r)r(v);}
-const ask=text=>askShow(text,false);
-const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
-$("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
+const ask=text=>askShow({text});
+const askText=text=>askShow({text,input:true}).then(ok=>ok?$("askIn").value:null);
+$("askForceIn").addEventListener("change",()=>{$("askYes").disabled=!$("askForceIn").checked;});
+// OK with the password field empty goes back to the field
+$("askYes").addEventListener("click",()=>{const i=$("askIn");if(!i.hidden&&!i.value){i.focus();return;}askEnd(true);});$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
-// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
-// that opened the question cannot also answer it
+// Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
+// nothing, so the key press that opened the question cannot also answer it
 $("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);
  else if(e.key==="Enter"){if(e.repeat){e.preventDefault();return;}
-  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing)askEnd(true);}}});
+  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing&&!$("askYes").disabled&&!$("askYes").hidden)askEnd(true);}}});
 const PAGE_BUILT=")WEBPAGE" __DATE__ " " __TIME__ R"WEBPAGE(";
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
@@ -679,9 +706,9 @@ function render(s){
  renderMach(s.mach);
  renderGh();
  renderLock(s);
- const sp=s.fw.lastIndexOf(" ");set("fw",sp>0?s.fw.slice(0,sp):s.fw);set("built",s.built);set("target",s.target);
+ const sp=s.fw.lastIndexOf(" ");set("fw",(sp>0?s.fw.slice(0,sp):s.fw)+", built "+(builtText(s.built)||s.built));set("target",s.target);
  set("cpu",s.cpuMhz?s.cpuMhz+" MHz · "+Number(s.cpuTemp).toFixed(1)+" °C (max "+Number(s.cpuTempMax).toFixed(1)+" °C)":"–",s.cpuHot?"warn":"");   /* the clock chosen in the IDE, the chip's temperature */
- const pv=s.prev;set("prevFw",pv?pv.fw.split(" ")[0]+", built "+pv.built:"none kept yet (kept from the next update on)");if(!busy)$("revert").disabled=!pv;
+ const pv=s.prev;set("prevFw",pv?pv.fw.split(" ")[0]+", built "+(builtText(pv.built)||pv.built):"none kept yet (kept from the next update on)");if(!busy)$("revert").disabled=!pv;
  if(b){set("bootWhy",(BW[b.why]||b.why)+(b.step?" · "+b.step:"")+(b.addr?" · "+b.addr:"")+(/other|unknown/.test(b.why)?" ("+b.srsr+")":""),/watchdog|crash/.test(b.why)?"bad":"");
   set("wdt",b.wdt?(b.wdtOff?"on until the next restart":"on (2 s)"):"off",b.wdt?"":"warn");}
 }
@@ -697,7 +724,7 @@ function renderLock(s){
   const w=eng?"Some buttons are greyed out while autosteer is on.":mov&&p.dataset.locknote==="m"?"Some buttons are greyed out while the tractor is moving.":"";
   p.textContent=w;p.classList.toggle("hidden",!w);}
 }
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button.locked");if(b){e.preventDefault();e.stopImmediatePropagation();}},true);
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button.locked,label.locked");if(b){e.preventDefault();e.stopImmediatePropagation();}},true);
 
 // The machine module (zMachine.ino): s.mach only once the Teensy has heard it, then the tab stays.
 // Any standard module: the official Machine_UDP_v5 (sections in its hello reply, no PGN 160), the sprayer module
@@ -770,7 +797,7 @@ async function pollStatus(){
  try{const s=await getJ("/api/status");if(s.error)throw 0;
   if(lastS&&(s.up+3<lastS.up||s.built!==lastS.built)){reloadAfterRestart(waitingBoot?"Updated. Running: "+s.fw+", built "+s.built+".":"",s.built);return;}
   if(pageStale(s.built))return;
-  if(waitingBoot&&restarted(s.up)){waitingBoot=false;busy=false;$("prog").classList.add("hidden");$("install").disabled=!$("hexFile").files[0];
+  if(waitingBoot&&restarted(s.up)){waitingBoot=false;busy=false;$("prog").classList.add("hidden");fwButtons();
    fwMsg(("Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
   setOnline(true);render(s);
  }catch(e){setOnline(false);}
@@ -1179,47 +1206,55 @@ async function umSend(){
 $("umSend").addEventListener("click",umSend);
 $("umCmd").addEventListener("keydown",e=>{if(e.key==="Enter")umSend();});
 
-// ---- firmware
+// ---- firmware: the one on GitHub, or a chosen .hex; both are checked before they are sent (the file here, then by the Teensy),
+// and every installation is confirmed in one box that shows what is in the file, compared with what runs now
 function ptErr(e){return String(e||"");}
 function fwMsg(t,c){const m=$("fwMsg");m.textContent=t;m.className="note "+(c||"");}
+function fwButtons(){$("ghInstall").disabled=!ghNewer()||busy;$("hexFile").disabled=busy;$("fileBtn").classList.toggle("off",busy);$("revert").disabled=busy||!(lastS&&lastS.prev);}
 // What is inside a chosen .hex (Renato, 2026-10-24): the data records of the Intel HEX file put together, then the
 // "[boot] vX.Y_AiO_WEB, built Mmm dd yyyy hh:mm:ss" line the firmware prints at start-up gives the version and the
 // build date and time; "fw_teensy41" says it is a Teensy 4.1 firmware and the family marker (zOTA.ino) that it has
-// this update page inside. Read in this browser, nothing is sent. hexBuild: the result for the chosen file (null: none).
-let hexBuild=null;
+// this update page inside. Read in this browser, nothing is sent.
 function hexRead(text){
  let s="";
  for(const ln of text.split("\n")){if(ln.charCodeAt(0)!==58||ln.substr(7,2)!=="00")continue;const n=parseInt(ln.substr(1,2),16);let o="";for(let i=0;i<n;i++)o+=String.fromCharCode(parseInt(ln.substr(9+2*i,2),16));s+=o;}
  const m=/\[boot\] (v[\w.]+_AiO_WEB), built ([A-Z][a-z]{2} [ \d]\d \d{4} \d\d:\d\d:\d\d)/.exec(s);
  return {fw:m?m[1]:"",built:m?m[2].replace("  "," "):"",t41:s.includes("fw_teensy41"),marker:s.includes("AiO-WEB-OTA-1")};
 }
-$("hexFile").addEventListener("change",()=>{const f=$("hexFile").files[0];hexBuild=null;
- $("hexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");
- const inf=$("hexInfo");inf.classList.toggle("hidden",!f);if(!f)return;
- inf.textContent="Reading the file…";inf.className="note";
+function fwText(fw,built){return String(fw||"").split(" ")[0]+", built "+(builtText(built)||built);}
+function fwNow(){return lastS?fwText(lastS.fw,lastS.built):"–";}
+// a firmware (its version, its build) against the one running: >0 newer
+function fwCmp(fw,built){const v=(/^v(\d+(?:\.\d+)*)_/.exec(fw||"")||[])[1],r=runningVer();return v&&r?verCmp(v,r)||builtCmp(built,lastS.built):NaN;}
+function verdict(c){return c>0?["✓ Newer than the one installed.","ok"]:c===0?["The same as the one installed.",""]:c<0?["Older than the one installed.","warn"]:null;}
+const FW_SAFE="Autosteer must be off and the tractor stopped. Autosteer is off during the update.";
+// Install from a file: the .hex is read as soon as it is chosen, and the box says what it is
+$("hexFile").addEventListener("change",()=>{const inp=$("hexFile"),f=inp.files[0];inp.value="";   // the same file again is a new choice
+ if(!f||busy)return;fwMsg("");
  const r=new FileReader();
- r.onload=()=>{const b=hexBuild=hexRead(r.result);let t,c="";
-  if(!b.t41){t="Not a Teensy 4.1 firmware (no fw_teensy41 inside): the Teensy refuses it.";c="bad";}
-  else if(!b.fw){t="No AiO_WEB build data inside: another firmware. It needs «Other firmware» to install"+(b.marker?".":", and it has no update page: the next update would be by USB.");c="warn";}
-  else{const same=!!lastS&&lastS.built===b.built;t=b.fw+", built "+b.built+(same?" (the firmware running now)":"")+(b.marker?"":"; no update page inside: needs «Other firmware»");c=same?"":"ok";}
-  inf.textContent=t;inf.className="note "+c;};
- r.onerror=()=>{inf.textContent="The file could not be read.";inf.className="note bad";};
+ r.onload=()=>hexChosen(f,hexRead(r.result));
+ r.onerror=()=>fwMsg("The file could not be read.","bad");
  r.readAsText(f);
 });
-$("install").addEventListener("click",async()=>{
- const f=$("hexFile").files[0];if(!f||busy)return;
- if(!f.name.toLowerCase().endsWith(".hex")){fwMsg("Choose a .hex file.","bad");return;}
- const b=hexBuild&&hexBuild.fw?" ("+hexBuild.fw+", built "+hexBuild.built+")":"";
- if(!await ask(("Install "+f.name+b+"?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
- busy=true;$("install").disabled=true;$("ghInstall").disabled=true;$("revert").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
- sendHex(f,$("force").checked,0);
-});
+async function hexChosen(f,b){
+ const file=f.name+" · "+Math.round(f.size/1024)+" kB";
+ const bad=!f.name.toLowerCase().endsWith(".hex")?"Choose a .hex file (vX.Y_AiO_WEB.ino.hex).":!b.t41?"Not a Teensy 4.1 firmware (no fw_teensy41 inside): the Teensy refuses it.":"";
+ if(bad){if(await askShow({title:"This file cannot be installed",rows:[["File",file]],verdict:["✗ "+bad,"bad"],okText:"Choose another file",noText:"Close"}))$("hexFile").click();return;}
+ // without AiO_WEB build data or without this update page inside, the Teensy installs it only when told to (force)
+ const other=!b.fw||!b.marker;
+ const warn=!b.fw&&!b.marker?"Another firmware, with no update page inside: the next update will have to be by USB.":
+  !b.fw?"Another firmware (no AiO_WEB build data inside).":"No update page inside: the next update will have to be by USB.";
+ if(!await askShow({title:"Install this file?",rows:[["File",file],["Inside",b.fw?fwText(b.fw,b.built):"a Teensy 4.1 firmware, not AiO_WEB"],["Runs now",fwNow()]],
+  verdict:other?["! "+warn,"warn"]:verdict(fwCmp(b.fw,b.built)),text:FW_SAFE,force:other?"Install it anyway":null,okText:"Install"}))return;
+ busy=true;fwButtons();const p=$("prog");p.classList.remove("hidden");p.value=0;
+ sendHex(f,other,0);
+}
 // The previous firmware back (POST /api/revert): the Teensy has it in its flash, nothing is sent
 $("revert").addEventListener("click",async()=>{
  const pv=lastS&&lastS.prev;if(!pv||busy)return;
- if(!await ask(("Go back to the previous firmware, "+pv.fw.split(" ")[0]+" built "+pv.built+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
- busy=true;$("revert").disabled=true;$("install").disabled=true;$("ghInstall").disabled=true;fwMsg("Asking the Teensy…");
- const back=()=>{busy=false;$("revert").disabled=false;$("install").disabled=!$("hexFile").files[0];renderGh();};
+ if(!await askShow({title:"Go back to the previous firmware?",rows:[["Previous",fwText(pv.fw,pv.built)],["Runs now",fwNow()]],
+  text:"Autosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.",okText:"Go back"}))return;
+ busy=true;fwButtons();fwMsg("Asking the Teensy…");
+ const back=()=>{busy=false;fwButtons();renderGh();};
  try{const j=await getJ("/api/revert",{method:"POST"});
   if(j.ok){upBefore=lastUp;bootAt=Date.now();waitingBoot=true;setOnline(false);fwMsg(("Going back to "+pv.fw.split(" ")[0]+", built "+pv.built+". Installing and restarting — do not switch the power off…"),"warn");}
   else{back();fwMsg("Not done: "+ptErr(j.error)+". The current firmware keeps running.","bad");}
@@ -1233,7 +1268,7 @@ function sendHex(blob,force,p0){
  x.setRequestHeader("Content-Type","text/plain");
  x.upload.onprogress=e=>{if(e.lengthComputable)p.value=p0+Math.round(e.loaded/e.total*(95-p0));};
  x.upload.onload=()=>fwMsg("File sent; the Teensy is checking and writing it…");
- const fail=t=>{busy=false;$("install").disabled=!$("hexFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
+ const fail=t=>{busy=false;fwButtons();renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;bootAt=Date.now();waitingBoot=true;setOnline(false);
    fwMsg(("Checked ("+Math.round(j.size/1024)+" kB). Installing and restarting — do not switch the power off…"),"warn");}
@@ -1307,11 +1342,14 @@ async function ghCheck(){
 function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(gh.built,lastS.built):NaN;}   // >0: GitHub's is newer
 function ghNewer(){return ghCmp()>0;}
 function renderGh(){
- const c=ghCmp(),nw=c>0;
- set("ghVer",ghState==="busy"?"checking…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":verText(gh.ver,gh.built)+(nw?" — newer than the installed one":c===0?" — the one installed":c<0?" — older than the installed one (the new .hex is not on GitHub yet)":""),
-  nw?"ok":ghState==="fail"?"warn":"");
- $("ghInstall").disabled=!nw||busy;
+ const c=ghCmp(),nw=c>0,e=$("ghVer");
+ if(ghState==="busy"||ghState==="fail"||ghState==="none"||!gh)set("ghVer",ghState==="busy"?"checking…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":"–",ghState==="fail"?"warn":"");
+ else{set("ghVer",verText(gh.ver,gh.built),nw?"ok":"");   // and a pill: newer (green), installed, older (orange)
+  const p=c>0?["newer","ok"]:c===0?["installed",""]:c<0?["older","warn"]:null;
+  if(p){const b=document.createElement("span");b.className="pill "+p[1];b.textContent=p[0];if(c<0)b.title="The new .hex is not on GitHub yet";e.append(" ",b);}}
+ const at=ghAt?new Date(ghAt):null;
+ $("ghAt").textContent=ghState!=="busy"&&at?"checked at "+String(at.getHours()).padStart(2,"0")+":"+String(at.getMinutes()).padStart(2,"0")+" · ":"";
+ fwButtons();
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
  const n=$("ghNote");n.textContent=nw?("New firmware on GitHub: "+verText(gh.ver,gh.built)+". This module runs "+runsText()+". Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
@@ -1319,8 +1357,8 @@ function renderGh(){
 async function ghInstall(){
  if(!ghNewer()||busy)return;
  const names=[gh.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
- if(!await ask(("Install "+verText(gh.ver,gh.built)+" from GitHub?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update.")))return;
- busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
+ if(!await askShow({title:"Install from GitHub?",rows:[["On GitHub",verText(gh.ver,gh.built)],["Runs now",fwNow()]],verdict:verdict(ghCmp()),text:FW_SAFE,okText:"Install"}))return;
+ busy=true;fwButtons();const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{
   const l=await ghList(gh.dir),f=names.map(n=>l.find(e=>e.type==="file"&&e.name===n)).find(Boolean);
@@ -1331,7 +1369,7 @@ async function ghInstall(){
   const blob=new Blob(parts);
   if(blob.size!==f.size)throw new Error(("file incomplete ("+blob.size+" of "+f.size+" bytes)"));
   sendHex(blob,false,45);
- }catch(e){busy=false;$("install").disabled=!$("hexFile").files[0];p.classList.add("hidden");renderGh();
+ }catch(e){busy=false;fwButtons();p.classList.add("hidden");renderGh();
   fwMsg("Not downloaded: "+e.message+". The current firmware keeps running.","bad");}
 }
 $("ghCheck").addEventListener("click",ghCheck);
