@@ -191,7 +191,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^18\.3 m \(6 passes\)$/);
   await expect(pg, what, "#results tbody tr[data-key=tram] td.v", /^no match$/);     // tramlines: 8 ÷ 3 is not whole
   if ((await pg.locator("#turns tbody tr").count()) !== 5) fail.push(what + ": expected five turns for the drill (Sagitta skip 0-2, Keyhole skip 0-1)");
-  await expect(pg, what, "#turns tbody tr:first-child", /Keyhole, skip 1.*8\.8 m.*3\.7 m.*18\.3 m \(6 passes\)/);
+  await expect(pg, what, "#turns tbody tr:first-child", /Keyhole, skip 1.*8\.8 m.*3\.4 m.*18\.3 m \(6 passes\)/);
   await expect(pg, what, "#turnsNote", /^No K-turn: /);
   await expect(pg, what, "#draw svg text:last-child", /^next pass 6\.1 m away: Keyhole, radius 4\.3 m, 8\.8 m deep$/);
   await pg.click("#turns tbody tr:has-text('Sagitta, skip 2')"); await pg.waitForTimeout(300);
@@ -200,12 +200,12 @@ async function teensy(browser, port, q, name) {
   await pg.click("#turns tbody tr:has-text('Keyhole, skip 0')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#draw svg text:last-child", /^next pass 3\.05 m away: Keyhole, radius 4\.3 m, 10\.6 m deep$/);
   await shot(pg, "aow-settings-drill");
-  // the three examples with typical measures: a tandem-axle manure spreader, a trailed disc harrow, a reversible plough
+  // Renato's one-axle manure spreader, then two examples with typical measures: a trailed disc harrow, a reversible plough
   await pg.click("button:has-text('10 m manure spreader')"); await pg.waitForTimeout(300);
-  await expect(pg, what, "#presetNote", /^Typical measures/);
-  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6 m$/);       // its drawbar pin inside the rear tyres: they set the radius (the tyre at the drawbar's 0.5 m height)
-  await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 1$/);
-  await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^30 m \(3 passes\)$/);
+  await expect(pg, what, "#presetNote", /^Renato's manure spreader: one axle 4\.2 m behind the drawbar pin/);
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);     // its drawbar pin inside the rear tyres: they set the radius (the tyre at the drawbar's 0.5 m height)
+  await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Keyhole, skip 0$/);   // its short body is straight again soon: the Keyhole's headland is the smallest
+  await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^20 m \(2 passes\)$/);
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 65°$/);
   if (!(await pg.locator("#drawbarHeight").isVisible())) fail.push(what + ": a trailed implement needs the drawbar's height");
   await shot(pg, "aow-settings-spreader");
@@ -216,7 +216,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#tractors button.on", /^Case IH Farmall 115C$/);
   await expect(pg, what, "#tractorNote", /^Renato's Case IH Farmall 115C: 2\.3 m wheelbase/);
   if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "0.74") fail.push(what + ": the Farmall button should set its wheelbase and its drawbar pin");
-  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);     // its lower 540/65 R34 tyres let the drawbar fold to 76°
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^4\.8 m$/);     // its lower 540/65 R34 tyres let the drawbar fold to 76°
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 76°$/);
   await shot(pg, "aow-settings-farmall-spreader");
   await pg.click("button:has-text('Case IH Puma 180 CVX')"); await pg.waitForTimeout(300);
@@ -226,7 +226,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 82\.5°$/);
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
   if ((await pg.inputValue("#hitch")) !== "0.7") fail.push(what + ": the Maxxum button should put the spreader back on its 0.7 m pin");
-  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6 m$/);
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 2$/);
   await pg.click("button:has-text('4-furrow reversible plough')"); await pg.waitForTimeout(300);

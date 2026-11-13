@@ -12,7 +12,7 @@
 // (Sagitta or Keyhole), a pass at twice the radius or more gets a plain semicircle.
 "use strict";
 (function (root) {
- const VERSION = "1.5";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
+ const VERSION = "1.6";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
