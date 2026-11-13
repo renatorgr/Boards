@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"); the browser keeps the page. Enter in a password field does what its button does ([What it does](#what-it-does)). |
+| 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
 | 10 Nov 2026 | Tabs and the light/dark button 44 px high with 8 px corners; the WiFi tab's password to confirm in a card of its own, no longer a field across the page ([What it does](#what-it-does)). Messages give the size of an updated program, not 0 bytes. |
 | 9 Nov 2026 | The page's questions (save and restart, install, the module's firmware, subnet) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([What it does](#what-it-does)). |
@@ -65,15 +65,16 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
 | | **Module network**: the module's (Teensy's) Ethernet IP and its subnet. For a module on a network that is not 192.168.5.x: type that network's first three numbers (and the XIAO password); the Teensy saves it and restarts with the new IP. This page is on WiFi, so it works whatever the module's IP is. |
-| **Firmware** | Version, the newest version on GitHub with **Install from GitHub**, **program update over WiFi** (a `.bin` file, see below), restart. One password field for all. **Module (Teensy) firmware**: the module's firmware installed from this page over the link, and its previous firmware put back (see below). **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
+| **Firmware** | One card per device, the same layout. **XIAO firmware**: installed, on GitHub (tagged *newer*, *installed* or *older*), **Install from GitHub**, **Install from a file…** (a `.bin`, see below), the progress, **Restart XIAO** at the bottom. **Module (Teensy) firmware**: the module's firmware installed from this page over the link, and its previous firmware put back (see below). Each install and the restart are confirmed in one box that says what the file holds against what runs now and asks the XIAO's network password. **Download the report**: the XIAO's state and settings (no passwords), the module status and both message lists in one `.json` file, to send when something goes wrong. |
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - The question before each one (save and restart, install, the module's firmware, the subnet) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
-  - **Enter** in a password field does what its button does, and the question still comes first. On the Firmware tab: the action that asked for the password (*Type the XIAO network password*), else **Install** with a `.bin` chosen, else **Install from GitHub**; never **Restart**. An empty field does nothing, and a held Enter does not also answer the question it opened.
+  - **Enter** in a password field does what its button does, and the question still comes first. On the Firmware tab the password is typed in the box that confirms the action, where Enter is its **Install** or **Restart**. An empty field does nothing, and a held Enter does not also answer the box it opened.
+  - The box's buttons stay in sight at its bottom when it is taller than the screen (an AgOpenWeb web card of 480 x 320): the rest scrolls.
   - The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
   - On the WiFi tab the password and **Save and restart the XIAO** have a card of their own, *Confirm and save*, as wide as the other two.
   - The page carries the date its own program was compiled and compares it with the one the XIAO reports. When they differ (an old page the browser kept after an update), it fetches the page again at an address the browser has never seen (`/?b=<build date>`); if that page is still old, a notice says to reload it by hand.
-  - Typed once, it is filled in both tabs until the page is closed.
+  - Typed once, in the WiFi tab or in a Firmware box, it is offered again until the page is closed.
   - The page never shows or stores it.
   - Just viewing the page needs nothing more than being on the network.
 - It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (normally http://192.168.5.126/; the module's IP is shown on the Status tab). Its events also go to the Teensy log as `[xiao] > ...`. From the WiFi tab it can set the module's subnet (PGN 144 to the Teensy).
@@ -115,7 +116,7 @@ No other libraries are needed: everything is in the esp32 package.
 
 - The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Firmware tab).
 - A newer one shows at the top of Status and in Firmware. **A new build of the same version counts as new**: the page compares when the `.bin` for this XIAO's chip (C3 or S3) on GitHub was compiled with this XIAO's **Built**. That date is read from the file each time it reaches `main` and published with the simulator (`https://renatorgr.github.io/Boards/firmware.json`); without it, the page compares the version number only.
-- **Install from GitHub** (with the password of the XIAO's network):
+- **Install from GitHub** (a box shows the version on GitHub against the one running, with the password of the XIAO's network):
   - the browser downloads the `.bin` for this XIAO (in the version folder `vX.Y_AiO_WEB`: `vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin` or `...S3.bin`, chosen from the chip it reports);
   - it checks that the file is for this chip and that its size matches GitHub;
   - it sends it to the XIAO like a chosen file.
@@ -125,10 +126,11 @@ No other libraries are needed: everything is in the esp32 package.
 ## Update over WiFi (from a file)
 
 1. Arduino IDE: Sketch > **Export Compiled Binary**. It writes a `build` folder inside the sketch folder.
-2. Use **`v4.5_XIAO_ESP32.ino.bin`**. Not the files with `merged`, `bootloader` or `partitions` in the name (the page refuses them).
+2. Use **`v4.5_XIAO_ESP32.ino.bin`** (or `vX.Y_XIAO_ESP32C3.bin` / `S3.bin` from GitHub). Not the files with `merged`, `bootloader`, `partitions` or `_USB` in the name: those are for the first install over USB-C, and the page refuses them.
    - A `.bin` compiled for the XIAO ESP32C3 does not run on the ESP32S3, and the other way round. The page reads the start of the file and says so before sending it.
    - With both XIAOs, rename the files after exporting (for example `…_C3.bin` and `…_S3.bin`).
-3. Phone or PC on the XIAO's network → page → **Firmware** → choose the file → password → **Install**.
+3. Phone or PC on the XIAO's network → page → **Firmware** → **Install from a file…** → choose the file. A box says what is inside (version, build date) against what runs now → password → **Install**.
+   - A `.bin` without the XIAO firmware's name inside (another program) is shown with a warning, and **Install** waits for **Install it anyway**: this page goes with it, so the next update would be over USB-C.
 4. It takes less than a minute and the XIAO restarts with the new program. The WiFi settings are kept.
 
 If the update fails halfway (WiFi lost), the old program keeps running: just try again. Messages then shows "Program update STOPPED after … kB: the browser's connection dropped". With a weak signal, connect the phone or PC to the XIAO's own network and install from http://192.168.4.1/: download the `.bin` first (Install from GitHub needs internet, and the XIAO's own network has none).
@@ -138,11 +140,11 @@ If the update fails halfway (WiFi lost), the old program keeps running: just try
 For when the module's (Teensy's) own page does not open: its network cable or network, a fault in the page, the box closed, while this XIAO still answers on WiFi. Firmware tab → **Module (Teensy) firmware**.
 
 - The card shows the firmware the module runs and when it was built, the `.hex` on GitHub (newer, the same, or older than the module's), and the **previous firmware** the Teensy keeps (the one that ran before its last update; "none kept yet" until the module's first update with a firmware of 2 Nov 2026 or later).
-- **Install from GitHub** downloads the Teensy `.hex` of the newest version folder in the browser (the phone needs internet, as for the XIAO's own update), **Choose .hex** takes a file from the phone or PC; the page reads it first and says what is inside (version, build date, whether it is a Teensy 4.1 AiO_WEB firmware). **Install on the module** sends it to the XIAO with the network password, and the XIAO passes it on to the Teensy over the serial link in pieces, each one confirmed by the Teensy before the next: about a minute for the 2 MB file. The progress bar is the file leaving the phone; then the Teensy checks the whole file as it does one from its own page, installs it and restarts.
-- **Go back to the previous firmware** asks the Teensy to put its kept copy back: no file and no internet needed. The copy is used up by it.
+- **Install from GitHub** downloads the Teensy `.hex` of the newest version folder in the browser (the phone needs internet, as for the XIAO's own update), **Install from a file…** takes a file from the phone or PC. Either way one box says what is inside (version, build date, whether it is a Teensy 4.1 AiO_WEB firmware) against what the module runs, and asks the network password; **Install** sends it to the XIAO, and the XIAO passes it on to the Teensy over the serial link in pieces, each one confirmed by the Teensy before the next: about a minute for the 2 MB file. The progress bar is the file leaving the phone; then the Teensy checks the whole file as it does one from its own page, installs it and restarts.
+- **Go back to the previous firmware** (at the bottom of the card, confirmed in the same box) asks the Teensy to put its kept copy back: no file and no internet needed. The copy is used up by it.
 - Only with **autosteer off and the tractor stopped**: the Teensy refuses otherwise, and keeps autosteer off while it receives. If anything fails the module's current firmware keeps running and the card says why; a Teensy that does not answer (an older firmware, or the link down) is reported after a few seconds.
 - The card then waits for the module to come back (its time on starts again, or another build runs) and says which firmware it runs. The module's own messages are on the Messages tab.
-- **Other firmware** installs a `.hex` without the update page inside (another firmware for the Teensy 4.1); the next update is then by USB.
+- A `.hex` without the update page inside (another firmware for the Teensy 4.1) waits in the box for **Install it anyway**; the next update is then by USB.
 - Not yet tried on a board (2 Nov 2026): try it first on the bench with the box open and the USB cable at hand.
 
 ## USB serial commands
