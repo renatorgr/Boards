@@ -299,6 +299,35 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("own spreader on the Farmall radius", of.radius, 4.8);
  eq("own spreader on the Farmall turn", row(of, "style").value, "Sagitta, skip 0");
  eq("own spreader on the Farmall headland", row(of, "headland").value, "30 m (3 passes)");
+ // Renato's centre-pivot mower conditioner on the Farmall's lower links, measured 13 Nov 2026: its swivel 0.5 m behind the
+ // rear axle, inside the tyres' back edge, so the 6.5 m tongue touches one at 54.5°. Held straight it needs 9.1 m to keep
+ // the tongue under 49.5°; swung 20° against the tongue in the turn, its axle runs wider, the tongue folds less, and the
+ // tongue ÷ sin 75° (6.73 m) sets the radius
+ const mower = {mount: "trailed", width: 3.2, overlap: 0.1, offset: 0, hitchLength: 0.5, drawbar: 6.5, pivotToTool: -2, length: 0, drawbarWidth: 0.3};
+ const held = S.suggest(Object.assign({}, mower, farmall));
+ eq("mower held: touches the tyre", held.touchDeg, 54.5);
+ eq("mower held: radius", held.radius, 9.1);
+ eq("mower held: headland", row(held, "headland").value, "27.9 m (9 passes)");
+ const mw = S.suggest(Object.assign({turnSwingDeg: 20}, mower, farmall));
+ eq("mower problems", mw.problems.length, 0);
+ eq("mower spacing", mw.spacing, 3.1);                 // 10 cm of overlap
+ eq("mower radius", mw.radius, 6.8);
+ eq("mower turn", row(mw, "style").value, "Sagitta, skip 4");
+ eq("mower headland", row(mw, "headland").value, "18.6 m (6 passes)");
+ eq("mower distance", row(mw, "distance").value, "2.8 m");
+ eq("mower fold row", row(mw, "fold").value, "touches the tyres at 54.5°, swung 20° in the turn");
+ if (!(Math.max(...mw.options.map(o => o.sweep.firstFoldDeg)) <= 49.5)) fail.push("mower: every turn should keep the swung tongue under 49.5°");
+ eq("swing out of range", S.suggest(Object.assign({turnSwingDeg: 70}, mower, farmall)).problems.length, 1);
+ // the swung implement followed step by step round a circle settles where the formula says
+ {
+  const R = 6.8, poses = [];
+  for (let k = 0; k <= Math.round(3 * 2 * Math.PI * R / 0.05); k++) { const t = k * 0.05 / R; poses.push({e: R - R * Math.cos(t), n: R * Math.sin(t), h: t}); }
+  for (const sw of [0, 10, 20]) {
+   const f = S.sweep(poses, {bars: [6.5], hitch: 0.5, pivotToTool: 0, offset: 0, half: 1.6, swing: sw * Math.PI / 180}).firstFoldDeg;
+   if (Math.abs(f - S.steadyFoldDeg(R, 0.5, 6.5, sw)) > 0.5) fail.push("swing " + sw + "°: the path folds " + f.toFixed(1) + "°, the formula " + S.steadyFoldDeg(R, 0.5, 6.5, sw).toFixed(1) + "°");
+  }
+  eq("swing 0 is the held formula", S.steadyFoldDeg(9.1, 0.5, 6.5, 0), S.steadyFoldDeg(9.1, 0.5, 6.5));
+ }
  // the tractor's width: its nose's outer corner, (1.81 + 0.65) ÷ 2 = 1.23 m off the centre line, sweeps 2.6 m past the pivot's path, not 1.7
  eq("tractor half width", m.bodyHalf, 1.23);
  eq("nose corner reach", m.noseReach, 2.3);   // √((6.7 + 1.23)² + 4.2²) − 6.7
