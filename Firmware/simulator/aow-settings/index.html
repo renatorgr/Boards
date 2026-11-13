@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Set up AgOpenWeb from your measures</title>
-<script src="settings.js?v=1.5"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
+<script src="settings.js?v=1.6"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
@@ -96,7 +96,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
  <span class="plabel">Implement</span>
  <button type="button" data-name="sprayer" onclick="preset('sprayer')">8 m sprayer, front</button>
  <button type="button" data-name="drill" onclick="preset('drill')">3 m no-till drill, semi-mounted</button>
- <button type="button" data-name="spreader" onclick="preset('spreader')">10 m manure spreader, two axles</button>
+ <button type="button" data-name="spreader" onclick="preset('spreader')">10 m manure spreader, one axle</button>
  <button type="button" data-name="harrow" onclick="preset('harrow')">4 m disc harrow, trailed</button>
  <button type="button" data-name="plough" onclick="preset('plough')">4-furrow reversible plough</button>
  <button type="button" data-name="quickHarrow" onclick="preset('quickHarrow')">2.7 m quick disc harrow, 3-point</button>
@@ -111,7 +111,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row"><label for="machine">Type<small>the steering is different in each</small></label><select id="machine"><option value="tractor">Tractor</option><option value="articulated">Articulated</option><option value="harvester">Harvester</option></select></div>
   <div class="row"><label for="wheelbase">Wheelbase (m)<small>front axle to rear axle</small></label><input id="wheelbase" type="number" step="0.01" min="0.5" value="2.7"></div>
   <div class="row"><label for="steer" id="steerLabel">Maximum steering angle (°)<small>the front wheels on the stop, what the steer wizard measured</small></label><input id="steer" type="number" step="1" min="10" max="89" value="42"></div>
-  <div class="row"><label for="overhang" id="overhangLabel">Front overhang (m)<small>front axle to the nose, weights included</small></label><input id="overhang" type="number" step="0.1" min="0" value="1.5"></div>
+  <div class="row"><label for="overhang" id="overhangLabel">Front overhang (m)<small>front axle to the nose, weights included</small></label><input id="overhang" type="number" step="0.05" min="0" value="1"></div>
   <div class="row"><label for="trackWidth">Rear track width (m)<small>centre to centre of the rear tyres: the Vehicle page's track width. With the tyre width it gives the machine's width, whose front corner sweeps wider than its centre line</small></label><input id="trackWidth" type="number" step="0.01" min="0.5" value="1.81"></div>
   <div class="row"><label for="tyreWidth">Rear tyre width (m)<small>0.65 for a 650/65 R38, 0.54 for a 540/65 R34</small></label><input id="tyreWidth" type="number" step="0.01" min="0.1" value="0.65"></div>
   <div class="row" data-for="trailed"><label for="wheelDiameter">Rear wheel height (m)<small>its diameter: 1.8 for a 650/65 R38, 1.9 for a 650/65 R42, 1.57 for a 540/65 R34</small></label><input id="wheelDiameter" type="number" step="0.01" min="0.3" value="1.8"></div>
@@ -176,22 +176,22 @@ function labels() {
 const TRACTORS = {
  // Renato's tractors, by power (the buttons' order too): they fill the Machine card. `pin`: the drawbar's hitch pin behind the rear axle, the hitch length of the implements
  // that go on the drawbar (`onDrawbar` below); a semi-mounted implement brings its own pivot instead.
- maxxum: {machine: "tractor", wheelbase: 2.7, steer: 42, overhang: 1.5, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, pin: 0.7,
-  note: "Renato's Case IH Maxxum 135: 2.7 m wheelbase, 42° measured with the steer wizard, 1.81 m rear track. Its rear tyres (650/65 R38) and the drawbar pin 0.7 m behind the rear axle are guessed until he measures them."},
+ maxxum: {machine: "tractor", wheelbase: 2.7, steer: 42, overhang: 1.0, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, pin: 0.7,
+  note: "Renato's Case IH Maxxum 135: 2.7 m wheelbase, 42° measured with the steer wizard, 1.81 m rear track, its nose 1 m ahead of the front axle. Its rear tyres (650/65 R38) and the drawbar pin 0.7 m behind the rear axle are guessed until he measures them."},
  puma: {machine: "tractor", wheelbase: 2.88, steer: 33, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, pin: 0.9,
   note: "Renato's Case IH Puma 180 CVX: 2.88 m wheelbase (its manual), 2 m rear track, 650/65 R42 rear tyres, the drawbar pin 0.9 m behind the rear axle as his AgOpenWeb profile has it. 33° of steering from the manual: the middle of the rear axle turns on an 8.87 m circle with a 1.83 m front track (5.15 m with 1.55 m). It turns wider than AgOpenWeb's 4 m floor, so the tractor sets the radius. A wider front track may let it steer a little more: the steer wizard will tell. The front overhang is guessed."},
- farmall: {machine: "tractor", wheelbase: 2.3, steer: 45, overhang: 1.3, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, pin: 0.74,
-  note: "Renato's Case IH Farmall 115C: 2.3 m wheelbase, 1.7 m rear track, 540/65 R34 rear tyres, the drawbar pin 0.74 m behind the rear axle. About 45° of steering, by eye until a wheel angle sensor measures it: any angle over 35° gives the same turn, AgOpenWeb's 4 m floor. The front overhang is guessed."}
+ farmall: {machine: "tractor", wheelbase: 2.3, steer: 45, overhang: 0.85, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, pin: 0.74,
+  note: "Renato's Case IH Farmall 115C: 2.3 m wheelbase, 1.7 m rear track, 540/65 R34 rear tyres, the drawbar pin 0.74 m behind the rear axle, its nose 0.85 m ahead of the front axle. About 45° of steering, by eye until a wheel angle sensor measures it: any angle over 35° gives the same turn, AgOpenWeb's 4 m floor."}
 };
 const PRESETS = {
- // the example buttons: Renato's two machines, measured, three with typical measures, then two more of his, guessed. `note`: shown under the buttons;
+ // the example buttons: Renato's sprayer, drill and manure spreader, measured; a disc harrow and a plough with typical measures; his quick harrow and roller, guessed. `note`: shown under the buttons;
  // `turn`: the turn option drawn first (a plough cannot skip rows); `onDrawbar`: its hitch is the tractor's drawbar pin
  sprayer: {mount: "front", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 2, hitch: 1, length: 0, sprayerWidth: 8,
   note: "Measured on Renato's sprayer: the 8 m boom on the front linkage, 2 m ahead of the front axle."},
  drill: {mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: -0.05, offset: 0, hitch: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3, swingDeg: 0, length: 0, sprayerWidth: 8,
   note: "Measured on Renato's no-till drill: semi-mounted, its pivot 1.54 m behind the rear axle, its wheels 4.15 m behind the pivot and the discs 1.6 m ahead of the wheels. Its pivot is behind the rear tyres' back edge, so the tyres do not limit its turn; its own headstock or stop does: watch how far it folds and type that in 'Most the drawbar may turn'. It never backs up in the ground: no K-turn."},
- spreader: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 1000, width: 10, overlap: 0, offset: 0, drawbar: 4.8, pivotToTool: 3, drawbarWidth: 0.3, swingDeg: 0, length: 3.3, sprayerWidth: 0,
-  note: "Typical measures, change them to yours. On the tractor's drawbar, its pin (the tractor button's) near the rear tyres' back edge: the drawbar touches a tyre before 90° (at the drawbar's height, where the tyre is shorter than at its axle), and that sets the radius. Two axles close together turn about the middle between them (their tyres scrub sideways in a tight turn): measure the trailing hitch to that middle. The beaters 3 m behind it swing out as the tractor straightens."},
+ spreader: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 1000, width: 10, overlap: 0, offset: 0, drawbar: 4.2, pivotToTool: 1.5, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
+  note: "Renato's manure spreader: one axle 4.2 m behind the drawbar pin, the body 1.5 m past the axle with the beaters at its back; it spreads 10 m wide. On the tractor's drawbar, its pin (the tractor button's) near the rear tyres' back edge: the drawbar touches a tyre before 90° (at the drawbar's height, where the tyre is shorter than at its axle), and that sets the radius."},
  harrow: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 400, width: 4, overlap: 0.2, offset: 0, drawbar: 3.5, pivotToTool: 0, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
   note: "Typical measures, change them to yours: on the tractor's drawbar, its pin (the tractor button's) near the rear tyres' back edge; the wheels between the front and the rear gangs, 20 cm of overlap so no strip is missed. With its wheels at the back (a roller), the discs are ahead of them: a negative pivot distance. A semi-mounted harrow's hitch is its pivot, further back."},
  plough: {mount: "rear", sections: 1, sectionWidth: 160, width: 1.6, overlap: 0, offset: 0, axleToTool: 3, hitch: 1, length: 4.5, sprayerWidth: 0, turn: "kturn0",

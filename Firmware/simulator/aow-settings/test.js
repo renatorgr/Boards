@@ -260,13 +260,21 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  if (!/0\.81 m at the drawbar's 0\.5 m height/.test(row(mh, "fold").why)) fail.push("spreader: the tyres row should give the tyre's reach at the drawbar's height");
  // Renato's Farmall 115C: 540/65 R34 tyres (1.57 m) reach only 0.73 m back at the drawbar's 0.5 m height and its pin is 0.74 m back,
  // so the drawbar touches late (76°) and the spreader turns tighter than on the Maxxum; its shorter, narrower nose needs less room
- const farmall = {machine: "tractor", wheelbase: 2.3, maxSteerDeg: 45, overhang: 1.3, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, drawbarHeight: 0.5, margin: 1};
+ const farmall = {machine: "tractor", wheelbase: 2.3, maxSteerDeg: 45, overhang: 0.85, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, drawbarHeight: 0.5, margin: 1};
  const fs = S.suggest(Object.assign({mount: "trailed", width: 10, overlap: 0, hitchLength: 0.74, drawbar: 4.8, pivotToTool: 3, length: 3.3, drawbarWidth: 0.3}, farmall));
  eq("Farmall spreader problems", fs.problems.length, 0);
  eq("Farmall spreader touches the tyre", fs.touchDeg, 76);
  eq("Farmall spreader radius", fs.radius, 5.4);
  eq("Farmall spreader headland", row(fs, "headland").value, "30 m (3 passes)");
  eq("Farmall tightest turn", fs.rMin, 2.3);                 // 2.3 m ÷ tan 45°: AgOpenWeb's 4 m floor is wider anyway
+ // Renato's own manure spreader: one axle 4.2 m behind the pin, the body and its beaters 1.5 m past it. Short behind its axle, it is
+ // straight on the next pass soon, so on the Maxxum the Keyhole needs the smallest headland; on the Farmall (R 4.8) the 10 m passes
+ // fit a plain semicircle, but its headland sum is 20.5 m: three passes
+ const own = {mount: "trailed", width: 10, overlap: 0, drawbar: 4.2, pivotToTool: 1.5, length: 1.5, drawbarWidth: 0.3};
+ const om = S.suggest(Object.assign({}, own, {hitchLength: 0.7}, caseTractor, {drawbarHeight: 0.5, overhang: 1.0}));
+ eq("own spreader on the Maxxum radius", om.radius, 5.4);
+ eq("own spreader on the Maxxum turn", row(om, "style").value, "Keyhole, skip 0");
+ eq("own spreader on the Maxxum headland", row(om, "headland").value, "20 m (2 passes)");
  // Renato's Puma 180 CVX: tall 650/65 R42 tyres (1.91 m) but a wide 2 m track and the pin 0.9 m back: the drawbar touches at 82.5°;
  // its manual's turning circle (8.87 m at the rear axle's centre, 2.884 m wheelbase) gives 33° of steering, so the tractor sets the radius
  const puma = {machine: "tractor", wheelbase: 2.88, maxSteerDeg: 33, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, drawbarHeight: 0.5, margin: 1};
@@ -280,8 +288,12 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("Puma front sprayer turn", row(pf, "style").value, "Sagitta, skip 1");   // 8 m passes no longer fit a plain semicircle (twice 5.4 m)
  eq("Puma front sprayer headland", row(pf, "headland").value, "24 m (3 passes)");
  const fd = S.suggest(Object.assign({mount: "trailed", width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3}, farmall));
- eq("Farmall drill distance", row(fd, "distance").value, "3.3 m");   // the nose's corner: (1.7 + 0.54) ÷ 2 = 1.12 m off the centre line, 1.3 m ahead
+ eq("Farmall drill distance", row(fd, "distance").value, "3 m");     // the nose's corner: (1.7 + 0.54) ÷ 2 = 1.12 m off the centre line, 0.85 m ahead
  eq("Farmall drill turn", row(fd, "style").value, "Keyhole, skip 1");
+ const of = S.suggest(Object.assign({}, own, {hitchLength: 0.74}, farmall));
+ eq("own spreader on the Farmall radius", of.radius, 4.8);
+ eq("own spreader on the Farmall turn", row(of, "style").value, "Sagitta, skip 0");
+ eq("own spreader on the Farmall headland", row(of, "headland").value, "30 m (3 passes)");
  // the tractor's width: its nose's outer corner, (1.81 + 0.65) ÷ 2 = 1.23 m off the centre line, sweeps 2.6 m past the pivot's path, not 1.7
  eq("tractor half width", m.bodyHalf, 1.23);
  eq("nose corner reach", m.noseReach, 2.3);   // √((6.7 + 1.23)² + 4.2²) − 6.7
