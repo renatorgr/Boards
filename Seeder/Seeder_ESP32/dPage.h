@@ -246,7 +246,8 @@ function askEnd(v){const r=askDone;askDone=null;$('ask').hidden=true;if(r)r(v)}
 const ask=text=>askShow({text});
 const askText=text=>askShow({text,input:true}).then(ok=>ok?$('askIn').value:null);
 $('askForceIn').onchange=()=>{$('askYes').disabled=!$('askForceIn').checked};
-$('askYes').onclick=()=>askEnd(true);$('askNo').onclick=()=>askEnd(false);
+// OK with the password field empty goes back to the field
+$('askYes').onclick=()=>{const i=$('askIn');if(!i.hidden&&!i.value){i.focus();return}askEnd(true)};$('askNo').onclick=()=>askEnd(false);
 $('ask').onclick=e=>{if(e.target===$('ask'))askEnd(false)};
 // Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
 // nothing, so the key press that opened the question cannot also answer it

@@ -96,6 +96,22 @@ a{color:var(--acc)}
 .askBox input{display:block;width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);margin:0 0 12px}
 .askBtns{display:flex;gap:10px;justify-content:flex-end}
 .askBtns button{min-height:44px;min-width:96px}
+/* the question box's other parts (askShow): a title, rows of what is in a file, the verdict, a tick, the password's label */
+.askBox h3{margin:0 0 10px;font-size:17px}
+.askBox dl{margin:0 0 10px}
+.askBox p.verdict{font-weight:650}
+.askBox label.opt{display:flex;gap:10px;align-items:center;margin:0 0 12px;padding:0;font-weight:600}
+.askBox label.opt input{display:inline-block;width:22px;height:22px;margin:0}
+#askPwL{display:block;color:var(--mute);font-size:13.5px;margin:0 0 3px}
+/* the Firmware tab: a card per device (this XIAO, the module behind it), Check now / See on GitHub in a line, Restart and Go
+   back at the card's foot */
+.fwgrid{grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr))}
+.card h2 small{display:block;text-transform:none;letter-spacing:0;font-weight:400;font-size:12.5px;margin-top:2px}
+label.sec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+label.sec.off{opacity:.45;cursor:default}
+button.lnk{border:0;background:none;padding:0;font:inherit;color:var(--acc);text-decoration:underline;cursor:pointer}
+p.chk{text-align:right;margin:4px 0 0}
+.foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -173,59 +189,65 @@ a{color:var(--acc)}
 </section>
 
 <section id="t-prog" class="hidden">
-<div id="fw" class="grid3">
+<div id="fw" class="grid fwgrid">
 <div class="card"><h2>XIAO firmware</h2>
- <dl><dt>Version</dt><dd id="pFw" class="mono">–</dd><dt>Built</dt><dd id="pBuilt">–</dd><dt>Size</dt><dd id="pSize">–</dd></dl></div>
-<div class="card"><h2>Version on GitHub</h2>
- <dl><dt>On GitHub</dt><dd id="ghVer">–</dd></dl>
- <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><button class="sec" id="ghCheck">Check now</button><a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></div>
- <p class="note">It uses the password of the «Update or restart» card. The phone needs internet: on the XIAO's own network alone it usually has none. Connect the XIAO to the farm network or to the phone's hotspot and open the page over that network.</p></div>
-<div class="card"><h2>Update or restart</h2>
- <div class="row" style="margin-top:0"><label class="act">Choose .bin<input type="file" id="binFile" accept=".bin" class="hidden"></label><span id="binName" class="note">no file</span></div>
- <label class="field"><span>XIAO network password (to confirm)</span><input type="password" id="pwP" maxlength="63"></label>
- <div class="row"><button class="act" id="install" disabled>Install</button><button class="danger" id="reboot">Restart</button></div>
+ <dl><dt>Installed</dt><dd id="pFw">–</dd><dt>On GitHub</dt><dd id="ghVer">–</dd><dt>Size</dt><dd id="pSize">–</dd></dl>
+ <p class="note chk"><span id="ghAt"></span><button type="button" class="lnk" id="ghCheck">Check now</button> · <a id="ghLink" href="https://github.com/renatorgr/Boards/tree/main/Firmware" target="_blank" rel="noopener">See on GitHub</a></p>
+ <div class="row"><button class="act" id="ghInstall" disabled>Install from GitHub</button><label class="sec" id="fileBtn">Install from a file…<input type="file" id="binFile" accept=".bin" class="hidden"></label></div>
  <progress id="prog" max="100" value="0" class="hidden"></progress>
  <p id="fwMsg" class="note"></p>
- <p class="note">If the installation fails, the current program keeps running.</p></div>
-<div class="card"><h2>Module (Teensy) firmware</h2>
- <dl><dt>Running</dt><dd id="tFw" class="mono">–</dd><dt>Built</dt><dd id="tBuilt">–</dd><dt>On GitHub</dt><dd id="tGh">–</dd><dt>Previous firmware</dt><dd id="tPrev">–</dd></dl>
- <div class="row"><button class="act" id="tGhInstall" disabled>Install from GitHub</button><button class="sec" id="tRevert" disabled>Go back to the previous firmware</button></div>
- <div class="row"><label class="act">Choose .hex<input type="file" id="tHexFile" accept=".hex" class="hidden"></label><span id="tHexName" class="note">no file</span></div>
- <p id="tHexInfo" class="note hidden"></p>
- <label class="opt"><input type="checkbox" id="tForce"><span>Other firmware<small>Installs it even without the module's update page inside (the next update will then have to be by USB).</small></span></label>
- <div class="row"><button class="act" id="tInstall" disabled>Install on the module</button></div>
+ <p class="note">If an installation fails, the current firmware keeps running. Install from GitHub needs internet on this phone or computer: on the XIAO's own network alone it usually has none, so open the page over the farm network or the phone's hotspot.</p>
+ <div class="foot"><button class="danger" id="reboot">Restart XIAO</button></div></div>
+<div class="card"><h2>Module (Teensy) firmware<small>over this XIAO's link, for when the module's own page does not open</small></h2>
+ <dl><dt>Installed</dt><dd id="tFw">–</dd><dt>On GitHub</dt><dd id="tGh">–</dd><dt>Previous</dt><dd id="tPrev">–</dd></dl>
+ <div class="row"><button class="act" id="tGhInstall" disabled>Install from GitHub</button><label class="sec off" id="tFileBtn">Install from a file…<input type="file" id="tHexFile" accept=".hex" class="hidden" disabled></label></div>
  <progress id="tProg" max="100" value="0" class="hidden"></progress>
  <p id="tMsg" class="note"></p>
- <p class="note">For when the module's own page does not open: the file goes to the Teensy over this XIAO's link (about a minute) and the Teensy checks it as one from its own page. The previous firmware is the one that ran before the module's last update, kept in the Teensy's flash: no file or internet needed. Only with autosteer off and the tractor stopped. Uses the password of the «Update or restart» card.</p></div>
+ <p class="note">About a minute: the file goes to the Teensy over this XIAO's link and the Teensy checks it as one from its own page. Only with autosteer off and the tractor stopped. The previous firmware is the one that ran before the module's last update, kept in the Teensy's flash: going back needs no file or internet.</p>
+ <div class="foot"><button class="sec" id="tRevert" disabled>Go back to the previous firmware</button></div></div>
 <div class="card"><h2>Report for an analysis</h2>
  <p class="note">Puts the XIAO's state and settings, the module status it receives and both message lists in one file, to send when something goes wrong. Passwords are not included. The file is downloaded by this phone or computer.</p>
  <div class="row"><button class="sec" type="button" id="dumpBtn">Download the report</button><span id="dumpMsg" class="note"></span></div></div>
 </div>
 </section>
 </main>
-<div id="ask" class="ask" hidden><div class="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><p id="askText"></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
+<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 // ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
 // no allow-modals, so those return false / null without showing anything (AgOpenWeb Docs/ADD_ON_CARDS.md). ask(text) answers
 // true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
+// askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
+// o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
+// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words. Answers true for OK, false otherwise.
 let askDone=null;
-function askShow(text,withInput){
+function askShow(o){
  if(askDone)askEnd(false);
- $("askText").textContent=text;const i=$("askIn");i.hidden=!withInput;i.value="";$("ask").hidden=false;
- (withInput?i:$("askYes")).focus();
- return new Promise(r=>{askDone=r;});}
+ const t=$("askTitle"),r=$("askRows"),v=$("askVerdict"),x=$("askText"),l=$("askPwL"),i=$("askIn"),y=$("askYes");
+ t.textContent=o.title||"";t.hidden=!o.title;
+ r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement("dt"),b=document.createElement("dd");a.textContent=k;b.textContent=w;r.append(a,b);}r.hidden=!r.firstChild;
+ v.hidden=!o.verdict;v.textContent=o.verdict?o.verdict[0]:"";v.className="verdict "+(o.verdict&&o.verdict[1]||"");
+ x.textContent=o.text||"";x.hidden=!o.text;
+ $("askForce").hidden=!o.force;$("askForceT").textContent=o.force||"";$("askForceIn").checked=false;
+ l.textContent=o.pwLabel||"";l.hidden=!(o.input&&o.pwLabel);
+ i.hidden=!o.input;i.value=o.pw||"";
+ y.textContent=o.okText||"OK";y.hidden=o.okText===null;y.disabled=!!o.force;$("askNo").textContent=o.noText||"Cancel";
+ $("askBox").setAttribute("aria-labelledby",o.title?"askTitle":"askText");$("ask").hidden=false;
+ (o.input&&!i.value?i:y.hidden||y.disabled?$("askNo"):y).focus();
+ return new Promise(res=>{askDone=res;});}
 function askEnd(v){const r=askDone;askDone=null;$("ask").hidden=true;if(r)r(v);}
-const ask=text=>askShow(text,false);
-const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
-$("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
+const ask=text=>askShow({text});
+const askText=text=>askShow({text,input:true}).then(ok=>ok?$("askIn").value:null);
+$("askForceIn").addEventListener("change",()=>{$("askYes").disabled=!$("askForceIn").checked;});
+// OK with the password field empty goes back to the field
+$("askYes").addEventListener("click",()=>{const i=$("askIn");if(!i.hidden&&!i.value){i.focus();return;}askEnd(true);});$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
-// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
-// that opened the question cannot also answer it
+// Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
+// nothing, so the key press that opened the question cannot also answer it
 $("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);
  else if(e.key==="Enter"){if(e.repeat){e.preventDefault();return;}
-  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing)askEnd(true);}}});
+  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing&&!$("askYes").disabled&&!$("askYes").hidden)askEnd(true);}}});
 // ---- light / dark: the phone's setting until the header button is used, then this phone's choice
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");}
 function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
@@ -302,7 +324,7 @@ function renderState(x){
  set("xHeap",Math.round(x.heap/1024)+" kB");set("xTemp",x.temp!==undefined?Number(x.temp).toFixed(1)+" °C":"–");
  renderGh();
  renderVer();
- set("pFw",x.fw);set("pBuilt",x.built);set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");
+ set("pFw",x.fw+", built "+(builtText(x.built)||x.built));set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");
 }
 function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
 // ---- the report for an analysis: every answer of the XIAO in one .json file, downloaded by this browser
@@ -424,52 +446,81 @@ $("scan").addEventListener("click",async()=>{const m=$("scanMsg");m.textContent=
    netsMsg(j.list);return;}}catch(e){}
   await new Promise(r=>setTimeout(r,800));}
  m.textContent="no answer";});
-// the password typed once is used in both tabs (only in this page, never saved)
-for(const id of ["pwW","pwP"])$(id).addEventListener("input",e=>{for(const o of ["pwW","pwP"])if(o!==id)$(o).value=e.target.value;});
 // Enter in a password box does what its card's button does (13 Nov 2026): these boxes are not in a form (the Save one is,
 // and the browser submits it), so on their own they did nothing. An empty box or a held key does nothing; every action asks
 // before it starts.
 function onEnter(id,act){$(id).addEventListener("keydown",e=>{if(e.key!=="Enter"||e.isComposing)return;e.preventDefault();
  if(!e.repeat&&$(id).value)act();});}
 onEnter("pwN",()=>$("subnetBtn").click());
-// The «Update or restart» password: the action that asked for it ("Type the XIAO network password"), else Install with a
-// .bin chosen, else Install from GitHub with a newer version there. Never Restart.
-let pwFor=null;
-function pwAsk(again){pwFor=again;$("pwP").focus();}
-onEnter("pwP",()=>{if(busy)return;const a=pwFor;pwFor=null;
- if(a)a();else if(!$("install").disabled)$("install").click();else if(!$("ghInstall").disabled)ghInstall();
- else fwMsg("Nothing to install: choose a .bin first.","warn");});
+// The XIAO network password for the Firmware tab is asked in its question box (fwAsk) and offered there again while this
+// page stays open (only in this page, never saved; forgotten when the XIAO refuses it); the one typed in the WiFi tab too
+let pwKeep="";
+$("pwW").addEventListener("input",e=>{pwKeep=e.target.value;});
+async function fwAsk(o){
+ if(!await askShow(Object.assign({input:true,pw:pwKeep,pwLabel:"XIAO network password"},o)))return null;
+ pwKeep=$("askIn").value;$("pwW").value=pwKeep;return pwKeep;
+}
+function pwRefused(status,err){if(status===403||/password/.test(err||""))pwKeep="";}
+// newer, the same or older than what runs now, as the box says it
+function verdict(c){return c>0?["✓ Newer than the one installed.","ok"]:c===0?["The same as the one installed.",""]:c<0?["Older than the one installed.","warn"]:null;}
+// the version text of a dd, and a pill: newer (green), installed, older (orange)
+function verPill(id,txt,c,cls,older){set(id,txt,cls);const p=c>0?["newer","ok"]:c===0?["installed",""]:c<0?["older","warn"]:null;
+ if(!p)return;const e=document.createElement("span");e.className="pill "+p[1];e.textContent=p[0];if(c<0&&older)e.title=older;$(id).append(" ",e);}
 
-// ---- program
+// ---- the XIAO's own firmware: the one on GitHub, or a chosen .bin; both are checked here before they are sent, and every
+// installation is confirmed in one box (fwAsk) that shows what is in the file, compared with what runs now, with the password
 function fwMsg(t,c){const m=$("fwMsg");m.textContent=t;m.className="note "+(c||"");}
-// the program header says which chip it is for (byte 12-13): the other XIAO's program is refused here already
+function fwButtons(){$("ghInstall").disabled=!ghNewer()||busy;$("binFile").disabled=busy;$("fileBtn").classList.toggle("off",busy);$("reboot").disabled=busy;}
+// What a .bin is: an ESP32 program (first byte 0xE9) for this XIAO's chip (header bytes 12-13: the other XIAO's program is refused
+// here already), not a USB-only file (the _USB.bin and the .merged.bin start with the bootloader); from the text every build
+// carries, its name (vX.Y_XIAO_ESP32C3) and the newest __DATE__ __TIME__ in it, when the sketch was compiled (as build.py reads it)
 const CHIPS={5:"ESP32-C3",9:"ESP32-S3"};
-$("binFile").addEventListener("change",async()=>{const f=$("binFile").files[0];$("binName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";$("install").disabled=!f||busy;fwMsg("");
- if(!f||chipId<0)return;
- try{const h=new Uint8Array(await f.slice(0,16).arrayBuffer());
-  if(h[0]!==0xE9){fwMsg("This file is not a program for the XIAO (wrong .bin).","bad");$("install").disabled=true;return;}
-  const id=h[12]|h[13]<<8;
-  if(id!==chipId){fwMsg(("This file is for "+(CHIPS[id]?"the XIAO "+CHIPS[id]:"another kind of XIAO")+"; this XIAO is "+chipName+"."),"bad");$("install").disabled=true;}
- }catch(e){}});
-$("install").addEventListener("click",async()=>{
- const f=$("binFile").files[0];if(!f||busy)return;
- if(!f.name.toLowerCase().endsWith(".bin")){fwMsg("Choose a .bin file.","bad");return;}
- if(/merged|bootloader|partitions/i.test(f.name)){fwMsg("This is the wrong file: use the ….ino.bin.","bad");return;}
- if(!await ask(("Install "+f.name+" on the XIAO?")))return;
- busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
- sendBin(f,f.name,0);});
+const BUILT_RX=/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ([ 0-3]\d) (\d{4}) (\d\d:\d\d:\d\d)/g;
+async function binInfo(blob,name){
+ const want="v"+(runningVer()||"X.Y")+"_XIAO_ESP32"+(myChip()||"C3")+".bin";
+ if(!/\.bin$/i.test(name))return {error:"Choose a .bin file ("+want+")."};
+ if(/merged|bootloader|partitions|_USB/i.test(name))return {error:"This is a file for the first install over USB-C. Over WiFi choose "+want+", in the same folder."};
+ const h=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+ if(h[0]!==0xE9)return {error:"This file is not a program for the XIAO (wrong .bin)."};
+ const id=h[12]|h[13]<<8;
+ if(chipId>=0&&id!==chipId)return {error:"This file is for "+(CHIPS[id]?"the XIAO "+CHIPS[id]:"another kind of XIAO")+"; this XIAO is "+chipName+"."};
+ const t=new TextDecoder("latin1").decode(await blob.arrayBuffer()),n=/v(\d+(?:\.\d+)*)_XIAO_ESP32[CS]3/.exec(t);let built="";
+ for(const m of t.matchAll(BUILT_RX))if(builtKey(m[0])>builtKey(built))built=m[0];
+ return {fw:n?n[0]:"",ver:n?n[1]:"",built:built.replace("  "," ")};
+}
+function xiaoNow(){return lastState?lastState.fw+", built "+(builtText(lastState.built)||lastState.built):"–";}
+function xiaoCmp(ver,built){const r=runningVer();return r&&ver?verCmp(ver,r)||builtCmp(built,lastState.built):NaN;}
+function fileText(f){return f.name+" · "+Math.round(f.size/1024)+" kB";}
+// Install from a file: the file is read as soon as it is chosen, and the box says what it is
+$("binFile").addEventListener("change",async()=>{const inp=$("binFile"),f=inp.files[0];inp.value="";   // the same file again is a new choice
+ if(!f||busy)return;fwMsg("");
+ const i=await binInfo(f,f.name);
+ if(i.error){if(await askShow({title:"This file cannot be installed",rows:[["File",fileText(f)]],verdict:["✗ "+i.error,"bad"],okText:"Choose another file",noText:"Close"}))inp.click();return;}
+ const other=!i.fw;
+ const p=await fwAsk({title:"Install this file on the XIAO?",rows:[["File",fileText(f)],["Inside",other?"no XIAO firmware name inside":verText(i.fw,i.built)],["Runs now",xiaoNow()]],
+  verdict:other?["! Another program, not this XIAO firmware: this page goes with it, so the next update would be over USB-C.","warn"]:verdict(xiaoCmp(i.ver,i.built)),
+  force:other?"Install it anyway":null,okText:"Install"});
+ if(p===null)return;
+ busy=true;fwButtons();const g=$("prog");g.classList.remove("hidden");g.value=0;
+ sendBin(f,f.name,p,0);});
 // The .bin to the XIAO (a chosen file, or one downloaded from GitHub); progress from p0 to 95 %
-function sendBin(blob,name,p0){
+function sendBin(blob,name,pass,p0){
  const p=$("prog");fwMsg("Sending…");
  const fd=new FormData();fd.append("file",blob,name);
- const x=new XMLHttpRequest();x.open("POST","/update?pw="+encodeURIComponent($("pwP").value));
+ const x=new XMLHttpRequest();x.open("POST","/update?pw="+encodeURIComponent(pass));
  x.upload.onprogress=e=>{if(e.lengthComputable)p.value=p0+Math.round(e.loaded/e.total*(95-p0));};
- const fail=t=>{busy=false;$("install").disabled=!$("binFile").files[0];renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
+ const fail=t=>{busy=false;fwButtons();renderGh();p.classList.add("hidden");fwMsg(t,"bad");};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;bootAt=Date.now();waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
-  else fail("Not installed: "+(j.error||("error "+x.status))+". The current program keeps running.");};
- x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current program keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/) with a downloaded .bin.");
+  else{pwRefused(x.status,j.error);fail("Not installed: "+(j.error||("error "+x.status))+". The current firmware keeps running.");}};
+ x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current firmware keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/) with a downloaded .bin.");
  x.send(fd);}
+// Restart XIAO: the same box, with the password
+$("reboot").addEventListener("click",async()=>{if(busy)return;
+ const p=await fwAsk({title:"Restart the XIAO?",text:"Its WiFi goes off for a few seconds.",okText:"Restart"});if(p===null)return;
+ try{const j=await getJ("/api/restart",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent(p)});
+  if(!j.ok)pwRefused(0,j.error);
+  fwMsg(j.ok?"Restarting…":"Error: "+j.error,j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});
 
 // ---- a newer version on GitHub (renatorgr/Boards, folder Firmware, one folder per version:
 // vX.Y_AiO_WEB, with vX.Y_XIAO_ESP32_bin/vX.Y_XIAO_ESP32C3.bin and ..S3.bin in it).
@@ -508,12 +559,13 @@ function ghCmp(){const r=runningVer();return gh&&r?verCmp(gh.ver,r)||builtCmp(gh
 function ghNewer(){return ghCmp()>0;}
 function renderGh(){
  const c=ghCmp(),nw=c>0;
- set("ghVer",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":
-  !gh?"–":verText(gh.ver,ghBuilt())+(nw?" — newer than the installed one":c===0?" — the one installed":c<0?" — older than the installed one (the new .bin is not on GitHub yet)":""),
-  nw?"ok":ghState==="fail"?"warn":"");
- $("ghInstall").disabled=!nw||busy;
+ if(ghState==="busy"||ghState==="fail"||ghState==="none"||!gh)set("ghVer",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":ghState==="none"?"no version on GitHub":"–",ghState==="fail"?"warn":"");
+ else verPill("ghVer",verText(gh.ver,ghBuilt()),c,nw?"ok":"","The new .bin is not on GitHub yet");
+ const at=ghAt?new Date(ghAt):null;
+ $("ghAt").textContent=ghState!=="busy"&&at?"checked at "+String(at.getHours()).padStart(2,"0")+":"+String(at.getMinutes()).padStart(2,"0")+" · ":"";
+ fwButtons();
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
- const n=$("ghNote");n.textContent=nw?("New XIAO program on GitHub: "+verText(gh.ver,ghBuilt())+". This XIAO runs "+runsText()+". Install it in the Firmware tab."):"";
+ const n=$("ghNote");n.textContent=nw?("New XIAO firmware on GitHub: "+verText(gh.ver,ghBuilt())+". This XIAO runs "+runsText()+". Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
  renderTeensyFw();
 }
@@ -521,11 +573,10 @@ async function ghInstall(){
  if(!ghNewer()||busy)return;
  const chip=myChip();
  if(!chip){fwMsg("It is not known whether this XIAO is a C3 or an S3.","bad");return;}
- if(!$("pwP").value){fwMsg("Type the XIAO network password.","bad");pwAsk(ghInstall);return;}
- pwFor=null;
  const bdir="v"+gh.ver+"_XIAO_ESP32_bin",name="v"+gh.ver+"_XIAO_ESP32"+chip+".bin";
- if(!await ask(("Install "+verText(gh.ver,ghBuilt())+" from GitHub ("+name+") on the XIAO?")))return;
- busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
+ const pass=await fwAsk({title:"Install from GitHub on the XIAO?",rows:[["On GitHub",verText(gh.ver,ghBuilt())+" ("+name+")"],["Runs now",xiaoNow()]],verdict:verdict(ghCmp()),okText:"Install"});
+ if(pass===null)return;
+ busy=true;fwButtons();const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
  try{
   const f=(await ghList(gh.dir+"/"+bdir)).find(e=>e.type==="file"&&e.name===name);
@@ -537,18 +588,19 @@ async function ghInstall(){
   if(blob.size!==f.size)throw new Error(("file incomplete ("+blob.size+" of "+f.size+" bytes)"));
   const h=new Uint8Array(await blob.slice(0,16).arrayBuffer());
   if(h[0]!==0xE9||(h[12]|h[13]<<8)!==chipId)throw new Error("This file is not a program for the XIAO (wrong .bin).");
-  sendBin(blob,name,45);
- }catch(e){busy=false;$("install").disabled=!$("binFile").files[0];p.classList.add("hidden");renderGh();
-  fwMsg("Not downloaded: "+e.message+". The current program keeps running.","bad");}
+  sendBin(blob,name,pass,45);
+ }catch(e){busy=false;fwButtons();p.classList.add("hidden");renderGh();
+  fwMsg("Not downloaded: "+e.message+". The current firmware keeps running.","bad");}
 }
 $("ghCheck").addEventListener("click",ghCheck);
 $("ghInstall").addEventListener("click",ghInstall);
 
 // ---- the module's (Teensy's) firmware, from this page over the link (2 Nov 2026): for a module whose own page cannot be
 // reached. A .hex (chosen here, or the one on GitHub) goes to the XIAO as our own update does (POST /api/teensy-update)
-// and on to the Teensy block by block; "Previous firmware" is the copy the Teensy keeps of the firmware that ran before
-// its last update (POST /api/teensy-revert). The module's answer and its restart are watched through /api/teensy.
-let tBusy=false,tWait=null,tHex=null;
+// and on to the Teensy block by block; "Previous" is the copy the Teensy keeps of the firmware that ran before its last
+// update (POST /api/teensy-revert). Each is confirmed in the same box as the XIAO's (fwAsk). The module's answer and its
+// restart are watched through /api/teensy.
+let tBusy=false,tWait=null;
 function tMsg(t,c){const m=$("tMsg");m.textContent=t;m.className="note "+(c||"");}
 // What is inside a chosen .hex, read in this browser (as the Teensy page does): the "[boot] vX.Y_AiO_WEB, built ..." line the
 // firmware prints at start-up, "fw_teensy41" (a Teensy 4.1 firmware) and the family marker (it has the update page inside)
@@ -559,55 +611,58 @@ function hexRead(text){
  return {fw:m?m[1]:"",built:m?m[2].replace("  "," "):"",t41:s.includes("fw_teensy41"),marker:s.includes("AiO-WEB-OTA-1")||s.includes("AOG-UM982-TM171-WEB-OTA-1")};
 }
 function tName(fw){return String(fw||"").split(" ")[0];}
+function tVer(fw){return (/^v(\d+(?:\.\d+)*)_/.exec(fw||"")||[])[1]||"";}
+function tText(fw,built){return tName(fw)+", built "+(builtText(built)||built);}
+function tNow(){const s=lastTeensy&&lastTeensy.s;return s?tText(s.fw,s.built):"–";}
+// a firmware (version, build) against the one the module runs: >0 newer
+function tCmp(fw,built){const s=lastTeensy&&lastTeensy.s,v=tVer(fw),mv=s?tVer(s.fw):"";return v&&mv?verCmp(v,mv)||(built?builtCmp(built,s.built):NaN):NaN;}
+function tTalk(){const s=lastTeensy&&lastTeensy.s;return !!(s&&lastState&&lastState.link&&lastState.link.talking);}
 function renderTeensyFw(){
- const s=lastTeensy&&lastTeensy.s,talk=!!(s&&lastState&&lastState.link&&lastState.link.talking);
- set("tFw",s?tName(s.fw):"–");set("tBuilt",s?s.built:"–");
+ const s=lastTeensy&&lastTeensy.s,talk=tTalk();
+ set("tFw",s?tText(s.fw,s.built):"–");
  const p=s&&s.prev;
- set("tPrev",!s?"–":p?tName(p.fw)+", built "+(builtText(p.built)||p.built):"none kept yet (kept from the module's next update on)");
+ set("tPrev",!s?"–":p?tText(p.fw,p.built):"none kept yet (kept from the module's next update on)");
  $("tRevert").disabled=!talk||!p||tBusy;
- const g=gh?gh.teensy:null,mv=s?(/^v(\d+(?:\.\d+)*)_/.exec(s.fw)||[])[1]||"":"";
- const c=g&&mv?(verCmp(gh.ver,mv)||(g.built?builtCmp(g.built,s.built):NaN)):NaN;
- set("tGh",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":!gh?"–":!g?"no .hex on GitHub":
-  verText(gh.ver,g.built)+(c>0?" — newer than the module's":c===0?" — the one the module runs":c<0?" — older than the module's":g.built?"":" (build date unknown)"),c>0?"ok":ghState==="fail"?"warn":"");
+ const g=gh?gh.teensy:null,c=g&&s?tCmp("v"+gh.ver+"_",g.built):NaN;
+ if(ghState==="busy"||ghState==="fail"||!gh||!g)set("tGh",ghState==="busy"?"searching…":ghState==="fail"?"no answer from GitHub (does this device have internet?)":!gh?"–":"no .hex on GitHub",ghState==="fail"?"warn":"");
+ else verPill("tGh",verText(gh.ver,g.built)+(g.built?"":" (build date unknown)"),c,c>0?"ok":"","The new .hex is not on GitHub yet");
  $("tGhInstall").disabled=!g||!talk||tBusy||c===0;
- $("tInstall").disabled=!$("tHexFile").files[0]||!talk||tBusy;
+ const off=!talk||tBusy;$("tHexFile").disabled=off;$("tFileBtn").classList.toggle("off",off);
 }
-$("tHexFile").addEventListener("change",()=>{const f=$("tHexFile").files[0];tHex=null;
- $("tHexName").textContent=f?f.name+" ("+Math.round(f.size/1024)+" kB)":"no file";tMsg("");renderTeensyFw();
- const inf=$("tHexInfo");inf.classList.toggle("hidden",!f);if(!f)return;
- inf.textContent="Reading the file…";inf.className="note";
+// Install from a file: the .hex is read as soon as it is chosen, and the box says what it is
+$("tHexFile").addEventListener("change",()=>{const inp=$("tHexFile"),f=inp.files[0];inp.value="";   // the same file again is a new choice
+ if(!f||tBusy)return;tMsg("");
  const r=new FileReader();
- r.onload=()=>{const b=tHex=hexRead(r.result),s=lastTeensy&&lastTeensy.s;let t,c="";
-  if(!b.t41){t="Not a Teensy 4.1 firmware (no fw_teensy41 inside): the module refuses it.";c="bad";}
-  else if(!b.fw){t="No AiO_WEB build data inside: another firmware. It needs «Other firmware» to install"+(b.marker?".":", and it has no update page: the next update would be by USB.");c="warn";}
-  else{const same=!!s&&s.built===b.built;t=b.fw+", built "+b.built+(same?" (the firmware the module runs now)":"")+(b.marker?"":"; no update page inside: needs «Other firmware»");c=same?"":"ok";}
-  inf.textContent=t;inf.className="note "+c;};
- r.onerror=()=>{inf.textContent="The file could not be read.";inf.className="note bad";};
+ r.onload=()=>tHexChosen(f,hexRead(r.result));
+ r.onerror=()=>tMsg("The file could not be read.","bad");
  r.readAsText(f);
 });
-function tPassword(again){if($("pwP").value){pwFor=null;return true;}tMsg("Type the XIAO network password (Update or restart card).","bad");pwAsk(again);return false;}
-async function tInstall(){
- const f=$("tHexFile").files[0];if(!f||tBusy)return;
- if(!f.name.toLowerCase().endsWith(".hex")){tMsg("Choose a .hex file.","bad");return;}
- if(!tPassword(tInstall))return;
- const b=tHex&&tHex.fw?" ("+tHex.fw+", built "+tHex.built+")":"";
- if(!await ask(("Install "+f.name+b+" on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
- sendTeensyHex(f,f.name,$("tForce").checked,0);
+async function tHexChosen(f,b){
+ const bad=!/\.hex$/i.test(f.name)?"Choose a .hex file (vX.Y_AiO_WEB.ino.hex).":!b.t41?"Not a Teensy 4.1 firmware (no fw_teensy41 inside): the module refuses it.":"";
+ if(bad){if(await askShow({title:"This file cannot be installed",rows:[["File",fileText(f)]],verdict:["✗ "+bad,"bad"],okText:"Choose another file",noText:"Close"}))$("tHexFile").click();return;}
+ // without AiO_WEB build data or without the update page inside, the module installs it only when told to (force)
+ const other=!b.fw||!b.marker;
+ const warn=!b.fw&&!b.marker?"Another firmware, with no update page inside: the next update will have to be by USB.":
+  !b.fw?"Another firmware (no AiO_WEB build data inside).":"No update page inside: the next update will have to be by USB.";
+ const p=await fwAsk({title:"Install this file on the module?",rows:[["File",fileText(f)],["Inside",b.fw?tText(b.fw,b.built):"a Teensy 4.1 firmware, not AiO_WEB"],["Runs now",tNow()]],
+  verdict:other?["! "+warn,"warn"]:verdict(tCmp(b.fw,b.built)),text:"Autosteer must be off and the tractor stopped. About a minute, over this XIAO's link.",
+  force:other?"Install it anyway":null,okText:"Install"});
+ if(p===null)return;
+ sendTeensyHex(f,f.name,other,0,p);
 }
-$("tInstall").addEventListener("click",tInstall);
 // The .hex to the XIAO and on to the Teensy; progress from p0 to 95 %, then the Teensy's answer
-function sendTeensyHex(blob,name,force,p0){
+function sendTeensyHex(blob,name,force,p0,pass){
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=p0;
  tMsg("Sending the file to the module over the link (about a minute)…");
  const fd=new FormData();fd.append("file",blob,name);
  const x=new XMLHttpRequest();
- x.open("POST","/api/teensy-update?pw="+encodeURIComponent($("pwP").value)+"&force="+(force?"1":"0")+"&size="+blob.size);
+ x.open("POST","/api/teensy-update?pw="+encodeURIComponent(pass)+"&force="+(force?"1":"0")+"&size="+blob.size);
  x.upload.onprogress=e=>{if(e.lengthComputable)p.value=p0+Math.round(e.loaded/e.total*(95-p0));};
  x.upload.onload=()=>tMsg("File sent; the module is checking and writing it…");
  const fail=t=>{tBusy=false;busy=false;p.classList.add("hidden");tMsg(t,"bad");renderTeensyFw();};
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;busy=false;tWaitStart("Checked ("+Math.round(j.size/1024)+" kB). The module is installing and restarting — do not switch the power off…");}
-  else fail("Not installed: "+(j.error||("error "+x.status))+". The module's current firmware keeps running.");};
+  else{pwRefused(x.status,j.error);fail("Not installed: "+(j.error||("error "+x.status))+". The module's current firmware keeps running.");}};
  x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The module's current firmware keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/).");
  x.send(fd);
 }
@@ -621,9 +676,10 @@ function tWaitCheck(t){
 }
 async function tGhInstall(){
  const g=gh&&gh.teensy;if(!g||tBusy)return;
- if(!tPassword(tGhInstall))return;
  const names=[g.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
- if(!await ask(("Install "+verText(gh.ver,g.built)+" from GitHub on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
+ const pass=await fwAsk({title:"Install from GitHub on the module?",rows:[["On GitHub",verText(gh.ver,g.built)],["Runs now",tNow()]],verdict:verdict(tCmp("v"+gh.ver+"_",g.built)),
+  text:"Autosteer must be off and the tractor stopped. About a minute, over this XIAO's link.",okText:"Install"});
+ if(pass===null)return;
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=0;tMsg("Downloading from GitHub…");
  try{
   const l=await ghList(gh.dir),f=names.map(n=>l.find(e=>e.type==="file"&&e.name===n)).find(Boolean);
@@ -633,24 +689,22 @@ async function tGhInstall(){
   for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;p.value=Math.round(got/f.size*45);}
   const blob=new Blob(parts);
   if(blob.size!==f.size)throw new Error(("file incomplete ("+blob.size+" of "+f.size+" bytes)"));
-  sendTeensyHex(blob,f.name,false,45);
+  sendTeensyHex(blob,f.name,false,45,pass);
  }catch(e){tBusy=false;busy=false;p.classList.add("hidden");renderTeensyFw();tMsg("Not downloaded: "+e.message+". The module's current firmware keeps running.","bad");}
 }
 $("tGhInstall").addEventListener("click",tGhInstall);
 async function tRevert(){
  const s=lastTeensy&&lastTeensy.s,p=s&&s.prev;if(!p||tBusy)return;
- if(!tPassword(tRevert))return;
- if(!await ask(("Put the module (Teensy) back to its previous firmware, "+tName(p.fw)+" built "+(builtText(p.built)||p.built)+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
+ const pass=await fwAsk({title:"Go back to the previous firmware?",rows:[["Previous",tText(p.fw,p.built)],["Runs now",tNow()]],
+  text:"Autosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.",okText:"Go back"});
+ if(pass===null)return;
  tBusy=true;renderTeensyFw();tMsg("Asking the module…");
- try{const j=await getJ("/api/teensy-revert",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
+ try{const j=await getJ("/api/teensy-revert",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent(pass)});
   if(j.ok)tWaitStart("The module is going back to its previous firmware and restarting — do not switch the power off…");
-  else{tBusy=false;renderTeensyFw();tMsg("Not done: "+j.error+". The module's current firmware keeps running.","bad");}
+  else{pwRefused(0,j.error);tBusy=false;renderTeensyFw();tMsg("Not done: "+j.error+". The module's current firmware keeps running.","bad");}
  }catch(e){tBusy=false;renderTeensyFw();tMsg("No connection to the XIAO.","bad");}
 }
 $("tRevert").addEventListener("click",tRevert);
-$("reboot").addEventListener("click",async()=>{if(busy||!await ask("Restart the XIAO?"))return;
- try{const j=await getJ("/api/restart",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
-  fwMsg(j.ok?"Restarting…":"Error: "+j.error,j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});
 
 // ---- one request at a time, every second
 let tickN=0;
