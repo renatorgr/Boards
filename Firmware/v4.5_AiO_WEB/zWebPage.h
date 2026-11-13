@@ -434,7 +434,11 @@ const ask=text=>askShow(text,false);
 const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
 $("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
-$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else if(e.key==="Enter"&&e.target===$("askIn"))askEnd(true);});
+// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
+// that opened the question cannot also answer it
+$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);
+ else if(e.key==="Enter"){if(e.repeat){e.preventDefault();return;}
+  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing)askEnd(true);}}});
 const PAGE_BUILT=")WEBPAGE" __DATE__ " " __TIME__ R"WEBPAGE(";
 let lastS=null,lastSet=null,tab="status",online=false,logAfter=0,logPaused=false,umAfter=0,umUntil=0,lastUp=0,upBefore=0,waitingBoot=false,busy=false;
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");

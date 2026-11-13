@@ -221,7 +221,11 @@ const ask=text=>askShow(text,false);
 const askText=text=>askShow(text,true).then(ok=>ok?$("askIn").value:null);
 $("askYes").addEventListener("click",()=>askEnd(true));$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
-$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);else if(e.key==="Enter"&&e.target===$("askIn"))askEnd(true);});
+// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
+// that opened the question cannot also answer it
+$("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);
+ else if(e.key==="Enter"){if(e.repeat){e.preventDefault();return;}
+  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing)askEnd(true);}}});
 // ---- light / dark: the phone's setting until the header button is used, then this phone's choice
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");}
 function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
@@ -384,6 +388,7 @@ async function loadSettings(){try{const s=await getJ("/api/settings");if(s.error
  f.apPass.value="";f.staPass.value="";f.staPass.placeholder=s.staPassSet?"(saved)":"";}catch(e){}}
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m=$("setMsg");
  if(f.apPass.value&&f.apPass.value.length<8){m.textContent="The password must have 8 characters or more.";m.className="note bad";return;}
+ if(!f.pw.value){m.textContent="Type the current password of the XIAO network.";m.className="note bad";f.pw.focus();return;}
  if(!await ask("Save and restart the XIAO? The XIAO WiFi goes off for a few seconds."))return;
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
@@ -394,6 +399,7 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m
 $("subnetBtn").addEventListener("click",async()=>{
  const v=$("subnet").value.trim(),m=$("subnetMsg"),ok=/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(v);
  if(!ok||ok.slice(1).some(x=>+x>255)){m.textContent="Three numbers, like 192.168.5.";m.className="note bad";return;}
+ if(!$("pwN").value){m.textContent="Type the XIAO network password.";m.className="note bad";$("pwN").focus();return;}
  const cur=lastTeensy&&lastTeensy.s&&lastTeensy.s.ip?lastTeensy.s.ip:"",last=cur?cur.split(".")[3]:"126";
  if(cur&&cur.split(".").slice(0,3).join(".")===v){m.textContent="The module is on that subnet already.";m.className="note";return;}
  if(!await ask("Change the module's subnet to "+v+" and restart it?\n\nThe module will be at "+v+"."+last+"; its page opens at that IP from a device on that network, and AgOpenWeb / AgOpenGPS must use subnet "+v+"."))return;
@@ -420,6 +426,19 @@ $("scan").addEventListener("click",async()=>{const m=$("scanMsg");m.textContent=
  m.textContent="no answer";});
 // the password typed once is used in both tabs (only in this page, never saved)
 for(const id of ["pwW","pwP"])$(id).addEventListener("input",e=>{for(const o of ["pwW","pwP"])if(o!==id)$(o).value=e.target.value;});
+// Enter in a password box does what its card's button does (13 Nov 2026): these boxes are not in a form (the Save one is,
+// and the browser submits it), so on their own they did nothing. An empty box or a held key does nothing; every action asks
+// before it starts.
+function onEnter(id,act){$(id).addEventListener("keydown",e=>{if(e.key!=="Enter"||e.isComposing)return;e.preventDefault();
+ if(!e.repeat&&$(id).value)act();});}
+onEnter("pwN",()=>$("subnetBtn").click());
+// The «Update or restart» password: the action that asked for it ("Type the XIAO network password"), else Install with a
+// .bin chosen, else Install from GitHub with a newer version there. Never Restart.
+let pwFor=null;
+function pwAsk(again){pwFor=again;$("pwP").focus();}
+onEnter("pwP",()=>{if(busy)return;const a=pwFor;pwFor=null;
+ if(a)a();else if(!$("install").disabled)$("install").click();else if(!$("ghInstall").disabled)ghInstall();
+ else fwMsg("Nothing to install: choose a .bin first.","warn");});
 
 // ---- program
 function fwMsg(t,c){const m=$("fwMsg");m.textContent=t;m.className="note "+(c||"");}
@@ -502,7 +521,8 @@ async function ghInstall(){
  if(!ghNewer()||busy)return;
  const chip=myChip();
  if(!chip){fwMsg("It is not known whether this XIAO is a C3 or an S3.","bad");return;}
- if(!$("pwP").value){fwMsg("Type the XIAO network password.","bad");$("pwP").focus();return;}
+ if(!$("pwP").value){fwMsg("Type the XIAO network password.","bad");pwAsk(ghInstall);return;}
+ pwFor=null;
  const bdir="v"+gh.ver+"_XIAO_ESP32_bin",name="v"+gh.ver+"_XIAO_ESP32"+chip+".bin";
  if(!await ask(("Install "+verText(gh.ver,ghBuilt())+" from GitHub ("+name+") on the XIAO?")))return;
  busy=true;$("install").disabled=true;$("ghInstall").disabled=true;const p=$("prog");p.classList.remove("hidden");p.value=0;
@@ -565,15 +585,16 @@ $("tHexFile").addEventListener("change",()=>{const f=$("tHexFile").files[0];tHex
  r.onerror=()=>{inf.textContent="The file could not be read.";inf.className="note bad";};
  r.readAsText(f);
 });
-function tPassword(){if($("pwP").value)return true;tMsg("Type the XIAO network password (Update or restart card).","bad");$("pwP").focus();return false;}
-$("tInstall").addEventListener("click",async()=>{
+function tPassword(again){if($("pwP").value){pwFor=null;return true;}tMsg("Type the XIAO network password (Update or restart card).","bad");pwAsk(again);return false;}
+async function tInstall(){
  const f=$("tHexFile").files[0];if(!f||tBusy)return;
  if(!f.name.toLowerCase().endsWith(".hex")){tMsg("Choose a .hex file.","bad");return;}
- if(!tPassword())return;
+ if(!tPassword(tInstall))return;
  const b=tHex&&tHex.fw?" ("+tHex.fw+", built "+tHex.built+")":"";
  if(!await ask(("Install "+f.name+b+" on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
  sendTeensyHex(f,f.name,$("tForce").checked,0);
-});
+}
+$("tInstall").addEventListener("click",tInstall);
 // The .hex to the XIAO and on to the Teensy; progress from p0 to 95 %, then the Teensy's answer
 function sendTeensyHex(blob,name,force,p0){
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=p0;
@@ -600,7 +621,7 @@ function tWaitCheck(t){
 }
 async function tGhInstall(){
  const g=gh&&gh.teensy;if(!g||tBusy)return;
- if(!tPassword())return;
+ if(!tPassword(tGhInstall))return;
  const names=[g.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
  if(!await ask(("Install "+verText(gh.ver,g.built)+" from GitHub on the module (Teensy) over the link?\n\nAutosteer must be off and the tractor stopped. Autosteer is off during the update, about a minute.")))return;
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=0;tMsg("Downloading from GitHub…");
@@ -616,16 +637,17 @@ async function tGhInstall(){
  }catch(e){tBusy=false;busy=false;p.classList.add("hidden");renderTeensyFw();tMsg("Not downloaded: "+e.message+". The module's current firmware keeps running.","bad");}
 }
 $("tGhInstall").addEventListener("click",tGhInstall);
-$("tRevert").addEventListener("click",async()=>{
+async function tRevert(){
  const s=lastTeensy&&lastTeensy.s,p=s&&s.prev;if(!p||tBusy)return;
- if(!tPassword())return;
+ if(!tPassword(tRevert))return;
  if(!await ask(("Put the module (Teensy) back to its previous firmware, "+tName(p.fw)+" built "+(builtText(p.built)||p.built)+"?\n\nAutosteer must be off and the tractor stopped. The firmware running now is replaced; the settings are kept.")))return;
  tBusy=true;renderTeensyFw();tMsg("Asking the module…");
  try{const j=await getJ("/api/teensy-revert",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
   if(j.ok)tWaitStart("The module is going back to its previous firmware and restarting — do not switch the power off…");
   else{tBusy=false;renderTeensyFw();tMsg("Not done: "+j.error+". The module's current firmware keeps running.","bad");}
  }catch(e){tBusy=false;renderTeensyFw();tMsg("No connection to the XIAO.","bad");}
-});
+}
+$("tRevert").addEventListener("click",tRevert);
 $("reboot").addEventListener("click",async()=>{if(busy||!await ask("Restart the XIAO?"))return;
  try{const j=await getJ("/api/restart",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"pw="+encodeURIComponent($("pwP").value)});
   fwMsg(j.ok?"Restarting…":"Error: "+j.error,j.ok?"warn":"bad");}catch(e){fwMsg("No connection to the XIAO.","bad");}});

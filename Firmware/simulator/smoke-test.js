@@ -14,6 +14,7 @@
 // seed drill's relays follow and the sprayer's calibration (the pages' own password question is answered). Also opens the sprayer
 // and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card, where the browser's confirm() and prompt() do
 // nothing: the pages' own question box must show there, fit the card and answer. A browser dialog on any page fails the check.
+// Enter in a password box does what its button does; an empty box or a held Enter does nothing.
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
 const {chromium} = require("playwright");
@@ -374,6 +375,40 @@ async function teensy(browser, port, q, name) {
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   await pg.close();
  }
+ // Enter in the XIAO page's password boxes: it does what the card's button does (here every action asks first, and the check
+ // says no); an empty box does nothing, and a held Enter does not also answer the question it opened
+ {
+  const what = "XIAO page, Enter in the password boxes";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/", what, j => { if (j.xiao.C3) j.xiao.C3.built = LATER; });
+  const askOpen = async (re, how) => {
+   await pg.waitForTimeout(300);
+   if (!(await pg.locator("#ask").isVisible())) { fail.push(what + ": " + how + " did not ask anything"); return; }
+   await expect(pg, what, "#askText", re);
+   await pg.keyboard.press("Escape"); await pg.waitForTimeout(200);
+   if (await pg.locator("#ask").isVisible()) fail.push(what + ": Escape does not close the question");
+  };
+  await pg.waitForTimeout(2500);
+  await pg.click('nav button[data-t="wifi"]'); await pg.waitForTimeout(300);
+  await pg.fill("#subnet", "192.168.7"); await pg.locator("#pwN").press("Enter"); await pg.waitForTimeout(300);
+  if (await pg.locator("#ask").isVisible()) fail.push(what + ": Enter in the empty Module network password asked something");
+  await pg.fill("#pwN", "agopengps"); await pg.locator("#pwN").press("Enter");
+  await askOpen(/^Change the module's subnet to 192\.168\.7 and restart it\?/, "Enter in the Module network password");
+  await pg.click('nav button[data-t="prog"]'); await pg.waitForTimeout(300);
+  if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
+  await pg.click("#ghInstall"); await pg.waitForTimeout(200);
+  await expect(pg, what, "#fwMsg", /^Type the XIAO network password\.$/);
+  await pg.locator("#pwP").press("Enter"); await pg.waitForTimeout(300);
+  if (await pg.locator("#ask").isVisible()) fail.push(what + ": Enter in the empty password box asked something");
+  await pg.fill("#pwP", "agopengps"); await pg.locator("#pwP").press("Enter");   // the password typed after Install from GitHub asked for it
+  await askOpen(/^Install [\d.]+, built 31 Dec 2099 23:59 from GitHub \(v[\d.]+_XIAO_ESP32C3\.bin\) on the XIAO\?$/, "Enter after Install from GitHub asked for the password");
+  const bin = Buffer.alloc(4096); bin[0] = 0xE9; bin[12] = 5;   // an ESP32-C3 program's header (chip id 5)
+  await pg.setInputFiles("#binFile", {name: "v4.5_XIAO_ESP32C3.bin", mimeType: "application/octet-stream", buffer: bin}); await pg.waitForTimeout(300);
+  await pg.focus("#pwP");
+  await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.up("Enter");   // held: repeats
+  await askOpen(/^Install v4\.5_XIAO_ESP32C3\.bin on the XIAO\?$/, "a held Enter in the password box");
+  if (await pg.locator("#prog").isVisible()) fail.push(what + ": the installation started");
+  await pg.close();
+ }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
  // section 1 and so on, 19 sections set); Settings: the relays set back to the program's pin config (the password asked in a
  // prompt);
@@ -631,6 +666,9 @@ async function teensy(browser, port, q, name) {
    await shot(pg, "sprayer-card-ask");
    await fr.locator("#askYes").press("Escape"); await askClosed(fr, what, "Escape");
    await expect(fr, what, "#msgWifi", /^$/);
+   await fr.locator("#pwW").press("Enter");   // Enter in the password: the same question
+   await askShown(fr, what, /^Save and restart the module\? Its Wi-Fi goes off/, false);
+   await fr.locator("#askYes").press("Escape"); await askClosed(fr, what, "Escape");
    await fr.click('nav button[data-t="firmware"]'); await fr.waitForTimeout(300);
    await fr.click("button[onclick*='/api/restart']");
    await askShown(fr, what, /^Password of the own Wi-Fi network$/, true);
@@ -638,6 +676,8 @@ async function teensy(browser, port, q, name) {
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await expect(fr, what, "#msgProg", /^$/);
    await fr.click("button[onclick*='/api/restart']");
+   await fr.locator("#askIn").press("Enter"); await fr.waitForTimeout(200);
+   if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": Enter with no password typed answers the question"); await fr.click("button[onclick*='/api/restart']"); }
    await fr.fill("#askIn", "agopengps"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Enter");
    await expectSoon(fr, what, "#msgProg", /^done, restarting/);
   }
@@ -653,6 +693,11 @@ async function teensy(browser, port, q, name) {
    await askShown(fr, what, /^Restart the Teensy\? Autosteer and GPS stop for a few seconds\.$/, false);
    await shot(pg, "teensy-card-ask");
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
+   await expect(fr, what, "#fwMsg", /^$/);
+   await fr.focus("#reboot");   // a held Enter on Restart Teensy: one question, not also its answer
+   await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.down("Enter"); await pg.keyboard.up("Enter");
+   await askShown(fr, what, /^Restart the Teensy\?/, false);
+   if (await fr.locator("#ask").isVisible()) { await fr.click("#askNo"); await askClosed(fr, what, "Cancel"); }
    await expect(fr, what, "#fwMsg", /^$/);
    await fr.click("#reboot");
    await fr.click("#askYes"); await askClosed(fr, what, "OK");
