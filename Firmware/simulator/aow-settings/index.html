@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Set up AgOpenWeb from your measures</title>
-<script src="settings.js?v=1.6"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
+<script src="settings.js?v=1.7"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
@@ -126,7 +126,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row"><label for="width">Working width (m)<small>sections × section width; type it directly if the sections differ</small></label><input id="width" type="number" step="0.1" min="0.1" value="8"></div>
   <div class="row"><label for="overlap">Overlap / gap (m)<small>0 for a sprayer or a seed drill; a gap is negative</small></label><input id="overlap" type="number" step="0.05" value="0"></div>
   <div class="row"><label for="offset">Tool offset (m)<small>the working line's centre right of the machine's; left is negative</small></label><input id="offset" type="number" step="0.05" value="0"></div>
-  <div class="row" data-for="rigid"><label for="axleToTool" id="axleToToolLabel">Rear axle to the working line (m)<small>the boom, the discs, the rows</small></label><input id="axleToTool" type="number" step="0.1" min="0" value="2"></div>
+  <div class="row" data-for="rigid"><label for="axleToTool" id="axleToToolLabel">Rear axle to the working line (m)<small>the boom, the discs, the rows</small></label><input id="axleToTool" type="number" step="0.1" min="0" value="2.1"></div>
   <div class="row" data-for="hitch"><label for="hitch">Rear axle to the hitch (m)<small>the 3-point hitch, the drawbar pin (often inside the rear tyres' back edge) or a semi-mounted implement's pivot (further back): the Vehicle page's hitch length</small></label><input id="hitch" type="number" step="0.1" min="0" value="1"></div>
   <div class="row" data-for="tbt"><label for="tankHitch">Tank trailing hitch (m)<small>hitch pin to the tank's axle</small></label><input id="tankHitch" type="number" step="0.1" min="0.1" value="3"></div>
   <div class="row" data-for="trailed"><label for="drawbar" id="drawbarLabel">Trailing hitch (m)<small>hitch pin (or pivot) to the implement's wheels; with two axles close together, to the middle between them</small></label><input id="drawbar" type="number" step="0.1" min="0.1" value="2"></div>
@@ -178,16 +178,16 @@ const TRACTORS = {
  // that go on the drawbar (`onDrawbar` below); a semi-mounted implement brings its own pivot instead.
  maxxum: {machine: "tractor", wheelbase: 2.7, steer: 42, overhang: 1.0, trackWidth: 1.81, tyreWidth: 0.65, wheelDiameter: 1.8, pin: 0.7,
   note: "Renato's Case IH Maxxum 135: 2.7 m wheelbase, 42° measured with the steer wizard, 1.81 m rear track, its nose 1 m ahead of the front axle. Its rear tyres (650/65 R38) and the drawbar pin 0.7 m behind the rear axle are guessed until he measures them."},
- puma: {machine: "tractor", wheelbase: 2.88, steer: 33, overhang: 1.5, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, pin: 0.9,
-  note: "Renato's Case IH Puma 180 CVX: 2.88 m wheelbase (its manual), 2 m rear track, 650/65 R42 rear tyres, the drawbar pin 0.9 m behind the rear axle as his AgOpenWeb profile has it. 33° of steering from the manual: the middle of the rear axle turns on an 8.87 m circle with a 1.83 m front track (5.15 m with 1.55 m). It turns wider than AgOpenWeb's 4 m floor, so the tractor sets the radius. A wider front track may let it steer a little more: the steer wizard will tell. The front overhang is guessed."},
+ puma: {machine: "tractor", wheelbase: 2.88, steer: 33, overhang: 1.1, trackWidth: 2.0, tyreWidth: 0.65, wheelDiameter: 1.91, pin: 0.9,
+  note: "Renato's Case IH Puma 180 CVX: 2.88 m wheelbase (its manual), 2 m rear track, 650/65 R42 rear tyres, the drawbar pin 0.9 m behind the rear axle as his AgOpenWeb profile has it. 33° of steering from the manual: the middle of the rear axle turns on an 8.87 m circle with a 1.83 m front track (5.15 m with 1.55 m). It turns wider than AgOpenWeb's 4 m floor, so the tractor sets the radius. A wider front track may let it steer a little more: the steer wizard will tell. Its front quick hitch, the nose with nothing on it, is 1.1 m ahead of the front axle."},
  farmall: {machine: "tractor", wheelbase: 2.3, steer: 45, overhang: 0.85, trackWidth: 1.7, tyreWidth: 0.54, wheelDiameter: 1.57, pin: 0.74,
   note: "Renato's Case IH Farmall 115C: 2.3 m wheelbase, 1.7 m rear track, 540/65 R34 rear tyres, the drawbar pin 0.74 m behind the rear axle, its nose 0.85 m ahead of the front axle. About 45° of steering, by eye until a wheel angle sensor measures it: any angle over 35° gives the same turn, AgOpenWeb's 4 m floor."}
 };
 const PRESETS = {
  // the example buttons: Renato's sprayer, drill and manure spreader, measured; a disc harrow and a plough with typical measures; his quick harrow and roller, guessed. `note`: shown under the buttons;
  // `turn`: the turn option drawn first (a plough cannot skip rows); `onDrawbar`: its hitch is the tractor's drawbar pin
- sprayer: {mount: "front", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 2, hitch: 1, length: 0, sprayerWidth: 8,
-  note: "Measured on Renato's sprayer: the 8 m boom on the front linkage, 2 m ahead of the front axle."},
+ sprayer: {mount: "front", sections: 8, sectionWidth: 100, width: 8, overlap: 0, offset: 0, axleToTool: 2.1, hitch: 1, length: 0, sprayerWidth: 8,
+  note: "Measured on Renato's sprayer: the 8 m boom on the front quick hitch (1.1 m ahead of the front axle), 2.1 m ahead of the front axle."},
  drill: {mount: "trailed", sections: 19, sectionWidth: 15.8, width: 3, overlap: -0.05, offset: 0, hitch: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3, swingDeg: 0, length: 0, sprayerWidth: 8,
   note: "Measured on Renato's no-till drill: semi-mounted, its pivot 1.54 m behind the rear axle, its wheels 4.15 m behind the pivot and the discs 1.6 m ahead of the wheels. Its pivot is behind the rear tyres' back edge, so the tyres do not limit its turn; its own headstock or stop does: watch how far it folds and type that in 'Most the drawbar may turn'. It never backs up in the ground: no K-turn."},
  spreader: {mount: "trailed", onDrawbar: true, sections: 1, sectionWidth: 1000, width: 10, overlap: 0, offset: 0, drawbar: 4.2, pivotToTool: 1.5, drawbarWidth: 0.3, swingDeg: 0, length: 1.5, sprayerWidth: 0,
