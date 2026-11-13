@@ -240,8 +240,24 @@ async function teensy(browser, port, q, name) {
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
   if ((await pg.inputValue("#hitch")) !== "0.7") fail.push(what + ": the Maxxum button should put the spreader back on its 0.7 m pin");
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);
+  // Renato's centre-pivot mower conditioner comes with the Farmall, on its lower links, swung in the turn; then back to the Maxxum
+  await pg.click("button:has-text('3.2 m centre-pivot mower conditioner')"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#implements button.on", /^3\.2 m centre-pivot mower conditioner$/);
+  await expect(pg, what, "#tractors button.on", /^Case IH Farmall 115C$/);
+  await expect(pg, what, "#presetNote", /^Renato's centre-pivot mower conditioner, used with the Farmall/);
+  if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "0.5" || (await pg.inputValue("#width")) !== "3.2" || (await pg.inputValue("#turnSwingDeg")) !== "20") fail.push(what + ": the mower button should press the Farmall, put the mower's swivel 0.5 m behind its rear axle and swing it 20° in the turn");
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6\.8 m$/);     // swung, its 6.5 m tongue ÷ sin 75°
+  await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 4$/);
+  await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^18\.6 m \(6 passes\)$/);
+  await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 54\.5°, swung 20° in the turn$/);
+  await shot(pg, "aow-settings-mower");
+  await pg.fill("#turnSwingDeg", "0"); await pg.waitForTimeout(300);
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^9\.1 m$/);     // held straight, the tongue touches a tyre at 54.5°
+  await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
+  if ((await pg.inputValue("#hitch")) !== "0.5") fail.push(what + ": the mower is on the lower links: another tractor should keep its 0.5 m swivel");
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 2$/);
+  if ((await pg.inputValue("#turnSwingDeg")) !== "0") fail.push(what + ": only the centre-pivot mower is swung in the turn");
   await pg.click("button:has-text('4-furrow reversible plough')"); await pg.waitForTimeout(300);
   if (await pg.locator("#drawbarHeight").isVisible()) fail.push(what + ": the drawbar height is for trailed implements only");
   if (!(await pg.locator("#trackWidth").isVisible())) fail.push(what + ": the rear track gives the tractor's width for every implement");
