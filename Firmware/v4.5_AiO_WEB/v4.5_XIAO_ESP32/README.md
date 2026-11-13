@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 13 Nov 2026 | Loading the page no longer stops the XIAO on a weak WiFi link (the Teensy saw "XIAO silent for 10 s"), and the browser keeps the page: a new visit only asks whether it changed ([What it does](#what-it-does)). |
+| 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"); the browser keeps the page. Enter in a password field does what its button does ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
 | 10 Nov 2026 | Tabs and the light/dark button 44 px high with 8 px corners; the WiFi tab's password to confirm in a card of its own, no longer a field across the page ([What it does](#what-it-does)). Messages give the size of an updated program, not 0 bytes. |
 | 9 Nov 2026 | The page's questions (save and restart, install, the module's firmware, subnet) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([What it does](#what-it-does)). |
@@ -69,6 +69,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 - Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
   - The question before each one (save and restart, install, the module's firmware, the subnet) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
+  - **Enter** in a password field does what its button does, and the question still comes first. On the Firmware tab: the action that asked for the password (*Type the XIAO network password*), else **Install** with a `.bin` chosen, else **Install from GitHub**; never **Restart**. An empty field does nothing, and a held Enter does not also answer the question it opened.
   - The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
   - On the WiFi tab the password and **Save and restart the XIAO** have a card of their own, *Confirm and save*, as wide as the other two.
   - The page carries the date its own program was compiled and compares it with the one the XIAO reports. When they differ (an old page the browser kept after an update), it fetches the page again at an address the browser has never seen (`/?b=<build date>`); if that page is still old, a notice says to reload it by hand.

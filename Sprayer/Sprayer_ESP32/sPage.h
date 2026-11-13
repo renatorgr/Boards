@@ -272,7 +272,11 @@ const ask=text=>askShow(text,false);
 const askText=text=>askShow(text,true).then(ok=>ok?$('askIn').value:null);
 $('askYes').onclick=()=>askEnd(true);$('askNo').onclick=()=>askEnd(false);
 $('ask').onclick=e=>{if(e.target===$('ask'))askEnd(false)};
-$('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);else if(e.key==='Enter'&&e.target===$('askIn'))askEnd(true)};
+// Enter is OK (on the OK button, or in the field once something is typed); a held Enter answers nothing, so the key press
+// that opened the question cannot also answer it
+$('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);
+  else if(e.key==='Enter'){if(e.repeat){e.preventDefault();return}
+    if(e.target===$('askIn')){e.preventDefault();if($('askIn').value&&!e.isComposing)askEnd(true)}}};
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
@@ -399,6 +403,9 @@ async function saveWifi(){const m=$('msgWifi');
   if(!$('pwW').value){m.innerHTML='<span class="bad">Type the password of the own Wi-Fi network.</span>';$('pwW').focus();return}
   if(!await ask('Save and restart the module? Its Wi-Fi goes off for a few seconds and every section closes.'))return;
   post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi',$('pwW').value)}
+// Enter in the Save card's password saves, as its button does (the box is not in a form, so on its own it did nothing);
+// an empty box or a held key does nothing
+$('pwW').onkeydown=e=>{if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();if(!e.repeat&&$('pwW').value)saveWifi()};
 // "Search for networks": the networks the module hears (GET /api/scan, asked again until the list comes), one per
 // line, strongest first; a tap chooses one (as on the XIAO page)
 function sig(r){return r>=-60?'strong':r>=-72?'medium':'weak'}
