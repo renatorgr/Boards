@@ -54,6 +54,8 @@
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_app_format.h"            // header of a program file (.bin): which chip it is for
+#include "lwip/sockets.h"              // send() with MSG_DONTWAIT: answers that never hold up loop()
+#include <errno.h>
 #include "xVersion.h"
 #include "xLink.h"
 #include "xPage.h"
@@ -67,7 +69,56 @@
 
 HardwareSerial&           TeensyPort = Serial1;
 TeensyLink<HardwareSerial> teensy(TeensyPort);
-WebServer                 server(80);
+
+// ---------------------------------------------------------------- web server that never holds up the Teensy link
+// 13 Nov 2026. The core's WebServer writes an answer in one go and returns only when the browser has taken all of
+// it. The page is 53 kB: on a weak WiFi link (Starlink, -72 dBm) that took about 10 s, and all that time loop()
+// was away from the Teensy - no hello ("XIAO silent for 10 s" in the Teensy log), its data piling up unread.
+// This one gives the connection what it takes now and, while the browser catches up, keeps the link to the
+// Teensy going (the hello, its data), as the uploads already do. The Teensy page sends its page in pieces too.
+#define SEND_WAIT_MS   20000         // a browser that takes nothing for this long is given up (= UPLOAD_WAIT_MS)
+#define SPARE_IDLE_MS  1000          // a connection that asked nothing for this long gives way to the next one
+class LinkWebServer : public WebServer
+{
+public:
+    explicit LinkWebServer(int port) : WebServer(port) {}
+
+    // Browsers open a spare connection in advance and may leave it silent. The core waits up to 5 s for it to
+    // ask something (HTTP_MAX_DATA_WAIT) and serves no one else meanwhile: when another connection is waiting,
+    // the silent one is dropped after SPARE_IDLE_MS (by the core's own clean-up). The browser opens a new one.
+    void handleClient() override
+    {
+        if (_currentStatus == HC_WAIT_READ && millis() - _statusChange > SPARE_IDLE_MS && !_currentClient.available() && _server.hasClient())
+            _statusChange = millis() - HTTP_MAX_DATA_WAIT - 1;
+        WebServer::handleClient();
+    }
+
+protected:
+    size_t _currentClientWrite(const char* b, size_t l) override { return writeKeepingLink(b, l); }
+    size_t _currentClientWrite_P(PGM_P b, size_t l) override     { return writeKeepingLink(b, l); }
+
+private:
+    size_t writeKeepingLink(const char* b, size_t l)
+    {
+        const int fd = _currentClient.fd();
+        if (fd < 0) return 0;
+        size_t done = 0;
+        uint32_t takenMs = millis();
+        while (done < l)
+        {
+            const int r = ::send(fd, b + done, l - done, MSG_DONTWAIT);    // what the connection's buffer takes now (~5.7 kB)
+            if (r > 0) { done += r; takenMs = millis(); continue; }
+            if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) break;    // the browser has gone
+            if (millis() - takenMs >= SEND_WAIT_MS) break;                  // it took nothing for 20 s: given up
+            teensy.poll(millis());                                          // meanwhile: the hello, the Teensy's data
+            feedLoopWDT();
+            delay(1);                                                       // and the WiFi gets the core
+        }
+        return done;
+    }
+};
+
+LinkWebServer             server(80);
 DNSServer                 dns;
 Preferences               prefs;
 
@@ -773,11 +824,35 @@ static void apiRestart()
     rebootAtMs = millis() + 1000;
 }
 
+// The page's ETag: its build date (13 Nov 2026, as the Teensy page). The page is served with "Cache-Control:
+// no-cache", so the browser keeps it but asks every time ("If-None-Match"); the same build answers "304 Not
+// Modified" (a few hundred bytes), a new build sends the page. So the 53 kB page only travels over the WiFi once
+// per build and browser, not at every visit.
+static char pageEtag[40];
+static void pageEtagSetup()
+{
+    const char* b = __DATE__ " " __TIME__;           // e.g. Nov  3 2026 14:20:11 -> "Nov-3-2026-14:20:11" (no spaces in an ETag)
+    size_t k = 0;
+    pageEtag[k++] = '"';
+    for (const char* p = b; *p && k < sizeof(pageEtag) - 2; p++)
+    {
+        if (*p == ' ') { if (pageEtag[k - 1] != '-') pageEtag[k++] = '-'; }
+        else pageEtag[k++] = *p;
+    }
+    pageEtag[k++] = '"';
+    pageEtag[k] = '\0';
+}
+
 static void webSetup()
 {
+    pageEtagSetup();
+    static const char* keep[] = {"If-None-Match"};
+    server.collectHeaders(keep, 1);
     server.on("/", HTTP_GET, []() {
         if (captiveRedirect()) return;
-        server.sendHeader("Cache-Control", "no-store");
+        server.sendHeader("ETag", pageEtag);
+        server.sendHeader("Cache-Control", "no-cache");
+        if (server.header("If-None-Match").indexOf(pageEtag) >= 0) { server.send(304); return; }
         server.send_P(200, "text/html; charset=utf-8", XIAO_PAGE);
     });
     server.on("/api/state", HTTP_GET, apiState);
