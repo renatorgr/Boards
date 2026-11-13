@@ -7,7 +7,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Sprayer_ESP32.ino  v0.10.6 (2026-11-10), not yet tested on the sprayer.
+// Sprayer_ESP32.ino  v0.10.7 (2026-11-13), not yet tested on the sprayer.
 //
 // Board: "ESP32_Relay_X8" (303E32DC810): ESP32-WROOM-32E, 8 relays, 5-30 V DC in, LM2596 on board.
 //   Or any ESP32 dev module with relay modules, up to 16 relays (BOARD_DEVKIT below).
@@ -55,7 +55,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.6"
+#define FW_VERSION          "0.10.7"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
