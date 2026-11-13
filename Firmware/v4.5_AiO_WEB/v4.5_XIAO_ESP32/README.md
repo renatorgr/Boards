@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 13 Nov 2026 | Loading the page no longer stops the XIAO on a weak WiFi link (the Teensy saw "XIAO silent for 10 s"), and the browser keeps the page: a new visit only asks whether it changed ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
 | 10 Nov 2026 | Tabs and the light/dark button 44 px high with 8 px corners; the WiFi tab's password to confirm in a card of its own, no longer a field across the page ([What it does](#what-it-does)). Messages give the size of an updated program, not 0 bytes. |
 | 9 Nov 2026 | The page's questions (save and restart, install, the module's firmware, subnet) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([What it does](#what-it-does)). |
@@ -49,6 +50,9 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
   - the button at the top (☀ / ☾) switches it, and the phone remembers the choice;
   - without a choice, the phone's setting (dark or light mode) decides;
   - when the XIAO restarts (its uptime goes back, or another build runs), the page loads itself again, on the same tab.
+  - it goes out without holding up the XIAO: on a weak WiFi link the 53 kB page can take a few seconds, but the link to the Teensy (hello, data) keeps going meanwhile. Before 13 Nov 2026 the XIAO waited for the browser, and the Teensy log showed "XIAO silent for 10 s";
+  - the browser keeps the page and asks the XIAO each time whether it changed: the same build answers "not modified" (a few hundred bytes), so only the first visit after an update sends the whole page;
+  - a spare connection a browser opens and leaves silent is dropped after 1 s when another one is waiting (it used to hold up the next request for 5 s).
 
 | Tab | What it shows |
 |---|---|

@@ -343,6 +343,12 @@ The addresses must not move: settings must survive a firmware update.
     padding, to the next block; `diag.ram.stackFree` 46 KB -> 10 KB). New code that is not time-critical (web page
     answers, JSON, set-up, text) gets `FLASHMEM`; keep the steering, GNSS, IMU and anything that runs during a flash
     write (FlasherX, `FlashTxx.c` RAMFUNC) in RAM. The GitHub check fails under 32 KB "free for local variables".
+14. **XIAO web answers never hold up its loop** (13 Nov 2026): the XIAO program serves its page through
+    `LinkWebServer`, a `WebServer` whose writes take what the connection takes and keep `teensy.poll()` going while
+    the browser catches up (the core's own write waited up to 10 s on a weak WiFi link: no hello, "XIAO silent for
+    10 s" in the Teensy log). Send every answer with `server.send` / `send_P` / `sendContent`, never
+    `server.client().write()`; a handler that waits for something else calls `teensy.poll()` itself. The page has
+    an ETag (build date, `Cache-Control: no-cache`, 304 when unchanged), as the Teensy page.
 
 ## Version and Publishing
 
