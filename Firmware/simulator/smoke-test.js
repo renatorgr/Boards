@@ -245,16 +245,16 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#implements button.on", /^3\.2 m centre-pivot mower conditioner$/);
   await expect(pg, what, "#tractors button.on", /^Case IH Farmall 115C$/);
   await expect(pg, what, "#presetNote", /^Renato's centre-pivot mower conditioner, used with the Farmall/);
-  if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "0.5" || (await pg.inputValue("#width")) !== "3.2" || (await pg.inputValue("#turnSwingDeg")) !== "20") fail.push(what + ": the mower button should press the Farmall, put the mower's swivel 0.5 m behind its rear axle and swing it 20° in the turn");
+  if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "1.55" || (await pg.inputValue("#width")) !== "3.2" || (await pg.inputValue("#turnSwingDeg")) !== "25") fail.push(what + ": the mower button should press the Farmall, put the mower's swivel 1.55 m behind its rear axle and swing it 25° in the turn");
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6\.8 m$/);     // swung, its 6.5 m tongue ÷ sin 75°
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 4$/);
   await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^18\.6 m \(6 passes\)$/);
-  await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 54\.5°, swung 20° in the turn$/);
+  await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 120°, swung 25° in the turn$/);
   await shot(pg, "aow-settings-mower");
   await pg.fill("#turnSwingDeg", "0"); await pg.waitForTimeout(300);
-  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^9\.1 m$/);     // held straight, the tongue touches a tyre at 54.5°
+  await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Keyhole, skip 2$/);     // held straight, a shallower turn no longer fits
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
-  if ((await pg.inputValue("#hitch")) !== "0.5") fail.push(what + ": the mower is on the lower links: another tractor should keep its 0.5 m swivel");
+  if ((await pg.inputValue("#hitch")) !== "1.55") fail.push(what + ": the mower is on the lower links: another tractor should keep its 1.55 m swivel");
   await pg.click("button:has-text('4 m disc harrow')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Sagitta, skip 2$/);
   if ((await pg.inputValue("#turnSwingDeg")) !== "0") fail.push(what + ": only the centre-pivot mower is swung in the turn");
