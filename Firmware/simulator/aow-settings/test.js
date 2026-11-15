@@ -318,6 +318,13 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("mower headland", row(mw, "headland").value, "18.6 m (6 passes)");
  eq("mower distance", row(mw, "distance").value, "3.6 m");
  eq("mower fold row", row(mw, "fold").value, "touches the tyres at 120°, swung 25° in the turn");
+ // but Renato skips no rows: the tractor drives on the strip it has just mown, the mower on the next one, so the page draws
+ // the Keyhole onto the next pass (the preset's `turn`), deeper and with a wider headland than his 5 laps
+ const next = S.suggest(Object.assign({turnSwingDeg: 25}, mower, farmall), "keyhole0");
+ eq("mower next pass: chosen", next.chosen, "keyhole0");
+ eq("mower next pass: turn", row(next, "style").value, "Keyhole, skip 0");
+ eq("mower next pass: lands one pass away", next.options.find(o => o.key === "keyhole0").lateral, 3.1);
+ eq("mower next pass: headland", row(next, "headland").value, "27.9 m (9 passes)");
  const most = r => Math.max(...r.options.map(o => o.sweep.firstFoldDeg));
  if (!(most(mw) < most(held) - 20)) fail.push("mower: swung, the tongue should fold much less than held straight (" + most(mw).toFixed(1) + "° vs " + most(held).toFixed(1) + "°)");
  eq("swing out of range", S.suggest(Object.assign({turnSwingDeg: 70}, mower, farmall)).problems.length, 1);
