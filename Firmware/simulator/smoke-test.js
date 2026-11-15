@@ -240,19 +240,20 @@ async function teensy(browser, port, q, name) {
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
   if ((await pg.inputValue("#hitch")) !== "0.7") fail.push(what + ": the Maxxum button should put the spreader back on its 0.7 m pin");
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^5\.4 m$/);
-  // Renato's centre-pivot mower conditioner comes with the Farmall, on its lower links, swung in the turn, onto the next pass; then back to the Maxxum
+  // Renato's centre-pivot mower conditioner comes with the Farmall, on its lower links, swung across in the turn, onto the next pass; then back to the Maxxum
   await pg.click("button:has-text('3.2 m centre-pivot mower conditioner')"); await pg.waitForTimeout(300);
   await expect(pg, what, "#implements button.on", /^3\.2 m centre-pivot mower conditioner$/);
   await expect(pg, what, "#tractors button.on", /^Case IH Farmall 115C$/);
   await expect(pg, what, "#presetNote", /^Renato's centre-pivot mower conditioner, used with the Farmall/);
   if ((await pg.inputValue("#wheelbase")) !== "2.3" || (await pg.inputValue("#hitch")) !== "1.55" || (await pg.inputValue("#width")) !== "3.2" || (await pg.inputValue("#turnSwingDeg")) !== "25") fail.push(what + ": the mower button should press the Farmall, put the mower's swivel 1.55 m behind its rear axle and swing it 25° in the turn");
-  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6\.8 m$/);     // swung, its 6.5 m tongue ÷ sin 75°
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^4 m$/);     // swung across, the tongue clears the tyres at AgOpenWeb's 4 m floor
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Keyhole, skip 0$/);     // the preset picks the next pass: the tractor drives on the strip just mown
-  await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^27\.9 m \(9 passes\)$/);
+  await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^31 m \(10 passes\)$/);     // the long mower straight across on the next pass
   await expect(pg, what, "#results tbody tr[data-key=fold] td.v", /^touches the tyres at 120°, swung 25° in the turn$/);
   await shot(pg, "aow-settings-mower");
   await pg.fill("#turnSwingDeg", "0"); await pg.waitForTimeout(300);
   await expect(pg, what, "#results tbody tr[data-key=style] td.v", /^Keyhole, skip 0$/);     // held straight, still the turn onto the next pass
+  await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^6\.8 m$/);     // held, its 6.5 m tongue ÷ sin 75°
   await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^27\.9 m \(9 passes\)$/);
   await pg.click("button:has-text('Case IH Maxxum 135')"); await pg.waitForTimeout(300);
   if ((await pg.inputValue("#hitch")) !== "1.55") fail.push(what + ": the mower is on the lower links: another tractor should keep its 1.55 m swivel");

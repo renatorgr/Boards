@@ -301,32 +301,48 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("own spreader on the Farmall headland", row(of, "headland").value, "30 m (3 passes)");
  // Renato's centre-pivot mower conditioner on the Farmall's lower links, measured 13 and 15 Nov 2026: the balls 1.05 m
  // behind the rear axle, its swivel 0.5 m behind them (1.55 m), well behind the tyres, so the 6.5 m tongue would touch one
- // only at 120° and the tongue ÷ sin 75° (6.73 m) sets the radius. Swung 25° against the line from the swivel to its
- // wheels in the turn (as when it mows just outside the rear tyre), its axle runs wider and the tongue folds less than
- // held straight, so a shallower turn fits: a Sagitta instead of a Keyhole
+ // only at 120°. Held in line, the tongue ÷ sin 75° (6.73 m) sets the radius.
  const mower = {mount: "trailed", width: 3.2, overlap: 0.1, offset: 0, hitchLength: 1.55, drawbar: 6.5, pivotToTool: -2, length: 0, drawbarWidth: 0.3};
  const held = S.suggest(Object.assign({}, mower, farmall));
  eq("mower held: touches the tyre", held.touchDeg, 120);
  eq("mower held: radius", held.radius, 6.8);
  eq("mower held: turn", row(held, "style").value, "Keyhole, skip 2");
  eq("mower held: headland", row(held, "headland").value, "27.9 m (9 passes)");
+ // Renato mows with it 25° to one side of the line from the swivel to its wheels (just outside the rear tyre), the other
+ // side every pass, and as the pass ends he lifts it and puts it straight away on the other side, outside the turn: followed
+ // through the turn onto the next pass, the tongue then folds 98° at most at AgOpenWeb's 4 m floor, clear of the tyre
  const mw = S.suggest(Object.assign({turnSwingDeg: 25}, mower, farmall));
  eq("mower problems", mw.problems.length, 0);
  eq("mower spacing", mw.spacing, 3.1);                 // 10 cm of overlap
- eq("mower radius", mw.radius, 6.8);
- eq("mower turn", row(mw, "style").value, "Sagitta, skip 4");
- eq("mower headland", row(mw, "headland").value, "18.6 m (6 passes)");
- eq("mower distance", row(mw, "distance").value, "3.6 m");
+ eq("mower radius", mw.radius, 4);
+ eq("mower turn", row(mw, "style").value, "Sagitta, skip 2");
+ eq("mower headland", row(mw, "headland").value, "31 m (10 passes)");
+ eq("mower distance", row(mw, "distance").value, "3.1 m");
  eq("mower fold row", row(mw, "fold").value, "touches the tyres at 120°, swung 25° in the turn");
- // but Renato skips no rows: the tractor drives on the strip it has just mown, the mower on the next one, so the page draws
- // the Keyhole onto the next pass (the preset's `turn`), deeper and with a wider headland than his 5 laps
+ const most = r => Math.max(...r.options.map(o => o.sweep.firstFoldDeg));
+ if (!(most(mw) > 90 && most(mw) < 115)) fail.push("mower: swung across at 4 m, the tongue should fold about 98°, under the tyre's 120° less 5° (" + most(mw).toFixed(1) + "°)");
+ // and he skips no rows: the tractor drives on the strip it has just mown, the mower on the next one, so the page draws the
+ // Keyhole onto the next pass (the preset's `turn`): 9.8 m deep, but the mower, crossing from one side to the other, is
+ // straight on the next pass only some 15 m back into the field, so AgOpenWeb's own turn wants a 10-pass headland
  const next = S.suggest(Object.assign({turnSwingDeg: 25}, mower, farmall), "keyhole0");
+ const k0 = next.options.find(o => o.key === "keyhole0");
  eq("mower next pass: chosen", next.chosen, "keyhole0");
  eq("mower next pass: turn", row(next, "style").value, "Keyhole, skip 0");
- eq("mower next pass: lands one pass away", next.options.find(o => o.key === "keyhole0").lateral, 3.1);
- eq("mower next pass: headland", row(next, "headland").value, "27.9 m (9 passes)");
- const most = r => Math.max(...r.options.map(o => o.sweep.firstFoldDeg));
- if (!(most(mw) < most(held) - 20)) fail.push("mower: swung, the tongue should fold much less than held straight (" + most(mw).toFixed(1) + "° vs " + most(held).toFixed(1) + "°)");
+ eq("mower next pass: lands one pass away", k0.lateral, 3.1);
+ eq("mower next pass: depth", k0.depth, 9.8);
+ eq("mower next pass: headland", row(next, "headland").value, "31 m (10 passes)");
+ eq("mower next pass: the mower straight on it", k0.low, -15.2);
+ // the same turns with the tongue held in line: at 4 m it would fold onto a tyre; at 6.8 m swung across it folds much less
+ {
+  const imp = {bars: [6.5], hitch: 1.55, pivotToTool: -2, offset: 0, half: 1.6}, sw = Object.assign({swing: 25 * Math.PI / 180}, imp);
+  const fold = (R, m) => S.sweep(S.turnPath("keyhole", R, 3.1, 40).poses, m).firstFoldDeg;
+  if (!(fold(4, imp) > 120)) fail.push("mower held in line at 4 m: the tongue should fold onto the tyre (" + fold(4, imp).toFixed(1) + "°)");
+  if (!(fold(6.8, sw) < fold(6.8, imp) - 20)) fail.push("mower at 6.8 m: swung across, the tongue should fold much less than held (" + fold(6.8, sw).toFixed(1) + "° vs " + fold(6.8, imp).toFixed(1) + "°)");
+  // working on the inside when the turn starts, on the outside, 2.75 m from the tractor, on the next pass
+  const t = S.turnPath("keyhole", 4, 3.1, 60), w = S.sweep(t.poses, sw), last = t.poses.length - 1;
+  eq("mower starts on the inside", Math.round(w.centre[0].e * 100) / 100, 2.75);
+  eq("mower ends on the outside of the next pass", Math.round((w.centre[last].e - t.poses[last].e) * 100) / 100, 2.75);
+ }
  eq("swing out of range", S.suggest(Object.assign({turnSwingDeg: 70}, mower, farmall)).problems.length, 1);
  // the swung implement followed step by step round a circle settles where the formula says
  {
