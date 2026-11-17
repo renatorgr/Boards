@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 17 Nov 2026 | The [kickout delay](#settings) (pressure, current, a Keya's current) and the [WAS check](#was-check)'s 75 ms and 1 s always count now: on an even millisecond they were skipped, and autosteer was cut or blocked at once. |
 | 13 Nov 2026 | A held Enter no longer answers the page's question too ([Web page](#web-page)). Firmware tab: one card for the firmware, and one box that says what a `.hex` holds before it is installed ([update](#firmware-update-over-the-network)). |
 | 12 Nov 2026 | A WAS fault or a silent Keya is told on the program's screen again when its AutoSteer button goes on: on a bench with no WAS the button only went red, with no reason ([WAS check](#was-check)). |
 | 11 Nov 2026 | **Keya**: holding the wheel cuts autosteer, by the motor's own current against the program's Current Turn limit ([Keya kickout](#keya-kickout)). After an update, an old page a browser kept fetches the new one by itself ([Web page](#web-page)). |
@@ -117,7 +118,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
 | Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
 | Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
-| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor, a [Keya's own current](#keya-kickout) too (not its slip): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). |
+| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor, a [Keya's own current](#keya-kickout) too (not its slip): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). Until 17 Nov 2026 the delay did not count when the reading first passed the limit on an even millisecond (about every second time): autosteer was cut at once. A sensor switched off and on again in the program starts its delay from the beginning. |
 | Steering loop (Steering) | 40 Hz | 40 or 100 Hz: how often the wheel angle is read and the valve / motor output updated (every 25 or 10 ms). 100 Hz is what the AiO 26 firmware runs and AgOpenWeb's steering packets come at; the WAS (ADS1115) is then read at 250 samples a second (4 ms each, 128 at 40 Hz). The program's gains are per degree, not per loop, so they stay the same; a Keya gets its command 100 times a second (untested). Try it once the tractor steers well at 40 Hz. Applied at once; the [boot] / [web] Steering lines and the Steering card say the rate. |
 
 ### Firmware update over the network
@@ -383,9 +384,10 @@ The WAS voltage (single input) must stay between **0.2 and 4.8 V**. A broken wir
 
 - Out of range for 75 ms (4 readings in a row at 40 Hz, 8 at 100 Hz): autosteer off at once and blocked (`WAS: 0.05 V, out of the 0.2-4.8 V range ... - autosteer blocked`, and on the program's screen). Shorter glitches are ignored.
 - Back in range for 1 s: the block ends, and autosteer must be engaged again by hand.
+- Until 17 Nov 2026 both times were skipped when they started on an even millisecond (about every second time): one reading out of range blocked autosteer, and one reading back in range ended the fault.
 - Differential input (A/D converter "Differential" in the program): −0.5 to 4.8 V. A negative reading means WAS_H is under WAS_L: nothing is wired to WAS_L (AmpSeal pin 3), the usual case of a 3-wire sensor (signal on pin 2, ground on pin 4) with the program set to Differential. The reading would be a large angle to one side (−98° for −3.67 V). The message, the Status page and the program's screen say to choose Single (AutoSteer, Hardware, A/D converter) or to wire the sensor's ground to pin 3 too. A wire that floats mid-range still cannot be told from a real reading.
 - **Bench without a WAS**: switch the check off on the page. While off: a warning on Status, a `[boot]` line, a note on the program's screen, and an out-of-range angle goes to the program as 0°. Switch it back on before using the tractor.
-- The fault is told on the program's screen when it starts and again each time the program's AutoSteer button goes on while it blocks (at most every 3 s; since 12 Nov 2026). A bench board with no WAS reads about 4.9 V from power-on, before the program runs: until then, pressing AutoSteer only showed the button red, with no reason. The same for a Keya that does not answer.
+- The fault is told on the program's screen when it starts and again each time the program's AutoSteer button goes on while it blocks (at most every 3 s; since 12 Nov 2026). A bench board with no WAS reads about 4.9 V from power-on, before the program runs: until then, pressing AutoSteer only showed the button red, with no reason. The same for a Keya that does not answer. Since 17 Nov 2026, when the fault is over and only a steer switch left on still blocks, it says so (`WAS in range again: steer switch off and on`); with a WAS fault and a silent Keya together, Messages gets a line for each (the program's screen shows the WAS).
 
 ### Why autosteer went off
 

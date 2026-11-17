@@ -499,7 +499,7 @@ void tm171SettingLoop()
     static uint32_t warnMs = 0;
     static bool warned = false;
     const char* why = tm171SetupWhy();
-    if (why[0] && !tmSetWriteMs && !tmBaudSwitchMs && now - firstMs > 10000 && (!warned || now - warnMs > 60000))
+    if (why[0] && !tmSetWriteMs && !tmBaudSwitchMs && tmElapsed(now, firstMs, 10000) && (!warned || now - warnMs > 60000))
     {
         warnMs = now;
         if (!warned) StatusLog.line("[status] TM171: not set up for AgOpenGPS (%s) - IMU tab, Fix TM171 setup", why);

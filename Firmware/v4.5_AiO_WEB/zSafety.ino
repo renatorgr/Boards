@@ -73,6 +73,15 @@ bool     wasBlock  = false;      // autosteer blocked by it (check on)
 uint32_t wasFaults = 0;
 static uint32_t wasBadMs = 0, wasGoodMs = 0;   // since when out of range / in range (0 = not now)
 
+// The time a timer started, for timers where 0 means "not running": never 0 and never ahead of now.
+// (millis() | 1 is one millisecond ahead on an even millisecond; "now - timer" is unsigned, so in the same
+// loop pass it read four billion and the time looked over at once: until 17 Nov 2026 the kickout delay of
+// Autosteer.ino and the two times of the WAS check below did not count on an even millisecond.)
+uint32_t msStamp(uint32_t now)
+{
+    return now != 0 ? now : 0xFFFFFFFFu;       // (0xFFFFFFFF is the millisecond before 0)
+}
+
 // Called with every WAS reading (40 or 100 Hz, Autosteer.ino). True: autosteer must stay off.
 bool wasCheck(int16_t raw)
 {
@@ -86,8 +95,8 @@ bool wasCheck(int16_t raw)
     // Differential: the hint names the setting to change (Single), or the other wiring (ground to pin 3 too).
     const bool noLow = !single && wasVolts < WAS_DIFF_LOW_V;
     const uint32_t now = millis();
-    if (bad) { wasGoodMs = 0; if (!wasBadMs) wasBadMs = now | 1; }
-    else     { wasBadMs = 0;  if (!wasGoodMs) wasGoodMs = now | 1; }
+    if (bad) { wasGoodMs = 0; if (!wasBadMs) wasBadMs = msStamp(now); }
+    else     { wasBadMs = 0;  if (!wasGoodMs) wasGoodMs = msStamp(now); }
 
     if (!wasOut && wasBadMs && now - wasBadMs >= WAS_BAD_MS)
     {
@@ -139,25 +148,45 @@ bool wasCheck(int16_t raw)
 // module just does not steer, and the program only shows its AutoSteer button red. Once each time the
 // program's button goes on (PGN 254 status bit 0 from 0 to 1), at most every 3 s. Not when the block
 // starts while the program already asks: wasCheck() / keyaCheck() have just said it.
+// A fault that is over (the WAS back in range, the Keya answering) blocks on only until a steer switch
+// left on is turned off: then that is what it says, not the fault. With both blocks every one gets its
+// line in Messages; the program's screen has room for one, the WAS.
 FLASHMEM void blockedSay()
 {
     static uint32_t saidMs = 0;
     const uint32_t now = millis();
+    if (!wasBlock && !keyaBlock) return;
     if (saidMs && now - saidMs < 3000) return;
     saidMs = now | 1;
     char m[64];
+    if (keyaBlock)
+    {
+        if (keyaLost)
+        {
+            snprintf(m, sizeof(m), "Keya not responding (CAN cable?): autosteer off");
+            StatusLog.line("[status] The program asks to steer: autosteer blocked, the Keya motor does not answer");
+        }
+        else
+        {
+            snprintf(m, sizeof(m), "Keya answers again: steer switch off and on");
+            StatusLog.line("[status] The program asks to steer: the Keya motor answers again - turn the steer switch off and on again to engage autosteer");
+        }
+    }
     if (wasBlock)
     {
-        if (!steerConfig.SingleInputWAS && wasVolts < WAS_DIFF_LOW_V)
-            snprintf(m, sizeof(m), "WAS %.2f V differential: pin 3 empty? Choose Single", wasVolts);
+        if (!wasOut)
+        {
+            snprintf(m, sizeof(m), "WAS in range again: steer switch off and on");
+            StatusLog.line("[status] The program asks to steer: the WAS is back in range (%.2f V) - turn the steer switch off and on again to engage autosteer", wasVolts);
+        }
         else
-            snprintf(m, sizeof(m), "WAS fault (%.2f V): autosteer blocked", wasVolts);
-        StatusLog.line("[status] The program asks to steer: autosteer blocked by the WAS check (%.2f V)", wasVolts);
-    }
-    else
-    {
-        snprintf(m, sizeof(m), "Keya not responding (CAN cable?): autosteer off");
-        StatusLog.line("[status] The program asks to steer: autosteer blocked, the Keya motor does not answer");
+        {
+            if (!steerConfig.SingleInputWAS && wasVolts < WAS_DIFF_LOW_V)
+                snprintf(m, sizeof(m), "WAS %.2f V differential: pin 3 empty? Choose Single", wasVolts);
+            else
+                snprintf(m, sizeof(m), "WAS fault (%.2f V): autosteer blocked", wasVolts);
+            StatusLog.line("[status] The program asks to steer: autosteer blocked by the WAS check (%.2f V)", wasVolts);
+        }
     }
     hwMessage(m, 8, true);
 }
