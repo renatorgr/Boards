@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 17 Nov 2026 | Changing the steer switch mode in the program (None, Switch, Button) with the module running no longer leaves autosteer off until a restart: it goes off and is ready again ([Steering](#steering)). |
 | 13 Nov 2026 | A held Enter no longer answers the page's question too ([Web page](#web-page)). Firmware tab: one card for the firmware, and one box that says what a `.hex` holds before it is installed ([update](#firmware-update-over-the-network)). |
 | 12 Nov 2026 | A WAS fault or a silent Keya is told on the program's screen again when its AutoSteer button goes on: on a bench with no WAS the button only went red, with no reason ([WAS check](#was-check)). |
 | 11 Nov 2026 | **Keya**: holding the wheel cuts autosteer, by the motor's own current against the program's Current Turn limit ([Keya kickout](#keya-kickout)). After an update, an old page a browser kept fetches the new one by itself ([Web page](#web-page)). |
@@ -346,6 +347,8 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 - **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts); until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m). The Steering settings card shows which one is in use.
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
+
+**Steer switch mode** (the program's None, Switch or Button): a change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages. A steer switch left closed when the mode changes to Switch must be opened and closed again. Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
 
 AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
 
