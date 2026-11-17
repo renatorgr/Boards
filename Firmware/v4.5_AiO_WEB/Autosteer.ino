@@ -191,6 +191,7 @@ float highLowPerDeg = 0;
 //Steer switch button  ******************************************
 uint8_t currentState = 1, reading, previous = 0;
 bool steerOffByProgram = false;   // Button mode: the last off came from the program's on-screen button, not the physical one (zSafety.ino)
+bool swWaitOpen = false;          // Switch mode after a mode change: the switch must be seen open once before it can turn autosteer on
 uint8_t pulseCount = 0; // Steering Wheel Encoder
 bool encEnable = false; //debounce flag
 #define ENC_DEBOUNCE_MS 25      // AiO_WEB: one encoder pulse per 25 ms at most, at both loop rates (it was one per loop)
@@ -364,6 +365,13 @@ void autosteerLoop()
 		if (steerConfig.SteerSwitch == 1)         //steer switch on - off
 		{
 			steerSwitch = digitalRead(STEERSW_PIN); //read auto steer enable switch open = 0n closed = Off
+			// AiO_WEB: after a change to Switch mode, a switch left closed does not turn autosteer on;
+			// the driver opens and closes it again (PGN 251 below)
+			if (swWaitOpen)
+			{
+				if (steerSwitch == 1) swWaitOpen = false;
+				else steerSwitch = 1;
+			}
 		}
 		else if (steerConfig.SteerButton == 1)    //steer Button momentary
 		{
@@ -916,6 +924,9 @@ void ReceiveUdp()
 			{
 				uint8_t sett = autoSteerUdpData[5]; //setting0
 
+				// AiO_WEB: the steer switch mode before this packet (none / switch / button), see below
+				const uint8_t swModeWas = steerConfig.SteerSwitch ? 1 : steerConfig.SteerButton ? 2 : 0;
+
 				if (bitRead(sett, 0)) steerConfig.InvertWAS = 1; else steerConfig.InvertWAS = 0;
 				if (bitRead(sett, 1)) steerConfig.IsRelayActiveHigh = 1; else steerConfig.IsRelayActiveHigh = 0;
 				if (bitRead(sett, 2)) steerConfig.MotorDriveDirection = 1; else steerConfig.MotorDriveDirection = 0;
@@ -924,6 +935,24 @@ void ReceiveUdp()
 				if (bitRead(sett, 5)) steerConfig.SteerSwitch = 1; else steerConfig.SteerSwitch = 0;
 				if (bitRead(sett, 6)) steerConfig.SteerButton = 1; else steerConfig.SteerButton = 0;
 				if (bitRead(sett, 7)) steerConfig.ShaftEncoder = 1; else steerConfig.ShaftEncoder = 0;
+
+				// AiO_WEB (Claude (Anthropic) for renatorgr): a new steer switch mode starts from "off, ready",
+				// as at power-on. The button mode leaves `previous` at 1 (the pin read HIGH), and the no-switch
+				// mode only turns on with `previous` at 0: changed from Button to None with the module running,
+				// autosteer stayed off for good (Free Drive too) until a restart (Puma, 17 Nov 2026).
+				const uint8_t swModeNow = steerConfig.SteerSwitch ? 1 : steerConfig.SteerButton ? 2 : 0;
+				if (swModeNow != swModeWas)
+				{
+					steerSwitch = 1;
+					currentState = 1;
+					previous = 0;
+					steerOffByProgram = false;
+					guidanceStatusChanged = false;   // an on from the program just before the change does not turn it back on
+					swWaitOpen = (swModeNow == 1);   // a switch left closed waits to be opened and closed again
+					watchdogTimer = WATCHDOG_FORCE_VALUE;
+					static const char* const swName[3] = { "none", "switch", "button" };
+					StatusLog.line("[status] Steer switch: %s (was %s) - autosteer off, turn it on again", swName[swModeNow], swName[swModeWas]);
+				}
 
 				steerConfig.PulseCountMax = autoSteerUdpData[6];
 
