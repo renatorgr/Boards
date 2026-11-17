@@ -348,7 +348,7 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
-**Steer switch mode** (the program's None, Switch or Button): a change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages. Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
+**Steer switch mode** (the program's None, Switch or Button): a change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages. A steer switch left closed when the mode changes to Switch must be opened and closed again. Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
 
 AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
 
