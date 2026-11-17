@@ -65,6 +65,7 @@ bool  wasCheck(int16_t raw);
 bool  wasBenchZero();
 bool  wasVoltsOk();
 void  blockedAskNote();
+uint32_t msStamp(uint32_t now);       // the start of a timer where 0 means "not running": never 0, never ahead of now
 bool  keyaCheck();                    // KeyaCANBUS.ino
 extern bool keyaBlock;                 // KeyaCANBUS.ino: autosteer blocked by a lost Keya heartbeat
 extern bool keyaLost;                  // KeyaCANBUS.ino: no Keya heartbeat now (zWeb.ino)

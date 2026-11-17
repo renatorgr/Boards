@@ -440,6 +440,15 @@ void autosteerLoop()
 			steerKick(SO_ENCODER, pulseCount);           // why it went off (zSafety.ino)
 		}
 
+		// AiO_WEB: since when each kickout sensor reads at or above the program's limit (0 = it does not, or that
+		// sensor is not the one watched now, so a sensor switched on again starts its delay from the beginning).
+		// The time is kept with msStamp() (zSafety.ino): never 0 and never ahead of currentTime.
+		static uint32_t pressureHighMs = 0, keyaHighMs = 0, currentHighMs = 0;
+		const uint32_t kickDelayMs = (uint32_t)cfg.currentKickX10ms * 10;   // Settings > Steering, kickout delay
+		if (!steerConfig.PressureSensor) pressureHighMs = 0;
+		if (!steerConfig.CurrentSensor || !isKeya) keyaHighMs = 0;
+		if (!steerConfig.CurrentSensor || isKeya) currentHighMs = 0;
+
 		// Pressure sensor?
 		if (steerConfig.PressureSensor)
 		{
@@ -449,11 +458,10 @@ void autosteerLoop()
 
 			// AiO_WEB (3 Nov 2026): the same delay as the current sensor below (Settings > Steering, kickout delay):
 			// the pressure must stay above the limit that long; a short peak (the valve opening, a bump) is not a kickout
-			static uint32_t pressureHighMs = 0;   // when it went above the limit (0 = below)
 			if (sensorReading >= steerConfig.PulseCountMax)
 			{
-				if (pressureHighMs == 0) pressureHighMs = currentTime | 1;
-				if (currentTime - pressureHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+				if (pressureHighMs == 0) pressureHighMs = msStamp(currentTime);
+				if (currentTime - pressureHighMs >= kickDelayMs)
 				{
 					steerSwitch = 1; // reset values like it turned off
 					currentState = 1;
@@ -475,11 +483,10 @@ void autosteerLoop()
 				// program's limit; like the analog current sensor below, it must stay above it for the kickout
 				// delay set on the web page. This is also the value the program shows (PGN 250).
 				sensorReading = min(keyaAmps * KEYA_AMPS_X, 255.0f);
-				static uint32_t keyaHighMs = 0;      // when it went above the limit (0 = below)
 				if (sensorReading >= steerConfig.PulseCountMax)
 				{
-					if (keyaHighMs == 0) keyaHighMs = currentTime | 1;
-					if (currentTime - keyaHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+					if (keyaHighMs == 0) keyaHighMs = msStamp(currentTime);
+					if (currentTime - keyaHighMs >= kickDelayMs)
 					{
 						steerSwitch = 1; // reset values like it turned off
 						currentState = 1;
@@ -507,11 +514,10 @@ void autosteerLoop()
 
 				// AiO_WEB, as in the AiO 26 firmware: only a current that stays high for the time set on the web page
 				// (Settings > Steering) is a kickout; a short peak (the valve or motor starting) is not
-				static uint32_t currentHighMs = 0;   // when it went above the limit (0 = below)
 				if (sensorReading >= steerConfig.PulseCountMax)
 				{
-					if (currentHighMs == 0) currentHighMs = currentTime | 1;
-					if (currentTime - currentHighMs >= (uint32_t)cfg.currentKickX10ms * 10)
+					if (currentHighMs == 0) currentHighMs = msStamp(currentTime);
+					if (currentTime - currentHighMs >= kickDelayMs)
 					{
 						steerSwitch = 1; // reset values like it turned off
 						currentState = 1;

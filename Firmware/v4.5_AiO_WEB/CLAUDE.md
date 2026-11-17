@@ -349,6 +349,11 @@ The addresses must not move: settings must survive a firmware update.
     10 s" in the Teensy log). Send every answer with `server.send` / `send_P` / `sendContent`, never
     `server.client().write()`; a handler that waits for something else calls `teensy.poll()` itself. The page has
     an ETag (build date, `Cache-Control: no-cache`, 304 when unchanged), as the Teensy page.
+15. **A timer where 0 means "not running"** is started with `msStamp(now)` (`zSafety.ino`), never `millis() | 1`
+    (17 Nov 2026): on an even millisecond `| 1` is one millisecond ahead, the unsigned `now - timer` of the same loop
+    pass reads four billion and `>= delay` is true at once (the kickout delay and the WAS check's two times were
+    skipped that way, about every second time). The older `| 1` stamps left in the code are compared with `<` ("heard
+    lately") or with `tmElapsed()` (`TM171.ino`, signed); a new `>=` on one of them needs `msStamp` or `tmElapsed`.
 
 ## Version and Publishing
 
