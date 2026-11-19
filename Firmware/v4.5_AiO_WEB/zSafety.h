@@ -33,7 +33,9 @@ enum SteerOff : uint8_t
     SO_KEYA_FAULT,  // AiO_WEB: the Keya reports a fault
     SO_ANGLE,       // AiO_WEB: wheel angle beyond the WAS map (+-50 deg)
     SO_FAST,        // AiO_WEB: the program's speed above the maximum (web page, default 25 km/h)
-    SO_KEYA_LOST    // AiO_WEB: no Keya heartbeat for 0.5 s (KeyaCANBUS.ino)
+    SO_KEYA_LOST,   // AiO_WEB: no Keya heartbeat for 0.5 s (KeyaCANBUS.ino)
+    SO_WAS_JUMP,    // AiO_WEB: the WAS angle jumped faster than wheels turn (plug out, broken wire)
+    SO_STUCK        // AiO_WEB: pushed at the Max Limit and the WAS angle did not follow (WAS unplugged, wheels held)
 };
 #define SO_FROM_MODULE(c) (((c) >= SO_SWITCH && (c) <= SO_SILENT) || (c) >= SO_KEYA)
 
@@ -64,12 +66,17 @@ void  bootReport();
 bool  wasCheck(int16_t raw);
 bool  wasBenchZero();
 bool  wasVoltsOk();
+bool  wasJumpCheck(int16_t raw);      // after wasCheck(): an angle change faster than wheels turn blocks autosteer
+bool  steerStuckCheck(bool on, int16_t pwm, float angle, float setPoint);   // after the PID: the wheels must answer
+bool  steerStuckBlocked();            // a steer switch left on after steerStuckCheck() turned autosteer off
+extern int16_t pwmAsk;                // Autosteer.ino: the PID's output before the motor direction (AutosteerPID.ino)
 void  blockedAskNote();
 uint32_t msStamp(uint32_t now);       // the start of a timer where 0 means "not running": never 0, never ahead of now
 bool  keyaCheck();                    // KeyaCANBUS.ino
 extern bool keyaBlock;                 // KeyaCANBUS.ino: autosteer blocked by a lost Keya heartbeat
 extern bool keyaLost;                  // KeyaCANBUS.ino: no Keya heartbeat now (zWeb.ino)
 extern bool wasOut;                    // zSafety.ino: WAS voltage out of range now (zLeds.ino)
+extern bool wasJumpBlock;              // zSafety.ino: autosteer blocked by a jump of the WAS angle (zLeds.ino)
 void  steerKick(uint8_t cause, int value);
 void  steerNote254();
 void  steerNote252();

@@ -97,7 +97,7 @@ void ledsUpdate()
     ledPair(GPSRED_LED, GPSGREEN_LED, ledShown(c, now));
 
     // STEER
-    if (!Autosteer_running || wasOut || (isKeya && keyaLost)) c = LED_RED;
+    if (!Autosteer_running || wasOut || wasJumpBlock || (isKeya && keyaLost)) c = LED_RED;
     else if (watchdogTimer < WATCHDOG_THRESHOLD)              c = LED_GREEN;
     else                                                      c = LED_ORANGE;
     if (ledSteerFlickMs && now - ledSteerFlickMs < LED_FLICK_MS) c = LED_OFF;

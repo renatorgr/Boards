@@ -184,6 +184,7 @@ float steerAngleError = 0; //setpoint - actual
 
 //pwm variables
 int16_t pwmDrive = 0, pwmDisplay = 0;
+int16_t pwmAsk = 0;   // AiO_WEB: the PID's output before the motor direction, + = the angle must go down (zSafety.ino)
 float pValue = 0;
 float errorAbs = 0;
 float highLowPerDeg = 0;
@@ -571,7 +572,11 @@ void autosteerLoop()
 
 		// WAS voltage check (zSafety.ino). Out of range (wire, plug, sensor) = autosteer
 		// blocked and turned off like a kickout, so the program sees the switch off.
-		if (!keyaWas && wasCheck(steeringPosition))
+		// AiO_WEB: the same for a jump of the angle faster than wheels turn (a plug out that floats inside the
+		// range), and, with a steer switch left on, after the wheels did not follow (steerStuckCheck below).
+		const bool wasBad  = !keyaWas && wasCheck(steeringPosition);
+		const bool wasJump = !keyaWas && wasJumpCheck(steeringPosition);
+		if (wasBad || wasJump || steerStuckBlocked())
 		{
 			steerSwitch = 1;
 			currentState = 1;
@@ -711,6 +716,16 @@ void autosteerLoop()
 			keyaIntendToSteer = false;  // Keya: motorDrive() sends it the disable command
 			motorDrive(); //out to motors the pwm value
 			pulseCount = 0;
+		}
+
+		// AiO_WEB: pushed at the Max Limit, the wheels must follow (zSafety.ino): a WAS plug out or a broken wire
+		// can read a still angle inside the voltage range while the wheels turn on. Off now, like a kickout.
+		if (steerStuckCheck(steerOn && !keyaWas, pwmAsk, steerAngleActual, steerAngleSetPoint))
+		{
+			steerSwitch = 1;
+			currentState = 1;
+			previous = 0;
+			watchdogTimer = WATCHDOG_FORCE_VALUE;
 		}
 		steerOnNote(steerOn);              // on -> off: why (zSafety.ino)
 	} //end of timed loop
