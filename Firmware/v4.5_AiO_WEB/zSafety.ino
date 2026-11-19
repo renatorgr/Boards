@@ -21,6 +21,8 @@
 //     WAS_H is under WAS_L, which happens when nothing is wired to WAS_L (AmpSeal pin 3, it floats near
 //     5 V): a 3-wire sensor with the program set to Differential. The reading would be a large angle to
 //     one side (-98 deg for -3.67 V), so this is a fault with the hint to choose Single.
+//     A plug out or a broken wire can float inside the range: the angle then jumps faster than wheels
+//     turn (blocked at once), or reads still while the module pushes at its Max Limit (autosteer off).
 //   - Why autosteer went off: switch, button, pressure / current / encoder kickout, WAS, the program
 //     silent. Shown on the program's screen (PGN 221), in the [status] messages and on the web page.
 //   - Hardware watchdog (WDOG1): the Teensy restarts if the loop stops for 2 s. 0.5 s before, an
@@ -28,8 +30,8 @@
 //   - Crash (a fault): before the Teensy core's crash handler, faultHook switches the autosteer outputs
 //     off at once and notes the code that called the crashed function.
 //   - Why the Teensy started (power, restart, watchdog, crash), at boot and on the web page.
-// Autosteer.ino calls wasCheck(), steerKick(), steerOnNote() and sensorViewNote() from its 40 Hz
-// steering loop; loop() calls wdtFeed().
+// Autosteer.ino calls wasCheck(), wasJumpCheck(), steerStuckCheck(), steerKick(), steerOnNote() and
+// sensorViewNote() from its 40 Hz steering loop; loop() calls wdtFeed().
 
 #include "zSafety.h"      // SteerOff, BootWhy (included first by the main .ino)
 #include "zVersion.h"     // FW_NAME (in the crash and watchdog lines)
@@ -142,7 +144,181 @@ bool wasCheck(int16_t raw)
     return wasBlock;
 }
 
-// The program asks to steer while the WAS check or a lost Keya blocks autosteer: say why again on the
+// ---------------------------------------------------------------- WAS jump, and wheels that do not answer
+// A WAS plug out or a broken signal wire is not always out of range: the open input floats, and it can settle
+// anywhere inside 0.2-4.8 V (a Puma, 19 Nov 2026: 3.93 V with the plug out, an angle of 29 deg, no fault). The
+// voltage check above cannot tell that from a sensor; the angle can, in two ways:
+//   - a jump: the angle changes faster than wheels turn, as the input runs to its floating voltage when the
+//     plug comes out (or back to the sensor's when it goes in). Autosteer is blocked at once, also standing
+//     still with autosteer off, and the program's screen says it.
+//   - wheels that do not follow: the module pushes at its Max Limit and the angle does not move towards the
+//     set point. A floating input reads a still angle while the wheels turn: autosteer goes off.
+// Both belong to the WAS check: off with it (a bench without a WAS), and not used with a Keya as the WAS.
+#define WAS_JUMP_DEG      20.0f   // a change this large...
+#define WAS_JUMP_WIN_MS   150     // ...within this time (133 deg/s) is a jump: wheels turn 25-40 deg/s under
+                                  //    autosteer, about 80 with a fast hand on a quick steering...
+#define WAS_JUMP_KEEP_MS  50      // ...when it lasts this long (one bad reading comes back: not a jump)
+#define WAS_JUMP_HOLD_MS  3000    // the block ends this long after the last jump (with a steer switch, once it is off)
+#define WAS_HIST_N        20      // readings kept: more than WAS_JUMP_WIN_MS at 100 Hz
+#define STUCK_MS          500     // pushing hard this long, the wheels...
+#define STUCK_FIRST_MS    800     // (from the start of a push: the valve or motor takes up to 0.3 s to react)
+#define STUCK_DEG         1.0f    // ...must move this far towards the set point
+#define STUCK_PWM_PCT     90      // pushing hard: the PID's output at 90 % of the Max Limit (highPWM) or more
+
+bool     wasJumpBlock = false;    // autosteer blocked by a jump
+uint32_t wasJumps     = 0;        // jumps since start-up
+float    wasJumpDeg   = 0;        // the last one, degrees
+bool     stuckBlock   = false;    // autosteer turned off by wheels that did not follow, a steer switch still on
+static uint32_t wasJumpMs = 0;    // when the last jump was seen
+static int16_t  histRaw[WAS_HIST_N];
+static uint32_t histMs[WAS_HIST_N];
+static uint8_t  histHead = 0, histCount = 0;   // the next place to write, readings kept
+static uint32_t candMs = 0;       // a change of WAS_JUMP_DEG seen, waiting WAS_JUMP_KEEP_MS (0 = none)
+static int16_t  candFrom = 0;     // the reading it jumped from...
+static int8_t   candSide = 0;     // ...and which way
+static float    stepPeak[2] = {0, 0};   // the largest change within WAS_JUMP_WIN_MS: this 10 s window and the one before
+static uint32_t stepPeakMs = 0;
+
+static float wasCpd()             // the program's counts per degree (PGN 252)
+{
+    return steerSettings.steerSensorCounts >= 1.0f ? steerSettings.steerSensorCounts : 1.0f;
+}
+
+// The largest change of the angle within WAS_JUMP_WIN_MS in the last 10 to 20 s (web page: how fast a plug
+// pulled out moves the reading, against what the wheels do)
+float wasStepPeak() { return stepPeak[0] > stepPeak[1] ? stepPeak[0] : stepPeak[1]; }
+
+// The texts of the jump check (rare: in flash, not in RAM1). what: 0 a jump blocks autosteer, 1 another jump
+// while it blocks, 2 the block is over.
+FLASHMEM void wasJumpSay(uint8_t what, int16_t from, int16_t to)
+{
+    const float v0 = from * WAS_V_PER_COUNT, v1 = to * WAS_V_PER_COUNT;
+    if (what == 0)
+    {
+        StatusLog.line("[status] WAS: the angle jumped %.1f deg, more than %.0f in %.2f s (%.2f V to %.2f V): faster than wheels turn - WAS plug, wire or sensor? - autosteer blocked",
+                       wasJumpDeg, WAS_JUMP_DEG, WAS_JUMP_WIN_MS / 1000.0f, v0, v1);
+        char m[64];
+        snprintf(m, sizeof(m), "WAS jumped %d deg: plug or wire? Autosteer blocked", (int)(wasJumpDeg + 0.5f));
+        hwMessage(m, 8, true);
+    }
+    else if (what == 1)
+        StatusLog.line("[status] WAS: the angle jumped again, %.1f deg (%.2f V to %.2f V) - autosteer stays blocked", wasJumpDeg, v0, v1);
+    else
+        StatusLog.line("[status] WAS: no jump for %u s - autosteer can be engaged again (check the wheel angle on the program's screen first)",
+                       (unsigned)(WAS_JUMP_HOLD_MS / 1000));
+}
+
+// Called with every WAS reading after wasCheck() (40 or 100 Hz, Autosteer.ino). True: autosteer must stay off.
+bool wasJumpCheck(int16_t raw)
+{
+    const uint32_t now = millis();
+    const float cpd = wasCpd();
+    if (cfg.wasCheckOff || wasBadMs) { histCount = 0; candMs = 0; }   // the check off, or the voltage out of range (wasCheck's)
+    else
+    {
+        // the reading furthest from this one within WAS_JUMP_WIN_MS
+        int16_t farRaw = raw;
+        for (uint8_t k = 0; k < histCount; k++)
+        {
+            const uint8_t i = (uint8_t)((histHead + WAS_HIST_N - 1 - k) % WAS_HIST_N);
+            if (now - histMs[i] > WAS_JUMP_WIN_MS) break;
+            if (abs(histRaw[i] - raw) > abs(farRaw - raw)) farRaw = histRaw[i];
+        }
+        const float stepDeg = abs(farRaw - raw) / cpd;
+        if (stepDeg > stepPeak[0]) stepPeak[0] = stepDeg;
+        if (now - stepPeakMs >= 10000) { stepPeakMs = now; stepPeak[1] = stepPeak[0]; stepPeak[0] = stepDeg; }
+
+        if (candMs)
+        {
+            // a jump stays: the reading keeps that far from where it jumped from, on the same side
+            const bool stays = (raw - candFrom) * candSide > 0 && abs(raw - candFrom) / cpd >= WAS_JUMP_DEG;
+            if (!stays)
+            {
+                candMs = 0;
+                histCount = 0;            // a bad reading: forget it, or the next readings would "jump" from it
+            }
+            else if (now - candMs >= WAS_JUMP_KEEP_MS)
+            {
+                candMs = 0;
+                histCount = 0;            // the next jump is measured from here
+                wasJumpDeg = abs(raw - candFrom) / cpd;
+                wasJumps++;
+                wasJumpSay(wasJumpBlock ? 1 : 0, candFrom, raw);
+                wasJumpBlock = true;
+                wasJumpMs = msStamp(now);
+            }
+        }
+        else if (stepDeg >= WAS_JUMP_DEG)
+        {
+            candMs = msStamp(now);
+            candFrom = farRaw;
+            candSide = raw > farRaw ? 1 : -1;
+        }
+        histRaw[histHead] = raw;
+        histMs[histHead] = now;
+        histHead = (uint8_t)((histHead + 1) % WAS_HIST_N);
+        if (histCount < WAS_HIST_N) histCount++;
+    }
+    // The block ends WAS_JUMP_HOLD_MS after the last jump and, with a steer switch, once the switch is seen off
+    // (as the WAS check's). The plug may still be out then: steerStuckCheck() below turns autosteer off again
+    // when the wheels do not follow.
+    if (wasJumpBlock && now - wasJumpMs >= WAS_JUMP_HOLD_MS && (!steerConfig.SteerSwitch || digitalRead(STEERSW_PIN) == HIGH))
+    {
+        wasJumpBlock = false;
+        wasJumpSay(2, 0, 0);
+    }
+    if (cfg.wasCheckOff) wasJumpBlock = false;
+    return wasJumpBlock;
+}
+
+// The text when the wheels did not follow (rare: in flash)
+FLASHMEM void steerStuckSay(int pwm, uint32_t ms, float from, float to, float setPoint)
+{
+    StatusLog.line("[status] Autosteer: PWM %d for %.1f s and the wheel angle went from %.1f to %.1f deg (asked %.1f): the wheels did not follow. WAS plug or wire, a hand on the wheel or the wheels at a stop? - autosteer off",
+                   pwm, ms / 1000.0f, from, to, setPoint);
+}
+
+// Called every steering loop after the PID (Autosteer.ino). on: steering now, with a WAS; pwm: the PID's output
+// before the motor direction (+ = the angle must go down); angle and setPoint in degrees, as the program sees
+// them. True: autosteer off now (the cause is SO_STUCK).
+bool steerStuckCheck(bool on, int16_t pwm, float angle, float setPoint)
+{
+    static uint32_t pushMs = 0;    // since when the module pushes hard one way (0 = not now)
+    static float    pushFrom = 0;  // the wheel angle then
+    static int8_t   pushDir = 0;   // the way the angle must go: +1 / -1
+    static bool     pushFirst = false;   // the first stretch of this push (the steering's reaction time in it)
+    const uint32_t now = millis();
+    const int hi = steerSettings.highPWM, lo = steerSettings.minPWM;
+    // Pushing hard: the PID at its Max Limit, a large error. Not judged:
+    //  - a Max Limit hardly above Min To Move (the wheels may only creep at it);
+    //  - a set point past the program's maximum wheel angle (PGN 247; 35 deg when the program does not send it):
+    //    the program drives the wheels to a stop on purpose (the steer wizard's Maximum Steering Angle step asks
+    //    for 60 deg and waits for them to stand still there);
+    //  - the WAS check off (a bench without a WAS: the angle reads still).
+    const float lockDeg = aowMaxSteerDeg ? aowMaxSteerDeg + 2.0f : 35.0f;
+    const bool hard = on && !cfg.wasCheckOff && hi >= lo + 10 && abs(pwm) * 100 >= hi * STUCK_PWM_PCT && fabsf(setPoint) <= lockDeg;
+    if (!hard) { pushMs = 0; return false; }
+    const int8_t dir = pwm > 0 ? -1 : 1;
+    if (!pushMs || dir != pushDir) { pushMs = msStamp(now); pushFrom = angle; pushDir = dir; pushFirst = true; return false; }
+    if ((angle - pushFrom) * dir >= STUCK_DEG) { pushMs = msStamp(now); pushFrom = angle; pushFirst = false; return false; }   // they follow: the next stretch from here
+    const uint32_t waitMs = pushFirst ? STUCK_FIRST_MS : STUCK_MS;
+    if (now - pushMs < waitMs) return false;
+    pushMs = 0;
+    steerStuckSay(abs(pwm), waitMs, pushFrom, angle, setPoint);
+    steerKick(SO_STUCK, abs(pwm));
+    stuckBlock = steerConfig.SteerSwitch;   // a steer switch would turn it on again at once: off until it is seen off
+    return true;
+}
+
+// Called at the top of the steering loop (Autosteer.ino): a steer switch still on after steerStuckCheck()
+// turned autosteer off keeps it off, until the switch is seen off.
+bool steerStuckBlocked()
+{
+    if (stuckBlock && (!steerConfig.SteerSwitch || digitalRead(STEERSW_PIN) == HIGH)) stuckBlock = false;
+    return stuckBlock;
+}
+
+// The program asks to steer while the WAS check (voltage or jump) or a lost Keya blocks autosteer: say why again on the
 // program's screen. wasCheck() and keyaCheck() say it once, when the fault starts, and that is often
 // before the program runs (a bench board with no WAS reads about 4.9 V from power-on); after that the
 // module just does not steer, and the program only shows its AutoSteer button red. Once each time the
@@ -150,15 +326,21 @@ bool wasCheck(int16_t raw)
 // starts while the program already asks: wasCheck() / keyaCheck() have just said it.
 // A fault that is over (the WAS back in range, the Keya answering) blocks on only until a steer switch
 // left on is turned off: then that is what it says, not the fault. With both blocks every one gets its
-// line in Messages; the program's screen has room for one, the WAS.
+// line in Messages; the program's screen has room for one, the WAS. A steer switch left on after the wheels did
+// not follow (steerStuckCheck) is said the same way.
 FLASHMEM void blockedSay()
 {
     static uint32_t saidMs = 0;
     const uint32_t now = millis();
-    if (!wasBlock && !keyaBlock) return;
+    if (!wasBlock && !keyaBlock && !wasJumpBlock && !stuckBlock) return;
     if (saidMs && now - saidMs < 3000) return;
     saidMs = now | 1;
     char m[64];
+    if (stuckBlock)
+    {
+        snprintf(m, sizeof(m), "Wheels did not follow: steer switch off and on");
+        StatusLog.line("[status] The program asks to steer: autosteer stays off, the wheels did not follow the last time - turn the steer switch off and on again (check the WAS plug first)");
+    }
     if (keyaBlock)
     {
         if (keyaLost)
@@ -170,6 +352,19 @@ FLASHMEM void blockedSay()
         {
             snprintf(m, sizeof(m), "Keya answers again: steer switch off and on");
             StatusLog.line("[status] The program asks to steer: the Keya motor answers again - turn the steer switch off and on again to engage autosteer");
+        }
+    }
+    if (wasJumpBlock)
+    {
+        if (now - wasJumpMs < WAS_JUMP_HOLD_MS)
+        {
+            snprintf(m, sizeof(m), "WAS jumped %d deg: plug or wire? Autosteer blocked", (int)(wasJumpDeg + 0.5f));
+            StatusLog.line("[status] The program asks to steer: autosteer blocked, the WAS angle jumped %.1f deg (plug or wire?)", wasJumpDeg);
+        }
+        else
+        {
+            snprintf(m, sizeof(m), "WAS jump over: steer switch off and on");
+            StatusLog.line("[status] The program asks to steer: the WAS jump is over - turn the steer switch off and on again to engage autosteer");
         }
     }
     if (wasBlock)
@@ -196,7 +391,7 @@ void blockedAskNote()
 {
     static bool asked = false;
     const bool ask = (guidanceStatus & 1) != 0;
-    if (ask && !asked && (wasBlock || keyaBlock)) blockedSay();
+    if (ask && !asked && (wasBlock || keyaBlock || wasJumpBlock || stuckBlock)) blockedSay();
     asked = ask;
 }
 
@@ -274,6 +469,8 @@ const char* offName(uint8_t c)          // for the web page
         case SO_ANGLE:    return "angle";
         case SO_FAST:     return "fast";
         case SO_KEYA_LOST: return "keyalost";
+        case SO_WAS_JUMP: return "wasjump";
+        case SO_STUCK:    return "stuck";
         default:          return "";
     }
 }
@@ -303,6 +500,8 @@ static void offText(char* b, size_t n, uint8_t c, int v)
         case SO_ANGLE:    snprintf(b, n, "wheel angle %d deg, beyond +-50", v); break;
         case SO_FAST:     snprintf(b, n, "speed %d km/h, above %u", v, (unsigned)cfg.steerMaxKmh); break;
         case SO_KEYA_LOST: snprintf(b, n, "Keya not responding (no heartbeat for 0.5 s)"); break;
+        case SO_WAS_JUMP: snprintf(b, n, "WAS jump (%d deg, plug or wire?)", v); break;
+        case SO_STUCK:    snprintf(b, n, "wheels did not follow (PWM %d): WAS plug?", v); break;
         default:          snprintf(b, n, "other"); break;
     }
 }
@@ -319,6 +518,7 @@ void steerOnNote(bool on)
     int v = 0;
     if (wasBlock)                                           c = SO_WAS;
     else if (keyaBlock)                                     c = SO_KEYA_LOST;
+    else if (wasJumpBlock)                                  { c = SO_WAS_JUMP; v = (int)(wasJumpDeg + 0.5f); }
     else if (kickCause != SO_NONE && now - kickMs < 500)    { c = kickCause; v = kickValue; }
     else if (pgn254Ms == 0 || now - pgn254Ms > 1000)        c = SO_SILENT;
     else if (steerSwitch == 1 && steerConfig.SteerSwitch)   c = SO_SWITCH;
@@ -338,7 +538,7 @@ void steerOnNote(bool on)
     char t[72];
     offText(t, sizeof(t), c, v);
     StatusLog.line("[status] Autosteer OFF: %s", t);
-    if (c == SO_WAS || c == SO_KEYA_LOST) return;           // wasCheck() / keyaCheck() have put it on the program's screen
+    if (c == SO_WAS || c == SO_KEYA_LOST || c == SO_WAS_JUMP) return;   // wasCheck() / keyaCheck() / wasJumpCheck() have put it on the program's screen
     char m[96];
     snprintf(m, sizeof(m), "Autosteer off: %s", t);
     const bool byHand = c == SO_SWITCH || c == SO_BUTTON;

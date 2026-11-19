@@ -452,6 +452,10 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.num("wasV", wasVolts, 2);
     j.bo("wasOut", wasOut);
     j.bo("wasBlock", wasBlock);
+    j.bo("wasJump", wasJumpBlock);      // AiO_WEB 19 Nov 2026: blocked by a jump of the angle (zSafety.ino)...
+    j.u("wasJumps", wasJumps);          // ...jumps since start-up, the last one in degrees
+    j.num("wasJumpDeg", wasJumpDeg, 1);
+    j.num("wasStep", wasStepPeak(), 1); // the largest change within 0.15 s, last 10-20 s
     j.bo("wasZero", wasBenchZero());   // angle sent as 0 deg (bench)
     j.bo("wasCheck", cfg.wasCheckOff == 0);
     // (a Keya with "Current Turn" on: the value is its own current, whatever else is ticked in the program)

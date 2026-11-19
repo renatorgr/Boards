@@ -543,6 +543,7 @@ function Module(key) {
    line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line
    loopMs: cfg.steerLoop100 ? 10 : 25, loopHz: cfg.steerLoop100 ? 100 : 40,
    adc: true, wasRaw: wasRaw, wasV: r2(wasV, 2), wasOut: false, wasBlock: false, wasZero: false, wasCheck: !cfg.wasCheckOff,
+   wasJump: false, wasJumps: 0, wasJumpDeg: 0, wasStep: r2(Math.abs(Math.cos(t / 3)) * 2.5, 1),   // jump check (zSafety.ino): the largest change in 0.15 s
    sensor: sc.pressure ? "pressure" : sc.current ? "current" : "",
    // a Keya is its own current sensor: its smoothed current x 32 on the 0-255 scale (KEYA_AMPS_X, Autosteer.ino)
    sensorV: !kick ? 0 : keya ? Math.round(keyaAmps * 32) : Math.round(engaged ? 14 + 6 * Math.abs(Math.sin(t / 3)) : 2),

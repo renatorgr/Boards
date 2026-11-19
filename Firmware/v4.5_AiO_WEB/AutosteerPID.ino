@@ -76,6 +76,7 @@ void calcSteeringPID(void)
     if (pwmDrive < -newMax) pwmDrive = -newMax;
 
     pwmDrive = steerRamp(pwmDrive);    // AiO_WEB: soft start (off by default)
+    pwmAsk = pwmDrive;                 // AiO_WEB: before the direction and the Danfoss scale (zSafety.ino steerStuckCheck)
 
     if (steerConfig.MotorDriveDirection) pwmDrive *= -1;
 
