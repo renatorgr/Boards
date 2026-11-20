@@ -309,7 +309,19 @@ const ALARMS=[[1,'Low pressure'],[2,'High pressure'],[4,'Flow too low'],[8,'Flow
 const RATE_TOLERANCE=0.10;   // the rate is green within 10 % of the target, orange outside (as AgOpenWeb's strip)
 // sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
 function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
-const pw=()=>askText('Password of the own Wi-Fi network');   // a Promise: await it
+// the own network's password, typed once: every box that asks for it (Save, Total back to 0, Restart module, Install) and
+// the Save card's field (Module tab) offer it again. Kept while this browser tab stays open, also when the page is opened
+// again in it (a reload, a web card closed and opened); forgotten when the module refuses it
+const PW_KEY='sprayerPw';
+let pwKeep='';try{pwKeep=sessionStorage.getItem(PW_KEY)||''}catch(e){}
+function pwSet(p){pwKeep=p||'';if($('pwW').value!==pwKeep)$('pwW').value=pwKeep;
+  try{if(pwKeep)sessionStorage.setItem(PW_KEY,pwKeep);else sessionStorage.removeItem(PW_KEY)}catch(e){}}
+$('pwW').value=pwKeep;$('pwW').addEventListener('input',()=>pwSet($('pwW').value));
+// the box with the password field, filled with the one kept: answers the password, or null for Cancel
+async function pwAsk(o){
+  if(!await askShow(Object.assign({input:true,pw:pwKeep,pwLabel:'Password of the own Wi-Fi network'},o)))return null;
+  pwSet($('askIn').value);return pwKeep}
+const pw=()=>pwAsk({text:'Password of the own Wi-Fi network',pwLabel:''});   // a Promise: await it
 function cells(id,n,from){let h='';for(let i=0;i<n;i++)h+='<span id="'+id+(from+i)+'">'+(from+i+1)+'</span>';return h}
 let nSecs=0,nRelays=0;
 function ago(s){return s<0?'never':s===0?'now':s+' s ago'}
@@ -415,6 +427,7 @@ async function post(url,fields,msgId,pass){
   const body=new URLSearchParams(Object.assign({pw:p},fields));
   const m=$(msgId);m.textContent='…';
   try{const r=await fetch(url,{method:'POST',body});const d=await r.json();
+    if(r.status===403)pwSet('');   // the module refused the password: the boxes ask for it again
     // saved: the fields show what the module kept, before "done" (a restart: once it is back)
     if(d.ok&&d.restart)settingsLoaded=false;
     else if(d.ok)try{await loadSettings()}catch(e){}
@@ -427,7 +440,9 @@ async function saveWifi(){const m=$('msgWifi');
   if($('apPass').value&&$('apPass').value.length<8){m.innerHTML='<span class="bad">The password must have 8 characters or more.</span>';return}
   if(!$('pwW').value){m.innerHTML='<span class="bad">Type the password of the own Wi-Fi network.</span>';$('pwW').focus();return}
   if(!await ask('Save and restart the module? Its Wi-Fi goes off for a few seconds and every section closes.'))return;
-  post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi',$('pwW').value)}
+  const np=$('apPass').value;   // a new own-network password: the one kept from now on
+  const d=await post('/api/wifi',{apSsid:$('apSsid').value,apPass:$('apPass').value,staOn:$('staOn').checked?'1':'0',staSsid:$('staSsid').value,staPass:$('staPass').value,host:$('host').value,subnet:$('subnetIn').value.trim(),ipLast:$('ipLast').value},'msgWifi',$('pwW').value);
+  if(d&&d.ok&&np)pwSet(np)}
 // Enter in the Save card's password saves, as its button does (the box is not in a form, so on its own it did nothing);
 // an empty box or a held key does nothing
 $('pwW').onkeydown=e=>{if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();if(!e.repeat&&$('pwW').value)saveWifi()};
@@ -465,7 +480,7 @@ async function report(){
   m.className='note ok';m.textContent='Downloaded: '+name;b.disabled=false;
 }
 // ---- the firmware: the one on GitHub, or a chosen .bin; both are checked here before they are sent, and every installation
-// is confirmed in one box (fwAsk) that shows what is in the file, compared with what runs now, and asks the own network's password.
+// is confirmed in one box (pwAsk) that shows what is in the file, compared with what runs now, and asks the own network's password.
 // What a .bin is: an ESP32 program (first byte 0xE9, chip 0 = the plain ESP32 of these boards) and, from the text every
 // build carries (the start of its /api/status answer, zNet.ino), which program, version, board and build.
 async function binInfo(blob,name){
@@ -483,8 +498,7 @@ async function binInfo(blob,name){
 }
 function infoText(i){return i.fw+' '+verText(i.ver,i.built)+(i.board?' for the '+i.board:'')}
 function progMsg(t,c){const m=$('msgProg');m.className='msg'+(c?' '+c:'');m.textContent=t}
-// pwKeep: the password typed in the box, offered again while this page stays open (forgotten when the module refuses it)
-let busy=false,waitBoot=false,upBefore=0,fwNow=null,pwKeep='';
+let busy=false,waitBoot=false,upBefore=0,fwNow=null;
 // what the module runs; after an installation, the restart is seen when it is up again for less time than before
 function running(d){
   const k=d.fw+' '+d.ver+' '+d.built+' '+d.board,was=fwNow&&fwNow.key;
@@ -502,11 +516,6 @@ function fwButtons(){
 // newer, the same or older than the firmware running now
 function cmpNow(ver,built){return fwNow?(ver&&fwNow.ver?verCmp(ver,fwNow.ver):0)||builtCmp(built,fwNow.built):NaN}
 function verdict(c){return c>0?['✓ Newer than the one installed.','ok']:c===0?['The same as the one installed.','']:c<0?['Older than the one installed.','warn']:null}
-// the one confirmation box of this tab, with the own network's password: answers the password, or null for Cancel
-async function fwAsk(o){
-  if(!await askShow(Object.assign({input:true,pw:pwKeep,pwLabel:'Password of the own Wi-Fi network'},o)))return null;
-  pwKeep=$('askIn').value;return pwKeep;
-}
 // Install from a file: the file is read as soon as it is chosen, and the box says what it is
 async function binChosen(){
   const inp=$('bin'),f=inp.files[0];inp.value='';   // choosing the same file again is a new choice
@@ -517,7 +526,7 @@ async function binChosen(){
   if(i.error){
     if(await askShow({title:'This file cannot be installed',rows:[['File',file]],verdict:['✗ '+i.error,'bad'],okText:'Choose another file',noText:'Close'}))inp.click();
     return}
-  const p=await fwAsk({title:'Install this file?',rows:[['File',file],['Inside',infoText(i)],['Runs now',infoText(fwNow)]],
+  const p=await pwAsk({title:'Install this file?',rows:[['File',file],['Inside',infoText(i)],['Runs now',infoText(fwNow)]],
     verdict:verdict(cmpNow(i.ver,i.built)),text:'The sections close during the update.',okText:'Install'});
   if(p===null)return;
   busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;
@@ -532,17 +541,16 @@ function sendBin(blob,name,pass,p0){
   const fail=t=>{busy=false;g.hidden=true;progMsg(t,'bad');fwButtons()};
   x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
     if(x.status===200&&j.ok){g.value=100;waitBoot=true;progMsg('Installed. The module is restarting…','warn')}
-    else{if(x.status===403)pwKeep='';fail('Not installed: '+(j.error||('error '+x.status))+'. The current firmware keeps running.')}};
+    else{if(x.status===403)pwSet('');fail('Not installed: '+(j.error||('error '+x.status))+'. The current firmware keeps running.')}};
   x.onerror=()=>fail('The connection failed. The current firmware keeps running.');
   x.send(fd);
 }
 // Restart module: the same box, with the password
 async function restartModule(){
   if(busy)return;
-  const p=await fwAsk({title:'Restart the module?',text:'Every section closes for a few seconds.',okText:'Restart'});
+  const p=await pwAsk({title:'Restart the module?',text:'Every section closes for a few seconds.',okText:'Restart'});
   if(p===null)return;
-  const d=await post('/api/restart',{},'msgProg',p);
-  if(d&&!d.ok&&/password/.test(d.error||''))pwKeep='';
+  post('/api/restart',{},'msgProg',p);
 }
 
 // ---- a newer firmware on GitHub (renatorgr/Boards, Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin). firmware.json, written
@@ -592,7 +600,7 @@ function renderGh(){
 async function ghInstall(){
   if(!ghNewer()||busy)return;
   const name=gh.file.split('/').pop(),want=gh.size||0;
-  const pass=await fwAsk({title:'Install from GitHub?',rows:[['On GitHub',fwNow.fw+' '+verText(gh.version,gh.built)],['Runs now',infoText(fwNow)]],
+  const pass=await pwAsk({title:'Install from GitHub?',rows:[['On GitHub',fwNow.fw+' '+verText(gh.version,gh.built)],['Runs now',infoText(fwNow)]],
     verdict:verdict(ghCmp()),text:'The sections close during the update.',okText:'Install'});
   if(pass===null)return;
   busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;

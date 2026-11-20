@@ -4,7 +4,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m, driven by **AgOp
 **AgOpenGPS** over Wi-Fi, on an **ESP32 8-relay board**. It also measures boom
 pressure and flow, and has its own web page.
 
-Version 0.10.8 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
+Version 0.10.9 (successor of [Sprayer_Nano](../Sprayer_Nano) v0.3): runs on the bench, not yet
 tested on the sprayer.
 
 ## Changelog
@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.10.5**: the page's questions (save and restart, install, password) in its own box: the browser's pop-ups show nothing inside an AgOpenWeb web card, so those buttons did nothing there ([How it works](#how-it-works)). |
@@ -82,7 +83,7 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
     asks GitHub, so it needs internet: open the page over the tractor network, not over the
     module's own Wi-Fi. Each install and the restart are confirmed in one box: it says what
     the file holds (version, build date, board) against what runs now, newer, the same or
-    older, and asks the own network's password (offered again while the page stays open).
+    older, and asks the own network's password.
     A `.bin` for another board, another module's program or the `.merged.bin` is refused in
     that box as soon as it is chosen, with the reason.
   Every question the page asks (save and restart, install a program, the password) opens in
@@ -90,6 +91,11 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   pop-ups show nothing, so those buttons did nothing there. Enter is its OK, but not in an empty
   password field, and a held Enter answers nothing (the key that pressed a button cannot also
   confirm it). Enter in the password at the end of *Network settings* saves, as its button does.
+  The own network's password is typed once: every box that asks for it (Save, *Total back to
+  0*, *Restart module*, an install) and the field at the end of *Network settings* offer it
+  again, while the browser tab stays open, also after a reload or a web card closed and
+  opened again. It is forgotten when the module refuses it, and a new one saved in *Network
+  settings* takes its place.
   The tabs at the top are 44 px high,
   with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
   Without the board, the page can be tried in the
@@ -159,7 +165,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.8` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.9` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 

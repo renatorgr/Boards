@@ -628,7 +628,11 @@ async function teensy(browser, port, q, name) {
   await pg.fill("#pLow", "7");
   await pg.click("button[onclick='saveSpray()']"); await pg.waitForTimeout(800);
   await expectSoon(pg, what, "#msgSpray", /the minimum pressure must be below the maximum/);
-  await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(1500);
+  // the password typed in the first box is offered in every next one (here: Total back to 0), and OK sends it
+  await holdAsk(pg, true);
+  await pg.getByRole("button", {name: "Total back to 0"}).click(); await pg.waitForTimeout(300);
+  if (await pg.inputValue("#askIn") !== "agopengps") { fail.push(what + ": the password typed before is not offered again in the next box"); await pg.fill("#askIn", "agopengps"); }
+  await pg.click("#askYes"); await holdAsk(pg, false); await pg.waitForTimeout(1200);
   await expectSoon(pg, what, "#msgTotal", /done/);
   await expectSoon(pg, what, "#total", /^0\.\d L$/);
   await expectSoon(pg, what, "#log", /total set to 0 from the page/);
@@ -641,7 +645,8 @@ async function teensy(browser, port, q, name) {
   if ((await pg.locator("#relays span").count()) !== 8) fail.push(what + ": expected the X8 board's 8 relays");
   await expect(pg, what, "#relayNote", /^8 relays, 8 of them sections/);
   // the Wi-Fi settings as on the XIAO page: "Search for networks" lists what the module hears, strongest first, and a tap
-  // chooses one; Save wants the password typed in its card (nothing is saved here: the module would restart)
+  // chooses one; Save wants the password typed in its card (nothing is saved here: the module would restart). The one typed in
+  // the boxes is already in that field: emptied, Save asks for it
   await pg.click("#scan");
   await expectSoon(pg, what, "#scanMsg", /^4 networks · tap one to choose it$/);
   if ((await pg.locator("#netList button").count()) !== 4) fail.push(what + ": expected 4 networks in the list");
@@ -649,6 +654,8 @@ async function teensy(browser, port, q, name) {
   await pg.locator("#netList button", {hasText: "Phone hotspot"}).click();
   if (await pg.inputValue("#staSsid") !== "Phone hotspot" || !(await pg.isChecked("#staOn"))) fail.push(what + ": a tap on a network does not choose it");
   if ((await pg.locator("#netList button.sel").count()) !== 1) fail.push(what + ": the network chosen is not marked");
+  if (await pg.inputValue("#pwW") !== "agopengps") fail.push(what + ": the password typed in the boxes is not in the Network settings field");
+  await pg.fill("#pwW", "");
   await pg.click("button[onclick='saveWifi()']");
   await expectSoon(pg, what, "#msgWifi", /^Type the password of the own Wi-Fi network\.$/);
   await shot(pg, "sprayer-module");
@@ -724,8 +731,9 @@ async function teensy(browser, port, q, name) {
   await pg.close();
  }
  // the sprayer page inside a web card: Save and restart (Module tab) asks yes / no (Escape is a no); Restart module (Firmware tab)
- // and a chosen .bin ask in one box with the password (Cancel does nothing, Enter with no password typed does nothing, Enter after
- // the password restarts the module); the box with the most in it still fits the smallest card
+ // and a chosen .bin ask in one box with the password, the one typed in Network settings already in it (Cancel does nothing, Enter
+ // with no password does nothing, a wrong one is refused and forgotten, Enter after the right one restarts the module, which is
+ // offered again after the restart and when the page is opened again); the box with the most in it still fits the smallest card
  {
   const what = "Sprayer page in a web card";
   const [pg, fr] = await card(browser, port, "/Boards/sprayer/#module", what);
@@ -745,18 +753,33 @@ async function teensy(browser, port, q, name) {
    await fr.setInputFiles("#bin", onMain);
    await askShown(fr, what, /^The sections close during the update\.$/, true, /^Install this file\?$/);
    await expect(fr, what, "#askPwL", /^Password of the own Wi-Fi network$/);
+   if (await fr.inputValue("#askIn") !== "agopengps") fail.push(what + ": the password typed in Network settings is not offered in the install box");
    await shot(pg, "sprayer-card-file");
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await fr.click("#restart");
    await askShown(fr, what, /^Every section closes for a few seconds\.$/, true, /^Restart the module\?$/);
+   if (await fr.inputValue("#askIn") !== "agopengps") fail.push(what + ": the password is not offered again in the restart box");
    await shot(pg, "sprayer-card-password");
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await expect(fr, what, "#msgProg", /^$/);
    await fr.click("#restart");
-   await fr.locator("#askIn").press("Enter"); await fr.waitForTimeout(200);
+   await fr.fill("#askIn", ""); await fr.locator("#askIn").press("Enter"); await fr.waitForTimeout(200);
    if (!(await fr.locator("#ask").isVisible())) { fail.push(what + ": Enter with no password typed answers the question"); await fr.click("#restart"); }
+   await fr.fill("#askIn", "wrongpass"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Enter");
+   await expectSoon(fr, what, "#msgProg", /^wrong password$/);
+   if (await fr.inputValue("#pwW") !== "") fail.push(what + ": a refused password stays in the Network settings field");
+   await fr.click("#restart");
+   await askShown(fr, what, /^Every section closes for a few seconds\.$/, true, /^Restart the module\?$/);
+   if (await fr.inputValue("#askIn") !== "") fail.push(what + ": a refused password is offered again");
    await fr.fill("#askIn", "agopengps"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Enter");
    await expectSoon(fr, what, "#msgProg", /^done, restarting/);
+   await fr.waitForTimeout(3000);
+   await fr.click("#restart");
+   await askShown(fr, what, /^Every section closes for a few seconds\.$/, true, /^Restart the module\?$/);
+   if (await fr.inputValue("#askIn") !== "agopengps") fail.push(what + ": the password is not offered again after the restart");
+   await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
+   await fr.evaluate(() => location.reload()); await fr.waitForTimeout(2500);   // the page opened again in the same tab
+   if (await fr.inputValue("#pwW") !== "agopengps") fail.push(what + ": the password is forgotten when the page is opened again");
   }
   await pg.close();
  }
