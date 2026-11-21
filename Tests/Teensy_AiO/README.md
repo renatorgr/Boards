@@ -111,7 +111,7 @@ the reason; the report says when a listed bug passes again, so its line can come
 
 ## What it found
 
-The first run (21 Nov 2026) found six things in the firmware, listed in `known-bugs.txt` with the fix each needs:
+The first run (21 Nov 2026) found five things in the firmware, listed in `known-bugs.txt` with the fix each needs:
 
 - A firmware update refused because autosteer is on (or the tractor moves) reads the whole file before it answers:
   the steering loop stops for as long as the upload takes (10.6 s for the 2 MB `.hex` at 200 kB/s), the outputs as
