@@ -905,7 +905,9 @@ def drc(folder):
     rep = os.path.join(folder, "drc.rpt")
     code = ("import pcbnew,sys\nb=pcbnew.LoadBoard(sys.argv[1])\n"
             "pcbnew.WriteDRCReport(b,sys.argv[2],pcbnew.EDA_UNITS_MILLIMETRES,True)\n")
-    subprocess.run([sys.executable, "-c", code, os.path.join(folder, D.PROJECT + ".kicad_pcb"), rep], check=True)
+    # fixed program and code, the two paths as separate arguments (read as sys.argv), no shell
+    subprocess.run([sys.executable, "-c", code, os.path.join(folder, D.PROJECT + ".kicad_pcb"), rep],
+                   shell=False, check=True)
     txt = open(rep).read()
     counts = re.findall(r"\*\* Found (\d+) (DRC violations|unconnected pads|Footprint errors)", txt)
     dangling, current = [], None
