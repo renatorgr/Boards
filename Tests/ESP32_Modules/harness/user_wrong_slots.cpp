@@ -33,8 +33,7 @@ SCENARIO(User::WrongSlots, "two-relays-one-section", "AgOpenWeb's pin config: re
     n += driveAndCompare(w, m, 0x02, rs, 3000, n ? nullptr : &bad);
     must("follows-pin-config", n == 0, "the relays do what the pin config says (relay 2 follows section 1, not section 2)", bad);
     const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("double-said", contains(said, NO_RELAY_WORDS) || contains(said, "two relays"),
-         "the module says section 2 has no relay and section 1 has two", "the log only lists 'relays 1 1 3 4 5 6 7 8'");
+    must("double-said", contains(said, "section 2:") && contains(said, NO_RELAY_WORDS), "the module says section 2 has no relay", said);
 }
 
 SCENARIO(User::WrongSlots, "relay-on-missing-section", "pin config: relay 8 on section 12 of an 8-section boom", sprayerBoards())
@@ -47,8 +46,7 @@ SCENARIO(User::WrongSlots, "relay-on-missing-section", "pin config: relay 8 on s
     driveAndCompare(w, m, first(8), {}, 5000);
     must("section-12-never", ((m.relays() >> 7) & 1) == 0, "relay 8 stays open (section 12 is never asked for)", hex(m.relays()));
     const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("missing-section-said", contains(said, NO_RELAY_WORDS), "the module says section 8 is asked for but has no relay",
-         "the page only outlines section 8 in orange");
+    must("missing-section-said", contains(said, "section 8:") && contains(said, NO_RELAY_WORDS), "the module says section 8 has no relay", said);
 }
 
 SCENARIO(User::WrongSlots, "more-sections-than-relays", "12-section boom on the 8-relay board", { Board::SprayerX8 })
@@ -66,8 +64,8 @@ SCENARIO(User::WrongSlots, "more-sections-than-relays", "12-section boom on the 
     Json s = m.status();
     note("PGN 237 tells AgOpenWeb", "open " + s["out"]["on"].str() + " of asked " + s["aog"]["req"].str());
     const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("too-few-relays-said", contains(said, NO_RELAY_WORDS) || contains(said, "8 relays"),
-         "the module says it has only 8 relays for 12 sections (9-12 never spray)", "nothing in the log or on AgOpenWeb's screen");
+    must("too-few-relays-said", contains(said, "sections 9-12") && contains(said, NO_RELAY_WORDS),
+         "the module says sections 9-12 have no relay (8 relays for 12 sections)", said);
 }
 
 // Two seed drill modules for one wide drill: A = sections 1..R, B = sections R+1..2R (R = the board's relays)
@@ -93,6 +91,8 @@ static void twoSeeders(Board board, bool rightFirst, bool rightIp)
     {
         must("both-follow", okA && okB, chk::fmt("module A follows sections 1-%d and module B %d-%d", R, R + 1, total),
              fmt("A %s, B %s", hex(a.relays()).c_str(), hex(b.relays()).c_str()));
+        const std::string said = pageLog(a) + pageLog(b) + screenMessages(w, from);
+        must("no-false-no-relay", !contains(said, NO_RELAY_WORDS), "no 'no relay' warning: each module drives its own half", said);
         return;
     }
     // who answers on 192.168.5.123
@@ -127,8 +127,9 @@ SCENARIO(User::WrongSlots, "seeder-fewer-sections", "seed drill page set to 16 s
     const int n = driveAndCompare(w, m, first(19), inARow(m.bi.relays, 1, 16), 5000, &bad);
     must("follows-16", n == 0, "relays 1-16 follow sections 1-16, 17-19 stay off (as set)", bad);
     const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("fewer-sections-said", contains(said, NO_RELAY_WORDS) || contains(said, "17-19"),
-         "the module says AgOpenWeb asks for sections 17-19 but it is set to 16", "nothing in the log or on AgOpenWeb's screen");
+    note("AgOpenWeb's screen shows", screenMessages(w, from));
+    must("fewer-sections-said", contains(said, "sections 17-19") && contains(said, NO_RELAY_WORDS),
+         "the module says sections 17-19 have no relay (the page is set to 16 sections)", said);
 }
 
 SCENARIO(User::WrongSlots, "seeder-pin-config-19", "seed drill set to 'the program's pin config' with 19 sections (it only knows 1-16)", seederBoards())
@@ -145,8 +146,8 @@ SCENARIO(User::WrongSlots, "seeder-pin-config-19", "seed drill set to 'the progr
     const int n = driveAndCompare(w, m, first(19), rs, 5000, &bad);
     must("follows-pins", n == 0, "relays 1-16 follow the pin config, sections 17-19 have no relay", bad);
     const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("pin-config-limit-said", contains(said, NO_RELAY_WORDS) || contains(said, "only 16"),
-         "the module says sections 17-19 cannot be reached with the program's pin config", "nothing in the log or on AgOpenWeb's screen");
+    must("pin-config-limit-said", contains(said, "sections 17-19") && contains(said, NO_RELAY_WORDS),
+         "the module says sections 17-19 have no relay (the program's pin config only knows 1-16)", said);
 }
 
 SCENARIO(User::WrongSlots, "sensors-swapped", "plugs the flow meter into the pressure input and the pressure sensor into the flow input", sprayerBoards())

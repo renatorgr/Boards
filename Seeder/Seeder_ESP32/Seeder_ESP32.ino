@@ -32,7 +32,8 @@
 //       the relays back to the program's pin config, which only knows sections 1-16).
 //   - answers on port 9999 (broadcast) like the official module: 123 to the hello, 203 to the scan,
 //       237 every 200 ms (what the outputs do, as the AiO v26 sends it, plus the sections above 16: the AiO
-//       Teensy's Machine tab shows them all).
+//       Teensy's Machine tab shows them all), and 221 (a text on the program's screen) when a section this module
+//       should drive has no relay following it, again every 60 s while the program asks for it (noRelaySections()).
 //   - no message from the program for 2 s (cable or Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Seeder-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://seeder.local/
@@ -62,7 +63,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.10"
+#define FW_VERSION          "0.2.11"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -127,6 +128,9 @@ const uint8_t RELAY_CHIP[4] = { 0x24, 0x25, 0x21, 0x22 };
 #define MAX_SECTIONS        64      // AgOpenWeb has up to 64 sections (PGN 229)
 #define LISTEN_PORT         8888
 #define SEND_PORT           9999
+#define HARDWARE_MESSAGE_PGN 0xDD   // 221: a text the program shows on its screen, AgOpenGPS layout
+#define NO_RELAY_REPEAT_S   60      // while the program asks for a section no relay follows, that warning comes again this often
+#define SCREEN_NAME         "Seed drill"   // how the module's messages start on the program's screen
 
 // Output functions in the program's pin config (PGN 236), as the official Machine_UDP_v5 maps them:
 //   0 nothing, 1-16 section 1-16, 17 hydraulic lower, 18 hydraulic raise, 19 tramline right,
@@ -164,6 +168,7 @@ Preferences prefs;
 
 uint64_t sectionsReq = 0;       // sections the program asks for, section 1 = bit 0 (PGN 239, 17-64 from PGN 229)
 uint64_t sectionsOn  = 0;       // sections the relays really have open
+uint64_t noRelay     = 0;       // sections this module should drive that no relay follows (noRelayTick)
 uint32_t relayBits   = 0;       // outputs on, relay 1 = bit 0
 uint16_t sections239 = 0;       // sections 1-16 as the last PGN 239 (or 229) gave them
 uint64_t sections229 = 0;       // sections 1-64 as the last PGN 229 gave them
@@ -201,6 +206,9 @@ void outputsAllOff();
 void hydTick();
 void applyOutputs();
 uint8_t relayFn(uint8_t i);
+void noRelayTick();
+uint64_t noRelaySections();
+const char* noRelayWhere();
 void logEvent(const char* fmt, ...);
 String defaultApSsid();
 String moduleName();
@@ -320,6 +328,7 @@ void loop()
     if (now - last1000 >= 1000)     // once a second
     {
         last1000 = now;
+        noRelayTick();              // a section with no relay: the log, the page, the program's screen
         wifiWatch();
     }
 

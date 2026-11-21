@@ -18,6 +18,9 @@
 //                        0 | 0 | sections 17-64 open (6) | CRC
 //   (the official module sends it with 8 bytes of fixed content; the AiO Teensy's Machine tab reads all the
 //   sections from it). No PGN 160: the seed drill has no sensors.
+//   221 hardware message, the text the program shows on its screen for a few seconds (AgOpenGPS layout, as the
+//       AiO Teensy sends it): seconds to show, colour (0 warning, 1 normal), text of 60 bytes at most. Sent when a
+//       section has no relay (noRelayTick).
 
 static uint8_t rx[300];
 
@@ -39,6 +42,74 @@ static IPAddress broadcastIp()
 {
     return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 255);
 }
+
+// ==== shared "no-relay": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
+// PGN 221: { 0x80, 0x81, 0x7B, 221, n + 2, seconds to show, colour (0 = warning), text of n bytes (60 at most), CRC }
+static void sendHardwareMessage(const char* text, uint8_t seconds, bool warning)
+{
+    uint8_t msg[8 + 60] = { 0x80, 0x81, 0x7B, HARDWARE_MESSAGE_PGN };
+    size_t n = strlen(text);
+    if (n > 60) n = 60;
+    msg[4] = (uint8_t)(n + 2);
+    msg[5] = seconds;
+    msg[6] = warning ? 0 : 1;
+    memcpy(msg + 7, text, n);
+    sendPgn(msg, 8 + n, broadcastIp());
+}
+
+// Sections as a short list, section 1 = bit 0: "7-8", "2, 9-12"
+static void sectionList(uint64_t mask, char* out, size_t size)
+{
+    out[0] = '\0';
+    for (uint8_t i = 0; i < 64; i++)
+    {
+        if (!((mask >> i) & 1)) continue;
+        uint8_t j = i;
+        while (j < 63 && ((mask >> (j + 1)) & 1)) j++;
+        char v[12];
+        if (j == i) snprintf(v, sizeof(v), "%s%u", out[0] ? ", " : "", (unsigned)(i + 1));
+        else        snprintf(v, sizeof(v), "%s%u-%u", out[0] ? ", " : "", (unsigned)(i + 1), (unsigned)(j + 1));
+        strlcat(out, v, size);
+        i = j;
+    }
+}
+
+// Once a second: the sections this module should drive that no relay follows (noRelaySections(), each module's own
+// rule) go in noRelay for the page. The log says it when they change; the program's screen (PGN 221) when they
+// change, when the program comes back, and every NO_RELAY_REPEAT_S while the program asks for one of them.
+void noRelayTick()
+{
+    static uint64_t told = 0;
+    static uint32_t toldMs = 0;
+    static bool wasLink = false;
+    const uint32_t now = millis();
+    const uint64_t miss = noRelaySections();
+    const bool changed = miss != told, back = linkOk && !wasLink, one = __builtin_popcountll(miss) == 1;
+    wasLink = linkOk;
+    told = miss;
+    noRelay = miss;
+    char list[48], text[61];
+    sectionList(miss, list, sizeof(list));
+    if (changed)
+    {
+        if (miss) logEvent("%s %s: no relay follows %s (%s)", one ? "section" : "sections", list, one ? "it" : "them", noRelayWhere());
+        else logEvent("every section has a relay again");
+    }
+    if (!linkOk) return;
+    if (miss && (changed || back || ((sectionsReq & miss) && now - toldMs >= NO_RELAY_REPEAT_S * 1000UL)))
+    {
+        snprintf(text, sizeof(text), "%s: %s %s %s no relay (%s)", SCREEN_NAME, one ? "section" : "sections", list,
+                 one ? "has" : "have", noRelayWhere());
+        sendHardwareMessage(text, 10, true);
+        toldMs = now;
+    }
+    else if (!miss && changed)
+    {
+        snprintf(text, sizeof(text), "%s: every section has a relay again", SCREEN_NAME);
+        sendHardwareMessage(text, 3, false);
+    }
+}
+// ==== end shared "no-relay"
 
 // Every 200 ms, PGN 237 "from machine", in the layout of the AgOpenGPS AiO v26 firmware (MachineProcessor):
 // what the outputs really do (sections, lift, tramline, geo stop; all off while the program is silent) and

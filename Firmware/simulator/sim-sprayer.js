@@ -114,6 +114,13 @@ function rate(sp, link) {
 // what relay i does (relayFn): the program's pin config, AgOpenWeb's default here (sections 1-8)
 const relayFn = i => i < 8 ? i + 1 : 0;
 const hex = v => v.toString(16);                                    // sections as the module sends them (jsonHex)
+// the sections of the boom (the tool's, or the most asked for) that no relay follows (noRelaySections, up to 31 here)
+function noRelay(fn) {
+ let covered = 0, want = 0;
+ fn.forEach(f => { if (f >= 1 && f <= 31) covered |= 1 << (f - 1); });
+ for (let k = 1; k <= Math.min(31, Math.max(TOOL_CM.length, X.secTop)); k++) want |= 1 << (k - 1);
+ return (want & ~covered) >>> 0;
+}
 
 function status() {
  const t = T(), up = staUp(), link = linkOk(), sp = sprayer(), tr = M.tractor(Math.max(0, M.T()));
@@ -129,7 +136,7 @@ function status() {
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sp.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: bits, on: hex(on), onHigh: true, fn: fn},
+  out: {bits: bits, on: hex(on), noRelay: hex(noRelay(fn)), onHigh: true, fn: fn},
   spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: X.sensors & 1 ? S.r2(0.5 + sp.bar / X.pmax * 4, 2) : 0,
    pulses: Math.round(sp.total * X.ppl)},
   cal: {sensors: X.sensors, ppl: X.ppl, pmax: X.pmax, pdiv: X.pdiv},

@@ -112,6 +112,25 @@ static uint8_t boomSections()
     return top;
 }
 
+// The sections no relay follows (noRelayTick says so): those of the boom (boomSections()) and any the program has
+// asked for since the start (secTop), less those a relay follows. A hole in the pin config (AgOpenWeb's leaves pins
+// 7-8 empty as it comes) or more sections than relays: the sprayer is alone on its boom, so each one is a mistake.
+uint64_t noRelaySections()
+{
+    uint64_t covered = 0;
+    for (uint8_t i = 0; i < NUM_RELAYS; i++)
+    {
+        const uint8_t f = relayFn(i);
+        if (f >= 1 && f <= MAX_SECTIONS) covered |= (uint64_t)1 << (f - 1);
+    }
+    const uint8_t boom = boomSections(), top = boom > secTop ? boom : secTop;
+    const uint64_t want = top >= 64 ? ~(uint64_t)0 : ((uint64_t)1 << top) - 1;
+    return want & ~covered;
+}
+
+// Where to put it right, after the warning
+const char* noRelayWhere() { return "AgOpenWeb Pin config"; }
+
 // Once a second, PGN 161: the sprayer's values as ISOBUS process data (layout above). Sent with the 160.
 void sendProcessData()
 {
@@ -140,6 +159,7 @@ void sendProcessData()
     sendPgn(msg, n + 1, broadcastIp());
 }
 
+// ==== shared "no-relay": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // PGN 221: { 0x80, 0x81, 0x7B, 221, n + 2, seconds to show, colour (0 = warning), text of n bytes (60 at most), CRC }
 static void sendHardwareMessage(const char* text, uint8_t seconds, bool warning)
 {
@@ -152,6 +172,60 @@ static void sendHardwareMessage(const char* text, uint8_t seconds, bool warning)
     memcpy(msg + 7, text, n);
     sendPgn(msg, 8 + n, broadcastIp());
 }
+
+// Sections as a short list, section 1 = bit 0: "7-8", "2, 9-12"
+static void sectionList(uint64_t mask, char* out, size_t size)
+{
+    out[0] = '\0';
+    for (uint8_t i = 0; i < 64; i++)
+    {
+        if (!((mask >> i) & 1)) continue;
+        uint8_t j = i;
+        while (j < 63 && ((mask >> (j + 1)) & 1)) j++;
+        char v[12];
+        if (j == i) snprintf(v, sizeof(v), "%s%u", out[0] ? ", " : "", (unsigned)(i + 1));
+        else        snprintf(v, sizeof(v), "%s%u-%u", out[0] ? ", " : "", (unsigned)(i + 1), (unsigned)(j + 1));
+        strlcat(out, v, size);
+        i = j;
+    }
+}
+
+// Once a second: the sections this module should drive that no relay follows (noRelaySections(), each module's own
+// rule) go in noRelay for the page. The log says it when they change; the program's screen (PGN 221) when they
+// change, when the program comes back, and every NO_RELAY_REPEAT_S while the program asks for one of them.
+void noRelayTick()
+{
+    static uint64_t told = 0;
+    static uint32_t toldMs = 0;
+    static bool wasLink = false;
+    const uint32_t now = millis();
+    const uint64_t miss = noRelaySections();
+    const bool changed = miss != told, back = linkOk && !wasLink, one = __builtin_popcountll(miss) == 1;
+    wasLink = linkOk;
+    told = miss;
+    noRelay = miss;
+    char list[48], text[61];
+    sectionList(miss, list, sizeof(list));
+    if (changed)
+    {
+        if (miss) logEvent("%s %s: no relay follows %s (%s)", one ? "section" : "sections", list, one ? "it" : "them", noRelayWhere());
+        else logEvent("every section has a relay again");
+    }
+    if (!linkOk) return;
+    if (miss && (changed || back || ((sectionsReq & miss) && now - toldMs >= NO_RELAY_REPEAT_S * 1000UL)))
+    {
+        snprintf(text, sizeof(text), "%s: %s %s %s no relay (%s)", SCREEN_NAME, one ? "section" : "sections", list,
+                 one ? "has" : "have", noRelayWhere());
+        sendHardwareMessage(text, 10, true);
+        toldMs = now;
+    }
+    else if (!miss && changed)
+    {
+        snprintf(text, sizeof(text), "%s: every section has a relay again", SCREEN_NAME);
+        sendHardwareMessage(text, 3, false);
+    }
+}
+// ==== end shared "no-relay"
 
 // Once a second, after the alarms of rateTick(): the alarms as a PGN 221 message when they change (one normal-colour
 // note when the last one goes off), and again every ALARM_REPEAT_S while one is on, so the program's screen keeps it.

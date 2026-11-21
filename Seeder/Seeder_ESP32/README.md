@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 21 Nov 2026 | **0.2.10**: the tractor network's name and the module's answers to a save are shown as text, never as markup: a name with < and > in it could run a script in the page ([How it works](#how-it-works)). |
+| 21 Nov 2026 | **0.2.10**: network names and answers shown as text, never as markup ([How it works](#how-it-works)). **0.2.11**: a section with no relay is said on the page, in the log and on the program's screen; relay 1 past the last section refused ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* (Settings): the Sowing tab shows all before the program asks, relays past them idle. **0.2.6**: questions in the page's own box: the browser's pop-ups show nothing in an AgOpenWeb web card ([How it works](#how-it-works)). |
@@ -55,6 +55,16 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   many sections from the start, before the program has asked for any (it used to draw 16 until
   section 19 was asked for), and a relay past the last section does nothing. 0 = as many as
   the program asks for.
+- **Sections with no relay.** A section that no relay
+  follows never sows, while the program paints it as sown. The module says so: the Sowing
+  tab shows the sections in red with red dashes around them, the log has a line, and the
+  program's screen shows *Seed drill: sections 17-19 have no relay* (PGN 221), when it
+  starts, when it changes, and every 60 s while the program asks for one of them. With
+  *Relay 1 follows section* at 0 (the pin config) the module drives the whole drill, so
+  every section of the drill or asked for counts (the pin config only knows 1–16). With the
+  relays in a row a second module may drive the other sections, so only a section asked for
+  past *Sections on the seed drill* counts. *Relay 1 follows section* past the drill's last
+  section is refused.
 - No message from the program for **2 seconds** (cable pulled, tablet frozen): every
   relay drops and every row closes.
 - No pressure or flow sensor: no PGN 160 (that is the sprayer's).
@@ -278,6 +288,7 @@ with the network cable in use GPIO 0 carries the network clock.
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
 | 200 → 123 | hello / reply | reply carries the sections 1–16 really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
+| 221 | module → program | when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)): the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most) |
 | 237 | module → network | every 200 ms, 14 data bytes: the layout of the AgOpenGPS AiO v26 firmware, sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives), 0, 0, then sections 17–64 open (13–18). The official Machine_UDP_v5 sends 8 bytes of fixed content here; the AiO Teensy reads the sections from it |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
