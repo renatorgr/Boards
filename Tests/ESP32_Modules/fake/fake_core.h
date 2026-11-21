@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cctype>
 #include <cstddef>
 #include <cstring>
 #include <cstdio>
@@ -174,6 +175,17 @@ typedef int wifi_mode_t;
 enum wl_status_t { WL_IDLE_STATUS = 0, WL_NO_SSID_AVAIL = 1, WL_SCAN_COMPLETED = 2, WL_CONNECTED = 3,
                    WL_CONNECT_FAILED = 4, WL_CONNECTION_LOST = 5, WL_DISCONNECTED = 6 };
 enum wifi_auth_mode_t { WIFI_AUTH_OPEN = 0, WIFI_AUTH_WPA2_PSK = 3 };
+// Wi-Fi events, as the core gives them to WiFi.onEvent() (only those the programs use); the reasons are ESP-IDF's
+enum arduino_event_id_t { ARDUINO_EVENT_WIFI_STA_CONNECTED = 4, ARDUINO_EVENT_WIFI_STA_DISCONNECTED = 5,
+                          ARDUINO_EVENT_WIFI_STA_GOT_IP = 7, ARDUINO_EVENT_MAX = 99 };
+typedef arduino_event_id_t WiFiEvent_t;
+struct wifi_event_sta_disconnected_t { uint8_t ssid[32]; uint8_t ssid_len; uint8_t bssid[6]; uint8_t reason; int8_t rssi; };
+union arduino_event_info_t { wifi_event_sta_disconnected_t wifi_sta_disconnected; };
+typedef arduino_event_info_t WiFiEventInfo_t;
+typedef std::function<void(arduino_event_id_t, arduino_event_info_t)> WiFiEventFuncCb;
+enum wifi_err_reason_t { WIFI_REASON_UNSPECIFIED = 1, WIFI_REASON_AUTH_EXPIRE = 2, WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT = 15,
+                         WIFI_REASON_BEACON_TIMEOUT = 200, WIFI_REASON_NO_AP_FOUND = 201, WIFI_REASON_AUTH_FAIL = 202,
+                         WIFI_REASON_ASSOC_FAIL = 203, WIFI_REASON_HANDSHAKE_TIMEOUT = 204, WIFI_REASON_CONNECTION_FAIL = 205 };
 #define WIFI_SCAN_RUNNING (-1)
 #define WIFI_SCAN_FAILED (-2)
 
@@ -189,6 +201,7 @@ public:
     int         softAPgetStationNum();
     bool        config(IPAddress ip, IPAddress gw, IPAddress mask, IPAddress dns1 = IPAddress());
     bool        setAutoReconnect(bool) { return true; }
+    int         onEvent(WiFiEventFuncCb cb, arduino_event_id_t event = ARDUINO_EVENT_MAX);
     wl_status_t begin(const char* ssid, const char* pass);
     wl_status_t status();
     IPAddress   localIP();
@@ -328,6 +341,7 @@ public:
     bool   begin(size_t size);
     size_t write(uint8_t* data, size_t len);
     bool   end(bool evenIfRemaining = false);
+    void   abort();
     bool   hasError();
 };
 extern UpdateClass Update;
@@ -425,6 +439,9 @@ struct Device
     bool        staBegun = false;
     std::string staSsid, staPass;
     uint64_t    staBeginAt = 0;
+    std::vector<std::pair<arduino_event_id_t, WiFiEventFuncCb>> wifiEvents;   // WiFi.onEvent() (cleared before the program goes)
+    bool        staLinked = false;          // the last event said joined
+    uint64_t    staEventAt = 0;             // the last "disconnected" event (one every 3 s while it tries)
     bool        staStatic = false;
     IPAddress   staIp, staGw, staMask;
     int         scanState = -2;             // -2 none, -1 running
@@ -464,6 +481,7 @@ struct Device
 
     // helpers for the harness
     bool      staUp() const;                // joined the tractor's Wi-Fi
+    void      tickWifi();                   // the Wi-Fi events the core would give the program (before each loop())
     bool      onTractorNet() const;         // Wi-Fi joined or cable up
     IPAddress tractorIp() const;            // its IP on the tractor network (0.0.0.0 when not there)
 };

@@ -57,7 +57,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.12"
+#define FW_VERSION          "0.10.13"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

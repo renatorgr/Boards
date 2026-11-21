@@ -133,6 +133,7 @@ void Module::unload()
     if (!so_) return;
     fake::Device* before = fake::cur;
     fake::cur = &dev;
+    dev.wifiEvents.clear();                 // the callbacks are the program's code: gone with it
     dlclose(so_);
     fake::cur = before;
     so_ = nullptr;
@@ -143,6 +144,8 @@ void Module::unload()
     dev.wifiMode = WIFI_OFF;
     dev.apOn = false;
     dev.staBegun = false;
+    dev.staLinked = false;
+    dev.staEventAt = 0;
     dev.staStatic = false;
     dev.ethBegun = dev.ethOk = false;
     dev.mdnsOn = false;
@@ -171,6 +174,7 @@ void Module::step()
     if (!so_) return;
     fake::Device* before = fake::cur;
     fake::cur = &dev;
+    dev.tickWifi();
     try { loop_(); }
     catch (fake::Restart&)
     {

@@ -54,6 +54,39 @@ void ethHoldReset()
     if (LAN_POWER >= 0 && ethBegun) gpio_set_level((gpio_num_t)LAN_POWER, 0);
 }
 
+// ==== shared "wifi-why": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
+// Why the tractor's Wi-Fi was not joined: the reason of the last "disconnected" the Wi-Fi driver gave (set in its own task)
+static volatile uint8_t staReason = 0;
+
+static void onStaEvent(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) staReason = info.wifi_sta_disconnected.reason;
+    else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) staReason = 0;
+}
+
+// That reason in words, for the page and the log ("" while joined, or nothing known yet)
+static const char* staWhy()
+{
+    const uint8_t r = staReason;
+    if (!cfg.staOn || staUp() || !r) return "";
+    if (r == WIFI_REASON_NO_AP_FOUND || (r >= 210 && r <= 212)) return "no network of that name in range";   // 210-212: IDF 5
+    if (r == WIFI_REASON_AUTH_FAIL || r == WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT || r == WIFI_REASON_HANDSHAKE_TIMEOUT)
+        return "the password looks wrong";
+    if (r == WIFI_REASON_BEACON_TIMEOUT) return "the signal was lost";
+    return "the network did not let it in";
+}
+
+// Once a second (wifiWatch): the reason in the log when it changes
+static void staWhyTick()
+{
+    static const char* told = "";
+    const char* why = staWhy();
+    if (why == told) return;
+    told = why;
+    if (*why) logEvent("tractor network '%s' not joined: %s", cfg.staSsid.c_str(), why);
+}
+// ==== end shared "wifi-why"
+
 // ---------------------------------------------------------------- Wi-Fi
 void wifiStart()
 {
@@ -68,6 +101,7 @@ void wifiStart()
         const IPAddress gw(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 1);
         WiFi.config(moduleIp(), gw, IPAddress(255, 255, 255, 0), gw);
         WiFi.setAutoReconnect(true);
+        WiFi.onEvent(onStaEvent);                           // why it was not joined (staWhy)
         WiFi.begin(cfg.staSsid.c_str(), cfg.staPass.c_str());
     }
     if (!sta) ethStart();                                   // the cable, unless the tractor's Wi-Fi is chosen
@@ -95,6 +129,7 @@ void wifiWatch()
         if (cable) logEvent("network cable connected, IP %s, %u Mbit/s", moduleIp().toString().c_str(), (unsigned)ETH.linkSpeed());
         else logEvent("network cable: no link (unplugged, or the switch is off)");
     }
+    staWhyTick();
     const bool up = staUp();
     if (up == staWasUp) return;
     staWasUp = up;
@@ -156,6 +191,14 @@ static bool argNumber(const char* name, long lo, long hi, long& out)
     return out >= lo && out <= hi;
 }
 
+// A name for http://<name>.local/: 1-24 letters, digits and '-', not at the start or the end (no space)
+static bool hostName(const String& s)
+{
+    if (s.length() < 1 || s.length() > 24 || s[0] == '-' || s[s.length() - 1] == '-') return false;
+    for (size_t i = 0; i < s.length(); i++) if (!isalnum((unsigned char)s[i]) && s[i] != '-') return false;
+    return true;
+}
+
 static bool printable(const String& s, size_t lo, size_t hi)
 {
     if (s.length() < lo || s.length() > hi) return false;
@@ -195,7 +238,7 @@ static void apiStatus()
     j += ",\"up\":" + String(netUp() ? "true" : "false") + ",\"staUp\":" + String(staUp() ? "true" : "false");
     j += ",\"eth\":true,\"ethUp\":" + String(ethUp() ? "true" : "false");
     j += ",\"ip\":" + jsonStr(netUp() ? moduleIp().toString() : String("")) + ",\"ipLast\":" + String(cfg.ipLast);
-    j += ",\"rssi\":" + String(staUp() ? WiFi.RSSI() : 0) + ",\"host\":" + jsonStr(cfg.host);
+    j += ",\"rssi\":" + String(staUp() ? WiFi.RSSI() : 0) + ",\"host\":" + jsonStr(cfg.host) + ",\"why\":" + jsonStr(staWhy());
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"}";
 
     j += ",\"aog\":{\"link\":" + String(linkOk ? "true" : "false");
@@ -272,7 +315,7 @@ static void apiWifiPost()
     if (staPass.length() && !printable(staPass, 8, 63)) { sendError(400, "tractor network password: 8 to 63 characters"); return; }
     if (staPass.length() || s.staSsid != cfg.staSsid) s.staPass = staPass;
     s.host = server.arg("host");
-    if (!printable(s.host, 1, 24)) { sendError(400, "name: 1 to 24 characters"); return; }
+    if (!hostName(s.host)) { sendError(400, "name: 1 to 24 letters, digits or -, no spaces"); return; }
     if (!parseSubnet(server.arg("subnet"), s.subnet)) { sendError(400, "subnet: three numbers, like 192.168.1"); return; }
     long ipLast = cfg.ipLast;
     if (server.hasArg("ipLast") && !argNumber("ipLast", 2, 254, ipLast)) { sendError(400, "module IP last number: 2 to 254"); return; }
@@ -356,10 +399,54 @@ static void apiRestartPost()
     restartAtMs = millis() + 500;
 }
 
+// Which program an uploaded .bin holds: its status answer starts {"fw":"<name>","ver":" (the page and build.py read it
+// the same way). Looked for in the upload's pieces as they come, one byte at a time. Another program's name, and not
+// this one's, refuses the file: the page already refuses it, this also covers a file sent some other way.
+static uint8_t updHead = 0, updNameLen = 0, updTail = 0;
+static char    updName[24], updOther[24];
+static bool    updOwn = false;
+
+static void updScan(const uint8_t* b, size_t n)
+{
+    static const char HEAD[] = "{\"fw\":\"", TAIL[] = "\",\"ver\":\"";
+    for (size_t i = 0; i < n; i++)
+    {
+        const char c = (char)b[i];
+        if (updHead < sizeof(HEAD) - 1)                     // looking for {"fw":"
+        {
+            updHead = c == HEAD[updHead] ? updHead + 1 : c == HEAD[0] ? 1 : 0;
+            updNameLen = updTail = 0;
+            continue;
+        }
+        if (!updTail && updNameLen < sizeof(updName) - 1 && (isalnum((unsigned char)c) || c == '_'))
+        {
+            updName[updNameLen++] = c;                      // the name
+            continue;
+        }
+        if (updNameLen && c == TAIL[updTail])               // then ","ver":"
+        {
+            if (++updTail < sizeof(TAIL) - 1) continue;
+            updName[updNameLen] = '\0';
+            if (!strcmp(updName, FW_NAME)) updOwn = true;
+            else if (!updOther[0]) strlcpy(updOther, updName, sizeof(updOther));
+        }
+        updHead = c == HEAD[0] ? 1 : 0;                     // not it, or done: the next one
+    }
+}
+
+static bool updWrongProgram() { return updOther[0] && !updOwn; }
+
 // A new program (.bin from the Arduino IDE: Sketch > Export compiled binary), password in the URL
 static void apiUpdateDone()
 {
     if (!updateAuth) { sendError(403, "wrong password"); return; }
+    if (updWrongProgram())
+    {
+        char m[96];
+        snprintf(m, sizeof(m), "this file is the %s program, not %s: the old program stays", updOther, FW_NAME);
+        sendError(400, m);
+        return;
+    }
     if (Update.hasError()) { sendError(500, "update failed, the old program stays"); return; }
     sendJson("{\"ok\":true,\"restart\":true}");
     restartAtMs = millis() + 500;
@@ -371,6 +458,9 @@ static void apiUpdateUpload()
     if (up.status == UPLOAD_FILE_START)
     {
         updateAuth = server.arg("pw") == cfg.apPass;
+        updHead = updNameLen = updTail = 0;
+        updOther[0] = '\0';
+        updOwn = false;
         if (!updateAuth) return;
         outputsAllOff();
         logEvent("program update: %s", up.filename.c_str());
@@ -378,11 +468,17 @@ static void apiUpdateUpload()
     }
     else if (up.status == UPLOAD_FILE_WRITE)
     {
+        if (updateAuth) updScan(up.buf, up.currentSize);
         if (updateAuth && Update.write(up.buf, up.currentSize) != up.currentSize) logEvent("update: write failed");
     }
     else if (up.status == UPLOAD_FILE_END)
     {
-        if (updateAuth && Update.end(true)) logEvent("update: %u bytes written, restarting", (unsigned)up.totalSize);
+        if (updateAuth && updWrongProgram())
+        {
+            Update.abort();
+            logEvent("update refused: the file is the %s program, not %s", updOther, FW_NAME);
+        }
+        else if (updateAuth && Update.end(true)) logEvent("update: %u bytes written, restarting", (unsigned)up.totalSize);
         else if (updateAuth) logEvent("update: failed");
     }
 }

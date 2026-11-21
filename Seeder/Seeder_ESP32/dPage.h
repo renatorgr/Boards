@@ -185,7 +185,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <div class="row" style="margin:2px 0"><button class="sec" type="button" id="scan" onclick="scanNets()">Search for networks</button><span id="scanMsg" class="note"></span></div>
 <div id="netList" class="nets"></div>
 <div class="field"><span>That network's password (blank: keeps the current one; for a new network, blank = open network)</span><input type="password" id="staPass" maxlength="63"></div>
-<div class="field"><span>Module name on the tractor network</span><input type="text" id="host" maxlength="24" oninput="$('hostShow').textContent=this.value||'seeder'"></div>
+<div class="field"><span>Module name on the tractor network (letters, digits and -)</span><input type="text" id="host" maxlength="24" oninput="$('hostShow').textContent=this.value||'seeder'"></div>
 <p class="grp">Program network</p>
 <div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5" inputmode="decimal"></div>
 <div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
@@ -319,7 +319,7 @@ async function refresh(){
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
     $('eth').innerHTML=d.wifi.staOn?'<span class="warn">not used (tractor Wi-Fi instead)</span>':d.wifi.ethUp?'<span class="ok">connected</span>':'<span class="bad">no link</span>';
-    if(!d.wifi.staOn)$('sta').textContent='not used (cable)';else say($('sta'),d.wifi.staUp?'ok':'bad',d.wifi.sta+(d.wifi.staUp?'':' (not joined)'));
+    if(!d.wifi.staOn)$('sta').textContent='not used (cable)';else say($('sta'),d.wifi.staUp?'ok':'bad',d.wifi.sta+(d.wifi.staUp?'':' (not joined'+(d.wifi.why?': '+d.wifi.why:'')+')'));
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.staUp?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
     $('log').textContent=d.log.join('\n');

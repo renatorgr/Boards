@@ -139,6 +139,31 @@ wl_status_t WiFiClass::begin(const char* ssid, const char* pass)
     cur->staBeginAt = fake::clockMs;
     return WL_DISCONNECTED;
 }
+int WiFiClass::onEvent(WiFiEventFuncCb cb, arduino_event_id_t event)
+{
+    cur->wifiEvents.push_back({ event, cb });
+    return (int)cur->wifiEvents.size();
+}
+// As the core does: "got IP" once joined, "disconnected" with ESP-IDF's reason when the link goes, and again every few
+// seconds while it keeps trying (no network of that name: 201; a wrong WPA2 password usually ends the 4-way handshake: 15)
+void fake::Device::tickWifi()
+{
+    if (wifiEvents.empty() || !staBegun || !(wifiMode & WIFI_STA)) { staLinked = false; return; }
+    auto fire = [this](arduino_event_id_t e, uint8_t reason) {
+        arduino_event_info_t info = {};
+        info.wifi_sta_disconnected.reason = reason;
+        const auto list = wifiEvents;
+        for (auto& [ev, cb] : list) if (ev == ARDUINO_EVENT_MAX || ev == e) cb(e, info);
+    };
+    const bool up = staUp();
+    if (up && !staLinked) { staLinked = true; fire(ARDUINO_EVENT_WIFI_STA_GOT_IP, 0); return; }
+    if (up) return;
+    if (staLinked) { staLinked = false; staEventAt = fake::clockMs; fire(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, WIFI_REASON_BEACON_TIMEOUT); return; }
+    if (fake::clockMs - staBeginAt < 1500 || (staEventAt && fake::clockMs - staEventAt < 3000)) return;
+    staEventAt = fake::clockMs;
+    const bool found = fake::net.wifiOn && staSsid == fake::net.ssid;
+    fire(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, found ? WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT : WIFI_REASON_NO_AP_FOUND);
+}
 wl_status_t WiFiClass::status()
 {
     if (cur->staUp()) return WL_CONNECTED;
@@ -402,6 +427,11 @@ bool UpdateClass::end(bool)
     cur->updDone = true;
     cur->updBegun = false;
     return true;
+}
+void UpdateClass::abort()
+{
+    cur->updBegun = false;
+    cur->updError = true;                   // as the core: hasError() after abort()
 }
 bool UpdateClass::hasError() { return cur->updError; }
 
