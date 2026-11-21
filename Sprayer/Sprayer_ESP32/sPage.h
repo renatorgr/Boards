@@ -304,6 +304,9 @@ $('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
+// one coloured word as an element's only content: the text goes in as text, never as markup
+// (a network name may hold < and >, and the page must not run it)
+function say(el,cls,text){const s=document.createElement('span');s.className=cls;s.textContent=text;el.replaceChildren(s)}
 // the sprayer alarms (rate.alarms bits), as AgOpenWeb words them
 const ALARMS=[[1,'Low pressure'],[2,'High pressure'],[4,'Flow too low'],[8,'Flow too high'],[16,'Flow with the sections off']];
 const RATE_TOLERANCE=0.10;   // the rate is green within 10 % of the target, orange outside (as AgOpenWeb's strip)
@@ -402,7 +405,7 @@ async function refresh(){
     $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+(tool.n235||0)+' section widths, '+d.aog.crcErr+' bad checksums';
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
-    $('sta').innerHTML=!d.wifi.staOn?'<span class="warn">not set</span>':d.wifi.up?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
+    if(!d.wifi.staOn)say($('sta'),'warn','not set');else say($('sta'),d.wifi.up?'ok':'bad',d.wifi.sta+(d.wifi.up?'':' (not joined)'));
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
     $('log').textContent=d.log.join('\n');
@@ -431,7 +434,7 @@ async function post(url,fields,msgId,pass){
     // saved: the fields show what the module kept, before "done" (a restart: once it is back)
     if(d.ok&&d.restart)settingsLoaded=false;
     else if(d.ok)try{await loadSettings()}catch(e){}
-    m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
+    if(d.ok)say(m,'ok','done'+(d.restart?', restarting: reconnect in 10 s':''));else say(m,'bad',d.error);
     return d;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }

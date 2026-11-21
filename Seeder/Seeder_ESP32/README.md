@@ -20,6 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 21 Nov 2026 | **0.2.10**: the tractor network's name and the module's answers to a save are shown as text, never as markup: a name with < and > in it could run a script in the page ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* (Settings): the Sowing tab shows all before the program asks, relays past them idle. **0.2.6**: questions in the page's own box: the browser's pop-ups show nothing in an AgOpenWeb web card ([How it works](#how-it-works)). |
@@ -40,7 +41,8 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
 - The board is the standard AgOpenGPS **machine module**, IP `<subnet>.123`
   (192.168.5.123 until the program, or the page, says otherwise), on the **network
   cable**. No Wi-Fi to set up; the page can switch it to the tractor's Wi-Fi instead
-  (with *Search for networks*, as on the XIAO page).
+  (with *Search for networks*, as on the XIAO page). The page shows network names and the
+  module's answers as text, never as markup: a network name may hold `<` and `>`.
 - It speaks the same messages as the official `Machine_UDP_v5` module: sections
   (PGN 239 for 1–16, PGN 229 for 1–64), machine config (238), pin functions (236),
   subnet (201), hello (200 → 123) and scan (202 → 203). Everything the program sends is
