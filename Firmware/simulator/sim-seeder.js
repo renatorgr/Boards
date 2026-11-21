@@ -76,6 +76,15 @@ function seeder() {
 const top = () => X.secs || 64;
 const relayFn = i => X.first ? (X.first + i <= top() ? X.first + i : 0) : i < 8 && i + 1 <= top() ? i + 1 : 0;
 const hex = v => v.toString(16);                                    // sections as the module sends them (jsonHex)
+// the sections this module should drive that no relay follows (noRelaySections, up to 31 here): with the pin config the
+// drill's and those asked for; with the relays in a row only those asked for past the drill (all, when relay 1 is past it)
+function noRelay(fn) {
+ const mask = n => { let m = 0; for (let k = 1; k <= Math.min(31, n); k++) m |= 1 << (k - 1); return m; };
+ const drill = mask(X.secs), asked = mask(X.secTop);
+ if (!X.first) { let covered = 0; fn.forEach(f => { if (f >= 1 && f <= 31) covered |= 1 << (f - 1); }); return ((drill | asked) & ~covered) >>> 0; }
+ if (!X.secs) return 0;
+ return (X.first > X.secs ? drill : asked & ~drill) >>> 0;
+}
 
 function status() {
  const t = T(), up = netUp(), link = linkOk(), sd = seeder(), tr = M.tractor(Math.max(0, M.T()));
@@ -92,7 +101,7 @@ function status() {
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sd.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
    crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
-  out: {bits: bits, on: hex(on), first: X.first, secs: X.secs, onHigh: true, fn: fn},
+  out: {bits: bits, on: hex(on), first: X.first, secs: X.secs, noRelay: hex(noRelay(fn)), onHigh: true, fn: fn},
   log: X.ev.slice()};
 }
 const settings = () => ({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host, eth: true, ipLast: X.ipLast,
@@ -139,6 +148,8 @@ function relaysPost(b) {
  if (b.pw !== X.pass) return S.err(403, "wrong password");
  if (!number(b.first, 0, 64)) return S.err(400, "first section: 0 to 64");
  if (b.secs !== undefined && !number(b.secs, 0, 64)) return S.err(400, "sections: 0 to 64");
+ const secs = b.secs !== undefined ? +b.secs : X.secs;
+ if (+b.first && secs && +b.first > secs) return S.err(400, "relay 1 cannot follow section " + +b.first + ": the seed drill has " + secs + " sections");
  X.first = +b.first;
  if (b.secs !== undefined) X.secs = +b.secs;
  event(X.first ? "relays 1-" + RELAYS + " follow sections " + X.first + "-" + Math.min(top(), X.first + RELAYS - 1) : "relays follow the program's pin config");

@@ -189,7 +189,7 @@ static void apiStatus()
     j += ",\"invert\":" + String(cfg.invertOutputs) + ",\"hydEn\":" + String(cfg.hydEnable);
     j += ",\"raise\":" + String(cfg.raiseTime) + ",\"lower\":" + String(cfg.lowerTime) + "}";
 
-    j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn);
+    j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn) + ",\"noRelay\":" + jsonHex(noRelay);
     j += ",\"onHigh\":" + String(RELAY_ON_HIGH ? "true" : "false") + ",\"fn\":[";
     for (uint8_t i = 0; i < NUM_RELAYS; i++) { if (i) j += ","; j += String(relayFn(i)); }
     j += "]}";

@@ -210,7 +210,7 @@ static void apiStatus()
     j += ",\"raise\":" + String(cfg.raiseTime) + ",\"lower\":" + String(cfg.lowerTime) + "}";
 
     j += ",\"out\":{\"bits\":" + String(relayBits) + ",\"on\":" + jsonHex(sectionsOn) + ",\"first\":" + String(cfg.firstSection);
-    j += ",\"secs\":" + String(cfg.numSections);
+    j += ",\"secs\":" + String(cfg.numSections) + ",\"noRelay\":" + jsonHex(noRelay);
     j += ",\"onHigh\":" + String(RELAY_ON_HIGH ? "true" : "false") + ",\"fn\":[";
     for (uint8_t i = 0; i < NUM_RELAYS; i++) { if (i) j += ","; j += String(relayFn(i)); }
     j += "]}";
@@ -329,6 +329,13 @@ static void apiRelaysPost()
     long first = 0, secs = cfg.numSections;
     if (!argNumber("first", 0, MAX_SECTIONS, first)) { sendError(400, "first section: 0 to 64"); return; }
     if (server.hasArg("secs") && !argNumber("secs", 0, MAX_SECTIONS, secs)) { sendError(400, "sections: 0 to 64"); return; }
+    if (first && secs && first > secs)
+    {
+        char m[80];
+        snprintf(m, sizeof(m), "relay 1 cannot follow section %ld: the seed drill has %ld sections", first, secs);
+        sendError(400, m);
+        return;
+    }
     cfg.firstSection = first;
     cfg.numSections = secs;
     settingsSave();

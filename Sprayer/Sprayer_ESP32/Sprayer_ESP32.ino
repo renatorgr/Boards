@@ -27,7 +27,9 @@
 //       fork's sprayer strip and the AiO module page, and 161 with ISOBUS process data (DDIs: pressure, flow, total,
 //       sections, actual and target L/ha, the pressure for the target, pressure limits, alarms);
 //       with no sensor ticked on the page it sends neither. 221 (the text message the program shows on its
-//       screen) when an alarm comes on or goes off, and every 10 s while one is on.
+//       screen) when an alarm comes on or goes off, and every 10 s while one is on; also when a section of the
+//       boom (or one the program asks for) has no relay following it (a hole in the pin config, more sections than
+//       relays), again every 60 s while the program asks for it. The log and the page say it too.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
@@ -55,7 +57,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.10"
+#define FW_VERSION          "0.10.11"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -116,6 +118,8 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define PROCESS_DATA_PGN    0xA1    // 161: ISOBUS process data (DDI values) for the AgOpenWeb fork (Docs/PGN.md there)
 #define HARDWARE_MESSAGE_PGN 0xDD   // 221: a text the program shows on its screen (the alarms), AgOpenGPS layout
 #define ALARM_REPEAT_S      10      // while an alarm is on, the PGN 221 message is sent again this often
+#define NO_RELAY_REPEAT_S   60      // while the program asks for a section no relay follows, that warning comes again this often
+#define SCREEN_NAME         "Sprayer"   // how the module's messages start on the program's screen
 #define MAX_TOOL_SECTIONS   16      // PGN 235 has the widths of sections 1-16
 
 // Output functions in the program's pin config (PGN 236), as the official Machine_UDP_v5 maps them:
@@ -169,6 +173,7 @@ Preferences prefs;
 
 uint64_t sectionsReq = 0;       // sections the program asks for, section 1 = bit 0 (PGN 239, 17-64 from PGN 229)
 uint64_t sectionsOn  = 0;       // sections the relays really have open
+uint64_t noRelay     = 0;       // sections the boom has or the program asks for that no relay follows (noRelayTick)
 uint32_t relayBits   = 0;       // outputs on, relay 1 = bit 0
 uint16_t sections239 = 0;       // sections 1-16 as the last PGN 239 (or 229) gave them
 uint64_t sections229 = 0;       // sections 1-64 as the last PGN 229 gave them
@@ -215,6 +220,9 @@ void sendSignOfLife();
 void sendReadings();
 void sendProcessData();
 void sendAlarmMessage();
+void noRelayTick();
+uint64_t noRelaySections();
+const char* noRelayWhere();
 void rateTick();
 void outputsInit();
 void outputsAllOff();
@@ -371,6 +379,7 @@ void loop()
         sendReadings();
         sendProcessData();
         sendAlarmMessage();
+        noRelayTick();              // a section with no relay: the log, the page, the program's screen
         wifiWatch();
     }
 

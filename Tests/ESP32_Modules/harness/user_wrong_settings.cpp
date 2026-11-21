@@ -271,6 +271,5 @@ SCENARIO(User::WrongSettings, "first-section-past-drill", "sets 'relay 1 = secti
     w.run(3000);
     note("relays with all 19 sections asked", hex(m.relays()));
     const std::string log = pageLog(m);
-    tell("first-past-drill-said", r.code == 400 || contains(log, "no relay"),
-         "the page refuses it, or says no relay follows any section", fmt("answer %d; log: %s", r.code, log.c_str()));
+    must("first-past-drill-refused", r.code == 400, "the page refuses relay 1 past the drill's last section", fmt("answer %d; log: %s", r.code, log.c_str()));
 }

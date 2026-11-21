@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 21 Nov 2026 | **0.10.10**: the tractor network's name and the module's answers to a save are shown as text, never as markup: a name with < and > in it could run a script in the page ([How it works](#how-it-works)). |
+| 21 Nov 2026 | **0.10.10**: network names and answers shown as text, never as markup ([How it works](#how-it-works)). **0.10.11**: a section with no relay (pin config, more sections than relays) is said on the page, in the log and on the program's screen ([How it works](#how-it-works)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -59,6 +59,14 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   while it lasts. With no sensor ticked it sends none of them: see *Sensors fitted* below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
+- **Sections with no relay.** A section of the boom (the
+  tool's sections from PGN 235) or one the program asks for, that no relay follows, never
+  sprays, while the program paints it as sprayed. The module says so: the page shows the
+  sections in red (*Sections 7-8 have no relay*) with red dashes around them, the log has a
+  line, and the program's screen shows *Sprayer: sections 7-8 have no relay* (PGN 221), when it
+  starts, when it changes, and every 60 s while the program asks for one of them. The usual
+  cause is AgOpenWeb's pin config as it comes (pins 7–8 empty, see *Setup*), two relays on
+  one section, or more sections than relays.
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
   works even if the ESP32 or the tablet freezes.
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
@@ -265,7 +273,7 @@ Monitor: `wifi-reset`.
 | 237 | module → program | every 200 ms, in the layout of the AgOpenGPS AiO v26 firmware: sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives) |
 | 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 | 161 | module → program | right after each 160: ISOBUS process data, 8 bytes per value (table below) |
-| 221 | module → program | when an alarm comes on or goes off, and every 10 s while one is on: the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most). The official AgOpenWeb shows it; the fork has the alarms from 161 as well |
+| 221 | module → program | when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)), and when an alarm comes on or goes off, and every 10 s while one is on: the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most). The official AgOpenWeb shows it; the fork has the alarms from 161 as well |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts

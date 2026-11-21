@@ -142,5 +142,7 @@ SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sec
     Json s = m.status();
     must("secs-kept", s["out"]["first"].num() == 1 && s["out"]["secs"].num() == 19, "first section and section count survive the power cycle",
          fmt("first %g, secs %g", s["out"]["first"].num(), s["out"]["secs"].num()));
+    const std::string said = pageLog(m) + screenMessages(w, 0);
+    must("no-false-no-relay", !contains(said, "no relay"), "no 'no relay' warning on a drill set up right", said);
     statusAlwaysJson(m);
 }

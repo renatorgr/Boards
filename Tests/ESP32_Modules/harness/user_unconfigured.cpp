@@ -74,16 +74,16 @@ SCENARIO(User::Unconfigured, "aow-default-pins", "8-section boom, but AgOpenWeb'
     w.aow.toolSections = 8;
     w.aow.startup(false, { 1, 2, 3, 4, 5, 6, 0, 0 });       // AgOpenWeb's default pin config
     w.run(500);
-    const uint64_t from = w.now();
     std::string bad;
     const int n = driveAndCompare(w, m, first(8), { 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 10000, &bad);
     must("follows-pin-config", n == 0, "relays 1-6 follow sections 1-6, relays 7-8 stay open-circuit (as the pin config says)", bad);
     Json s = m.status();
     note("what AgOpenWeb is told", fmt("asked %s, open %s (PGN 237)", s["aog"]["req"].str().c_str(), s["out"]["on"].str().c_str()));
-    const std::string said = pageLog(m) + screenMessages(w, from);
-    tell("sections-without-relay", contains(said, "no relay"),
-         "the module says sections 7-8 are asked for but no relay follows them (they would never spray)",
-         "the page only outlines sections 7-8 in orange; nothing on AgOpenWeb's screen");
+    const std::string said = pageLog(m) + screenMessages(w, 0);
+    note("AgOpenWeb's screen shows", screenMessages(w, 0));
+    must("sections-without-relay", contains(said, "sections 7-8") && contains(said, "no relay") && s["out"]["noRelay"].str() == "c0",
+         "the module says sections 7-8 have no relay (they would never spray): log, page, AgOpenWeb's screen",
+         fmt("noRelay %s; said: %s", s["out"]["noRelay"].str().c_str(), said.c_str()));
     statusAlwaysJson(m);
 }
 

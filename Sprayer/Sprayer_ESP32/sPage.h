@@ -58,6 +58,7 @@ dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:any
 .secs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}
 .secs span{height:26px;border-radius:5px;background:var(--soft);font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--mute)}
 .secs span.req{outline:2px solid var(--warn);outline-offset:-2px}
+.secs span.none{outline:2px dashed var(--bad);outline-offset:-2px}
 .secs span.on{background:var(--ok);color:var(--accInk);font-weight:700}
 .secs.work span{height:48px;font-size:17px;border-radius:8px}
 .secs.rl span{height:38px;flex-direction:column;line-height:1.1;font-size:11.5px;white-space:nowrap;overflow:hidden}
@@ -132,9 +133,10 @@ p.chk{text-align:right;margin:4px 0 0}
 </div>
 <div class="alarm" id="alarms" hidden></div>
 <div class="silent" id="silent" hidden>No messages from AgOpenWeb: every section is closed.</div>
+<div class="silent" id="noRelay" hidden></div>
 <div class="card" style="margin-top:12px"><h2>Sections</h2>
 <div class="secs work" id="secs"></div>
-<p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent).</p>
+<p class="note">Green = open. Orange outline = asked for by the program but not open (master switch off, or program silent). Red dashes = no relay follows that section.</p>
 <p class="note" id="detail">–</p>
 </div>
 </section>
@@ -312,6 +314,8 @@ const ALARMS=[[1,'Low pressure'],[2,'High pressure'],[4,'Flow too low'],[8,'Flow
 const RATE_TOLERANCE=0.10;   // the rate is green within 10 % of the target, orange outside (as AgOpenWeb's strip)
 // sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
 function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
+// the sections of a hex mask as a short list: "7-8", "2, 9-12"
+function secList(h){const r=[];for(let i=0;i<64;i++)if(bit(h,i)){let j=i;while(j<63&&bit(h,j+1))j++;r.push(j>i?(i+1)+'-'+(j+1):''+(i+1));i=j}return r.join(', ')}
 // the own network's password, typed once: every box that asks for it (Save, Total back to 0, Restart module, Install) and
 // the Save card's field (Module tab) offer it again. Kept while this browser tab stays open, also when the page is opened
 // again in it (a reload, a web card closed and opened); forgotten when the module refuses it
@@ -375,7 +379,10 @@ async function refresh(){
     let mapped=0,nSec=0;for(const f of d.out.fn)if(f>=1&&f<=64){nSec++;mapped=Math.max(mapped,f)}
     const n=Math.max(tool.n||8,d.aog.secTop||0,Math.min(16,mapped));
     if(nSecs!==n){nSecs=n;$('secs').innerHTML=cells('s',n,0);$('secs').style.gridTemplateColumns='repeat('+Math.min(n,8)+',1fr)'}
-    for(let i=0;i<nSecs;i++){const e=$('s'+i),on=bit(d.out.on,i);e.className=(on?'on':'')+(bit(d.aog.req,i)&&!on?' req':'')}
+    const nr=d.out.noRelay||'0',nrl=secList(nr),one=!/[-,]/.test(nrl);
+    for(let i=0;i<nSecs;i++){const e=$('s'+i),on=bit(d.out.on,i);e.className=(on?'on':'')+(bit(d.aog.req,i)&&!on?' req':'')+(bit(nr,i)?' none':'')}
+    $('noRelay').hidden=!nrl;
+    $('noRelay').textContent=nrl?(one?'Section ':'Sections ')+nrl+(one?' has no relay, so it never sprays':' have no relay, so they never spray')+'. Set them in AgOpenWeb: Tool → Machine → Pin config.':'';
     const det=[];
     if(sn&2)det.push(f1(d.spr.lpm)+' L/min');
     det.push(f1(d.aog.kmh)+' km/h');

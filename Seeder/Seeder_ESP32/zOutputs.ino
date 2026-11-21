@@ -50,6 +50,35 @@ uint8_t relayFn(uint8_t i)
     return p <= 16 && p <= top ? p : 0;
 }
 
+// The sections this module should drive that no relay follows (noRelayTick says so):
+//   - with the program's pin config (first section 0) the module drives the whole drill: the drill's sections
+//     (Settings) and any the program has asked for since the start (secTop), less those a relay follows. A hole in
+//     the pin config, or sections past 16 (the pin config only knows 1-16).
+//   - with the relays in a row (first section 1-64) a second module may drive the other sections: only those the
+//     program asks for past the drill's last section (Settings), or all of them when relay 1 is past it.
+uint64_t noRelaySections()
+{
+    const uint8_t n = cfg.numSections;
+    const uint64_t drill = n >= 64 ? ~(uint64_t)0 : ((uint64_t)1 << n) - 1;
+    const uint64_t asked = secTop >= 64 ? ~(uint64_t)0 : ((uint64_t)1 << secTop) - 1;
+    if (cfg.firstSection == 0)
+    {
+        uint64_t covered = 0;
+        for (uint8_t i = 0; i < NUM_RELAYS; i++)
+        {
+            const uint8_t f = relayFn(i);
+            if (f >= 1 && f <= MAX_SECTIONS) covered |= (uint64_t)1 << (f - 1);
+        }
+        return (drill | asked) & ~covered;
+    }
+    if (!n) return 0;
+    if (cfg.firstSection > n) return drill;
+    return asked & ~drill;
+}
+
+// Where to put it right, after the warning
+const char* noRelayWhere() { return cfg.firstSection ? "module Settings" : "AgOpenWeb Pin config"; }
+
 #if BOARD == BOARD_RELAY24
 // The Relay24_ESP32's relays: 24 bits shifted into the chain of three 74HC595 chips, relay 24 first (it ends
 // up at the far end, U3 output QH) and relay 1 last (U1 output QA), then one latch pulse moves them all to the
