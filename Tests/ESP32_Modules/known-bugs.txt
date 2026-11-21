@@ -1,0 +1,7 @@
+# Known bugs: the harness reports them but does not fail the run. One per line:
+#   <scenario>/<check key>[@<board>]  why, and what fixes it
+# Take a line out when the fix is merged (the harness says "passes now" when one is fixed).
+
+long-lift-times/lower-60s            hydTick(): lowerTimer/raiseTimer are uint8_t and get time x 5, so a lift time over 51 s wraps (60 s -> 8.6 s). AgOpenWeb sends up to 255 s. Shared block "outputs", both programs. Low.
+page-typos/refuses-sensors--abc---not-a-number-   apiCalibPost reads "sensors" with toInt() without checking the digits: "abc" saves "no sensors". The page always sends a number. Low.
+flash-garbage/invert-read-as-bit     settingsLoad() keeps any byte in "invert" (7 = inverted: every relay closes with nothing asked). Only 0 or 1 is ever saved, so only a foreign flash could hold it. Both programs. Low.
