@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Set up AgOpenWeb from your measures</title>
-<script src="settings.js?v=1.12"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
+<script src="settings.js?v=1.13"></script>   <!-- the version in the address: a browser that kept the old file fetches the new one -->
 <style>
 :root{color-scheme:dark;--bg:#121511;--card:#1b1f1a;--ink:#e7ebe3;--mute:#9aa395;--line:#2e352b;--warn:#ffb74d;--acc:#8cc068;--accInk:#10140f;--soft:#232a21;--pass:#4a5a44;--fence:#e06c5a;--tool:#6aa4d9}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f2f4ef;--card:#ffffff;--ink:#1c2318;--mute:#5f6b5a;--line:#d4dbcf;--warn:#b45309;--acc:#4c7d2a;--accInk:#ffffff;--soft:#e9eee5;--pass:#b9c7b1;--fence:#c0392b;--tool:#2f6fb0}}
@@ -118,6 +118,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
   <div class="row" data-for="trailed"><label for="wheelDiameter">Rear wheel height (m)<small>its diameter: 1.8 for a 650/65 R38, 1.9 for a 650/65 R42, 1.57 for a 540/65 R34</small></label><input id="wheelDiameter" type="number" step="0.01" min="0.3" value="1.8"></div>
   <div class="row" data-for="trailed"><label for="drawbarHeight">Drawbar height (m)<small>the hitch pin above the ground, 0.35 to 0.55 m on most tractors: the tyre is shorter there than at its axle; 0 = count the whole wheel</small></label><input id="drawbarHeight" type="number" step="0.05" min="0" value="0.5"></div>
   <div class="row"><label for="margin">Safety margin to the field edge (m)<small>room between what sweeps the widest in the turn and the boundary; more where the edge is irregular</small></label><input id="margin" type="number" step="0.1" min="0" value="1"></div>
+  <div class="row"><label for="edge">Field edge<small>as the field's boundary is marked in AgOpenWeb. Hard (a fence, a wall, a ditch): AgOpenWeb keeps the implement itself away from it. Soft: only the tractor's pivot</small></label><select id="edge"><option value="hard" selected>Hard</option><option value="soft">Soft</option></select></div>
  </div>
  <div class="card">
   <h2>Implement</h2>
@@ -161,7 +162,7 @@ code{background:var(--soft);border-radius:4px;padding:0 4px}
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
-const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin",
+const F = ["machine", "wheelbase", "steer", "overhang", "mount", "sections", "sectionWidth", "width", "overlap", "offset", "axleToTool", "hitch", "tankHitch", "drawbar", "pivotToTool", "length", "sprayerWidth", "margin", "edge",
  "trackWidth", "tyreWidth", "wheelDiameter", "drawbarHeight", "drawbarWidth", "swingDeg", "turnSwingDeg", "foldClearanceDeg"];
 const LABELS = {   // what the angle and the overhang are on each machine, and which axle is the pivot
  tractor: ["Maximum steering angle (°)", "the front wheels on the stop, what the steer wizard measured", "Front overhang (m)", "front axle to the nose, weights included"],
@@ -234,7 +235,7 @@ function input() {
  const n = id => parseFloat($(id).value);
  return {machine: $("machine").value, wheelbase: n("wheelbase"), maxSteerDeg: n("steer"), overhang: n("overhang"), mount: $("mount").value, width: n("width"),
   sections: n("sections") || 0, sectionWidth: n("sectionWidth") || 0, overlap: n("overlap") || 0, offset: n("offset") || 0, axleToTool: n("axleToTool"), hitchLength: n("hitch"),
-  tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0, margin: n("margin"),
+  tankHitch: n("tankHitch"), drawbar: n("drawbar"), pivotToTool: n("pivotToTool"), length: n("length") || 0, sprayerWidth: n("sprayerWidth") || 0, margin: n("margin"), edge: $("edge").value,
   trackWidth: n("trackWidth"), tyreWidth: n("tyreWidth"), wheelDiameter: n("wheelDiameter"), drawbarHeight: n("drawbarHeight") || 0, drawbarWidth: n("drawbarWidth") || 0, swingDeg: n("swingDeg") || 0,
   turnSwingDeg: n("turnSwingDeg") || 0, foldClearanceDeg: n("foldClearanceDeg")};
 }
@@ -277,7 +278,7 @@ function update() {
   rb.type = "radio"; rb.name = "turn"; rb.checked = o.key === s.chosen; rb.setAttribute("aria-label", o.style + ", skip " + o.skip); c.appendChild(rb);
   tr.insertCell().textContent = o.style + ", skip " + o.skip + (o.reverse ? " (backs up)" : "");
   tr.insertCell().textContent = o.depth + " m";
-  tr.insertCell().textContent = o.distance + " m";
+  tr.insertCell().textContent = o.set + " m";   // what to type: with a hard edge, the margin AgOpenWeb keeps the implement
   tr.insertCell().textContent = s.headlandOf(o);
   tr.onclick = () => { chosen = o.key; update(); };
  }
@@ -371,7 +372,8 @@ function legend(i, s, o) {
   i.machine === "articulated" ? "" : line("Grey dots: the outer corner of " + (harvester ? "the back end" : "the nose") + " of the machine" + (i.trackWidth > 0 ? "" : " (type its rear track for its width)") + ".", "var(--mute)", 2, "1 5"),
   line("Red line: the field edge.", "var(--fence)", 3),
   s.margin > 0 ? line("Red dots: the safety margin, " + s.margin + " m inside the edge.", "var(--fence)", 1, "2 4") : "",
-  line("Red dashes: the distance from boundary, " + o.distance + " m, where the pivot's turn stays.", "var(--fence)", 1, "6 4"),
+  line(s.hard ? "Red dashes: where the pivot's turn ends up, " + o.distance + " m from the edge: AgOpenWeb moves the turn in until the implement is " + o.set + " m (the distance from boundary) from the hard edge."
+   : "Red dashes: the distance from boundary, " + o.distance + " m, where the pivot's turn stays.", "var(--fence)", 1, "6 4"),
   line("Green dashes: the headland line, " + o.headland.width + " m from the edge (" + o.headland.passes + " passes).", "var(--acc)", 1.5, "8 5"),
   line("Thin grey lines: the passes, " + s.spacing + " m apart.", "var(--pass)", 1),
  ].join("");

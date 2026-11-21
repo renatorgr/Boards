@@ -33,7 +33,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("sprayer headland passes", s.options[0].headland.passes, 2);
  eq("sprayer extension", s.extension, 8);
  eq("sprayer tram", s.tram.whole && s.tram.passes, 1);
- eq("sprayer rows", s.rows.map(r => r.key).join(","), "style,extension,radius,distance,goAround,tram,headland,spacing,rMin");   // AgOpenWeb's order: U-Turn top to bottom, Tram, the field, then what is not a setting
+ eq("sprayer rows", s.rows.map(r => r.key).join(","), "style,extension,smoothing,radius,distance,goAround,tram,headland,spacing,rMin");   // AgOpenWeb's order: U-Turn top to bottom, Tram, the field, then what is not a setting
  eq("go around row", s.rows.find(r => r.key === "goAround").value, "curve radius 4 m, safety margin 1 m");   // AgOpenWeb's two field names
  eq("sprayer chosen", s.chosen, "sagitta0");
 }
@@ -178,7 +178,7 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("front sprayer reach", s.toolReach, 5.2);           // √((4.7 + 4)² + 4.7²) − 4.7
  eq("front sprayer distance", s.distance, 6.2);
  eq("front sprayer hitch row", s.rows.find(r => r.key === "hitch").value, "4.7 m ahead of the rear axle");
- eq("front sprayer rows", s.rows.map(r => r.key).join(","), "hitch,style,extension,radius,distance,goAround,headland,spacing,rMin");   // the Tool tab first
+ eq("front sprayer rows", s.rows.map(r => r.key).join(","), "hitch,style,extension,smoothing,radius,distance,goAround,headland,spacing,rMin");   // the Tool tab first
  eq("front sprayer hitch field", s.rows[0].name, "Tool → Hitch to working point");
  // the boom 4.7 m ahead of the pivot is already on the next pass when the turn ends, that far back into the field
  eq("front sprayer options", s.options.map(o => o.key).join(","), "sagitta1,sagitta0,kturn0,keyhole0");   // the smallest headland first, the shallowest on a tie
@@ -292,6 +292,17 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("Puma front sprayer turn", row(pf, "style").value, "Sagitta, skip 1");   // 8 m passes no longer fit a plain semicircle (twice 5.4 m)
  eq("Puma front sprayer headland", row(pf, "headland").value, "24 m (3 passes)");
  eq("Puma front sprayer hitch", row(pf, "hitch").value, "5 m ahead of the rear axle");   // 2.88 + 2.1 = 4.98
+ // the same with the field's boundary marked hard: AgOpenWeb keeps the boom itself the distance from the fence (it moves
+ // the turn in until it is), so the margin alone; the pivot ends up where the soft 6.3 m puts it, the headland is the same
+ const pfh = S.suggest(Object.assign({mount: "front", width: 8, overlap: 0, axleToTool: 2.1, hitchLength: 1, length: 0, sprayerWidth: 8, edge: "hard"}, puma));
+ eq("Puma front sprayer, soft edge", row(pf, "distance").value, "6.3 m");
+ eq("Puma front sprayer, hard edge", row(pfh, "distance").value, "1 m");
+ eq("hard edge: the pivot ends up as far in", pfh.options.map(o => o.softDistance).join(), pf.options.map(o => o.distance).join());
+ eq("hard edge: the same headland", row(pfh, "headland").value, row(pf, "headland").value);
+ eq("smoothing left at AgOpenWeb's default", row(pfh, "smoothing").value, "14 (leave it)");
+ // a narrow rear implement: the tractor's nose (not checked by AgOpenWeb) sweeps further than the implement, so that much more
+ const nr = S.suggest(Object.assign({mount: "rear", width: 3, overlap: 0, axleToTool: 1.5, edge: "hard"}, puma));
+ eq("hard edge, nose past a narrow rear implement", nr.noseReach > nr.toolReach && parseFloat(row(nr, "distance").value) > 1, true);
  eq("Puma front sprayer distance", row(pf, "distance").value, "6.3 m");
  const pd = S.suggest(Object.assign({mount: "trailed", width: 3, overlap: -0.05, hitchLength: 1.54, drawbar: 4.15, pivotToTool: -1.6, drawbarWidth: 0.3}, puma));
  eq("Puma drill distance", row(pd, "distance").value, "3.5 m");   // the nose's corner: (2 + 0.65) ÷ 2 = 1.33 m off the centre line, 1.1 m ahead
