@@ -20,6 +20,7 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Seeder/Seeder_ESP32`](Seeder/Seeder_ESP32) | Program for the Relay24_ESP32 board (or a KinCony KC868-A32: ESP32, 32 relays, network cable) that runs the 19 sections of the no-till seed drill, one linear actuator each, on command from AgOpenWeb or AgOpenGPS (the official machine-module messages, PGN 229 for sections 17–64). Has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
+| [`Tests/ESP32_Modules`](Tests/ESP32_Modules) | Test harness: runs the real sprayer and seed drill programs on a PC with a pretend board, and plays five kinds of user against them (careful, never set up, wrong settings, modules or sensors in the wrong place, a bad network). Runs on every change to either program. |
 
 Each folder has its own README with the details.
 
