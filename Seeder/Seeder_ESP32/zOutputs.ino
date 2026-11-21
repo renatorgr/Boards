@@ -32,7 +32,9 @@ static int relayLevel(bool on)
 }
 // ==== end shared "relay-level"
 
-static uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
+// The lift's pulses in 200 ms ticks: up to 255 s x 5 = 1275, so 16 bits (8 bits wrapped a time over 51 s round to a short one)
+static uint16_t raiseTimer = 0, lowerTimer = 0;
+static uint8_t  lastTrigger = 0;
 
 // What relay i (0 = relay 1) does: 0 nothing, 1-64 that section, FN_OTHER + 1-5 lift lower, lift raise,
 // tramline right, tramline left, geo stop
