@@ -211,7 +211,7 @@ static void xiaoTakeInfo(const uint8_t* d, uint8_t n)
     for (uint8_t i = 0; i < n && k < XIAO_INFO_MAX; i++)
         if (d[i] >= 0x20 && d[i] <= 0x7E) xiaoInfo[k++] = (char)d[i];
     xiaoInfo[k] = '\0';
-    xiaoInfoMs = millis() | 1;
+    xiaoInfoMs = msStamp(millis());
     xiao.infoRx++;
 }
 

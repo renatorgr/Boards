@@ -33,6 +33,11 @@
 #include <string.h>
 #include <stdio.h>
 
+// The time a timer started, for timers where 0 means "never": never 0 and never ahead of now (as msStamp in the
+// Teensy's zSafety.ino). "now | 1" is one millisecond ahead on an even millisecond, and the unsigned "now - timer"
+// of the same millisecond reads four billion: a hello could go out twice, and "heard lately" read no for that millisecond.
+static inline uint32_t msStamp(uint32_t now) { return now != 0 ? now : 0xFFFFFFFFu; }
+
 #define LINK_BAUD               460800   // = XIAO_BAUD in the Teensy firmware (zXiao.h)
 #define LINK_HELLO_MS           2000
 #define LINK_INFO_MS            5000
@@ -92,7 +97,7 @@ public:
     // Called from loop(): read and parse, send the hello when it is due
     void poll(uint32_t now)
     {
-        if (now - helloMs >= LINK_HELLO_MS || helloMs == 0) { helloMs = now | 1; sendRaw((const uint8_t*)"ESP32-hello", 11); hellos++; }
+        if (now - helloMs >= LINK_HELLO_MS || helloMs == 0) { helloMs = msStamp(now); sendRaw((const uint8_t*)"ESP32-hello", 11); hellos++; }
 
         if (fLen > 0 && now - fLastMs > LINK_GAP_MS && port.available() == 0) { cut++; shift(1); scan(now); fLastMs = now; }
 
@@ -214,14 +219,14 @@ private:
     void frame(uint8_t src, uint8_t pgn, const uint8_t* d, uint8_t n, uint32_t now)
     {
         goodFrames++;
-        lastFrameMs = now | 1;
+        lastFrameMs = msStamp(now);
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_STATUS && n >= 3) { statusPiece(d, n, now); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_LOG && n >= 8)     { logLine(d, n); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_FW && n >= 4)      { fwAnswer(d, n); return; }
         pgnCount[pgn]++;
         if (pgn == 254 && n >= 8)
         {
-            p254.have = true; p254.ms = now | 1;
+            p254.have = true; p254.ms = msStamp(now);
             p254.kmh = (uint16_t)(d[0] | d[1] << 8) * 0.1f;
             p254.status = d[2];
             p254.angle = (int16_t)(d[3] | d[4] << 8) * 0.01f;
@@ -230,7 +235,7 @@ private:
         }
         else if (pgn == 239 && n >= 8)
         {
-            p239.have = true; p239.ms = now | 1;
+            p239.have = true; p239.ms = msStamp(now);
             p239.uturn = d[0]; p239.hydLift = d[2]; p239.tram = d[3]; p239.geoStop = d[4];
             p239.sections = (uint16_t)(d[6] | d[7] << 8);
         }
@@ -238,9 +243,9 @@ private:
         {
             sec229 = 0;
             for (uint8_t b = 0; b < 8; b++) sec229 |= (uint64_t)d[b] << (8 * b);
-            ms229 = now | 1;
+            ms229 = msStamp(now);
         }
-        else if (pgn == 200) last200Ms = now | 1;
+        else if (pgn == 200) last200Ms = msStamp(now);
     }
 
     // PGN 141: [set][piece][pieces][JSON text]; a set is kept only when every piece arrived in order
@@ -260,7 +265,7 @@ private:
             {
                 memcpy(status, asmBuf, asmLen);
                 statusLen = asmLen;
-                statusMs = now | 1;
+                statusMs = msStamp(now);
                 statusSets++;
             }
             else statusBroken++;

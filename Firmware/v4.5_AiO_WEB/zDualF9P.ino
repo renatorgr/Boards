@@ -168,7 +168,7 @@ static bool dualNmeaByte(uint8_t b)
 static void gps2SniffHit()
 {
     gps2SniffGood++;
-    gps2SniffMs = millis() | 1;
+    gps2SniffMs = msStamp(millis());
     if (gps2SniffGood != GPS2_SNIFF_N) return;
     if (cfg.xiaoOff == GPS2_OFF)
         StatusLog.line("[status] GPS2 port: a GNSS receiver is sending valid data on it, but the port is off in the settings - "
@@ -239,7 +239,7 @@ static void relPosNed(const uint8_t* p, uint16_t len)
     const bool headingValid = (flags & 0x100) != 0;                // bit 8 relPosHeadingValid
 
     dualF9pFrames++;
-    dualF9pMs       = millis() | 1;
+    dualF9pMs       = msStamp(millis());
     dualF9pFlags    = (uint16_t)flags;
     dualF9pCarr     = carr;
     dualF9pRefMiss  = refMiss;
@@ -307,7 +307,7 @@ void dualF9pProcess()
         // NMEA between the UBX frames: a fresh F9P, not set up as the second F9P yet, sends GGA and the rest
         // instead of the RELPOSNED. Valid sentences count as valid data, so the receiver check can identify
         // it, check it and load the AgOpenGPS settings (zRxCheck.ino refuses all that on "nothing valid").
-        if (dSt == 0 && dualNmeaByte(b)) { rxCkGood[RXCK_GPS2]++; dualF9pNmea++; dualF9pNmeaMs = now | 1; }
+        if (dSt == 0 && dualNmeaByte(b)) { rxCkGood[RXCK_GPS2]++; dualF9pNmea++; dualF9pNmeaMs = msStamp(now); }
         switch (dSt)
         {
             case 0: if (b == 0xB5) { dSt = 1; dLineLen = 0; } break;
@@ -341,7 +341,7 @@ void dualF9pProcess()
                             if (v) dTempReal = true;
                             else if (!dualF9pTempMs) rxTempZeroLog("Second F9P", dBuf, dLen);
                             dualF9pTemp = dTempReal ? v : RX_TEMP_NONE;   // 0 every time: not filled
-                            dualF9pTempMs = now | 1;
+                            dualF9pTempMs = msStamp(now);
                         }
                     }
                     else rxCkUbx(RXCK_GPS2, dCls, dId, dBuf, dLen);    // answers to the receiver check (zRxCheck.ino)

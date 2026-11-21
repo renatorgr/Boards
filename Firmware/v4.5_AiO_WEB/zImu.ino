@@ -152,7 +152,7 @@ static bool bnoProbe()
         if (Wire.endTransmission() != 0) continue;          // nothing answers there
         if (bnoStart(a)) { imuType = IMU_BNO_I2C; imuBnoAddr = a; return true; }
         bnoProbeAddr = a;                                   // tried again from the loop (bnoRetry)
-        bnoRetryMs = millis() | 1;
+        bnoRetryMs = msStamp(millis());
         StatusLog.line("[boot] IMU: something answers on I2C 0x%02X (pins 18 / 19), but not as a BNO085: %u more tries, %u s apart", a,
                        (unsigned)BNO_RETRIES, (unsigned)(BNO_RESTART_EVERY / 1000));
     }
@@ -167,7 +167,7 @@ static void bnoRetry()
     if (!bnoProbeAddr || bnoRetries >= BNO_RETRIES || watchdogTimer < WATCHDOG_THRESHOLD) return;
     const uint32_t now = millis();
     if (now - bnoRetryMs < BNO_RESTART_EVERY) return;
-    bnoRetryMs = now | 1;
+    bnoRetryMs = msStamp(now);
     bnoRetries++;
     if (bnoStart(bnoProbeAddr))
     {
@@ -214,7 +214,7 @@ static void bnoWatch()
     const uint32_t now = millis();
     if (TM171lastData < BNO_RESTART_MS || watchdogTimer < WATCHDOG_THRESHOLD) return;
     if (bnoRestartMs && now - bnoRestartMs < BNO_RESTART_EVERY) return;
-    bnoRestartMs = now | 1;
+    bnoRestartMs = msStamp(now);
     bnoRestarts++;
     const bool ok = bnoStart(imuBnoAddr);
     StatusLog.line("[status] IMU: BNO085 (I2C 0x%02X) silent for %u s, started again: %s", imuBnoAddr, (unsigned)(BNO_RESTART_MS / 1000),

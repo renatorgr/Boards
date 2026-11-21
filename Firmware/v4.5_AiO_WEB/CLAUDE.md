@@ -352,8 +352,10 @@ The addresses must not move: settings must survive a firmware update.
 15. **A timer where 0 means "not running"** is started with `msStamp(now)` (`zSafety.ino`), never `millis() | 1`
     (17 Nov 2026): on an even millisecond `| 1` is one millisecond ahead, the unsigned `now - timer` of the same loop
     pass reads four billion and `>= delay` is true at once (the kickout delay and the WAS check's two times were
-    skipped that way, about every second time). The older `| 1` stamps left in the code are compared with `<` ("heard
-    lately") or with `tmElapsed()` (`TM171.ino`, signed); a new `>=` on one of them needs `msStamp` or `tmElapsed`.
+    skipped that way, about every second time). Every stamp uses it since 21 Nov 2026 (about 40 were still `| 1`: a
+    "once a second" job ran twice, "heard lately" read no, a page time read 49 days); the XIAO has its own (`xLink.h`).
+    A stamp taken with `millis()` can still be a millisecond ahead of a `now` read earlier in the pass: compare those
+    with `tmElapsed()` (`TM171.ino`, signed).
 
 ## Version and Publishing
 
