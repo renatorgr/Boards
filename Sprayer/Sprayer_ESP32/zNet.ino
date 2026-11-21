@@ -324,11 +324,11 @@ static void apiCalibPost()
     const float ppl = server.arg("ppl").toFloat();
     const float pmax = server.arg("pmax").toFloat();
     const float pdiv = server.arg("pdiv").toFloat();
-    const long sensors = server.hasArg("sensors") ? server.arg("sensors").toInt() : cfg.sensors;   // an older page sends none
+    long sensors = cfg.sensors;                             // an older page sends none
+    if (server.hasArg("sensors") && !argNumber("sensors", 0, SENSOR_PRESSURE | SENSOR_FLOW, sensors)) { sendError(400, "sensors: 0 to 3"); return; }
     if (!(ppl > 1 && ppl < 100000)) { sendError(400, "pulses per litre: 1 to 100000"); return; }
     if (!(pmax > 0.5f && pmax < 100)) { sendError(400, "sensor range: 0.5 to 100 bar"); return; }
     if (!(pdiv > 0.1f && pdiv <= 1)) { sendError(400, "divider: 0.1 to 1"); return; }
-    if (sensors < 0 || sensors > (SENSOR_PRESSURE | SENSOR_FLOW)) { sendError(400, "sensors: 0 to 3"); return; }
     cfg.sensors = sensors;
     cfg.pulsesPerLitre = ppl;
     cfg.pressureMaxBar = pmax;

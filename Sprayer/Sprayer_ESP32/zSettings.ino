@@ -68,6 +68,7 @@ void settingsLoad()
     if (!(cfg.pressureMaxBar > 0.5f && cfg.pressureMaxBar < 100))  cfg.pressureMaxBar = d.pressureMaxBar;
     if (!(cfg.pressureDivider > 0.1f && cfg.pressureDivider <= 1)) cfg.pressureDivider = d.pressureDivider;
     if (cfg.ipLast < 2 || cfg.ipLast > 254) cfg.ipLast = d.ipLast;
+    if (cfg.invertOutputs > 1) cfg.invertOutputs = d.invertOutputs;   // only 0 or 1 is saved: anything else = as built
     if (!(cfg.targetRate >= 0 && cfg.targetRate <= 2000))  cfg.targetRate = d.targetRate;
     if (!(cfg.nozzleSpacing >= 0 && cfg.nozzleSpacing <= 5)) cfg.nozzleSpacing = d.nozzleSpacing;
     if (!(cfg.nozzleFlow >= 0 && cfg.nozzleFlow <= 50))    cfg.nozzleFlow = d.nozzleFlow;

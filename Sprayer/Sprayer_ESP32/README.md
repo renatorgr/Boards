@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 21 Nov 2026 | **0.10.10**: network names and answers shown as text, never as markup ([How it works](#how-it-works)). **0.10.11**: a section with no relay (pin config, more sections than relays) is said on the page, in the log and on the program's screen ([How it works](#how-it-works)). |
+| 21 Nov 2026 | **0.10.10**: network names and answers shown as text, never as markup. **0.10.11**: a section with no relay is said on the page, in the log and on the program's screen ([How it works](#how-it-works)). **0.10.12**: three small fixes found by the harness ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -331,6 +331,10 @@ level the module is using.
 
 ## Notes
 
+- Fixed in 0.10.12, found by the module harness (`Tests/ESP32_Modules`): a raise or lower time over
+  51 s ran short (60 s gave 8.6 s; now up to the 255 s AgOpenWeb allows); the calibration save takes
+  only digits for *Sensors fitted* (`abc` used to save "no sensors"); an "outputs inverted" byte in
+  flash other than 0 or 1 reads as normal (7 used to close every relay).
 - `USE_MASTER_SWITCH` (top of `Sprayer_ESP32.ino`): set to 1 to read the master switch
   on **G39** (12 V through 47 kΩ, then 10 kΩ to GND). Off by default: the switch cuts the
   valves' 12 V in the wiring.

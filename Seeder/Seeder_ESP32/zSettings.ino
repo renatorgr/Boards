@@ -54,6 +54,7 @@ void settingsLoad()
     if (cfg.apPass.length() < 8 || cfg.apPass.length() > 63) cfg.apPass = DEFAULT_AP_PASS;
     if (cfg.host.length() < 1 || cfg.host.length() > 24)    cfg.host = DEFAULT_HOST;
     if (cfg.ipLast < 2 || cfg.ipLast > 254) cfg.ipLast = d.ipLast;
+    if (cfg.invertOutputs > 1) cfg.invertOutputs = d.invertOutputs;   // only 0 or 1 is saved: anything else = as built
     if (cfg.firstSection > MAX_SECTIONS) cfg.firstSection = d.firstSection;
     if (cfg.numSections > MAX_SECTIONS) cfg.numSections = d.numSections;
     for (uint8_t i = 0; i < 24; i++) if (cfg.pin[i] > PIN_GEO_STOP) cfg.pin[i] = 0;
