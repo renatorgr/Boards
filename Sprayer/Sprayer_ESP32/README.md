@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 21 Nov 2026 | **0.10.10**: the tractor network's name and the module's answers to a save are shown as text, never as markup: a name with < and > in it could run a script in the page ([How it works](#how-it-works)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -72,7 +73,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
     received from AgOpenWeb; the sensors fitted and their calibration. Saving needs the
     own network's password, so nothing changes by a touch while driving.
   - **Module**: the link to AgOpenWeb, the relays, the Wi-Fi settings (laid out as on the XIAO
-    page, with *Search for networks*) and the events.
+    page, with *Search for networks*) and the events. Network names and the module's answers
+    go into the page as text, never as markup: a network name may hold `<` and `>`.
   - **Firmware**, as on the Teensy and XIAO pages: one card with the program installed
     (version, build date), the **version on GitHub** (the `Sprayer_ESP32.ino.bin` in this
     folder; checked when the page opens, every 6 hours and with *Check now*) tagged *newer*,

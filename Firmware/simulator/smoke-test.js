@@ -859,6 +859,22 @@ async function teensy(browser, port, q, name) {
   if ((await pg.locator("#secs span.on").count()) !== 0) fail.push(what + ": a section is open with the program silent");
   await pg.close();
  }
+ // a tractor network whose name holds markup (a network name may have < and > in it): the Module tab shows the name as
+ // text and nothing in it runs. The pretend module's state is changed as a saved network would leave it
+ for (const [mod, name] of [["sprayer", "Sprayer page"], ["seeder", "Seed drill page"]]) {
+  const what = name + ", a network name with markup";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/" + mod + "/", what);
+  await pg.waitForTimeout(1500);
+  const evil = '<img src=x onerror="window.__ran=1">';
+  await pg.evaluate(([k, v]) => { const x = JSON.parse(sessionStorage.getItem(k)); x.staOn = true; x.sta = v; sessionStorage.setItem(k, JSON.stringify(x)); },
+   ["aiosim." + mod, evil]);
+  await pg.reload(); await pg.waitForTimeout(4000);
+  await pg.click('nav button[data-t="module"]'); await pg.waitForTimeout(700);
+  await expect(pg, what, "#sta", /^<img src=x onerror="window\.__ran=1">( \(not joined\))?$/);
+  if (await pg.locator("#sta img").count()) fail.push(what + ": the network name became an element");
+  if (await pg.evaluate(() => window.__ran)) fail.push(what + ": a script in the network name ran");
+  await pg.close();
+ }
  await browser.close();
  server.close();
  clearTimeout(watchdog);

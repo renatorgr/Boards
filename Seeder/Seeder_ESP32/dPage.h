@@ -260,6 +260,9 @@ $('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
+// one coloured word as an element's only content: the text goes in as text, never as markup
+// (a network name may hold < and >, and the page must not run it)
+function say(el,cls,text){const s=document.createElement('span');s.className=cls;s.textContent=text;el.replaceChildren(s)}
 // sections come as hex digits, section 1 = the lowest bit ("7ffff" = sections 1-19)
 function bit(h,i){const k=h.length-1-(i>>2);return k>=0&&(parseInt(h[k],16)>>(i&3)&1)===1}
 const pw=()=>askText('Password of the own Wi-Fi network');   // a Promise: await it
@@ -308,7 +311,7 @@ async function refresh(){
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
     $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
     $('eth').innerHTML=d.wifi.staOn?'<span class="warn">not used (tractor Wi-Fi instead)</span>':d.wifi.ethUp?'<span class="ok">connected</span>':'<span class="bad">no link</span>';
-    $('sta').innerHTML=!d.wifi.staOn?'not used (cable)':d.wifi.staUp?'<span class="ok">'+d.wifi.sta+'</span>':'<span class="bad">'+d.wifi.sta+' (not joined)</span>';
+    if(!d.wifi.staOn)$('sta').textContent='not used (cable)';else say($('sta'),d.wifi.staUp?'ok':'bad',d.wifi.sta+(d.wifi.staUp?'':' (not joined)'));
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.staUp?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);
     $('log').textContent=d.log.join('\n');
@@ -333,7 +336,7 @@ async function post(url,fields,msgId,pass){
     // saved: the fields show what the module kept, before "done" (a restart: once it is back)
     if(d.ok&&d.restart)settingsLoaded=false;
     else if(d.ok)try{await loadSettings()}catch(e){}
-    m.innerHTML=d.ok?'<span class="ok">done'+(d.restart?', restarting: reconnect in 10 s':'')+'</span>':'<span class="bad">'+d.error+'</span>';
+    if(d.ok)say(m,'ok','done'+(d.restart?', restarting: reconnect in 10 s':''));else say(m,'bad',d.error);
     return d;
   }catch(e){m.innerHTML='<span class="bad">no answer</span>'}
 }
