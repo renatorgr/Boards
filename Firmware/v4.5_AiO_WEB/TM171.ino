@@ -181,7 +181,7 @@ bool TM171byte(uint8_t temp)
 
         case 13: // Acknowledge (AiO_WEB: byte 0 = the object acknowledged; the whole frame goes to the log,
                  // the TM171 has not sent one yet and its content is not known for sure)
-          if (ImuData[7] == 21) tmSetAckMs = millis() | 1;
+          if (ImuData[7] == 21) tmSetAckMs = msStamp(millis());
           tm171LogFrame("acknowledge", ImuData, ImuData[2] + 5);
         break;
 
@@ -190,7 +190,7 @@ bool TM171byte(uint8_t temp)
           TemperatureV.fBytes[1] = ImuData[12];
           TemperatureV.fBytes[2] = ImuData[13];
           TemperatureV.fBytes[3] = ImuData[14];
-          tm171TempMs = millis() | 1;
+          tm171TempMs = msStamp(millis());
           qos = ImuData[17] & 0x07;
 #ifdef TM171DEBUG
           Serial.print("[tm171] temperature "); Serial.print(TemperatureV.fValue);
@@ -395,14 +395,14 @@ const char* tm171SetupWhy()
 bool tm171FixSetup(const char** why)
 {
     if (!tm171SettingWrite(TM171_AOG_FORM, why)) return false;
-    tmFixMs = millis() | 1;
+    tmFixMs = msStamp(millis());
     return true;
 }
 
 // No reply ever to a settings request: the TM171's RX pin is not wired to Teensy TX5 (the web page explains)
 bool tm171NoWire() { return tmSetNoAnswer > 1 && tmSetMs == 0; }   // (two requests unanswered: the first is sent again once)
 
-// A timer set with millis() | 1 can be one millisecond ahead of the loop's "now" (the request is sent in the
+// A timer set from millis() can be one millisecond ahead of the loop's "now" (the request is sent in the
 // same loop pass, or by the web server between two passes): a plain unsigned "now - timer" then wraps to
 // four billion and the timer looks expired at once. Signed, it is -1: not expired.
 static bool tmElapsed(uint32_t now, uint32_t since, uint32_t ms) { return (int32_t)(now - since) > (int32_t)ms; }
@@ -412,7 +412,7 @@ void tm171SettingRead()
 {
     const uint8_t c[4] = { 21, 0, 0, 0 };
     tm171Send(12, c, sizeof(c));
-    tmSetReqMs = millis() | 1;
+    tmSetReqMs = msStamp(millis());
 }
 
 static void tm171SettingGot(const uint8_t* p)
@@ -421,7 +421,7 @@ static void tm171SettingGot(const uint8_t* p)
     const uint32_t w = tmSetU32(tmSet);
     const bool layoutOk = TM171_SET_BIT(w, 13) == 1 && ((w >> 14) & 7UL) == 2 && tmSetU16(tmSet + 6) == tm171Baud / 100;
     const bool first = tmSetMs == 0;
-    tmSetMs = millis() | 1;
+    tmSetMs = msStamp(millis());
     tmSetReqMs = 0;
     tmSetValid = layoutOk;
     tmSetOdd   = !layoutOk;
@@ -468,7 +468,7 @@ bool tm171SettingWrite(const TmSetForm& f, const char** why)
     tm171Send(21, s, TM171_SET_LEN);
     SerialImu->flush();                              // sent before Serial5 may change its baud rate
     tmSetAckMs = 0;
-    tmSetWriteMs = millis() | 1;
+    tmSetWriteMs = msStamp(millis());
     if (f.baud100 && (uint32_t)f.baud100 * 100UL != tm171Baud) { tmBaudNew = (uint32_t)f.baud100 * 100UL; tmBaudSwitchMs = tmSetWriteMs; }
     StatusLog.line("[status] TM171: settings written to ID %u (switches 0x%08lX, gains %u/%u, %u Hz%s)", (unsigned)tm171Id, (unsigned long)w,
                    (unsigned)f.accGain, (unsigned)f.magGain, (unsigned)f.odr, f.save ? ", saved to flash" : ", this session only");
@@ -483,7 +483,7 @@ void tm171SettingLoop()
     static uint32_t firstMs = 0, rateMs = 0;
     static bool asked = false;
     const uint32_t now = millis();
-    if (!firstMs) { firstMs = now | 1; rateMs = now; }
+    if (!firstMs) { firstMs = msStamp(now); rateMs = now; }
     if (!asked && tmElapsed(now, firstMs, 2000)) { asked = true; tm171SettingRead(); }
     if (tmBaudSwitchMs && tmElapsed(now, tmBaudSwitchMs, 300))
     {
@@ -630,7 +630,7 @@ void tm171CalibStop(const char* why)
     tm171CalibCmd(0x04, 0, 0);
     tmCalibState  = TMC_ABORTED;
     tmCalibMs     = millis();
-    tmCalibDoneMs = tmCalibMs | 1;
+    tmCalibDoneMs = msStamp(tmCalibMs);
     StatusLog.line("[status] TM171: gyro calibration stopped (%s)", why);
 }
 
@@ -644,12 +644,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
         if (!tmCalibBusy()) return;
         if (ctrl == 0x01)
         {
-            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
             StatusLog.line("[status] TM171: gyro calibration done (kept until the TM171 is powered off)");
         }
         else if (ctrl == 0xFF)
         {
-            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
             StatusLog.line("[status] TM171: gyro calibration FAILED (the tractor moved, or too much vibration); previous values kept");
         }
     }
@@ -657,12 +657,12 @@ void tm171CalibReport(uint8_t type, uint8_t ctrl)
     {
         if (ctrl == 0x01)
         {
-            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            tmCalibState = TMC_OK; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
             StatusLog.line("[status] TM171: new install calibration saved to flash; switch the whole module off and on");
         }
         else if (ctrl == 0xFF)
         {
-            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            tmCalibState = TMC_FAILED; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
             StatusLog.line("[status] TM171: new install calibration FAILED (did the tractor move?); switch the module off and on and try again");
         }
     }
@@ -677,7 +677,7 @@ void tm171CalibLoop()
     {
         if (now - tmCalibMs > TM171_INSTALL_MS)
         {
-            tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+            tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
             StatusLog.line("[status] TM171: no result from the new install calibration - is Teensy TX5 (pin 20) wired to the TM171 RX?");
         }
         return;
@@ -689,7 +689,7 @@ void tm171CalibLoop()
         case TMC_STARTING:
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
-                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
                 StatusLog.line("[status] TM171: no reply to the calibration command - is Teensy TX5 (pin 20) wired to the TM171 RX?");
             }
             break;
@@ -703,7 +703,7 @@ void tm171CalibLoop()
         case TMC_FINISHING:
             if (now - tmCalibMs > TM171_ANSWER_MS)
             {
-                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = now | 1;
+                tmCalibState = TMC_NO_ANSWER; tmCalibMs = now; tmCalibDoneMs = msStamp(now);
                 StatusLog.line("[status] TM171: no reply after the calibration; result unknown");
             }
             break;

@@ -65,14 +65,14 @@ static uint8_t ledShown(uint8_t colour, uint32_t now)
 }
 
 // The steer button was pressed (Autosteer.ino, button mode): a dark flick on the STEER LED
-void ledSteerPressed() { ledSteerFlickMs = millis() | 1; }
+void ledSteerPressed() { ledSteerFlickMs = msStamp(millis()); }
 
 // From loop(), every pass
 void ledsUpdate()
 {
     const uint32_t now = millis();
     // the steer switch (switch mode: every change is the driver's hand; in button mode Autosteer.ino calls ledSteerPressed)
-    if (steerConfig.SteerSwitch == 1 && ledSteerSwPrev != 255 && steerSwitch != ledSteerSwPrev) ledSteerFlickMs = now | 1;
+    if (steerConfig.SteerSwitch == 1 && ledSteerSwPrev != 255 && steerSwitch != ledSteerSwPrev) ledSteerFlickMs = msStamp(now);
     ledSteerSwPrev = steerSwitch;
     if (now - ledTickMs < LED_TICK_MS) return;
     ledTickMs = now;
@@ -92,7 +92,7 @@ void ledsUpdate()
         c = (q == '0' || q == '\0') ? LED_RED : (q == '4') ? LED_GREEN : LED_ORANGE;
     }
     const uint32_t rtcmMs = statusRtcmLastMs();
-    if (rtcmMs && now - rtcmMs < LED_RTCM_GONE_MS && now - ledGpsFlickMs >= LED_RTCM_EVERY_MS) ledGpsFlickMs = now | 1;
+    if (rtcmMs && now - rtcmMs < LED_RTCM_GONE_MS && now - ledGpsFlickMs >= LED_RTCM_EVERY_MS) ledGpsFlickMs = msStamp(now);
     if (ledGpsFlickMs && now - ledGpsFlickMs < LED_FLICK_MS) c = LED_OFF;
     ledPair(GPSRED_LED, GPSGREEN_LED, ledShown(c, now));
 

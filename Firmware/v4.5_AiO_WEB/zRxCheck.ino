@@ -853,7 +853,7 @@ FLASHMEM static bool ckAutoStart(uint8_t port)
     static uint32_t needMs[2] = {};
     static bool     need[2]   = {};
     const uint32_t now = millis();
-    if (!needMs[port] || now - needMs[port] >= 1000) { needMs[port] = now | 1; need[port] = ckAutoNeeded(port); }
+    if (!needMs[port] || now - needMs[port] >= 1000) { needMs[port] = msStamp(now); need[port] = ckAutoNeeded(port); }
     if (!need[port]) return false;
     ckAutoTried[port] |= 2;
     if (um) ckLoadBeginUm(cfg.umSingle != 0, true);

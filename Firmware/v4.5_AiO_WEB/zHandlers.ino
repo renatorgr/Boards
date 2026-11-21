@@ -435,7 +435,7 @@ void rawNmeaTee(char c)
             {
                 strncpy(hprRawLast, rawLine, sizeof(hprRawLast) - 1);
                 hprRawLast[sizeof(hprRawLast) - 1] = '\0';
-                hprRawMs = millis() | 1;
+                hprRawMs = msStamp(millis());
             }
 #if RAW_NMEA_DEBUG
             if (isHpr || !strncmp(rawLine + 3, "GGA", 3) || !strncmp(rawLine + 3, "VTG", 3))
@@ -587,7 +587,7 @@ void GGA_Handler()
     ggaCount++;                                 // loop() reads the receiver up to one GGA per pass (main .ino)
     ggaMs      = millis();
     ggaUtcCs   = utcCs(fixTime);
-    if (ggaFirstMs == 0) ggaFirstMs = ggaMs | 1;
+    if (ggaFirstMs == 0) ggaFirstMs = msStamp(ggaMs);
 }
 
 // VTG: 0 track true, 1 T, 2 track magnetic, 3 M, 4 knots, 5 N, 6 km/h, 7 K, 8 mode
@@ -640,7 +640,7 @@ void hprTake(char src, const char* heading, int32_t utc, int qf, float pitch)
     {
         hprLateCount++;
         hprLateMs   = hprMs - ggaMs;
-        hprLateAtMs = hprMs | 1;
+        hprLateAtMs = msStamp(hprMs);
     }
 }
 
@@ -649,7 +649,7 @@ void hprRawSet(const char* text)
 {
     strncpy(hprRawLast, text, sizeof(hprRawLast) - 1);
     hprRawLast[sizeof(hprRawLast) - 1] = '\0';
-    hprRawMs = millis() | 1;
+    hprRawMs = msStamp(millis());
 }
 
 // A dual heading with this QF is used: 4 (fixed), or 5 (float) when accepted on the page - never

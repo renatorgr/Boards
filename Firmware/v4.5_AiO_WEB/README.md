@@ -31,6 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
 | 17 Nov 2026 | Changing the steer switch mode in the program with the module running no longer leaves autosteer off until a restart ([Steering](#steering)). The [kickout delay](#settings) and the [WAS check](#was-check)'s times always count: on an even millisecond they were skipped. |
 | 13 Nov 2026 | A held Enter no longer answers the page's question too ([Web page](#web-page)). Firmware tab: one card for the firmware, and one box that says what a `.hex` holds before it is installed ([update](#firmware-update-over-the-network)). |
@@ -443,6 +444,7 @@ Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 ti
 - **Steering**: on its own timer, 40 or 100 Hz (Settings), whatever else the loop does.
 - **Web page**: never waits for a browser for more than 3 s, and the page goes out in small pieces between steering loops (see Web page).
 - **Memory for the stack**: RAM1 (512 KB) holds the code that runs from RAM, counted in 32 KB blocks, and the variables; the rest is the stack. The report shows what is left of it when the report is made (`diag.ram.stackFree`). On 4 Nov 2026 the temperatures took that code just over 256 KB and the stack lost a whole block (10 KB left); the web page's answers and JSON now run from flash (`FLASHMEM`), and the GitHub check fails when a build leaves less than 32 KB.
+- **Timers**: a timer that starts with the time (0 = not running) is started with `msStamp`: the time itself, never 0, never ahead of the loop's time. Until 21 Nov 2026 about 40 of them (the receiver, the dual F9P, the IMU, the LEDs, the XIAO, a message held 3 s) started one millisecond ahead half the time: in that millisecond a "once a second" job could run twice, a message be said twice, "heard lately" read no, or a time on the page read 49 days. The steering's own timers had it fixed on 17 Nov 2026 (see WAS check).
 - **BNO085 on I2C**: found at start-up (up to 1.5 s of waiting, before the loop starts); from then on it is started again only after 3 s of silence, with autosteer off (see IMU).
 
 ## Inputs

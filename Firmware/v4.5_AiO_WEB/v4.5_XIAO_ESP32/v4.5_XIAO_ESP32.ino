@@ -939,7 +939,7 @@ void loop()
     usbCommands();
 
     if (now - watchMs >= 500) { watchMs = now; wifiWatch(); }
-    if (now - infoMs >= LINK_INFO_MS || infoMs == 0) { infoMs = now | 1; sendInfo(); }
+    if (now - infoMs >= LINK_INFO_MS || infoMs == 0) { infoMs = msStamp(now); sendInfo(); }
     if (rebootAtMs && (int32_t)(now - rebootAtMs) >= 0) { delay(50); ESP.restart(); }
     delay(1);                                                 // let the WiFi have the core
 }

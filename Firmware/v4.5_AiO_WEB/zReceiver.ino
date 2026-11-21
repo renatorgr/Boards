@@ -157,7 +157,7 @@ static void rxIdentified(uint8_t kind)
 {
     rxKind    = kind;
     rxIdState = RXID_DONE;
-    rxIdMs    = millis() | 1;
+    rxIdMs    = msStamp(millis());
     rxSilentSeen = false;                                  // (also when the answer came without a query)
     StatusLog.line("[status] GPS receiver: %s %s, firmware %s%s%s%s", rxKindName(), rxModel[0] ? rxModel : "(model not given)",
                    rxFw[0] ? rxFw : "?", rxProt[0] ? " (protocol " : "", rxProt, rxProt[0] ? ")" : "");
@@ -427,7 +427,7 @@ static void ubxFrame(uint8_t cls, uint8_t id, const uint8_t* p, uint16_t len)
             if (v) rxTempReal = true;
             else if (!rxTempMs) rxTempZeroLog("GPS receiver", p, len);
             rxTemp = rxTempReal ? v : RX_TEMP_NONE;           // 0 every time: the field is not filled (zReceiver.h)
-            rxTempMs = millis() | 1;
+            rxTempMs = msStamp(millis());
         }
         return;
     }
@@ -484,7 +484,7 @@ static void ubxOpLoop(uint32_t now)
             if (ubxIdx >= UBX_N)
             {
                 if (ubxRes != UBXRES_WRITE && ubxRes != UBXRES_WRITE_RAM) ubxRes = UBXRES_READ;
-                ubxReadMs = now | 1;
+                ubxReadMs = msStamp(now);
                 ubxOpEnd();
                 return;
             }
@@ -906,7 +906,7 @@ static void umEnd(uint8_t res)
     umOp = UMOP_NONE;
     umRes = res;
     umWaitWord[0] = '\0';
-    umEndMs = millis() | 1;
+    umEndMs = msStamp(millis());
     umSeq++;
 }
 
@@ -935,7 +935,7 @@ static void umOpLoop(uint32_t now)
             return;
         }
         umReadDone();
-        umReadMs = now | 1;
+        umReadMs = msStamp(now);
         umEnd(umRes == UMRES_WRITE || umRes == UMRES_WRITE_PART || umRes == UMRES_WRITE_NOSAVE ? umRes : UMRES_READ);
         return;
     }
@@ -1189,7 +1189,7 @@ FLASHMEM void rxTempLine(const char* l)
     }
     rxTempReal = ok;                                       // not ok: "zero" for the page, which reads "not reported"
     rxTemp     = v;
-    rxTempMs   = millis() | 1;
+    rxTempMs   = msStamp(millis());
 }
 
 // The first UBX-MON-SYS answer with 0 C, in Messages with its bytes: tempValue is byte 18 (counted from 0), after

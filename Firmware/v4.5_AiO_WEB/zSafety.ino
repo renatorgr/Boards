@@ -334,7 +334,7 @@ FLASHMEM void blockedSay()
     const uint32_t now = millis();
     if (!wasBlock && !keyaBlock && !wasJumpBlock && !stuckBlock) return;
     if (saidMs && now - saidMs < 3000) return;
-    saidMs = now | 1;
+    saidMs = msStamp(now);
     char m[64];
     if (stuckBlock)
     {
