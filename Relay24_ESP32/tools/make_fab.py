@@ -52,9 +52,15 @@ def mid(fp, tht):
     return c.x / 1e6, c.y / 1e6
 
 
+ALLOWED_TOOLS = {"kicad-cli", "rsvg-convert"}  # the only programs run() may start
+
+
 def run(cmd):
+    """Start one of ALLOWED_TOOLS with an argument list, never through a shell."""
+    if cmd[0] not in ALLOWED_TOOLS:
+        raise ValueError(f"not an allowed tool: {cmd[0]}")
     print(" ", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, shell=False, check=True)
 
 
 def gerbers(folder, fab):
@@ -144,4 +150,5 @@ def main(folder):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "..")
+    # absolute path, so no file argument handed to the tools can start with "-" and pass as an option
+    main(os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".."))
