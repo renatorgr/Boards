@@ -12,7 +12,7 @@
 // (Sagitta or Keyhole), a pass at twice the radius or more gets a plain semicircle.
 "use strict";
 (function (root) {
- const VERSION = "1.12";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
+ const VERSION = "1.13";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
@@ -20,6 +20,7 @@
                                // their own; backing up, a drawbar folded past it is a jackknife
  const FOLD_CLEARANCE_DEG = 5; // and it stays this far from where it touches a rear tyre or reaches its own stop
  const GO_AROUND_MARGIN = 1.0; // AgOpenWeb's safety margin round a Go around obstacle
+ const SMOOTHING = 14;         // AgOpenWeb's U-Turn Smoothing default (GuidanceConfig): its automatic U-turn ignores it, using AgOpenGPS's own 6
  const K_TURN_ARC = 2.2;      // radians: the forward arc AgOpenWeb draws for a K-turn before the tractor backs up
  const rad = d => d * Math.PI / 180;
  const deg = r => r * 180 / Math.PI;
@@ -378,7 +379,7 @@
    }
   }
   const reach = Math.max(noseReach, toolReach);
-  const margin = i.margin, distance = up(reach + margin, 0.1);
+  const margin = i.margin, distance = up(reach + margin, 0.1), hard = i.edge === "hard";   // hard: the field's boundary is marked hard in AgOpenWeb (a fence, a wall, a ditch)
   const noseWhy = bodyName + " of the machine sweeps " + r1(noseReach) + " m past the pivot's path (" + noseFormula + ")";
   const distanceWhy = (noseReach >= toolReach ? noseWhy + ", more than " + toolWhy : toolWhy + ", more than " + bodyName + " of the machine (" + r1(noseReach) + " m)") + "; plus the " + r1(margin) + " m safety margin";
 
@@ -400,11 +401,22 @@
    const path = turnPath(key, radius, lateral, exitLen), sw = sweep(path.poses, imp), P = path.poses, end = path.turnEnd;
    const corner = cornerImp ? sweep(path.poses, cornerImp) : null;
    // the furthest anything goes, the way out included: a trailed implement's tail still swings out after the pivot's turn
-   let top = 0;
-   for (let k = 0; k < P.length; k++) top = Math.max(top, sw.left[k].n, sw.right[k].n, imp.body != null && k <= end ? Math.max(sw.bodyLeft[k].n, sw.bodyRight[k].n) : -Infinity,
-    corner ? Math.max(corner.left[k].n, corner.right[k].n) : -Infinity);
+   // what AgOpenWeb checks against a hard edge (the implement along the turn's path) and what it does not (the machine, and
+   // in a K-turn whatever backs up: that is past the path it draws)
+   let checked = -Infinity, unchecked = -Infinity;
+   for (let k = 0; k < P.length; k++) {
+    const im = Math.max(sw.left[k].n, sw.right[k].n, corner ? Math.max(corner.left[k].n, corner.right[k].n) : -Infinity);
+    if (key === "kturn" && k > path.forwardEnd) unchecked = Math.max(unchecked, im); else checked = Math.max(checked, im);
+    if (imp.body != null && k <= end) unchecked = Math.max(unchecked, sw.bodyLeft[k].n, sw.bodyRight[k].n);
+   }
+   const top = Math.max(0, checked, unchecked);
    const own = top - depth > reach + 0.01 ? top - depth : reach;   // a K-turn: what backs up first reaches past the pivot
    const dist = up(own + margin, 0.1);
+   // A hard edge: AgOpenWeb moves the turn in until the implement itself is the distance from boundary away from the fence
+   // (its implement clearance check), so the distance needs the margin only, plus how much further than the implement
+   // what it does not check reaches. The pivot then ends up where `dist` puts it.
+   const checkedOwn = checked - depth > toolReach + 0.01 ? checked - depth : toolReach, uncheckedOwn = Math.max(unchecked - depth, noseReach);
+   const hardDist = up(margin + Math.max(0, uncheckedOwn - Math.max(0, checkedOwn)), 0.1);
    let low = 0, lowWhy = "";
    const take = (n, what) => { if (n < low - 1e-6) { low = n; lowWhy = what; } };
    const inTail = k => key === "kturn" && k >= path.arcEnd && k <= path.forwardEnd;
@@ -423,7 +435,7 @@
     : lowWhy === "nose" ? "the K-turn's tail taking the tractor's nose " + r1(-low) + " m back into the field"
     : lowWhy === "tail" ? "the K-turn's tail taking " + implName + "'s end " + r1(-low) + " m back into the field"
     : lowWhy === "swing" ? implName + "'s end swinging " + r1(-low) + " m back into the field" : "";
-   return {path: Object.assign(path, {aligned}), sweep: sw, corner, distance: dist, top: r1(top), low: r1(low), lowText,
+   return {path: Object.assign(path, {aligned}), sweep: sw, corner, distance: dist, set: hard ? hardDist : dist, hardDistance: hardDist, softDistance: dist, top: r1(top), low: r1(low), lowText,
     headland: {sum: r1(sum), passes, width: r2(passes * spacing)}};
   }
   // Every turn AgOpenWeb can make onto the passes within reach: Sagitta with 0 to `skip` rows skipped (a plain semicircle
@@ -468,23 +480,30 @@
   // In the order AgOpenWeb shows them, so they can be typed in from top to bottom: Tool Configuration's tabs (Tool, U-Turn,
   // Tram), each tab's fields top to bottom, then the field's headland, then what is not a setting.
   const rows = [];
+  // the distance from boundary: soft, what the pivot keeps (AgOpenWeb checks nothing else); hard, the margin AgOpenWeb keeps the implement itself
+  const softWhy = distanceWhy + (o.softDistance !== distance ? ". " + o.style + ", skip " + o.skip + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
+     : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin" : "");
+  const hardExtra = r1(o.hardDistance - margin);
+  const hardWhy = "a hard field edge (a fence, a wall, a ditch: the boundary marked hard in AgOpenWeb). AgOpenWeb moves the turn in until " + implName + " itself is this far from it, and lays a hard obstacle's turn line this far plus half the implement's width out: so the " + r1(margin) + " m safety margin"
+    + (hardExtra > 0 ? " + " + hardExtra + " m: " + (o.reverse ? bodyName + " of the machine or the implement backing up" : bodyName + " of the machine") + ", which AgOpenWeb does not check, reaches that much further than the implement" : " is enough")
+    + ". The pivot still ends up " + o.softDistance + " m from the edge, as drawn. A bigger number keeps the implement that much further from the fence and from every hard obstacle: trees close together merge and passes end early";
   if (fromOtherAxle) rows.push({key: "hitch", name: "Tool → Hitch to working point", value: r1(axleToTool) + " m " + (front ? "ahead of the rear axle" : "behind the front axle"),
    why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"
     + (front ? ". AgOpenWeb adds the Vehicle page's Front 3-point hitch and this field, and shows the sum under it: type the field so the sum reads " + r1(axleToTool) + " m (" + r1(axleToTool) + " − the Front 3-point hitch)" : "")});
   rows.push(
    {key: "style", name: "U-Turn → Turn style (skip rows: the skip button on the main screen)", value: o.style + ", skip " + o.skip, why: o.text + (kTurnOut ? ". " + kTurnOut : "") + others},
    {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
+   {key: "smoothing", name: "U-Turn → Smoothing", value: SMOOTHING + " (leave it)",
+    why: "AgOpenWeb's default. Its automatic U-turn smooths its path its own way whatever this says (AgOpenGPS's 6 points, once): this number smooths only the plain turn it falls back to and the turn of the manual U-turn buttons. More pulls a tight arc inward (0.4 m on a 4 m radius at " + SMOOTHING + ")"},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
-   {key: "distance", name: "U-Turn → Distance from boundary", value: o.distance + " m",
-    why: distanceWhy + (o.distance !== distance ? ". " + o.style + ", skip " + o.skip + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
-     : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin" : "")},
+   {key: "distance", name: "U-Turn → Distance from boundary", value: o.set + " m", why: (hard ? hardWhy + ". With a soft edge, " + o.softDistance + " m: " : "") + softWhy},
    {key: "goAround", name: "U-Turn → Going around obstacles", value: "curve radius " + r1(radius) + " m, safety margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
   );
   if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
    why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r2(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
   rows.push(
    {key: "headland", name: "Headland width (Field builder → Headland)", value: headlandOf(o),
-    why: o.style + ", skip " + o.skip + ": turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m"
+    why: o.style + ", skip " + o.skip + ": turn depth " + o.depth + " + " + (hard ? "the pivot's distance from the edge " : "distance from boundary ") + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m"
      + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line"},
    {key: "spacing", name: "Track spacing (not a setting)", value: r2(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
    {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
@@ -507,10 +526,10 @@
   if (!follows) problems.push("The drawbar is longer than the hitch's turn radius: the implement cannot follow this turn. Set a bigger radius or a shorter drawbar.");
   return {problems, rows, machine: i.machine, spacing: r2(spacing), rMin: r1(rMin), radius: r1(radius), semicircle, skip, landing: r1(landing), keyhole, sagitta, kturn,
    bodyName, noseReach: r1(noseReach), toolReach: r1(toolReach), reach: r1(reach), margin: r1(margin), distance, axleToTool: r1(axleToTool), toolRadius: r1(toolRadius), halfOut: r1(halfOut), extension,
-   options, chosen: o.key, kTurnOut, headlandOf, tram, goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}, touchDeg, stopDeg, foldLimit, bodyHalf: r2(bodyHalf), tyreBack: r2(tyreBack)};
+   options, chosen: o.key, kTurnOut, headlandOf, tram, hard, goAround: {radius: r1(radius), margin: GO_AROUND_MARGIN}, touchDeg, stopDeg, foldLimit, bodyHalf: r2(bodyHalf), tyreBack: r2(tyreBack)};
  }
 
  const api = {suggest, keyholeDepth, keyholePath, sagittaPath, kTurnBack, kTurnDepth, turnPath, sweep, depthOf, drawbarTouchDeg, steadyFoldDeg, steadyAxleRadius, tyreReach,
-  VERSION, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, MAX_HITCH_DEG, FOLD_CLEARANCE_DEG, K_TURN_ARC};
+  VERSION, RADIUS_FACTOR, RADIUS_FLOOR, MARGIN, SMOOTHING, MAX_HITCH_DEG, FOLD_CLEARANCE_DEG, K_TURN_ARC};
  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AowSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);

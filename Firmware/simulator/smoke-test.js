@@ -180,6 +180,10 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "h1", /^Set up AgOpenWeb from your measures$/);
   // it opens on Renato's Case and front sprayer
   await expect(pg, what, "#results tbody tr[data-key=radius] td.v", /^4 m$/);          // U-Turn radius: 1.2 × (2.7 ÷ tan 42°) = 3.6, floor 4 m
+  await expect(pg, what, "#results tbody tr[data-key=distance] td.v", /^1 m$/);        // a hard edge (the page's choice): AgOpenWeb keeps the boom itself 1 m away
+  await expect(pg, what, "#legend", /AgOpenWeb moves the turn in until the implement is 1 m/);
+  await expect(pg, what, "#results tbody tr[data-key=smoothing] td.v", /^14 \(leave it\)$/);
+  await pg.selectOption("#edge", "soft"); await pg.waitForTimeout(300);                // the rest of the checks: a soft edge
   await expect(pg, what, "#results tbody tr[data-key=distance] td.v", /^6\.4 m$/);     // distance from boundary: the 8 m boom's end plus the 1 m margin
   await expect(pg, what, "#results tbody tr[data-key=hitch] td.v", /^4\.8 m ahead of the rear axle$/);   // the boom 2.1 m ahead of the front axle + the 2.7 m wheelbase
   await expect(pg, what, "#results tbody tr[data-key=headland] td.v", /^16 m \(2 passes\)$/);
