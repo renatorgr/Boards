@@ -13,7 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 21 Nov 2026 | **0.10.10**: names shown as text. **0.10.11**: a section with no relay is said ([How it works](#how-it-works)). **0.10.12**: three harness fixes. **0.10.13**: why the Wi-Fi was not joined, host name and other module's program checked ([Notes](#notes)). |
+| 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.10.6**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -331,6 +331,12 @@ level the module is using.
 
 ## Notes
 
+- 0.10.14: a pressure sensor ticked on the page that reads under 0.3 V for 3 s is not there (a
+  0.5–4.5 V sensor gives 0.5 V at 0 bar): the page, the log and the program's screen say *pressure
+  sensor unplugged?* instead of *low pressure 0.0 bar*, which read like a pump problem. On the
+  ESP32_Relay_X8, whose relays close one way only, *relay active high* ticked in the program (every
+  valve open with no section asked) is said on the program's screen every 10 s. Not on a dev module,
+  where some relay modules do close on HIGH.
 - 0.10.13: the page says why the tractor network was not joined (*the password looks wrong*, *no
   network of that name in range*, *the signal was lost*), and the log says it once. The module's
   name takes only letters, digits and `-` (a space made `http://my sprayer.local/` unreachable). A

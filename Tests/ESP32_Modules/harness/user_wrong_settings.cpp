@@ -25,22 +25,22 @@ SCENARIO(User::WrongSettings, "relay-active-high-ticked", "ticks 'relay active h
     Module& m = readyModule(w, board);
     if (m.bi.sprayer) w.addRig(m);
     w.aow.toolSections = 8;
-    w.aow.startup(true, { 1, 2, 3, 4, 5, 6, 7, 8 });         // invert = 1
     const uint64_t from = w.now();
+    w.aow.startup(true, { 1, 2, 3, 4, 5, 6, 7, 8 });         // invert = 1
     w.aow.sections = 0;                                     // headland: every section off
     w.run(12000);
     note("relays with every section off", hex(m.relays()));
     tell("inverted-in-log", contains(pageLog(m), "INVERTED"), "the module's log says the outputs are inverted ('relay active high' ticked)");
+    const std::string screen = screenMessages(w, from);
     if (m.bi.sprayer)
-    {
-        const std::string screen = screenMessages(w, from);
         tell("inverted-flow-alarm", contains(screen, "flow with the sections off"),
              "the flow meter sees the boom spraying with every section off and AgOpenWeb's screen says so", screen.empty() ? "(nothing on the screen)" : screen);
-    }
+    // a board whose relays close one way only (all but the dev module, where some relay modules close on HIGH)
+    if (board != Board::SprayerDevkit)
+        must("inverted-said", contains(screen, "outputs inverted"),
+             "AgOpenWeb's screen says the outputs are inverted (every section is on with none asked)", screen.empty() ? "(nothing on the screen)" : screen);
     else
-        tell("inverted-seeder-said", contains(screenMessages(w, from), "invert"),
-             "AgOpenWeb's screen warns that the seed drill's outputs are inverted (every row sows on the headland)",
-             "only the module's log says it; the seed drill has no sensor to notice");
+        must("devkit-not-nagged", !contains(screen, "outputs inverted"), "on the dev module 'relay active high' may be right: no warning", screen);
     statusAlwaysJson(m);
 }
 

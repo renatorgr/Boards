@@ -372,7 +372,8 @@ async function refresh(){
     if(ra.needBar>0&&ra.hintKmh>0)need=f1(ra.needBar)+' bar needed, '+(ra.needBar>ra.maxBar?'slow down':'speed up')+' to '+f1(ra.hintKmh)+' km/h';
     else if(ra.needBar>0)need='set '+f1(ra.needBar)+' bar for the target';
     $('need').textContent=need;
-    const al=ALARMS.filter(([b])=>ra.alarms&b).map(([,t])=>t);
+    const al=ALARMS.filter(([b])=>ra.alarms&b&&!(d.spr.unplugged&&b===1)).map(([,t])=>t);
+    if(d.spr.unplugged)al.unshift('Pressure sensor unplugged? ('+d.spr.volts.toFixed(1)+' V, a sensor gives 0.5 V or more)');
     $('alarms').hidden=!al.length;$('alarms').textContent=al.join(' · ');
     $('silent').hidden=d.aog.link;
     // as many sections as the program has asked for (secTop), at least those the relays follow (up to 16)

@@ -227,6 +227,32 @@ void noRelayTick()
 }
 // ==== end shared "no-relay"
 
+// ==== shared "invert-warning": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
+// Once a second: the outputs inverted ("relay active high" ticked in the program, PGN 238) on a board whose relays close
+// one way only (POLARITY_FIXED): every relay closes with nothing asked. Said on the program's screen when it comes on,
+// when the program comes back, and every INVERT_REPEAT_S while it lasts (the log already says INVERTED).
+void invertTick()
+{
+#if POLARITY_FIXED
+    static bool     told = false, wasLink = false;
+    static uint32_t toldMs = 0;
+    const uint32_t now = millis();
+    const bool back = linkOk && !wasLink;
+    wasLink = linkOk;
+    if (!cfg.invertOutputs)
+    {
+        if (told && linkOk) sendHardwareMessage(SCREEN_NAME ": outputs normal again", 3, false);
+        told = false;
+        return;
+    }
+    if (!linkOk || (told && !back && now - toldMs < INVERT_REPEAT_S * 1000UL)) return;
+    sendHardwareMessage(SCREEN_NAME ": outputs inverted, untick 'relay active high'", INVERT_REPEAT_S + 2, true);
+    told = true;
+    toldMs = now;
+#endif
+}
+// ==== end shared "invert-warning"
+
 // Once a second, after the alarms of rateTick(): the alarms as a PGN 221 message when they change (one normal-colour
 // note when the last one goes off), and again every ALARM_REPEAT_S while one is on, so the program's screen keeps it.
 void sendAlarmMessage()
@@ -234,12 +260,14 @@ void sendAlarmMessage()
     static uint8_t  lastSent = 0;                           // the alarms the last message told
     static uint32_t lastMs = 0;
     const uint32_t now = millis();
-    if (sprayAlarms == lastSent && (!sprayAlarms || now - lastMs < ALARM_REPEAT_S * 1000UL)) return;
-    if (!sprayAlarms) sendHardwareMessage("Sprayer: alarms over", 3, false);
+    const uint8_t state = sprayAlarms | (pressureUnplugged ? 0x80 : 0);  // 0x80: no ALARM_* bit, the sensor not there
+    if (state == lastSent && (!state || now - lastMs < ALARM_REPEAT_S * 1000UL)) return;
+    if (!state) sendHardwareMessage("Sprayer: alarms over", 3, false);
     else
     {
-        char text[61] = "Sprayer:", v[32];
-        if (sprayAlarms & ALARM_PRESSURE_LOW)  { snprintf(v, sizeof(v), " low pressure %.1f bar,", pressureBar); strlcat(text, v, sizeof(text)); }
+        char text[61] = "Sprayer:", v[40];
+        if (pressureUnplugged)                 { snprintf(v, sizeof(v), " pressure sensor unplugged? (%.1f V),", sensorVolts); strlcat(text, v, sizeof(text)); }
+        else if (sprayAlarms & ALARM_PRESSURE_LOW) { snprintf(v, sizeof(v), " low pressure %.1f bar,", pressureBar); strlcat(text, v, sizeof(text)); }
         if (sprayAlarms & ALARM_PRESSURE_HIGH) { snprintf(v, sizeof(v), " high pressure %.1f bar,", pressureBar); strlcat(text, v, sizeof(text)); }
         if (sprayAlarms & ALARM_FLOW_LOW)      strlcat(text, " flow too low,", sizeof(text));
         if (sprayAlarms & ALARM_FLOW_HIGH)     strlcat(text, " flow too high,", sizeof(text));
@@ -248,7 +276,7 @@ void sendAlarmMessage()
         if (n && text[n - 1] == ',') text[n - 1] = '\0';
         sendHardwareMessage(text, ALARM_REPEAT_S + 2, true);
     }
-    lastSent = sprayAlarms;
+    lastSent = state;
     lastMs = now;
 }
 

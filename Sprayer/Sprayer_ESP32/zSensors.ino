@@ -51,6 +51,21 @@ void readSensors()
 #endif
 }
 
+// Once a second: a pressure sensor ticked on the page that reads under 0.3 V three seconds in a row is not there
+// (unplugged, a cut wire, no 5 V): a 0.5-4.5 V sensor gives 0.5 V at 0 bar. The log says it when it changes; the alarm
+// message on the program's screen and the page say "pressure sensor unplugged?" instead of "low pressure 0.0 bar".
+void sensorsTick()
+{
+    static uint8_t lowFor = 0;
+    const bool low = (cfg.sensors & SENSOR_PRESSURE) && sensorVolts < 0.3f;
+    lowFor = !low ? 0 : lowFor < 3 ? lowFor + 1 : 3;
+    const bool unplugged = lowFor >= 3;
+    if (unplugged == pressureUnplugged) return;
+    pressureUnplugged = unplugged;
+    if (unplugged) logEvent("pressure sensor reads %.2f V: unplugged? (a 0.5-4.5 V sensor gives 0.5 V at 0 bar)", sensorVolts);
+    else logEvent("pressure sensor reads %.2f V again", sensorVolts);
+}
+
 // Once a second
 void updateFlow()
 {

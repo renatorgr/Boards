@@ -57,7 +57,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.13"
+#define FW_VERSION          "0.10.14"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -76,6 +76,7 @@
 const uint8_t RELAY_PIN[] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8 (checked 2026-10-25)
 #define NUM_RELAYS          8
 #define RELAY_ON_HIGH       1       // this board's relays close when the pin is HIGH
+#define POLARITY_FIXED      1       // its relays close one way only: "relay active high" ticked is a mistake (invertTick)
 #define LED_PIN             23      // the board's programmable LED (set to -1 if it is not on this pin)
 #elif BOARD == BOARD_DEVKIT
 #define BOARD_NAME          "ESP32 dev module"
@@ -84,6 +85,7 @@ const uint8_t RELAY_PIN[] = { 32, 33, 25, 26, 27, 14, 12, 13 };   // relays 1..8
 const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33 };   // relays 1..16
 #define NUM_RELAYS          ((uint8_t)(sizeof(RELAY_PIN) / sizeof(RELAY_PIN[0])))
 #define RELAY_ON_HIGH       0       // the usual relay modules (optocoupler inputs) close when the pin is LOW
+#define POLARITY_FIXED      0       // some relay modules close on HIGH: "relay active high" may be right here
 #define LED_PIN             2       // the dev module's blue LED
 #else
 #error "BOARD: choose BOARD_RELAY_X8 or BOARD_DEVKIT"
@@ -118,6 +120,7 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define PROCESS_DATA_PGN    0xA1    // 161: ISOBUS process data (DDI values) for the AgOpenWeb fork (Docs/PGN.md there)
 #define HARDWARE_MESSAGE_PGN 0xDD   // 221: a text the program shows on its screen (the alarms), AgOpenGPS layout
 #define ALARM_REPEAT_S      10      // while an alarm is on, the PGN 221 message is sent again this often
+#define INVERT_REPEAT_S     10      // while the outputs are inverted on a POLARITY_FIXED board, that warning comes again this often
 #define NO_RELAY_REPEAT_S   60      // while the program asks for a section no relay follows, that warning comes again this often
 #define SCREEN_NAME         "Sprayer"   // how the module's messages start on the program's screen
 #define MAX_TOOL_SECTIONS   16      // PGN 235 has the widths of sections 1-16
@@ -188,6 +191,7 @@ bool     masterOn = true;
 uint32_t count239 = 0, count229 = 0, countHello = 0, countCrcErr = 0, countOther = 0;
 
 float    pressureBar = 0, sensorVolts = 0;
+bool     pressureUnplugged = false; // the pressure sensor reads under 0.3 V (sensorsTick): a 0.5-4.5 V sensor never does
 float    flowLpm = 0, totalLitres = 0;
 uint32_t totalPulses = 0;
 
@@ -221,6 +225,8 @@ void sendReadings();
 void sendProcessData();
 void sendAlarmMessage();
 void noRelayTick();
+void invertTick();
+void sensorsTick();
 uint64_t noRelaySections();
 const char* noRelayWhere();
 void rateTick();
@@ -375,11 +381,13 @@ void loop()
     {
         last1000 = now;
         updateFlow();
+        sensorsTick();              // a pressure sensor that is not there
         rateTick();                 // L/ha, pressure for the target, alarms
         sendReadings();
         sendProcessData();
         sendAlarmMessage();
         noRelayTick();              // a section with no relay: the log, the page, the program's screen
+        invertTick();               // outputs inverted on a board that closes one way only
         wifiWatch();
     }
 
