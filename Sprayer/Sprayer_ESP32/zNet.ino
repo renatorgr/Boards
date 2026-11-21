@@ -238,7 +238,8 @@ static void apiStatus()
     j += "]}";
 
     j += ",\"spr\":{\"bar\":" + String(pressureBar, 2) + ",\"lpm\":" + String(flowLpm, 2) + ",\"total\":" + String(totalLitres, 1);
-    j += ",\"master\":" + String(masterOn ? "true" : "false") + ",\"volts\":" + String(sensorVolts, 2) + ",\"pulses\":" + String(totalPulses) + "}";
+    j += ",\"master\":" + String(masterOn ? "true" : "false") + ",\"volts\":" + String(sensorVolts, 2) + ",\"pulses\":" + String(totalPulses);
+    j += ",\"unplugged\":" + String(pressureUnplugged ? "true" : "false") + "}";
 
     j += ",\"cal\":{\"sensors\":" + String(cfg.sensors) + ",\"ppl\":" + String(cfg.pulsesPerLitre, 1) + ",\"pmax\":" + String(cfg.pressureMaxBar, 1) + ",\"pdiv\":" + String(cfg.pressureDivider, 3) + "}";
 

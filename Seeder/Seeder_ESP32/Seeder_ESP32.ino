@@ -63,7 +63,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.13"
+#define FW_VERSION          "0.2.14"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -86,6 +86,7 @@
 #define BOARD_NAME          "Relay24_ESP32"
 #define NUM_RELAYS          24
 #define RELAY_ON_HIGH       1       // the relay closes when its 74HC595 output is HIGH
+#define POLARITY_FIXED      1       // its relays close one way only: "relay active high" ticked is a mistake (invertTick)
 #define SR_DATA             13      // 74HC595 SER
 #define SR_CLOCK            16      // 74HC595 SRCLK
 #define SR_LATCH            32      // 74HC595 RCLK
@@ -106,6 +107,7 @@
 #define BOARD_NAME          "KC868-A32"
 #define NUM_RELAYS          32
 #define RELAY_ON_HIGH       0       // the relay closes when its PCF8574 pin is LOW
+#define POLARITY_FIXED      1       // its relays close one way only: "relay active high" ticked is a mistake (invertTick)
 #define RELAY_SDA           15
 #define RELAY_SCL           13
 const uint8_t RELAY_CHIP[4] = { 0x24, 0x25, 0x21, 0x22 };
@@ -129,6 +131,7 @@ const uint8_t RELAY_CHIP[4] = { 0x24, 0x25, 0x21, 0x22 };
 #define LISTEN_PORT         8888
 #define SEND_PORT           9999
 #define HARDWARE_MESSAGE_PGN 0xDD   // 221: a text the program shows on its screen, AgOpenGPS layout
+#define INVERT_REPEAT_S     10      // while the outputs are inverted, that warning comes again this often
 #define NO_RELAY_REPEAT_S   60      // while the program asks for a section no relay follows, that warning comes again this often
 #define SCREEN_NAME         "Seed drill"   // how the module's messages start on the program's screen
 
@@ -207,6 +210,7 @@ void hydTick();
 void applyOutputs();
 uint8_t relayFn(uint8_t i);
 void noRelayTick();
+void invertTick();
 uint64_t noRelaySections();
 const char* noRelayWhere();
 void logEvent(const char* fmt, ...);
@@ -329,6 +333,7 @@ void loop()
     {
         last1000 = now;
         noRelayTick();              // a section with no relay: the log, the page, the program's screen
+        invertTick();               // outputs inverted ("relay active high" ticked by mistake)
         wifiWatch();
     }
 

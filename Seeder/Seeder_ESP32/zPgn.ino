@@ -111,6 +111,32 @@ void noRelayTick()
 }
 // ==== end shared "no-relay"
 
+// ==== shared "invert-warning": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
+// Once a second: the outputs inverted ("relay active high" ticked in the program, PGN 238) on a board whose relays close
+// one way only (POLARITY_FIXED): every relay closes with nothing asked. Said on the program's screen when it comes on,
+// when the program comes back, and every INVERT_REPEAT_S while it lasts (the log already says INVERTED).
+void invertTick()
+{
+#if POLARITY_FIXED
+    static bool     told = false, wasLink = false;
+    static uint32_t toldMs = 0;
+    const uint32_t now = millis();
+    const bool back = linkOk && !wasLink;
+    wasLink = linkOk;
+    if (!cfg.invertOutputs)
+    {
+        if (told && linkOk) sendHardwareMessage(SCREEN_NAME ": outputs normal again", 3, false);
+        told = false;
+        return;
+    }
+    if (!linkOk || (told && !back && now - toldMs < INVERT_REPEAT_S * 1000UL)) return;
+    sendHardwareMessage(SCREEN_NAME ": outputs inverted, untick 'relay active high'", INVERT_REPEAT_S + 2, true);
+    told = true;
+    toldMs = now;
+#endif
+}
+// ==== end shared "invert-warning"
+
 // Every 200 ms, PGN 237 "from machine", in the layout of the AgOpenGPS AiO v26 firmware (MachineProcessor):
 // what the outputs really do (sections, lift, tramline, geo stop; all off while the program is silent) and
 // a status byte, bit 0 = the program's PGN 239 still arrives. The official Machine_UDP_v5 sends dummy content.

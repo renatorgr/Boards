@@ -103,9 +103,9 @@ SCENARIO(User::Unconfigured, "sensors-ticked-none-fitted", "leaves 'pressure sen
     note("module reads", fmt("%.2f bar (%.2f V), %.2f L/min, alarms %g", s["spr"]["bar"].num(), s["spr"]["volts"].num(), s["spr"]["lpm"].num(),
                              s["rate"]["alarms"].num()));
     note("AgOpenWeb's screen shows", screen.empty() ? "(nothing)" : screen);
-    tell("sensor-missing-said", contains(pageLog(m) + screen, "sensor"),
-         "the module says the pressure sensor looks unplugged (it reads 0 V; a 0.5-4.5 V sensor never does)",
-         "only 'low pressure 0.0 bar' reaches the screen, which reads like a pump problem");
+    must("sensor-missing-said", contains(screen, "pressure sensor unplugged") && s["spr"]["unplugged"].b,
+         "the module says the pressure sensor looks unplugged (it reads 0 V; a 0.5-4.5 V sensor never does): screen and page",
+         screen.empty() ? "(nothing on the screen)" : screen);
     statusAlwaysJson(m);
 }
 
