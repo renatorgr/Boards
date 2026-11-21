@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 21 Nov 2026 | **0.2.10**: network names and answers shown as text. **0.2.11**: a section with no relay is said on the page, in the log and on the screen; relay 1 past the last section refused ([How it works](#how-it-works)). **0.2.12**: two fixes ([Notes](#notes)). |
+| 21 Nov 2026 | **0.2.10**: names shown as text. **0.2.11**: a section with no relay is said ([How it works](#how-it-works)). **0.2.12**: two harness fixes. **0.2.13**: why the Wi-Fi was not joined, host name and other module's program checked ([Notes](#notes)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
 | 9 Nov 2026 | **0.2.5**: *Sections on the seed drill* (Settings): the Sowing tab shows all before the program asks, relays past them idle. **0.2.6**: questions in the page's own box: the browser's pop-ups show nothing in an AgOpenWeb web card ([How it works](#how-it-works)). |
@@ -297,6 +297,10 @@ messages with a right checksum from source `0x7F` (the program).
 
 ## Notes
 
+- 0.2.13: on the tractor's Wi-Fi (instead of the cable) the page says why it was not joined (*the
+  password looks wrong*, *no network of that name in range*, *the signal was lost*), and the log says
+  it once. The module's name takes only letters, digits and `-`. A program update that holds the
+  other module's program is refused by the module itself, not only by the page.
 - Fixed in 0.2.12, found by the module harness (`Tests/ESP32_Modules`): a raise or lower time over
   51 s ran short (60 s gave 8.6 s; now up to the 255 s AgOpenWeb allows); an "outputs inverted" byte
   in flash other than 0 or 1 reads as normal (7 used to close every relay).

@@ -192,8 +192,8 @@ SCENARIO(User::WrongSlots, "other-modules-program", "sends the other module's pr
     r = m.http(HTTP_POST, "/api/update", { { "pw", "agopengps" } }, true, &wrong, "other.bin");
     const bool took = m.dev.updDone;
     w.run(1000);
-    tell("other-program-refused", !took, "the module itself refuses the other module's program (the page already does)",
-         fmt("answer %d: the module would restart into the %s program", r.code, m.bi.sprayer ? "seed drill" : "sprayer"));
+    must("other-program-refused", !took && r.code == 400, "the module itself refuses the other module's program (the page already does)",
+         fmt("answer %d %s%s", r.code, r.body.c_str(), took ? ": the module would restart into the other program" : ""));
     Module& m2 = w.add(board, "module 2");
     if (!m2.bi.sprayer) m2.dev.cableIn = true;
     m2.powerOn();

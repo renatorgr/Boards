@@ -164,7 +164,7 @@ function wifiPost(b) {
  const staOn = b.staOn === "1", staSsid = b.staSsid || "";
  if (staOn && !printable(staSsid, 1, 32)) return S.err(400, "tractor network name: 1 to 32 characters");
  if (b.staPass && !printable(b.staPass, 8, 63)) return S.err(400, "tractor network password: 8 to 63 characters");
- if (!printable(b.host || "", 1, 24)) return S.err(400, "name: 1 to 24 characters");
+ if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,22}[A-Za-z0-9])?$/.test(b.host || "")) return S.err(400, "name: 1 to 24 letters, digits or -, no spaces");
  const net = subnet(b.subnet);
  if (!net) return S.err(400, "subnet: three numbers, like 192.168.1");
  if (b.ipLast !== undefined && !number(b.ipLast, 2, 254)) return S.err(400, "module IP last number: 2 to 254");

@@ -70,7 +70,7 @@ SCENARIO(User::WrongSettings, "page-typos", "types impossible values on the modu
     refused("/api/wifi", with(net, "apSsid", std::string(33, 'x')), "an own-network name of 33 characters");
 
     Http r = m.http(HTTP_POST, "/api/wifi", with(net, "host", "my sprayer"));
-    tell("host-name-checked", r.code == 400, "the page refuses a host name with a space (http://my sprayer.local/ cannot work)",
+    must("host-name-checked", r.code == 400, "the page refuses a host name with a space (http://my sprayer.local/ cannot work)",
          fmt("answer %d", r.code));
     if (r.code == 200) w.run(3000);
 
@@ -186,16 +186,17 @@ SCENARIO(User::WrongSettings, "wrong-wifi-password", "types the tractor Wi-Fi's 
     must("stays-off", m.relays() == 0, "no relay closes (nothing reaches the module)", hex(m.relays()));
     Json s = m.status();
     std::string said = pageLog(m) + s["wifi"]["why"].str();
-    tell("says-wrong-password", contains(said, "password"), "the page says the tractor network refused the password",
-         "the page only says '" + s["wifi"]["sta"].str() + " (not joined)'");
+    must("says-wrong-password", contains(said, "password"), "the page and the log say the password looks wrong",
+         "why '" + s["wifi"]["why"].str() + "'; log: " + pageLog(m));
     // the name wrong this time
     m.http(HTTP_POST, "/api/wifi", { { "pw", "agopengps" }, { "apSsid", m.dev.apSsid }, { "apPass", "" }, { "staOn", "1" },
                                      { "staSsid", "Tractr" }, { "staPass", "tractor123" }, { "host", "sprayer" }, { "subnet", "192.168.5" },
                                      { "ipLast", "123" } });
     w.run(10000);
-    said = pageLog(m);
-    tell("says-not-found", contains(said, "not found") || contains(said, "no network"), "the page says no network of that name is in range",
-         "the page only says 'Tractr (not joined)'");
+    s = m.status();
+    said = pageLog(m) + s["wifi"]["why"].str();
+    must("says-not-found", contains(said, "no network of that name"), "the page and the log say no network of that name is in range",
+         "why '" + s["wifi"]["why"].str() + "'; log: " + pageLog(m));
 }
 
 SCENARIO(User::WrongSettings, "wrong-subnet-from-program", "changes the subnet in AgOpenWeb to 192.168.1 while the router stays on 192.168.5", allBoards())
