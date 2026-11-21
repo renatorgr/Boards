@@ -12,7 +12,7 @@
 // (Sagitta or Keyhole), a pass at twice the radius or more gets a plain semicircle.
 "use strict";
 (function (root) {
- const VERSION = "1.11";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
+ const VERSION = "1.12";       // shown under the page's title and in index.html's "settings.js?v=": raise both with every change
  const RADIUS_FACTOR = 1.2;    // the turn radius over the tightest the tractor can do: the steering stays off its stop
  const RADIUS_FLOOR = 4.0;     // AgOpenWeb's simple turn path never goes below 4 m
  const MARGIN = 1.0;           // room kept between what sweeps the widest and the field edge, unless `margin` says otherwise
@@ -465,24 +465,30 @@
   }
 
   const o = chosen, others = options.length > 1 ? ". The other turns are in the list below, the smallest headland first; pick one and these rows follow it" : "";
-  const rows = [
-   {key: "spacing", name: "Track spacing (not a setting)", value: r2(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
-   {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
+  // In the order AgOpenWeb shows them, so they can be typed in from top to bottom: Tool Configuration's tabs (Tool, U-Turn,
+  // Tram), each tab's fields top to bottom, then the field's headland, then what is not a setting.
+  const rows = [];
+  if (fromOtherAxle) rows.push({key: "hitch", name: "Tool → Hitch to working point", value: r1(axleToTool) + " m " + (front ? "ahead of the rear axle" : "behind the front axle"),
+   why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"
+    + (front ? ". AgOpenWeb adds the Vehicle page's Front 3-point hitch and this field, and shows the sum under it: type the field so the sum reads " + r1(axleToTool) + " m (" + r1(axleToTool) + " − the Front 3-point hitch)" : "")});
+  rows.push(
+   {key: "style", name: "U-Turn → Turn style (skip rows: the skip button on the main screen)", value: o.style + ", skip " + o.skip, why: o.text + (kTurnOut ? ". " + kTurnOut : "") + others},
+   {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
    {key: "radius", name: "U-Turn → Radius", value: r1(radius) + " m", why: why.join("; ")},
-   {key: "style", name: "U-Turn → Turn style and skip rows", value: o.style + ", skip " + o.skip, why: o.text + (kTurnOut ? ". " + kTurnOut : "") + others},
    {key: "distance", name: "U-Turn → Distance from boundary", value: o.distance + " m",
     why: distanceWhy + (o.distance !== distance ? ". " + o.style + ", skip " + o.skip + ": " + (o.reverse ? "backing up, " + implName + " or the machine reaches "
      : implName + (trailed ? " swings out as the tractor straightens, " : " reaches ")) + r1(o.top - o.depth) + " m past the pivot's deepest point; plus the margin" : "")},
+   {key: "goAround", name: "U-Turn → Going around obstacles", value: "curve radius " + r1(radius) + " m, safety margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
+  );
+  if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
+   why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r2(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
+  rows.push(
    {key: "headland", name: "Headland width (Field builder → Headland)", value: headlandOf(o),
     why: o.style + ", skip " + o.skip + ": turn depth " + o.depth + " + distance from boundary " + o.distance + (o.low < 0 ? " + " + r1(-o.low) + " m (" + o.lowText + ")" : "") + " = " + o.headland.sum + " m"
      + ", rounded up to whole passes, so nothing that is not straight on a pass goes past the headland line"},
-   {key: "extension", name: "U-Turn → Extension", value: extension + " m", why: extensionWhy + ": straight legs into and out of the turn"},
-   {key: "goAround", name: "U-Turn → Going around obstacles", value: "radius " + r1(radius) + " m, margin " + GO_AROUND_MARGIN + " m", why: "the same radius as the U-turn; AgOpenWeb refuses anything tighter than the tractor's tightest turn"},
-  ];
-  if (fromOtherAxle) rows.push({key: "hitch", name: "Tool → Hitch length (working center)", value: r1(axleToTool) + " m " + (front ? "ahead of the rear axle" : "behind the front axle"),
-   why: "AgOpenWeb measures a rigid implement from the pivot, the " + (harvester ? "front" : "rear") + " axle: the " + i.wheelbase + " m wheelbase + the " + i.axleToTool + " m from the " + (front ? "front" : "rear") + " axle to the working line"});
-  if (tram) rows.push({key: "tram", name: "Tram → Tram width and passes", value: tram.whole ? tram.width + " m, every " + tram.passes + " pass" + (tram.passes > 1 ? "es" : "") : "no match",
-   why: tram.whole ? "sprayer width ÷ track spacing" : "sprayer width " + tram.width + " ÷ track spacing " + r2(spacing) + " = " + tram.passes + ", not a whole number: the sprayer's wheels would not land on the same tracks every pass"});
+   {key: "spacing", name: "Track spacing (not a setting)", value: r2(spacing) + " m", why: "implement width " + i.width + " m − overlap " + i.overlap + " m; AgOpenWeb works it out itself"},
+   {key: "rMin", name: "Tightest turn of the machine (not a setting)", value: r1(rMin) + " m", why: rMinWhy},
+  );
   if (tyreCheck || stopDeg !== null) {
    const where = i.hitchLength < tyreBack ? "inside the tyres' back edge" : "behind the tyres' back edge";
    const most = Math.max(...options.map(o => o.sweep.firstFoldDeg)), parts = [], value = [];

@@ -33,7 +33,8 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("sprayer headland passes", s.options[0].headland.passes, 2);
  eq("sprayer extension", s.extension, 8);
  eq("sprayer tram", s.tram.whole && s.tram.passes, 1);
- eq("sprayer rows", s.rows.map(r => r.key).join(","), "spacing,rMin,radius,style,distance,headland,extension,goAround,tram");
+ eq("sprayer rows", s.rows.map(r => r.key).join(","), "style,extension,radius,distance,goAround,tram,headland,spacing,rMin");   // AgOpenWeb's order: U-Turn top to bottom, Tram, the field, then what is not a setting
+ eq("go around row", s.rows.find(r => r.key === "goAround").value, "curve radius 4 m, safety margin 1 m");   // AgOpenWeb's two field names
  eq("sprayer chosen", s.chosen, "sagitta0");
 }
 
@@ -177,6 +178,8 @@ const tractor = {machine: "tractor", wheelbase: 2.7, maxSteerDeg: 40, overhang: 
  eq("front sprayer reach", s.toolReach, 5.2);           // √((4.7 + 4)² + 4.7²) − 4.7
  eq("front sprayer distance", s.distance, 6.2);
  eq("front sprayer hitch row", s.rows.find(r => r.key === "hitch").value, "4.7 m ahead of the rear axle");
+ eq("front sprayer rows", s.rows.map(r => r.key).join(","), "hitch,style,extension,radius,distance,goAround,headland,spacing,rMin");   // the Tool tab first
+ eq("front sprayer hitch field", s.rows[0].name, "Tool → Hitch to working point");
  // the boom 4.7 m ahead of the pivot is already on the next pass when the turn ends, that far back into the field
  eq("front sprayer options", s.options.map(o => o.key).join(","), "sagitta1,sagitta0,kturn0,keyhole0");   // the smallest headland first, the shallowest on a tie
  eq("front sprayer headland", s.rows.find(r => r.key === "headland").value, "16 m (2 passes)");
