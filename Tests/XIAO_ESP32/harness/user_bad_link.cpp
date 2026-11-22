@@ -81,6 +81,45 @@ SCENARIO(User::BadLink, "link-request-in-two-pieces", "A phone on a weak link sa
     rules(w);
 }
 
+SCENARIO(User::BadLink, "link-page-wait-other-network-away", "The farm's WiFi is set but out of reach in the field; a phone's requests arrive in two pieces, 1.2 s apart, while the tablet steers", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.flash("staOn", true);
+    w.flash("staSsid", "Farm");
+    w.flash("staPass", "farm12345");
+    w.dev.router.on = false;                // the farm's WiFi does not reach the field
+    w.phones = 2;
+    w.start();
+    if (beginSteer(w))
+    {
+        w.run(3000);
+        must("paused", w.said("not searching for 'Farm' while a program runs") && !w.dev.staSearching(), "While the program has the module the XIAO does not search for the farm's WiFi", "");
+        const uint32_t scans = w.dev.scans, begins = w.dev.staBegins;
+        const std::string req = GET("/api/state");
+        int answered = 0, asked = 0;
+        // The XIAO looks at its WiFi twice a second, and first of all right after a long wait. So the requests are
+        // timed to arrive, one after the other, at every millisecond around such a look: the wait for the second
+        // piece then starts in the very pass of loop() that looks.
+        for (int early = 12; early >= -3; early--)
+        {
+            Link weak;
+            weak.ipLast = 21;
+            weak.stallAt = 20;                          // the first 20 bytes arrive, the rest 1.2 s later (a lost packet sent again)
+            weak.stallMs = 1200;                        // (the Teensy says once a second who has the module)
+            asked++;
+            if (w.http(req, weak).code == 200) answered++;
+            w.run(1000 - early);
+        }
+        must("answered", answered == asked, "Each request is answered when its second piece arrives", fmt("%d of %d", answered, asked));
+        must("no-search", w.dev.scans == scans && w.dev.staBegins == begins && !w.said("searching for 'Farm' again"),
+             "After such a wait the XIAO still does not search for the farm's WiFi (a search takes the radio away from the tablet)",
+             fmt("%u search(es) started%s", w.dev.staBegins - begins, w.said("searching for 'Farm' again") ? "; Messages: 'searching for 'Farm' again'" : ""));
+        endSteer(w);
+    }
+    rules(w);
+}
+
 SCENARIO(User::BadLink, "link-request-never-finished", "A phone's request stops half way (it lost the WiFi), with no tablet steering", oneKit())
 {
     World w(kit);

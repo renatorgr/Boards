@@ -371,7 +371,9 @@ The addresses must not move: settings must survive a firmware update.
     (`LinkWebServer::on` / `onNotFound` wrap it in a `LinkTurn`). So: register handlers only through `server.on` /
     `server.onNotFound`; what the link task runs (`linkPoll()`: `teensy.poll`, `bridgePoll`) must never wait; and
     the watchdog is the program's own entry, answered with `stillHere()` in every wait of the loop's (not
-    `feedLoopWDT()`), by the link task while the core waits for a browser.
+    `feedLoopWDT()`), by the link task while the core waits for a browser. And a time read before
+    `server.handleClient()` is older than the link task's time stamps: after it, read `millis()` again (`loop()`
+    does), or `now - stamp` reads four billion.
 15. **A timer where 0 means "not running"** is started with `msStamp(now)` (`zSafety.ino`), never `millis() | 1`
     (17 Nov 2026): on an even millisecond `| 1` is one millisecond ahead, the unsigned `now - timer` of the same loop
     pass reads four billion and `>= delay` is true at once (the kickout delay and the WAS check's two times were

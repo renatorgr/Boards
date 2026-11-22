@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | First version: 57 scenarios for five users on the two XIAOs (67 runs, about 860 checks), a report, the "XIAO harness" check on GitHub ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
+| 22 Nov 2026 | First version: 58 scenarios for five users on the two XIAOs (68 runs, about 870 checks), a report, the "XIAO harness" check on GitHub ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
 
 ## Running it
 
@@ -85,7 +85,7 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
 | XIAO never set up | `new-bridge-needs-password`, `new-no-teensy`, `new-gps2-port-not-set`, `new-older-teensy`, `new-wrong-password` (every change with a wrong password), `new-phones-join` (the phones' "is there internet?" checks) |
 | Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later` |
 | Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering` |
-| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap` |
+| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-page-wait-other-network-away`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap` |
 
 ## The checks
 
@@ -131,6 +131,11 @@ a fix is a pull request of its own, which takes its lines out of `known-bugs.txt
    server, and the watchdog is the program's own entry, answered by that task while the web server waits for a
    browser (`link-request-in-two-pieces`, `link-request-never-finished`, `link-update-stalls`,
    `link-update-phone-vanishes`; `link-upload-drips-while-steering` and `link-upload-drips` were added with it).
+   That fix had a mistake of its own, found the same day by reading the code and not by the harness: after such a
+   wait the loop went on with the time it had read before it, older than the link task's time stamps, and in the
+   one pass in some hundreds that looks at the WiFi the program seemed long gone: with an other network set and
+   out of reach, the XIAO searched for it for half a second while the tablet steered. Fixed, with a scenario that
+   times its requests to that pass (`link-page-wait-other-network-away`).
 2. **A refused file for the Teensy still held the link. Fixed 22 Nov 2026.** `teensyUpdateUpload()` read a
    refused `.hex` to its end without `linkPoll()`: while the file came in there was no bridge and no hello. Sent
    while the tablet steers, the file was refused as it should be, and the steering data stopped all the same
@@ -182,6 +187,8 @@ the tablets (`w.tab`, `w.tab2`, `w.far` on the other network), browsers (`w.get`
 - Two tasks truly running at once. The link task gets its turn only where pretend time moves, and a task that
   would have to wait for a lock is not played. That the loop and the link task are never in the program's own
   code together is the lock's work on the chip; the harness shows what each does with its turn, not a race.
+  A mistake that needs a wait to fall in one particular pass of `loop()` (the old time of 22 Nov 2026) shows only
+  in a scenario timed for it.
 - The radio and the real chip: WiFi range, the delay and loss in the air, a search taking the radio off its
   channel, two networks with the same numbers, real timing, heap, the flash wearing out. The pretend core does
   what the real one's code does, nothing more; the waits of the pretend browsers are chosen numbers.
