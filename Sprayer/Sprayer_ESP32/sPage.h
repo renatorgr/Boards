@@ -234,7 +234,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <p class="grp">Program network</p>
 <div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5" inputmode="decimal"></div>
 <div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
-<p class="note">No router on the tractor? Join the Wi-Fi of the AiO board's XIAO (with its WiFi bridge switched on) as the tractor network and set the subnet to 192.168.4. This module's own network then moves from 192.168.4.1 to 192.168.40.1.</p>
+<p class="note">No router on the tractor? Join the Wi-Fi of the AiO board's XIAO (with its WiFi bridge switched on) as the tractor network, and keep the subnet: the XIAO's network has the AiO module's numbers (192.168.5).</p>
 <hr class="grp">
 <div class="field"><span>Current password of the own Wi-Fi network (to confirm)</span><input type="password" id="pwW" maxlength="63"></div>
 <div class="row"><button class="act" type="button" onclick="saveWifi()">Save and restart the module</button></div>

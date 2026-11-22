@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO (off from new), and [section modules on its WiFi](#section-modules-on-the-xiaos-wifi) too. [A slow browser](#a-slow-browser) no longer holds it up. `.bin` rebuilt. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi). [A slow browser](#a-slow-browser) no longer holds it up. `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -42,7 +42,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 ## What it does
 
 - **Its own WiFi network**, always on: `XIAO-xxxx` (the last 4 characters come from the XIAO's own serial number), password **`agopengps`** until you change it.
-  - A phone that joins it opens the page by itself (like a hotel WiFi page). If not, open **http://192.168.4.1/**.
+  - A phone that joins it opens the page by itself (like a hotel WiFi page). If not, open **http://192.168.4.1/** (with the [WiFi bridge](#wifi-bridge) on, the module's numbers: normally **http://192.168.5.1/**).
   - Up to 4 phones at the same time.
 - **Another WiFi network too** (optional): the farm WiFi or a phone hotspot. Then the page is also at **http://xiao.local/** (the name can be changed) or at the IP shown on the page.
   - The XIAO has one radio: its own network moves to the other network's channel when it joins it, so a phone on the XIAO network may lose the connection for a few seconds.
@@ -93,9 +93,9 @@ Why the XIAO's own network, and not the farm's or the tractor router's WiFi: on 
 **Switching it on**
 
 1. WiFi tab: give the XIAO's network **a password of your own**. Whoever is on this network can then steer the tractor, so the bridge is refused with the password every XIAO starts with (`agopengps`), and `wifi-reset` switches it off again.
-2. Tick **WiFi bridge**, type the current password, **Save and restart the XIAO**.
+2. Tick **WiFi bridge**, type the current password, **Save and restart the XIAO**. The page says what changes: the XIAO's network moves to the [module's numbers](#the-xiaos-network-numbers) (192.168.5.x), and its page to http://192.168.5.1/.
 3. The Teensy needs the firmware of 22 Nov 2026 or later. The Status tab's **WiFi bridge** row says when the Teensy does not answer it.
-4. On the tablet: join the XIAO's network and start the program. AgOpenWeb looks on every network of the tablet and should find the module by itself (it shows at 192.168.4.1). In AgOpenGPS (AgIO) set the subnet to 192.168.4 by hand: the scan is not answered over the WiFi.
+4. On the tablet: join the XIAO's network again and start the program. AgOpenWeb should find the module by itself (it shows at 192.168.5.1); AgOpenGPS (AgIO) keeps its subnet, 192.168.5, as on the network cable.
 
 **The rules**
 
@@ -104,7 +104,7 @@ Why the XIAO's own network, and not the farm's or the tractor router's WiFi: on 
 | A program on the module's **network cable comes first** | One program has the module at a time. While one talks on the cable (and for 3 s after) the one on the WiFi is not answered; only its hello goes to the Teensy, which says in Messages that it is calling. |
 | **One way at a time** | While the program on the WiFi has the module, nothing for the program goes out on the network cable: a tablet on both would get everything twice, from two addresses. |
 | **One program** on the WiFi | The first one heard, until it has been silent for 3 s. |
-| Only from the XIAO's **own network** (192.168.4.x) | Never from the other network the XIAO joined. |
+| Only from the XIAO's **own network** (the module's numbers, above) | Never from the other network the XIAO joined. |
 | The module's **subnet (PGN 201) and scan (PGN 202) are not done** | They are for the module's network cable, and a subnet change would restart the module under the tablet. Messages says so. |
 | While the program has the module, **no search for networks** | The XIAO has one radio: a search (for the other network when it is out of reach, or the WiFi tab's button) takes it to every channel in turn, away from the steering data. The search for the other network starts again 10 s after the program left; a network already joined stays joined. |
 | With **autosteer on** over the bridge, the page refuses a save, an update (the XIAO's or the module's) and a restart | Each would stop the steering in the middle of the field. Switch autosteer off first. |
@@ -122,6 +122,14 @@ Why the XIAO's own network, and not the farm's or the tractor router's WiFi: on 
 
 **How it travels** (PGN 146-149 on the link, never on the network): the XIAO listens on UDP 8888 and 2233 of its own network (and on 9999 for the [section modules](#section-modules-on-the-xiaos-wifi)), hands each datagram to the Teensy (PGN 146 with the sender's address, PGN 147 for the corrections) and sends what the Teensy has for the program (PGN 148) to that program's UDP 9999. The Teensy says once a second who has the module (PGN 149); without that, from an older Teensy firmware, the XIAO hands nothing over. The XIAO never waits for the link: with its transmit buffer full a datagram is dropped and counted.
 
+## The XIAO's network numbers
+
+With the bridge on, the XIAO's own network takes the module's numbers: **192.168.5.x** by definition (the XIAO at 192.168.5.1, the devices that join it .2 to .12), the first three numbers of the Teensy's IP. Without the bridge it stays at 192.168.4.x, as every ESP32's own network.
+
+- The program keeps the subnet it has on the network cable, and a [sprayer or seed drill module](#section-modules-on-the-xiaos-wifi) joins this network with its own unchanged: its page is at its usual address (http://192.168.5.123/).
+- The XIAO reads the module's numbers in the Teensy's status and keeps them. When they change (WiFi tab, **Module network**, or the module's own page) the XIAO restarts and its network follows; Messages says so. Devices on it join again.
+- An **other network** with the same numbers (a tractor's router at 192.168.5.1) is left as soon as the XIAO gets its address there, and not joined again while the bridge is on: with two networks of the same numbers the XIAO could send the program's packets out on the wrong one. Status says "left: it has this network's numbers".
+
 ## Section modules on the XIAO's WiFi
 
 For a tractor with **no router**: the tablet is on the XIAO's network (the [WiFi bridge](#wifi-bridge)) and a sprayer or seed drill module joins that network too (`Sprayer_ESP32` 0.10.15, `Seeder_ESP32` 0.2.15, or later). Since 22 Nov 2026 the XIAO passes each packet of the program on to every such module, and each packet of a module on to the program.
@@ -129,8 +137,10 @@ For a tractor with **no router**: the tablet is on the XIAO's network (the [WiFi
 **Setting it up**
 
 1. Switch the WiFi bridge on, as above.
-2. On the module's own page, Module tab → *Network settings*: tick *Join the tractor network* and give it the XIAO's network name and password; set the *Program subnet* to **192.168.4**. Save and restart the module.
-3. The module's own network then moves from 192.168.4.1 to **192.168.40.1**: the XIAO's network has the numbers 192.168.4.x, and a module cannot have two networks with the same numbers. From the tablet, on the XIAO's network, the module's page is at its IP there (`http://192.168.4.123/` for the first one).
+2. On the module's own page, Module tab → *Network settings*: tick *Join the tractor network* and give it the XIAO's network name and password. Leave the *Program subnet* as it is: the module's numbers (192.168.5), which the XIAO's network has with the bridge on ([The XIAO's network numbers](#the-xiaos-network-numbers)). Save and restart the module.
+3. From the tablet, on the XIAO's network, the module's page is at its usual address (`http://192.168.5.123/` for the sprayer).
+
+A module set to the subnet **192.168.4** for the first version of this (XIAO `.bin` of 22 Nov 2026, 16:03 UTC): set it back to 192.168.5.
 
 **How it works**
 
@@ -308,6 +318,10 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
   - in the harness (64 scenarios now) with pretend modules: a sprayer and a seed drill module served while the tablet steers (each packet of the program to each of them once and in order, their packets to the program only, no gap in the steering data); five modules (four served, the fifth named in Messages); the bridge off; the program's scan and subnet, not passed on; a module that sends 3000 packets a second and then drops off the network (the steering goes on, 60 a second pass, Messages says so once);
   - the two real module programs run in their own harness (`Tests/ESP32_Modules`) with a pretend XIAO: late and lost packets beside the XIAO's copies, the bridge stopping, a power cycle;
   - **not yet tried with a real XIAO, tablet and modules**: that the modules join the XIAO's network and stay on it, the delays in the air, and the program showing the module are what the first bench test has to show.
+- [The XIAO's network numbers](#the-xiaos-network-numbers) (22 Nov 2026, after the first bench test):
+  - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,175,103 bytes (89 %), XIAO_ESP32S3 1,060,044 bytes (31 %);
+  - in the harness (67 scenarios now, 78 runs, about 1010 checks): the bridge switched on and off (the page moves between 192.168.4.1 and 192.168.5.1, the tablet steers on 192.168.5.x), a module on another subnet (the XIAO follows it after a restart, not while a tablet steers), an other network with the same numbers (left, said on the page and in Messages); the modules' harness keeps the module on subnet 192.168.5;
+  - **not yet tried on a real XIAO**.
 
 ## Credits and licence
 

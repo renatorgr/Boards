@@ -538,6 +538,7 @@ struct Device
     std::string hostName;
     std::string apSsid, apPass;
     bool        apOn = false;
+    IPAddress   apIp = IPAddress(192, 168, 4, 1);   // the XIAO's own address (softAPConfig; an ESP32 starts at 192.168.4.1)
     int         apStations = 0;             // devices on the XIAO's own network (set by the harness)
     int         apMaxStations = 4;          // how many the program lets in (softAP)
     bool        staBegun = false, staAuto = true, staJoined = false;

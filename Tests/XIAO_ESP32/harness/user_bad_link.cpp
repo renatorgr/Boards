@@ -21,7 +21,7 @@ SCENARIO(User::BadLink, "link-phone-vanishes-mid-page", "A phone walks out of re
         gone.ipLast = 21;
         gone.deafAt = 15000;                // it takes 15 kB of the page, then nothing more, without a word
         gone.patienceMs = 40000;
-        const int a = w.ask(GET("/"), gone);
+        const int a = w.ask(GET("/", w.hostFor(gone)), gone);
         w.run(500);
         const Reply other = w.get("/api/state");
         must("other-served", other.jsonOk, "Another phone's page is answered in the end", other.why);
@@ -479,7 +479,7 @@ SCENARIO(User::BadLink, "link-module-goes-wrong", "A section module on the XIAO'
         must("other-served", drill.got239 >= b0 + 98, "The other module still gets the program's machine data", fmt("%u of 100", drill.got239 - b0));
         sprayer.on = false;                 // ... and it is gone, without a word
         w.run(6000);
-        must("forgotten", w.said("the module at 192.168.4.123 is silent") && w.state()["bridge"]["mods"].a.size() == 1, "3 s after its last packet the XIAO stops sending to it", "");
+        must("forgotten", w.said("the module at 192.168.5.123 is silent") && w.state()["bridge"]["mods"].a.size() == 1, "3 s after its last packet the XIAO stops sending to it", "");
         endSteer(w);
         must("steering-untouched", w.tab.nNotPassed == 0 && w.tab.nNotTaken == 0 && w.tab.worstDelayMs <= 20, "All the while every packet of the tablet reached the Teensy, at most 20 ms later",
              fmt("%u not passed, %u not taken, longest delay %u ms", w.tab.nNotPassed, w.tab.nNotTaken, w.tab.worstDelayMs));

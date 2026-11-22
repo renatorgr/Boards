@@ -54,11 +54,12 @@ inline Module& readyModule(World& w, Board b, const std::string& label = "module
 }
 
 // No router on the tractor: the tablet and the module are on the WiFi of the AiO board's XIAO, its WiFi bridge on.
-// The user does what the note on the module's page says: tractor Wi-Fi = the XIAO's network, subnet 192.168.4.
+// The user does what the note on the module's page says: tractor Wi-Fi = the XIAO's network, the subnet kept (192.168.5,
+// which the XIAO's network has with its bridge on; 'third' another for an AiO module on 192.168.<third>).
 // Then AgOpenWeb's start-up messages (and, on the seed drill, 'relay 1 = section 1').
-inline Module& onXiaoWifi(World& w, Board b, const std::string& subnet = "192.168.4")
+inline Module& onXiaoWifi(World& w, Board b, const std::string& subnet = "192.168.5", uint8_t third = 5)
 {
-    w.useXiao();
+    w.useXiao(third);
     Module& m = w.add(b);
     m.powerOn();
     w.run(500);

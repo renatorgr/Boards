@@ -436,7 +436,7 @@ void World::run(uint32_t ms)
                 {
                     if (!m->on() || !m->dev.staUp() || !xiao.known.count(key(m->dev.tractorIp()))) continue;
                     fake::Packet c = p;
-                    c.src = XiaoAp::ip();
+                    c.src = xiao.ip();
                     c.dst = m->dev.tractorIp();
                     m->dev.rx.push_back(c);
                     xiao.copies++;
@@ -468,10 +468,10 @@ void World::run(uint32_t ms)
                     // the message on to the tablet. What went to everyone would reach the tablet again later, straight
                     // from the module: counted, not listened to.
                     if (!m->dev.staUp()) continue;
-                    if (xiao.bridge && (toAll || p.dst == XiaoAp::ip()))
+                    if (xiao.bridge && (toAll || p.dst == xiao.ip()))
                     {
                         xiao.known[key(p.src)] = fake::clockMs;
-                        if (aow.on) { aow.heard.push_back({ p.ms, XiaoAp::ip(), p.data }); xiao.passedOn++; }
+                        if (aow.on) { aow.heard.push_back({ p.ms, xiao.ip(), p.data }); xiao.passedOn++; }
                     }
                     if (toAll) xiao.toEveryone++;
                     else if (p.dst == aow.ip && aow.on) aow.heard.push_back({ p.ms, p.src, p.data });
@@ -486,14 +486,15 @@ void World::run(uint32_t ms)
     }
 }
 
-void World::useXiao()
+void World::useXiao(uint8_t third)
 {
     xiao.on = true;
+    xiao.net[2] = third;
     fake::net.ssid = "XIAO-3F2A";
     fake::net.pass = "trator-2026";
-    fake::net.subnet[0] = 192; fake::net.subnet[1] = 168; fake::net.subnet[2] = 4;
+    fake::net.subnet[0] = 192; fake::net.subnet[1] = 168; fake::net.subnet[2] = third;
     fake::net.dhcp = true;
-    aow.ip = IPAddress(192, 168, 4, 2);
+    aow.ip = IPAddress(192, 168, third, 2);
 }
 
 void joinTractorWifi(World& w, Module& m, const std::string& pass, const std::string& subnet, int ipLast)

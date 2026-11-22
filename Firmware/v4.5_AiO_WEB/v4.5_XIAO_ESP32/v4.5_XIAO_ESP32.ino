@@ -16,7 +16,8 @@
 //
 // What it does:
 //   - its own WiFi network (access point), always on: "XIAO-xxxx", password "agopengps" until changed.
-//     A phone that joins it gets the page by itself (captive page), or opens http://192.168.4.1/
+//     A phone that joins it gets the page by itself (captive page), or opens http://192.168.4.1/ (with the WiFi
+//     bridge on, the module's numbers: normally http://192.168.5.1/)
 //   - optionally joins another WiFi network too (farm, phone hotspot): then also http://<name>.local/
 //     or its IP on that network
 //   - web page (English; dark, or light when the phone asks for it, button at the top), 4 tabs:
@@ -174,6 +175,8 @@ struct Settings
     String staSsid, staPass;
     String host;                 // name on the other network: http://<host>.local/
     bool   bridge = false;       // the WiFi bridge: a program on our own network reaches the module through us
+    uint8_t modNet[3] = { 192, 168, 5 };   // the module's (Teensy's) first three numbers, as it last said them (modNetWatch):
+                                           // with the bridge on, our own network has them too
 } cfg;
 
 static String defaultApSsid()
@@ -183,6 +186,20 @@ static String defaultApSsid()
     snprintf(b, sizeof(b), "XIAO-%02X%02X", (unsigned)((mac >> 32) & 0xFF), (unsigned)((mac >> 40) & 0xFF));
     return String(b);
 }
+
+// The first three numbers of a network a module can have (as the page's "Module network" takes them)
+static bool netNumbersOk(const uint8_t* n)
+{
+    return n[0] >= 1 && n[0] <= 223 && n[0] != 127;
+}
+
+// Our own network: 192.168.4.x, as every ESP32 has it; with the WiFi bridge on, the module's numbers (192.168.5.x
+// by default): the sprayer or seed drill joins it with the subnet it has, and AgOpenGPS keeps its own (set in wifiStart)
+static uint8_t apNet[3] = { 192, 168, 4 };
+static char    apIpText[16] = "192.168.4.1";
+static IPAddress apIp() { return IPAddress(apNet[0], apNet[1], apNet[2], 1); }
+static bool onApNet(const uint8_t* p) { return p[0] == apNet[0] && p[1] == apNet[1] && p[2] == apNet[2]; }
+static bool    staSame = false;        // the other network has our own network's numbers (bridge on): left until a restart (wifiWatch)
 
 static void settingsLoad()
 {
@@ -194,6 +211,13 @@ static void settingsLoad()
     cfg.staPass = prefs.getString("staPass", "");
     cfg.host    = prefs.getString("host", DEFAULT_HOST);
     cfg.bridge  = prefs.getBool("bridge", false);
+    unsigned a, b, c;
+    const String mn = prefs.getString("modNet", "");
+    if (sscanf(mn.c_str(), "%u.%u.%u", &a, &b, &c) == 3 && a <= 255 && b <= 255 && c <= 255)
+    {
+        const uint8_t n[3] = { (uint8_t)a, (uint8_t)b, (uint8_t)c };
+        if (netNumbersOk(n)) memcpy(cfg.modNet, n, 3);
+    }
     prefs.end();
     if (cfg.apSsid.length() < 1 || cfg.apSsid.length() > 32) cfg.apSsid = defaultApSsid();
     if (cfg.apPass.length() < 8 || cfg.apPass.length() > 63) cfg.apPass = DEFAULT_AP_PASS;
@@ -211,6 +235,9 @@ static void settingsSave()
     prefs.putString("staPass", cfg.staPass);
     prefs.putString("host", cfg.host);
     prefs.putBool("bridge", cfg.bridge);
+    char mn[16];
+    snprintf(mn, sizeof(mn), "%u.%u.%u", cfg.modNet[0], cfg.modNet[1], cfg.modNet[2]);
+    prefs.putString("modNet", mn);
     prefs.end();
 }
 
@@ -288,7 +315,9 @@ static uint32_t sketchSize = 0, sketchFree = 0;   // read once at start-up (getS
 // 22 Nov 2026). The rules:
 //   - off from new; switched on in the WiFi tab, and only with a password of one's own on the XIAO's network,
 //     because whoever is on this network can then steer the tractor.
-//   - only from the XIAO's own network (192.168.4.x), never from the other network the XIAO may have joined.
+//   - only from the XIAO's own network, never from the other network the XIAO may have joined. With the bridge on
+//     our own network has the module's numbers (192.168.5.x by default, apNet): the program keeps its subnet, and a
+//     sprayer or seed drill module joins it as it is. An other network with those numbers too is left (wifiWatch).
 //   - one program at a time: the first one heard, until it has been silent for BRIDGE_PROG_GONE_MS.
 //   - the Teensy decides who has the module (xLink.h, bridgeState): a program on its network cable comes first,
 //     and then only our program's hello is passed on (so the Teensy's log can say that it is calling).
@@ -399,8 +428,7 @@ static void bridgeNetOut(const uint8_t* d, uint8_t n)
 // Is this datagram's sender the program we carry? The first one heard on our own network, until it goes silent.
 static bool bridgeTakes(uint32_t ip, uint32_t now)
 {
-    const uint8_t* p = (const uint8_t*)&ip;
-    if (p[0] != 192 || p[1] != 168 || p[2] != 4) return false;        // our own network only (softAPConfig, wifiStart)
+    if (!onApNet((const uint8_t*)&ip)) return false;                  // our own network only (apNet, wifiStart)
     if (!teensy.bridgeKnown(now)) return false;                       // the Teensy does not know the bridge, or is silent
     if (bridge.progIp == 0)
     {
@@ -489,7 +517,7 @@ static void bridgeFromModules(uint32_t now)
         const uint32_t ip = from.sin_addr.s_addr;
         const uint8_t* p = (const uint8_t*)&ip;
         if (n < 6 || b[0] != 0x80 || b[1] != 0x81 || b[2] == 0x7F) continue;   // AgOpenGPS packets only, and none of a program's
-        if (p[0] != 192 || p[1] != 168 || p[2] != 4 || p[3] < 2 || p[3] > 254) continue;   // from our own network only, and not from us
+        if (!onApNet(p) || p[3] < 2 || p[3] > 254) continue;                    // from our own network only, and not from us
         if (ip == bridge.progIp) continue;                            // the program is no module
         BridgeModule* m = bridgeModule(ip, now);
         if (!m) continue;
@@ -630,7 +658,7 @@ static void bridgeStart()
 // BRIDGE_STA_BACK_MS after the program left). Called twice a second from loop().
 static void bridgeStaWatch(uint32_t now)
 {
-    if (!cfg.staOn || cfg.staSsid.length() == 0) return;
+    if (!cfg.staOn || cfg.staSsid.length() == 0 || staSame) return;
     const bool busy = bridgeBusy(now);
     if (busy && !bridge.staPaused && WiFi.status() != WL_CONNECTED)
     {
@@ -674,6 +702,7 @@ static const char* resetReasonText()
 static const char* staState()
 {
     if (!cfg.staOn || cfg.staSsid.length() == 0) return "off";
+    if (staSame) return "same";                        // left: it has the numbers of our own network (wifiWatch)
     if (bridge.staPaused) return "wait";               // not searched for while a program runs over the WiFi bridge
     return WiFi.status() == WL_CONNECTED ? "ok" : "con";
 }
@@ -684,7 +713,9 @@ static void wifiStart()
     WiFi.setHostname(cfg.host.c_str());
     const bool sta = cfg.staOn && cfg.staSsid.length() > 0;
     WiFi.mode(sta ? WIFI_AP_STA : WIFI_AP);
-    WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+    if (cfg.bridge) memcpy(apNet, cfg.modNet, 3);    // the module's numbers (above, apNet); the devices get .2 to .12
+    snprintf(apIpText, sizeof(apIpText), "%u.%u.%u.1", apNet[0], apNet[1], apNet[2]);
+    WiFi.softAPConfig(apIp(), apIp(), IPAddress(255, 255, 255, 0));
     WiFi.softAP(cfg.apSsid.c_str(), cfg.apPass.c_str(), 1, 0, AP_STATIONS);      // (channel 1 and the name shown, as the core's own)
     if (sta)
     {
@@ -701,13 +732,30 @@ static void wifiStart()
         MDNS.addServiceTxt("aowcard", "tcp", "v", "1");     //   TXT v=1 is required, path says where the page is
         MDNS.addServiceTxt("aowcard", "tcp", "path", "/");
     }
-    logEvent("WiFi: own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(), sta ? ", joining the other network" : "");
+    logEvent("WiFi: own network '%s' at %s%s", cfg.apSsid.c_str(), apIpText, sta ? ", joining the other network" : "");
 }
 
 // State changes of the other network and of the clients on ours: events
 static void wifiWatch()
 {
-    const bool up = WiFi.status() == WL_CONNECTED;
+    bool up = WiFi.status() == WL_CONNECTED;
+    if (up && cfg.bridge && !staSame)
+    {
+        // Our own network has the module's numbers (wifiStart); an other network with the same ones (a tractor's router
+        // at 192.168.5.1) would leave the XIAO two ways to every address there, and the program's packets could go out
+        // the wrong one. Seen as the XIAO gets its address there: left, and not joined again while the bridge is on.
+        IPAddress me = WiFi.localIP();
+        const uint8_t m[3] = { me[0], me[1], me[2] };
+        if (onApNet(m))
+        {
+            staSame = true;
+            up = false;
+            WiFi.setAutoReconnect(false);
+            WiFi.disconnect();
+            logEvent("WiFi: left '%s': it has the numbers of the XIAO's own network (%u.%u.%u.x, the module's: WiFi bridge on). Not joined while the bridge is on",
+                     cfg.staSsid.c_str(), m[0], m[1], m[2]);
+        }
+    }
     if (up != staWasUp)
     {
         staWasUp = up;
@@ -726,6 +774,35 @@ static void wifiWatch()
     }
 }
 
+// The module's (Teensy's) numbers, from its status ("ip", PGN 141): kept, so that with the bridge on our own network
+// has them from the start (wifiStart). When they change with the bridge on (the module's subnet changed from a page),
+// the XIAO restarts, and its network follows: the tablet and the modules on it join it again.
+static uint32_t modNetSets = 0;
+static void modNetWatch(uint32_t now)
+{
+    if (teensy.statusSets == modNetSets) return;
+    const char* key = "\"ip\":\"";
+    const size_t kn = strlen(key);
+    int at = -1;
+    for (size_t i = 0; i + kn < teensy.statusLen; i++) if (!memcmp(teensy.status + i, key, kn)) { at = (int)(i + kn); break; }
+    if (at < 0) { modNetSets = teensy.statusSets; return; }
+    char t[16];
+    size_t k = 0;
+    while (k < sizeof(t) - 1 && at + k < teensy.statusLen && teensy.status[at + k] != '"') { t[k] = teensy.status[at + k]; k++; }
+    t[k] = '\0';
+    unsigned a, b, c, d;
+    if (sscanf(t, "%u.%u.%u.%u", &a, &b, &c, &d) != 4 || a > 255 || b > 255 || c > 255 || d > 255) { modNetSets = teensy.statusSets; return; }
+    const uint8_t n[3] = { (uint8_t)a, (uint8_t)b, (uint8_t)c };
+    if (!netNumbersOk(n) || !memcmp(n, cfg.modNet, 3)) { modNetSets = teensy.statusSets; return; }
+    if (cfg.bridge && bridgeSteering(now)) return;              // never under a tablet that steers (checked again next time)
+    modNetSets = teensy.statusSets;
+    memcpy(cfg.modNet, n, 3);
+    settingsSave();
+    if (!cfg.bridge) return;
+    logEvent("The module is now on %u.%u.%u.x: the XIAO restarts so that its own network follows it (WiFi bridge on)", n[0], n[1], n[2]);
+    if (!rebootAtMs) rebootAtMs = now + 1500;
+}
+
 // Our state for the Teensy page (PGN 143)
 static void sendInfo()
 {
@@ -735,7 +812,7 @@ static void sendInfo()
     j.str("v", XIAO_FW_VERSION);
     j.str("c", XIAO_CHIP_NICE);
     j.str("ap", cfg.apSsid.c_str());
-    j.str("apIp", "192.168.4.1");
+    j.str("apIp", apIpText);
     j.i("cl", WiFi.softAPgetStationNum());
     if (cfg.staOn && cfg.staSsid.length())
     {
@@ -776,14 +853,14 @@ static bool passwordOk()
 
 // Requests that come in on our own network for any other host name (phones checking for internet) go
 // to our page. Never on the other network: there the router may give the XIAO its own name
-// (xiao.home, ...), and 192.168.4.1 does not exist on that network.
+// (xiao.home, ...), and our own address does not exist on that network.
 static bool captiveRedirect()
 {
     if (!(server.client().localIP() == WiFi.softAPIP())) return false;
     String h = server.hostHeader();
     h.toLowerCase();
-    if (h.length() == 0 || h == "192.168.4.1" || h == cfg.host + ".local") return false;
-    server.sendHeader("Location", "http://192.168.4.1/", true);
+    if (h.length() == 0 || h == apIpText || h == cfg.host + ".local") return false;
+    server.sendHeader("Location", String("http://") + apIpText + "/", true);
     server.send(302, "text/plain", "");
     return true;
 }
@@ -811,6 +888,7 @@ static void apiState()
 
     j.obj("wifi");
     j.str("ap", cfg.apSsid.c_str());
+    j.str("apIp", apIpText);                   // 192.168.4.1; with the WiFi bridge on, the module's numbers (22 Nov 2026)
     j.i("apCl", WiFi.softAPgetStationNum());
     j.i("ch", WiFi.channel());
     j.str("host", cfg.host.c_str());
@@ -958,6 +1036,9 @@ static void apiSettingsGet()
     j.str("host", cfg.host.c_str());
     j.bo("bridge", cfg.bridge);
     j.bo("apPassOwn", cfg.apPass != DEFAULT_AP_PASS);       // the WiFi bridge asks for a password of one's own
+    char mn[16];
+    snprintf(mn, sizeof(mn), "%u.%u.%u", cfg.modNet[0], cfg.modNet[1], cfg.modNet[2]);
+    j.str("modNet", mn);                                    // the module's numbers: our own network's with the bridge on
     j.raw("}");
     sendJson(j);
 }
@@ -1355,7 +1436,7 @@ static uint8_t cmdLen = 0;
 static void printState()
 {
     Serial.printf("%s, up %lu s, last reset: %s\n", XIAO_FW_NAME, (unsigned long)(millis() / 1000), resetReasonText());
-    Serial.printf("Own WiFi '%s' at 192.168.4.1, %d client(s)\n", cfg.apSsid.c_str(), WiFi.softAPgetStationNum());
+    Serial.printf("Own WiFi '%s' at %s, %d client(s)\n", cfg.apSsid.c_str(), apIpText, WiFi.softAPgetStationNum());
     if (cfg.staOn) Serial.printf("Other network '%s': %s %s\n", cfg.staSsid.c_str(), staState(), WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
     Serial.printf("Teensy: %s, %lu frames, %lu bad checksums, status %ld s ago\n", teensy.teensyTalking(millis()) ? "talking" : "SILENT",
                   (unsigned long)teensy.goodFrames, (unsigned long)teensy.crcErr, teensy.statusMs ? (long)((millis() - teensy.statusMs) / 1000) : -1L);
@@ -1435,7 +1516,7 @@ void loop()
     // "earlier time - stamp" reads four billion milliseconds: for that pass the program looked long gone, and the
     // search for the other network started again with the tablet steering.
     const uint32_t now = millis();
-    if (now - watchMs >= 500) { watchMs = now; wifiWatch(); bridgeStaWatch(now); }
+    if (now - watchMs >= 500) { watchMs = now; wifiWatch(); bridgeStaWatch(now); modNetWatch(now); }
     if (now - infoMs >= LINK_INFO_MS || infoMs == 0) { infoMs = msStamp(now); sendInfo(); }
     if (rebootAtMs && (int32_t)(now - rebootAtMs) >= 0) { delay(50); ESP.restart(); }
     delay(1);                                                 // let the WiFi have the core

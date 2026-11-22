@@ -36,8 +36,8 @@
 //   - why the chip started (power on, a drop of the supply voltage, a crash, a watchdog) is in the events and on the
 //       Module tab; a start nobody asked for while the program was spraying is also said on the program's screen.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
-//       http://192.168.4.1/ (192.168.40.1 when the tractor network is 192.168.4.x, the WiFi of the AiO board's
-//       XIAO: the "xiao-network" notes below). On the tractor network: http://<subnet>.123/ or http://sprayer.local/
+//       http://192.168.4.1/ (192.168.40.1 when the tractor network is 192.168.4.x: the "xiao-network" notes
+//       below). On the tractor network, the AiO board's XIAO's too: http://<subnet>.123/ or http://sprayer.local/
 //   - the page: Spraying tab with the L/ha (actual and target), the pressure (and what gives the target) and the
 //       sections; Settings tab with the target rate, nozzles, pressure limits, flow tolerance, the sensors fitted and
 //       their calibration; Module tab with the link to the program, the relays, the Wi-Fi settings and program subnet
@@ -62,7 +62,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.16"
+#define FW_VERSION          "0.10.17"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -271,10 +271,11 @@ bool staUp() { return cfg.staOn && WiFi.status() == WL_CONNECTED; }
 
 // ==== shared "xiao-network": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 // A tractor with no router (22 Nov 2026): the tablet and this module join the WiFi of the AiO board's XIAO, with
-// its WiFi bridge on (tractor Wi-Fi = the XIAO's network, subnet 192.168.4).
-//   - The own network is at 192.168.4.1, as every ESP32 has it. The XIAO's network has those numbers too, and two
-//     networks with the same numbers on one module leave neither working: with the subnet 192.168.4 the own
-//     network moves to 192.168.40.1.
+// its WiFi bridge on (tractor Wi-Fi = the XIAO's network). That network has the module's numbers then (the AiO's,
+// 192.168.5.x by default): the subnet stays as it is.
+//   - The own network is at 192.168.4.1, as every ESP32 has it. A tractor network with those numbers too (the
+//     subnet 192.168.4, as the first version of the XIAO's bridge had it) would leave neither working: two
+//     networks with the same numbers on one module. With the subnet 192.168.4 the own network moves to 192.168.40.1.
 //   - The XIAO sends this module its copy of each packet of the program, to its address only (a broadcast waits at
 //     a WiFi access point for the next beacon, and may be lost). Such a copy comes from the network's own address,
 //     <subnet>.1. While they come (viaGateway, GATEWAY_HOLD_MS after the last one) what this module sends goes to

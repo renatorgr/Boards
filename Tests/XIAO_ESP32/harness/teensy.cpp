@@ -142,6 +142,7 @@ void Teensy::takeCmd(const uint8_t* d, uint8_t n)
             return;
         }
         subnets.push_back({ d[1], d[2], d[3] });
+        net = { d[1], d[2], d[3] };
         restart();                          // it saves the subnet and restarts, as after PGN 201
         return;
     }
@@ -402,8 +403,8 @@ void Teensy::txTick()
     {
         xsLastMs_ = now;
         statusN++;
-        xsBuf_ = fmt("{\"n\":%lu,\"up\":%lu,\"fw\":\"v4.5_AiO_WEB\",\"gnss\":{\"fix\":4,\"sats\":28,\"age\":0.8},\"steer\":{\"on\":%s,\"angle\":-1.25},\"note\":\"",
-                     (unsigned long)statusN, (unsigned long)(ms() / 1000), steerOn_ ? "true" : "false");
+        xsBuf_ = fmt("{\"n\":%lu,\"up\":%lu,\"ip\":\"%u.%u.%u.126\",\"fw\":\"v4.5_AiO_WEB\",\"gnss\":{\"fix\":4,\"sats\":28,\"age\":0.8},\"steer\":{\"on\":%s,\"angle\":-1.25},\"note\":\"",
+                     (unsigned long)statusN, (unsigned long)(ms() / 1000), net[0], net[1], net[2], steerOn_ ? "true" : "false");
         while (xsBuf_.size() + 3 < statusBytes) xsBuf_ += (char)('a' + xsBuf_.size() % 26);
         xsBuf_ += "\"}";
         xsPos_ = 0;

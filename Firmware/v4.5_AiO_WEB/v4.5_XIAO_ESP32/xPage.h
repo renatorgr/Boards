@@ -167,8 +167,8 @@ p.chk{text-align:right;margin:4px 0 0}
 <div class="card"><h2>XIAO WiFi network</h2>
  <label class="field"><span>Network name</span><input type="text" name="apSsid" maxlength="32"></label>
  <label class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" name="apPass" maxlength="63"></label>
- <p class="note">Always on, at 192.168.4.1. Its password is also the one for changing the settings and the firmware.</p>
- <label class="opt"><input type="checkbox" name="bridge" value="1"><span>WiFi bridge: run AgOpenWeb / AgOpenGPS on this network<small>For a tablet with no network cable to the module: it joins this network and the program reaches the module through the XIAO. Needs a password of your own here (whoever is on this network can steer the tractor) and the Teensy firmware of 22 Nov 2026 or later. A program on the module's network cable comes first. No internet here: corrections (NTRIP) come through the tablet's mobile data.</small></span></label>
+ <p class="note">Always on, at <b id="apAt">192.168.4.1</b>. Its password is also the one for changing the settings and the firmware.</p>
+ <label class="opt"><input type="checkbox" name="bridge" value="1"><span>WiFi bridge: run AgOpenWeb / AgOpenGPS on this network<small>For a tablet with no network cable to the module: it joins this network and the program reaches the module through the XIAO. Needs a password of your own here (whoever is on this network can steer the tractor) and the Teensy firmware of 22 Nov 2026 or later. This network then takes the module's numbers (192.168.5.x, as AgOpenGPS by definition): the program keeps its subnet, and a sprayer or seed drill module joins it as it is. A program on the module's network cable comes first. No internet here: corrections (NTRIP) come through the tablet's mobile data.</small></span></label>
  <p class="note" id="brNote"></p>
 </div>
 <div class="card"><h2>Other WiFi network (optional)</h2>
@@ -305,7 +305,8 @@ function renderVer(){
 }
 function renderState(x){
  lastState=x;lastUp=x.up;if(x.chipId!==undefined){chipId=x.chipId;chipName=x.chip;}
- $("hdr").textContent=x.fw+" · "+(x.wifi.st==="ok"?x.wifi.ip:"192.168.4.1");
+ if(x.wifi.apIp){apAddr=x.wifi.apIp;$("apAt").textContent=apAddr;}
+ $("hdr").textContent=x.fw+" · "+(x.wifi.st==="ok"?x.wifi.ip:apAddr);
  const a=x.aog;
  set("aAge",a.ago254<0?"nothing received":ago(a.ago254>2?a.ago254:0),a.ago254<0||a.ago254>2?"warn":"");
  set("aKmh",a.ago254<0?"–":fmt(a.kmh,1," km/h"));
@@ -323,7 +324,7 @@ function renderState(x){
  set("xUp",dur(x.up));set("xRst",(x.reset),x.resetBad?"warn":"");
  set("xAp",x.wifi.ap+" · "+"channel"+" "+x.wifi.ch);set("xCl",String(x.wifi.apCl));
  const w=x.wifi;
- set("xSta",!w.staOn?"off":w.st==="ok"?w.sta+" · "+w.rssi+" dBm":w.st==="wait"?w.sta+" · "+"not searched for while a program runs on this network":w.sta+" · "+"connecting"+"…",w.staOn&&w.st!=="ok"&&w.st!=="wait"?"warn":"");
+ set("xSta",!w.staOn?"off":w.st==="ok"?w.sta+" · "+w.rssi+" dBm":w.st==="wait"?w.sta+" · "+"not searched for while a program runs on this network":w.st==="same"?w.sta+" · "+"left: it has this network's numbers (WiFi bridge on)":w.sta+" · "+"connecting"+"…",w.staOn&&w.st!=="ok"&&w.st!=="wait"?"warn":"");
  set("xIp",w.staOn&&w.st==="ok"?w.ip:"–");
  // the WiFi bridge (22 Nov 2026): a program on this network reaches the module through the XIAO
  const br=x.bridge;
@@ -422,13 +423,18 @@ $("nav").addEventListener("click",e=>{if(e.target.dataset.t)show(e.target.datase
 
 // ---- WiFi settings
 let apPassOwn=true;     // the XIAO network has a password of the owner's (not the one every XIAO starts with)
-async function loadSettings(){try{const s=await getJ("/api/settings");if(s.error)return;const f=$("fs");setLoaded=true;
+let apAddr="192.168.4.1",bridgeWas=false,modNet="192.168.5";   // our own address now; the bridge as saved; the module's numbers
+async function loadSettings(){try{const s=await getJ("/api/settings");if(s.error)return;const f=$("fs");setLoaded=true;bridgeWas=!!s.bridge;if(s.modNet)modNet=s.modNet;
  f.apSsid.value=s.apSsid;f.staOn.checked=s.staOn;f.staSsid.value=s.staSsid;f.host.value=s.host;$("hostShow").textContent=s.host;
  f.apPass.value="";f.staPass.value="";f.staPass.placeholder=s.staPassSet?"(saved)":"";
  f.bridge.checked=!!s.bridge;apPassOwn=s.apPassOwn!==false;brNote();}catch(e){}}
-// the WiFi bridge needs a password of one's own on the XIAO's network: said as the box is ticked, not only at Save
-function brNote(){const f=$("fs"),n=$("brNote"),need=f.bridge.checked&&!apPassOwn&&!f.apPass.value;
- n.textContent=need?"The WiFi bridge needs a password of your own on this network: type one in «New password» above.":"";n.className=need?"note warn":"note";return need;}
+// the WiFi bridge needs a password of one's own on the XIAO's network: said as the box is ticked, not only at Save;
+// and the network's numbers change with it (the module's with the bridge on): said too, with the page's new address
+function brAddr(on){return on?modNet+".1":"192.168.4.1";}
+function brNote(){const f=$("fs"),n=$("brNote"),need=f.bridge.checked&&!apPassOwn&&!f.apPass.value,moves=f.bridge.checked!==bridgeWas&&brAddr(f.bridge.checked)!==brAddr(bridgeWas);
+ n.textContent=need?"The WiFi bridge needs a password of your own on this network: type one in «New password» above.":
+  moves?"After Save this network moves from "+brAddr(bridgeWas).replace(/1$/,"x")+" to "+brAddr(f.bridge.checked).replace(/1$/,"x")+": the XIAO page is then at http://"+brAddr(f.bridge.checked)+"/, and every device on this network must join it again.":"";
+ n.className=need||moves?"note warn":"note";return need;}
 $("fs").bridge.addEventListener("change",brNote);$("fs").apPass.addEventListener("input",brNote);
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m=$("setMsg");
  if(f.apPass.value&&f.apPass.value.length<8){m.textContent="The password must have 8 characters or more.";m.className="note bad";return;}
@@ -438,7 +444,7 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
  p.set("bridge",f.bridge.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
-  if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
+  if(j.ok){setLoaded=false;const a=brAddr(f.bridge.checked);m.textContent="Saved. The XIAO is restarting."+(a!==apAddr?" Join its network again; the page is then at http://"+a+"/":"");m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
  }catch(e){m.textContent="No connection to the XIAO.";m.className="note bad";}});
 // The module's subnet (WiFi tab, "Module network"): POST /api/subnet; the XIAO passes it to the Teensy (PGN 144),
 // which saves it and restarts with the new IP
@@ -538,7 +544,7 @@ function sendBin(blob,name,pass,p0){
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;upBefore=lastUp;bootAt=Date.now();waitBoot=true;fwMsg("Installed. The XIAO is restarting…","warn");}
   else{pwRefused(x.status,j.error);fail("Not installed: "+(j.error||("error "+x.status))+". The current firmware keeps running.");}};
- x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current firmware keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/) with a downloaded .bin.");
+ x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The current firmware keeps running. Try again closer to the XIAO, or from its own network (http://"+apAddr+"/) with a downloaded .bin.");
  x.send(fd);}
 // Restart XIAO: the same box, with the password
 $("reboot").addEventListener("click",async()=>{if(busy)return;
@@ -688,7 +694,7 @@ function sendTeensyHex(blob,name,force,p0,pass){
  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
   if(x.status===200&&j.ok){p.value=100;busy=false;tWaitStart("Checked ("+Math.round(j.size/1024)+" kB). The module is installing and restarting — do not switch the power off…");}
   else{pwRefused(x.status,j.error);fail("Not installed: "+(j.error||("error "+x.status))+". The module's current firmware keeps running.");}};
- x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The module's current firmware keeps running. Try again closer to the XIAO, or from its own network (http://192.168.4.1/).");
+ x.onerror=()=>fail("The connection to the XIAO dropped during the upload (weak Wi-Fi?). The module's current firmware keeps running. Try again closer to the XIAO, or from its own network (http://"+apAddr+"/).");
  x.send(fd);
 }
 // After the module said yes: wait for it to come back (its time on goes back, or another build runs), through /api/teensy

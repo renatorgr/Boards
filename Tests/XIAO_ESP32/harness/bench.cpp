@@ -23,6 +23,8 @@ std::vector<Kit> oneKit() { return { Kit::C3 }; }
 
 static World* theWorld = nullptr;
 World* world() { return theWorld; }
+// an address on the XIAO's own network: 192.168.4.x, or the module's numbers with the bridge on (what its program set)
+IPAddress apAt(uint8_t last) { const IPAddress& a = theWorld->dev.apIp; return IPAddress(a[0], a[1], a[2], last); }
 
 std::vector<uint8_t> packet(uint8_t pgn, const std::vector<uint8_t>& data, uint8_t src)
 {
@@ -199,7 +201,7 @@ void Xiao::pass()
 IPAddress Program::ip() const
 {
     const fake::Device& d = world()->dev;
-    return otherNet && !forged ? IPAddress(d.router.subnet[0], d.router.subnet[1], d.router.subnet[2], ipLast) : IPAddress(192, 168, 4, ipLast);
+    return otherNet && !forged ? IPAddress(d.router.subnet[0], d.router.subnet[1], d.router.subnet[2], ipLast) : apAt(ipLast);
 }
 
 void Program::send(uint16_t port, const std::vector<uint8_t>& data, bool toAll)
@@ -211,7 +213,7 @@ void Program::send(uint16_t port, const std::vector<uint8_t>& data, bool toAll)
     d.srcPort = 9999;
     const IPAddress me = ip();
     if (otherNet && forged) d.dst = w.dev.staIp().raw();        // (sent straight to the XIAO's address on that network)
-    else d.dst = toAll ? IPAddress(me[0], me[1], me[2], 255).raw() : (otherNet ? w.dev.staIp() : IPAddress(192, 168, 4, 1)).raw();
+    else d.dst = toAll ? IPAddress(me[0], me[1], me[2], 255).raw() : (otherNet ? w.dev.staIp() : w.dev.apIp).raw();
     d.dstPort = port;
     d.data = data;
     const bool link = w.xiao.on && (otherNet ? w.dev.staJoined : w.apUsable());
@@ -262,7 +264,7 @@ void Program::step()
 
 void Program::receive(const fake::Datagram& d)
 {
-    if (d.src != IPAddress(192, 168, 4, 1).raw()) { gotMachineDirect++; return; }   // straight from a module that sent to everyone
+    if (d.src != world()->dev.apIp.raw()) { gotMachineDirect++; return; }   // straight from a module that sent to everyone
     got++;
     lastGotMs = fake::clockMs;
     if (!d.data.empty() && d.data[0] == '$') gotNmea++;
@@ -277,6 +279,7 @@ void Program::receive(const fake::Datagram& d)
 }
 
 // ---------------------------------------------------------------- a section-control module on the XIAO's network
+IPAddress Machine::ip() const { return apAt(ipLast); }
 bool Machine::throughXiao() const { return lastGotMs != 0 && fake::clockMs - lastGotMs < 3000; }
 
 void Machine::send(const std::vector<uint8_t>& data)
@@ -287,7 +290,7 @@ void Machine::send(const std::vector<uint8_t>& data)
     d.ms = fake::clockMs;
     d.src = ip().raw();
     d.srcPort = 8888;
-    d.dst = (toAll ? IPAddress(192, 168, 4, 255) : IPAddress(192, 168, 4, 1)).raw();
+    d.dst = (toAll ? apAt(255) : w.dev.apIp).raw();
     d.dstPort = 9999;
     d.data = data;
     sent++;
@@ -428,7 +431,7 @@ void World::bridgeSaved(const std::string& pass)
 bool World::apUsable() const { return apUpSince_ && fake::clockMs - apUpSince_ >= 2000; }
 void World::usb(const std::string& line) { dev.usbIn += line + "\n"; }
 bool World::said(const std::string& part) const { return has(dev.usbOut, part); }
-std::string World::hostFor(const Link& l) const { return l.fromAp ? "192.168.4.1" : std::string(dev.staIp().toString().c_str()); }
+std::string World::hostFor(const Link& l) const { return std::string((l.fromAp ? dev.apIp : dev.staIp()).toString().c_str()); }
 
 uint8_t World::noisy(uint8_t b)
 {
@@ -500,7 +503,7 @@ void World::datagramsOut()
         for (Program* q : { &tab, &tab2 }) if (q->ip() == to) p = q;
         Machine* m = nullptr;
         for (Machine& q : mod) if (q.ip() == to && (q.on || q.sent)) m = &q;
-        if (to[3] == 255 || to[0] != 192 || to[1] != 168 || to[2] != 4) broke("a datagram went to " + where + " (to everyone, or off the XIAO's own network)");
+        if (to[3] == 255 || to[0] != dev.apIp[0] || to[1] != dev.apIp[1] || to[2] != dev.apIp[2]) broke("a datagram went to " + where + " (to everyone, or off the XIAO's own network)");
         else if (m && d.dstPort == 8888)
         {
             // for a section-control module: one of the program's own, each once and in order, never the subnet or the scan
@@ -638,7 +641,7 @@ void World::browsers()
         {
             if (now < e.nextTryMs) continue;
             const bool reach = xiao.on && (e.link.fromAp ? apUsable() : dev.staJoined);
-            const IPAddress me = e.link.fromAp ? IPAddress(192, 168, 4, e.link.ipLast) : IPAddress(dev.router.subnet[0], dev.router.subnet[1], dev.router.subnet[2], e.link.ipLast);
+            const IPAddress me = e.link.fromAp ? apAt(e.link.ipLast) : IPAddress(dev.router.subnet[0], dev.router.subnet[1], dev.router.subnet[2], e.link.ipLast);
             if (reach) e.conn = dev.connect(e.link.fromAp, me);
             if (!e.conn) { e.nextTryMs = now + 1000; continue; }     // tries again, as a browser does
         }

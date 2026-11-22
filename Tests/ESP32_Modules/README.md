@@ -14,7 +14,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 39 scenarios. |
+| 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 40 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
 
 ## Running it
@@ -73,9 +73,9 @@ report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle. `careful-on-xiao-wifi` (no router: through the XIAO's WiFi bridge, sections switched 20 times, a power cycle), `careful-tablet-hotspot`; `sprayer-litres-kept` (the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning) |
+| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle. `careful-on-xiao-wifi` (no router: through the XIAO's WiFi bridge, the subnet kept, sections switched 20 times, a power cycle), `careful-on-xiao-wifi-192-168-4` (the AiO itself on 192.168.4: the own network moves to 192.168.40.1), `careful-tablet-hotspot`; `sprayer-litres-kept` (the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning) |
 | Module never set up | `power-on-quiet` (no relay closes at power-on or across a restart), `sprayer-never-set-up`, `seeder-never-set-up`, `aow-default-pins` (8-section boom, AgOpenWeb's pin config as it comes), `sensors-ticked-none-fitted`, `no-section-widths` |
-| Wrong settings | `relay-active-high-ticked`, `page-typos` (impossible values on the page), `flash-garbage`, `long-lift-times`, `wrong-wifi-password`, `wrong-subnet-from-program`, `nozzle-flow-typo` (as on 20 Nov), `flow-meter-calibration-typo`, `first-section-past-drill`, `xiao-wifi-subnet-forgotten` (on the XIAO's WiFi with the subnet left at 192.168.5) |
+| Wrong settings | `relay-active-high-ticked`, `page-typos` (impossible values on the page), `flash-garbage`, `long-lift-times`, `wrong-wifi-password`, `wrong-subnet-from-program`, `nozzle-flow-typo` (as on 20 Nov), `flow-meter-calibration-typo`, `first-section-past-drill`, `xiao-wifi-subnet-forgotten` (on the XIAO's WiFi with the subnet 192.168.4 the first version of the bridge asked for) |
 | Wrong slots | `two-relays-one-section`, `relay-on-missing-section`, `more-sections-than-relays`, `two-seeders-right`, `two-seeders-same-first`, `two-seeders-same-ip`, `seeder-fewer-sections`, `seeder-pin-config-19`, `sensors-swapped`, `other-modules-program` (the other module's .bin, a .merged.bin) |
 | Bad network | `network-drops`, `garbage-packets` (random bytes, bad checksums, other senders, cut messages), `flood` (5000 PGN 239 a second), `uptime-49-days` (the clock wraps round), `stale-229`, `program-restarts`, `xiao-wifi-late-broadcasts` (the tablet's own packets 1.2 s late, one in three lost, beside the XIAO's copies), `xiao-wifi-bridge-stops` |
 

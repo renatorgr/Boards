@@ -104,6 +104,7 @@ struct Teensy
     uint32_t steerOffs = 0;         // its steering watchdog cut the steering: no PGN 254 for 2.5 s with autosteer asked for
     std::vector<uint8_t> rtcm;      // corrections written to its receiver
     std::vector<std::array<uint8_t, 3>> subnets;    // subnets it accepted (it then restarts)
+    std::array<uint8_t, 3> net = { 192, 168, 5 };  // its own network's first three numbers (its status says <net>.126)
     std::vector<std::string> subnetRefused;
     uint32_t fwDone = 0, fwRefused = 0, reverts = 0;
     std::string fwWhy;
@@ -175,8 +176,8 @@ struct Program
     bool on = false;                // running, and sending to the module
     bool engaged = false;           // autosteer asked for (the bit in PGN 254)
     bool otherNet = false;          // it is on the other network, not on the XIAO's own
-    bool forged = false;            // ... and its datagrams say they come from 192.168.4.<ipLast> all the same
-    uint8_t ipLast = 2;             // 192.168.4.<ipLast> (or the other network's)
+    bool forged = false;            // ... and its datagrams say they come from the XIAO's network all the same
+    uint8_t ipLast = 2;             // <the XIAO's network>.<ipLast>: 192.168.4.x, or the module's with the bridge on (or the other network's)
     uint32_t every254Ms = 10;       // AgOpenWeb sends PGN 254 a hundred times a second
     uint32_t rtcmEveryMs = 0;       // corrections (NTRIP) this often (0: none) ...
     size_t rtcmBytes = 256;         // ... of this size (AgOpenWeb and AgIO send them 256 bytes at a time, 25 ms apart at the closest)
@@ -212,7 +213,7 @@ struct Machine
 {
     // ---- what the scenario sets
     bool on = false;
-    uint8_t ipLast = 123;           // 192.168.4.<ipLast>
+    uint8_t ipLast = 123;           // <the XIAO's network>.<ipLast>
     uint32_t extraPerMs = 0;        // gone wrong: this many more datagrams every millisecond
 
     // ---- what happened
@@ -225,7 +226,7 @@ struct Machine
     uint64_t logAt = 0;             // the next entry of the programs' log it may get (World::progLog)
     uint16_t seq = 0;
 
-    IPAddress ip() const { return IPAddress(192, 168, 4, ipLast); }
+    IPAddress ip() const;
     bool throughXiao() const;       // it answers the XIAO's address only now
     void step();
     void receive(const fake::Datagram& d, uint32_t delayMs);
@@ -287,7 +288,7 @@ struct World
     Xiao xiao;
     Teensy teensy;
     Program tab, tab2, far;         // a tablet on the XIAO's network, a second one, a program on the other network
-    std::array<Machine, 5> mod;     // section-control modules on the XIAO's network: 192.168.4.123 and up (all off at first)
+    std::array<Machine, 5> mod;     // section-control modules on the XIAO's network: .123 and up (all off at first)
     fake::Device& dev;
 
     // the WiFi name and password the user's devices have for the XIAO's network (they join only when both are right)
@@ -369,4 +370,5 @@ private:
     uint32_t rnd() { rng_ = rng_ * 1664525u + 1013904223u; return rng_ >> 8; }
 };
 World* world();
+IPAddress apAt(uint8_t last);       // <the XIAO's own network>.<last>
 }
