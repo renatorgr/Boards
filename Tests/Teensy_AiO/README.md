@@ -19,6 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | The firmware fixes take their bugs out of `known-bugs.txt` ([What it found](#what-it-found)). |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
 
 ## Running it
@@ -115,7 +116,7 @@ The first run (21 Nov 2026) found five things in the firmware, listed in `known-
 
 - A firmware update refused because autosteer is on (or the tractor moves) reads the whole file before it answers:
   the steering loop stops for as long as the upload takes (10.6 s for the 2 MB `.hex` at 200 kB/s), the outputs as
-  they were.
+  they were. Fixed 22 Nov 2026: the file is read and dropped a piece per pass of the loop.
 - PGN 252 (and 251) shorter than its length byte is taken: the missing bytes come from the packet before
   (counts per degree 120 became 1).
 - PGN 201 saves and restarts for any subnet: 0.0.0 (the module then answers nobody), the subnet it is on already,

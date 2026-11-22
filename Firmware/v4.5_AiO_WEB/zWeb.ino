@@ -69,6 +69,10 @@ static struct
     const char* tx;               // the rest of the answer's body still to send, in pieces from webLoop() (webTxStep)
     size_t   txLeft;              // bytes of it left (0: nothing pending)
     uint32_t txMs;                // when the last piece went out (a browser that takes nothing for WEB_TIMEOUT_MS is given up)
+    uint32_t drainLeft;           // a refused upload: bytes of its body still to read and drop before the answer (webDrainStep)
+    uint32_t drainMs;             // when the last of them came (5 s without any: answered as it is)
+    int      drainCode;           // the answer then (otaRefuse)
+    const char* drainWhy;
 } rq;
 
 static char webBuf[16384];       // JSON answers
@@ -843,31 +847,22 @@ static void restartTeensy()
     for (;;) {}
 }
 
-// A refused update is answered only once the browser has sent the whole file (read and dropped here):
-// an answer while it is still sending cuts the connection, and the page could only say "the
-// connection failed" instead of why.
-static void otaDrain(EthernetClient& c, uint32_t got)
-{
-    static uint8_t buf[512];
-    uint32_t last = millis();
-    while (got < rq.contentLength && c.connected() && millis() - last < 5000)
-    {
-        wdtFeed();
-        netPoll();
-        const int n = c.available();
-        if (n > 0)
-        {
-            const int r = c.read(buf, n < (int)sizeof(buf) ? n : (int)sizeof(buf));
-            if (r > 0) { got += r; last = millis(); }
-        }
-        else netDelay(1);
-    }
-}
-
+// A refused update is answered only once the browser has sent the whole file: an answer while it is still
+// sending cuts the connection, and the page could only say "the connection failed" instead of why. The rest of
+// the file is read and dropped from webLoop(), a piece per pass (webDrainStep), so the steering loop goes on
+// meanwhile. (It was read here in one go: refused because autosteer was on, the loop stopped for the whole
+// upload, 10 s for a 2 MB .hex, with the outputs as they were. Teensy harness, update-while-steering.)
 static void otaRefuse(EthernetClient& c, int code, const char* why, uint32_t got)
 {
     StatusLog.line("[web] firmware update REFUSED: %s (old firmware kept)", why);
-    if (rq.contentLength <= 8000000) otaDrain(c, got);
+    if (rq.contentLength <= 8000000 && got < rq.contentLength && c.connected())
+    {
+        rq.drainLeft = rq.contentLength - got;
+        rq.drainMs   = millis();
+        rq.drainCode = code;
+        rq.drainWhy  = why;                                // a literal (zOTA.ino's errors too): still there later
+        return;
+    }
     webSendError(c, code, why);
 }
 
@@ -1012,12 +1007,35 @@ static void webFinish()
     rq.client.stop();
     rq.active = false;
     rq.txLeft = 0;
+    rq.drainLeft = 0;
 }
 
-// The request is answered: close it, unless its body is still going out in pieces (webLoop() closes it then)
+// The request is answered: close it, unless its body is still going out in pieces, or a refused upload is still
+// coming in (webLoop() closes it then)
 static void webDone()
 {
-    if (!rq.txLeft) webFinish();
+    if (!rq.txLeft && !rq.drainLeft) webFinish();
+}
+
+// A refused upload (otaRefuse): what has come of its body is read and dropped, never waiting for more; the answer
+// once it is all in, or 5 s after the last bytes, or never when the browser has gone
+static void webDrainStep()
+{
+    EthernetClient& c = rq.client;
+    static uint8_t drop[2048];
+    for (int i = 0; i < 8 && rq.drainLeft; i++)          // up to 16 KB per pass of loop()
+    {
+        const int n = c.available();
+        if (n <= 0) break;
+        const int r = c.read(drop, n < (int)sizeof(drop) ? n : (int)sizeof(drop));
+        if (r <= 0) break;
+        rq.drainLeft = (uint32_t)r < rq.drainLeft ? rq.drainLeft - (uint32_t)r : 0;
+        rq.drainMs   = millis();
+    }
+    if (rq.drainLeft && c.connected() && millis() - rq.drainMs < 5000) return;   // more to come
+    rq.drainLeft = 0;
+    if (c.connected()) webSendError(c, rq.drainCode, rq.drainWhy);
+    webFinish();
 }
 
 // GET /api/diag: the firmware's own state, for the report (web page, Firmware tab)
@@ -1200,6 +1218,7 @@ void webSetup()
 void webLoop()
 {
     if (!webRunning) return;
+    if (rq.active && rq.drainLeft) { webDrainStep(); return; }   // a refused upload still coming in (otaRefuse)
     if (rq.active && rq.txLeft)                         // an answer still going out: one piece per pass
     {
         webTxStep();
@@ -1218,6 +1237,7 @@ void webLoop()
         rq.method[0] = rq.path[0] = rq.query[0] = '\0';
         rq.contentLength = 0;
         rq.txLeft = 0;
+        rq.drainLeft = 0;
     }
     EthernetClient& c = rq.client;
     if (millis() - rq.startMs > WEB_TIMEOUT_MS ||
