@@ -68,6 +68,7 @@ static struct
     uint32_t pkts, bad;          // its packets, those with a wrong checksum
     int16_t  lastPgn;
     uint8_t  ip[4];
+    bool     wifi;               // that packet came from the XIAO's WiFi (PGN 152), not from the network cable
     bool     here;               // heard in the last MACH_SILENCE_MS (for the [machine] lines)
 
     uint32_t helloMs, helloN;    // last hello reply (0: never), how many
@@ -152,79 +153,94 @@ static void machineHex(Json& j, const char* k, uint64_t v)
 }
 
 // Called from loop(), once Ethernet is running
+// One packet of a machine module: from UDP 9999 (machineLoop), or from a module on the XIAO's WiFi that the XIAO
+// passed on over the link (PGN 152, machineFromXiao). n = the bytes there are, len = the datagram's own length.
+static void machinePacket(const uint8_t* d, int n, int len, const uint8_t ipb[4], bool wifi, uint32_t now)
+{
+    if (n < 5 || d[0] != 0x80 || d[1] != 0x81) return;
+    const bool fromModule = d[2] == MACH_SRC;
+    const bool lifeSign   = d[2] == 0x7F && d[3] == MACH_PGN_LIFE;   // the official module's PGN 237
+    if (!fromModule && !lifeSign) return;
+
+    if (len < n) n = len;
+    mach.pkts++;
+    if (n < d[4] + 6) { mach.bad++; return; }
+    uint8_t sum = 0;
+    for (int b = 2; b < n - 1; b++) sum += d[b];
+    const bool hello = fromModule && d[3] == MACH_PGN_HELLO;
+    if (sum != d[n - 1])
+    {
+        if (!hello) { mach.bad++; return; }
+        mach.helloNoCrc = true;                           // the official module never computes it
+    }
+    else if (hello) mach.helloNoCrc = false;
+
+    memcpy(mach.ip, ipb, 4);
+    mach.wifi = wifi;
+    mach.lastMs = now ? now : 1;
+    mach.lastPgn = d[3];
+
+    const uint32_t from = (uint32_t)ipb[0] << 24 | (uint32_t)ipb[1] << 16 | (uint32_t)ipb[2] << 8 | ipb[3];
+    if (hello && d[4] >= 2)
+    {
+        machineSections(from, MACH_PGN_HELLO, (uint16_t)(d[5] | d[6] << 8), mach.lastMs);
+        mach.helloMs  = mach.lastMs;
+        mach.helloN++;
+    }
+    else if (fromModule && d[3] == MACH_PGN_SPRAYER && d[4] >= 10)
+    {
+        mach.pressCbar = (uint16_t)(d[5] | d[6] << 8);
+        mach.flowCLmin = (uint16_t)(d[7] | d[8] << 8);
+        mach.totalDl   = (uint32_t)d[9] | (uint32_t)d[10] << 8 | (uint32_t)d[11] << 16 | (uint32_t)d[12] << 24;
+        mach.mainOn    = d[13] != 0;
+        machineSections(from, MACH_PGN_SPRAYER, d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14], mach.lastMs);
+        mach.sprayMs   = mach.lastMs;
+        mach.sprayN++;
+    }
+    else if (fromModule && d[3] == MACH_PGN_SPRAYER_PD && d[4] >= 8)
+    {
+        mach.rateLha = mach.targetLha = -1;
+        for (int p = 5; p + 8 <= 5 + d[4]; p += 8)
+        {
+            if ((d[p] & 0x0F) != 3) continue;                 // only "value" (command 3)
+            const uint16_t ddi = (uint16_t)(d[p + 2] | d[p + 3] << 8);
+            const int32_t v = (int32_t)((uint32_t)d[p + 4] | (uint32_t)d[p + 5] << 8 | (uint32_t)d[p + 6] << 16 | (uint32_t)d[p + 7] << 24);
+            if (ddi == 2)          mach.rateLha   = v / 10000.0f;
+            else if (ddi == 1)     mach.targetLha = v / 10000.0f;
+            else if (ddi == 57344) mach.alarms    = (uint8_t)v;
+        }
+        mach.pdMs = mach.lastMs;
+        mach.pdN++;
+    }
+    else if (fromModule && d[3] == MACH_PGN_LIFE && d[4] >= 2)
+    {
+        uint64_t s = (uint16_t)(d[5] | d[6] << 8);
+        if (d[4] >= 14)
+            for (uint8_t b = 0; b < 6; b++) s |= (uint64_t)d[13 + b] << (16 + 8 * b);
+        machineSections(from, MACH_PGN_LIFE, s, mach.lastMs);
+    }
+}
+
+// A machine module on the XIAO's WiFi (WiFi bridge): PGN 152 from the XIAO, [its IP, 4 bytes][the datagram] (zXiao.ino)
+void machineFromXiao(const uint8_t* d, uint8_t n)
+{
+    if (n < 4 + 6) return;
+    machinePacket(d + 4, n - 4, n - 4, d, true, millis());
+}
+
 void machineLoop()
 {
 #ifdef ARDUINO_TEENSY41
-    if (!Ethernet_running) return;
     const uint32_t now = millis();
-    for (uint8_t k = 0; k < MACH_PKTS_LOOP; k++)
+    for (uint8_t k = 0; Ethernet_running && k < MACH_PKTS_LOOP; k++)
     {
         const int len = Eth_udpModules.parsePacket();
         if (len <= 0) break;
         uint8_t d[128];                                      // room for the sprayer's PGN 161 (up to 110 bytes)
-        const int got = Eth_udpModules.read(d, sizeof(d));   // the rest of a longer packet is dropped (counted as bad below)
-        if (got < 5 || d[0] != 0x80 || d[1] != 0x81) continue;
-        const bool fromModule = d[2] == MACH_SRC;
-        const bool lifeSign   = d[2] == 0x7F && d[3] == MACH_PGN_LIFE;   // the official module's PGN 237
-        if (!fromModule && !lifeSign) continue;
-
-        const int n = got < len ? got : len;
-        mach.pkts++;
-        if (n < d[4] + 6) { mach.bad++; continue; }
-        uint8_t sum = 0;
-        for (int b = 2; b < n - 1; b++) sum += d[b];
-        const bool hello = fromModule && d[3] == MACH_PGN_HELLO;
-        if (sum != d[n - 1])
-        {
-            if (!hello) { mach.bad++; continue; }
-            mach.helloNoCrc = true;                           // the official module never computes it
-        }
-        else if (hello) mach.helloNoCrc = false;
-
+        const int got = Eth_udpModules.read(d, sizeof(d));   // the rest of a longer packet is dropped (counted as bad)
         const IPAddress ip = Eth_udpModules.remoteIP();
-        for (uint8_t b = 0; b < 4; b++) mach.ip[b] = ip[b];
-        mach.lastMs = now ? now : 1;
-        mach.lastPgn = d[3];
-
-        const uint32_t from = (uint32_t)ip[0] << 24 | (uint32_t)ip[1] << 16 | (uint32_t)ip[2] << 8 | ip[3];
-        if (hello && d[4] >= 2)
-        {
-            machineSections(from, MACH_PGN_HELLO, (uint16_t)(d[5] | d[6] << 8), mach.lastMs);
-            mach.helloMs  = mach.lastMs;
-            mach.helloN++;
-        }
-        else if (fromModule && d[3] == MACH_PGN_SPRAYER && d[4] >= 10)
-        {
-            mach.pressCbar = (uint16_t)(d[5] | d[6] << 8);
-            mach.flowCLmin = (uint16_t)(d[7] | d[8] << 8);
-            mach.totalDl   = (uint32_t)d[9] | (uint32_t)d[10] << 8 | (uint32_t)d[11] << 16 | (uint32_t)d[12] << 24;
-            mach.mainOn    = d[13] != 0;
-            machineSections(from, MACH_PGN_SPRAYER, d[4] >= 11 ? (uint16_t)(d[14] | d[15] << 8) : d[14], mach.lastMs);
-            mach.sprayMs   = mach.lastMs;
-            mach.sprayN++;
-        }
-        else if (fromModule && d[3] == MACH_PGN_SPRAYER_PD && d[4] >= 8)
-        {
-            mach.rateLha = mach.targetLha = -1;
-            for (int p = 5; p + 8 <= 5 + d[4]; p += 8)
-            {
-                if ((d[p] & 0x0F) != 3) continue;                 // only "value" (command 3)
-                const uint16_t ddi = (uint16_t)(d[p + 2] | d[p + 3] << 8);
-                const int32_t v = (int32_t)((uint32_t)d[p + 4] | (uint32_t)d[p + 5] << 8 | (uint32_t)d[p + 6] << 16 | (uint32_t)d[p + 7] << 24);
-                if (ddi == 2)          mach.rateLha   = v / 10000.0f;
-                else if (ddi == 1)     mach.targetLha = v / 10000.0f;
-                else if (ddi == 57344) mach.alarms    = (uint8_t)v;
-            }
-            mach.pdMs = mach.lastMs;
-            mach.pdN++;
-        }
-        else if (fromModule && d[3] == MACH_PGN_LIFE && d[4] >= 2)
-        {
-            uint64_t s = (uint16_t)(d[5] | d[6] << 8);
-            if (d[4] >= 14)
-                for (uint8_t b = 0; b < 6; b++) s |= (uint64_t)d[13 + b] << (16 + 8 * b);
-            machineSections(from, MACH_PGN_LIFE, s, mach.lastMs);
-        }
+        const uint8_t ipb[4] = { ip[0], ip[1], ip[2], ip[3] };
+        machinePacket(d, got, len, ipb, false, now);
     }
 
     // the highest section used since the start: the page keeps that many squares while all are off
@@ -235,8 +251,8 @@ void machineLoop()
     if (here != mach.here)
     {
         mach.here = here;
-        if (here) StatusLog.line("[machine] machine module %u.%u.%u.%u heard on UDP 9999 (web page: Machine tab)",
-                                 mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
+        if (here) StatusLog.line("[machine] machine module %u.%u.%u.%u heard %s (web page: Machine tab)",
+                                 mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3], mach.wifi ? "on the XIAO's WiFi" : "on UDP 9999");
         else      StatusLog.line("[machine] machine module silent for %u s", (unsigned)(MACH_SILENCE_MS / 1000));
     }
 #endif
@@ -261,6 +277,7 @@ FLASHMEM void machineJson(Json& j, uint32_t now)
     if (!ip[0]) snprintf(ip, sizeof(ip), "%u.%u.%u.%u", mach.ip[0], mach.ip[1], mach.ip[2], mach.ip[3]);
     j.str("ip", ip);
     j.bo("here", now - mach.lastMs < MACH_SILENCE_MS);
+    j.bo("wifi", mach.wifi);                          // heard through the XIAO (a module on the XIAO's WiFi)
     j.i("ago", (long)((now - mach.lastMs) / 1000));
     j.u("pkts", mach.pkts);
     j.u("bad", mach.bad);

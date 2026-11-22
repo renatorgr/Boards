@@ -237,14 +237,16 @@ The WiFi bridge (22 Nov 2026, README "WiFi bridge"): 146 a datagram a program on
 from UDP 2233 (XIAO → Teensy, to the receiver), 148 a datagram for that program's UDP 9999 (Teensy → XIAO, which sends it
 to that address only), 149 the bridge's state (Teensy → XIAO, once a second and at each change: `[version 1][0 free /
 1 a program on the cable has the module / 2 the program on the WiFi has it][0]`; a XIAO that does not hear it sends no 146;
-version 2: it knows 150 / 151). The module's page through the XIAO (XIAO README "The module's page through the XIAO"): 150 a
+version 2: it knows 150 / 151; version 3: 152 too). The module's page through the XIAO (XIAO README "The module's page through the XIAO"): 150 a
 browser's request on the XIAO's port 8080 (XIAO → Teensy: `[1 open][session][window LE16]`, `[2][session][offset LE16][bytes]`,
 `[3][session]` the browser went, `[4][session][count LE16]` answer bytes the browser took), 151 the answer (Teensy → XIAO:
 `[2][session][offset LE16][≤240 bytes]`, `[3][session]` its end; never more than the window ahead of the count). `webLoop()`
 serves it through `xiaoWeb` (a `Client`, zXiao.h) as one more connection; `/api/ota` and `/api/revert` are refused that way.
-The section modules on the XIAO's WiFi (sprayer, seed drill; XIAO README "Section modules on the XIAO's WiFi") never
-come onto the link: the XIAO itself passes the program's datagrams on to them and theirs on to the program, each to
-one address (`bridgeToModules()`, `bridgeFromModules()`), and the Teensy's Machine tab does not see them.
+The section modules on the XIAO's WiFi (sprayer, seed drill; XIAO README "Section modules on the XIAO's WiFi"): the XIAO
+itself passes the program's datagrams on to them and theirs on to the program, each to one address (`bridgeToModules()`,
+`bridgeFromModules()`); their own hello reply and PGN 237 / 160 / 161 also come to the Teensy as PGN 152 (XIAO -> Teensy:
+`[the module's IP, 4 bytes][the datagram]`, bridge version 3, `bridgeModToTeensy()`), for the Machine tab only
+(`machineFromXiao`, zMachine.ino; never sent on).
 
 ### Machine module (UDP 9999 in)
 123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B, the AiO v26 layout (sections 1-16 the module drives in bytes 5-6, lift, tramline, geo stop, status; Seeder_ESP32 adds sections 17-64 in bytes 13-18), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts. A module's sections come from its 237 when it sends one (the AiO v26 leaves them at 0 in its hello reply); up to 4 modules (IPs) are kept apart and their sections put together.

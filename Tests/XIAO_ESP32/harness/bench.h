@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 
 namespace bench
 {
@@ -82,6 +83,7 @@ struct Teensy
     bool knowsBridge = true;        // firmware of 22 Nov 2026 or later: says the bridge's state (PGN 149)
     bool knowsFw = true;            // firmware of 2 Nov 2026 or later: takes an update over the link (PGN 145)
     bool knowsPage = true;          // a firmware that shows its page through the XIAO (PGN 149 version 2, PGN 150 / 151)
+    bool knowsMach = true;          // ... and takes the machine modules on the XIAO's WiFi for its Machine tab (version 3, PGN 152)
     size_t pageBytes = 136000;      // the size of its page (the real one is about 136 kB)
     bool engaged = false;           // autosteer is engaged (it then refuses an update, a subnet)
     bool moving = false;
@@ -116,6 +118,8 @@ struct Teensy
     std::vector<std::string> webBodies;     // ... and the body of every POST /api/settings
     std::string webPage;            // its page (pageBytes of it), as it sends it
     uint32_t webOpens = 0, webGone = 0, webBroken = 0, webEnds = 0, old150 = 0, webOverWindow = 0;
+    std::set<std::string> machFrom; // the machine modules it heard through the XIAO (PGN 152), by IP
+    uint32_t machIn = 0, old152 = 0, machBad = 0;   // their packets; frames sent on to the cable by an older firmware; frames not well made
     uint32_t webMostAhead = 0;      // the most answer bytes it had on the way, not yet taken by the browser
     uint32_t statusN = 0;           // ... and its number ("n" in it)
     uint8_t brState = 0;            // 0 free, 1 the cable has the module, 2 the program on the XIAO's WiFi has it

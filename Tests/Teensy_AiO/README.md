@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 8 scenarios for the WiFi bridge and this page through it ([The users](#the-users)). Now 62 scenarios, 133 runs, about 1005 checks. |
+| 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 9 scenarios for the WiFi bridge, this page through it, the Machine tab ([The users](#the-users)). Now 63 scenarios, 133 runs, about 1005 checks. |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
 
 ## Running it
@@ -96,7 +96,7 @@ puts the report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering), `careful-wifi-bridge` (no network cable: the tablet on the XIAO's WiFi steers 40 s through the XIAO, GPS at 10 Hz, corrections to the receiver), `careful-wifi-bridge-cable-first` (a second tablet on the WiFi while the cable's steers: not answered, even through a XIAO that keeps no rules; it gets the module 3 s after the cable's goes silent), `careful-page-through-xiao` (the page through the XIAO while the tablet steers) |
+| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering), `careful-wifi-bridge` (no network cable: the tablet on the XIAO's WiFi steers 40 s through the XIAO, GPS at 10 Hz, corrections to the receiver), `careful-wifi-bridge-cable-first` (a second tablet on the WiFi while the cable's steers: not answered, even through a XIAO that keeps no rules; it gets the module 3 s after the cable's goes silent), `careful-page-through-xiao` (the page through the XIAO while the tablet steers), `careful-machine-on-xiao-wifi` (a sprayer on the XIAO's WiFi in the Machine tab, PGN 152) |
 | Never set up | `new-board-no-program`, `no-steer-settings` (AgOpenWeb never sent 252), `no-ads1115` (GPS only, .120), `nothing-plugged`, `cable-late`, `eeprom-damaged`, `eeprom-subnet-damaged` |
 | Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps`, `wifi-bridge-subnet` (a subnet and a scan sent over the XIAO's WiFi: not done, said in Messages), `page-through-xiao-firmware` (update and going back refused there, a restart) |
 | Wrong wiring | `gps-on-gps2-port`, `gps-wrong-baud`, `imu-other-baud`, `was-not-connected`, `was-signal-to-ground`, `was-3wire-differential`, `keya-can-unplugged`, `keya-powered-late`, `tablet-other-subnet` |

@@ -342,6 +342,7 @@ static uint32_t sketchSize = 0, sketchFree = 0;   // read once at start-up (getS
 #define BRIDGE_MODULES       4       // other modules on our network, at most
 #define BRIDGE_MOD_GONE_MS   3000
 #define BRIDGE_MOD_PER_S     60      // (ours send about 8 a second)
+#define BRIDGE_MOD_LINK_SPARE 128    // a module's packet goes to the Teensy (PGN 152) only with this much more room on the link
 #define AP_STATIONS          8       // devices on our network at most (the core's own number is 4): tablet, modules, phones
 #define BRIDGE_PER_LOOP      16      // datagrams taken per loop pass at most
 #define BRIDGE_TX_SPARE      64      // room asked for in the link's transmit buffer beside the frame itself: the
@@ -367,6 +368,8 @@ struct Bridge
     uint32_t modDrop = 0;            // to or from a module: the WiFi did not take it
     uint32_t modFull = 0;            // from one module more than there are places
     uint32_t modOver = 0;            // from a module that sends more than BRIDGE_MOD_PER_S a second
+    uint32_t modTeensy = 0;          // a module's packets passed to the Teensy for its Machine tab (PGN 152)
+    uint32_t modLink = 0;            // ... not passed: no room on the link
     uint32_t progIp = 0;             // the program (as in the datagram: first number in the low byte), 0 = none
     uint32_t progMs = 0;             // its last datagram
     uint32_t steerMs = 0;            // its last PGN 254 with autosteer on (0 = never)
@@ -495,6 +498,23 @@ static void bridgeToModules(const uint8_t* d, int n)
     }
 }
 
+// A module's own packet to the Teensy too (PGN 152), for its Machine tab: the module's page shows the sprayer or seed
+// drill on our WiFi as it does one on its network cable, with a program or without. Only what that tab reads (the hello
+// reply, PGN 237, the sprayer's 160 and 161), only to a Teensy that knows PGN 152, and never when the link has no room:
+// the steering's frames come first.
+static void bridgeModToTeensy(uint32_t ip, const uint8_t* d, int n, uint32_t now)
+{
+    const uint8_t pgn = d[3];
+    if (pgn != 123 && pgn != 237 && pgn != 160 && pgn != 161) return;
+    if (n > LINK_NET_MAX || !teensy.machKnown(now)) return;
+    if (TeensyPort.availableForWrite() < n + 4 + 6 + BRIDGE_TX_SPARE + BRIDGE_MOD_LINK_SPARE) { bridge.modLink++; return; }
+    static uint8_t f[4 + LINK_NET_MAX];
+    memcpy(f, &ip, 4);
+    memcpy(f + 4, d, n);
+    teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_MACH_IN, f, (uint8_t)(4 + n));
+    bridge.modTeensy++;
+}
+
 // What the modules sent: the sender is noted, and with a program there the datagram goes on to it
 static void bridgeFromModules(uint32_t now)
 {
@@ -537,6 +557,7 @@ static void bridgeFromModules(uint32_t now)
             continue;
         }
         m->secN++;
+        bridgeModToTeensy(ip, b, n, now);
         if (bridge.progIp == 0) continue;
         to.sin_addr.s_addr = bridge.progIp;
         if (lwip_sendto(bridge.sMod, b, n, MSG_DONTWAIT, (struct sockaddr*)&to, sizeof(to)) == n) m->fromIt++;
@@ -1220,6 +1241,8 @@ static void apiState()
         j.close();
     }
     j.closeArr();
+    j.u("modTeensy", bridge.modTeensy);        // their packets passed to the Teensy for its Machine tab (PGN 152) ...
+    j.u("modLink", bridge.modLink);            // ... and those not passed: no room on the link
     j.close();
 
     j.obj("tpage");                            // the module's page through the XIAO (Nov 2026): http://<apIp>:8080/
