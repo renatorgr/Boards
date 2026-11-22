@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable steers and opens this page on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled in the cloud. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a cable-less tablet steers, opens this page, sees section modules on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled here. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
 | 17 Nov 2026 | Changing the steer switch mode in the program with the module running no longer leaves autosteer off until a restart ([Steering](#steering)). The [kickout delay](#settings) and the [WAS check](#was-check)'s times always count: on an even millisecond they were skipped. |
@@ -612,6 +612,8 @@ What the Teensy does (`zXiao.ino`, "the WiFi bridge"; `programPacket` and `progS
 | The Teensy's own frames (status, log lines) | wait for a nearly empty transmit buffer while the program is on the WiFi, so a GPS sentence never waits behind more than one of them. |
 
 **This page through the XIAO**: a phone or tablet on the XIAO's own WiFi opens this page at the XIAO's address, port 8080 (http://192.168.5.1:8080/ with the bridge on). The XIAO passes the browser's request over the link (PGN 150) and the Teensy serves it as one more connection, one request at a time like the cable's; its answer goes back (PGN 151) as the link has room for the Teensy's own frames, never more than the XIAO says it can hold. A firmware update and going back to the previous firmware are refused that way (the XIAO page's Firmware tab does both). Details: the XIAO program's README, [The module's page through the XIAO](v4.5_XIAO_ESP32/README.md#the-modules-page-through-the-xiao).
+
+**Section modules on the XIAO's WiFi** (a sprayer or seed drill module on a tractor with no router): the XIAO passes their own packets to the Teensy too (PGN 152: the module's address and its packet), so the **Machine tab** shows them as one on the network cable, with "on the XIAO's WiFi" in Messages, also before the program is open. Only the hello reply and PGN 237, 160, 161; nothing of it goes on. Needs this firmware of 22 Nov 2026 evening and a XIAO `.bin` of the same day (bridge version 3).
 
 The XIAO card (Status) has a **WiFi bridge** row: off, on with no program, standing by (a program is on the cable), or the program on the XIAO's WiFi with the datagrams in / out and those lost at the link.
 

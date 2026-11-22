@@ -15,7 +15,7 @@ namespace bench
 {
 static const char HELLO[] = "ESP32-hello";
 enum { SRC_TEENSY = 0x7E, PGN_STATUS = 141, PGN_LOG = 142, PGN_INFO = 143, PGN_CMD = 144, PGN_FW = 145, PGN_NET_IN = 146,
-       PGN_RTCM = 147, PGN_NET_OUT = 148, PGN_BRIDGE = 149, PGN_WEB_IN = 150, PGN_WEB_OUT = 151 };
+       PGN_RTCM = 147, PGN_NET_OUT = 148, PGN_BRIDGE = 149, PGN_WEB_IN = 150, PGN_WEB_OUT = 151, PGN_MACH_IN = 152 };
 enum { HELLO_TIMEOUT_MS = 10000, GAP_MS = 50, FRAMES_PER_LOOP = 8, TEXT_MAX = 160, TEXT_PER_10S = 10, STATUS_MS = 1000,
        LOG_PER_LOOP = 4, TX_RESERVE = 256, TX_BUFFER = 2048, TX_IDLE_WIFI = 128, CABLE_MS = 3000, GONE_MS = 3000,
        STATE_MS = 1000, FW_TIMEOUT_MS = 15000, LOG_LINES = 60, STEER_WATCHDOG_MS = 2500,
@@ -318,9 +318,20 @@ int Teensy::scan()
             else if (pgn == PGN_NET_IN && knowsBridge) { takeNet(data.data(), len); sent++; }
             else if (pgn == PGN_RTCM && knowsBridge) { if (len && brState == 2 && !fwActive_) rtcm.insert(rtcm.end(), data.begin(), data.end()); }
             else if (pgn == PGN_WEB_IN && knowsBridge && knowsPage) takeWeb(data.data(), len);
+            else if (pgn == PGN_MACH_IN && knowsBridge && knowsPage && knowsMach)
+            {
+                // [the module's IP][its datagram]: only for the Machine tab (zMachine.ino machineFromXiao)
+                if (len >= 4 + 6 && data[4] == 0x80 && data[5] == 0x81 && len == 4 + 6 + data[4 + 4])
+                {
+                    machIn++;
+                    machFrom.insert(fmt("%u.%u.%u.%u", data[0], data[1], data[2], data[3]));
+                }
+                else machBad++;
+            }
             else
             {
                 if (pgn == PGN_WEB_IN) old150++;        // an older firmware: out on the network cable
+                if (pgn == PGN_MACH_IN) old152++;
                 // any other PGN goes out on the network cable to UDP 9999, as an older firmware does with all of them
                 toCable++;
                 if (pgn == PGN_NET_IN || pgn == PGN_RTCM)
@@ -377,7 +388,7 @@ void Teensy::bridgeTick()
     if (!here) { told = 255; return; }
     if ((brState != told || now - brStateMs_ >= STATE_MS) && room() >= 3 + 6)
     {
-        const uint8_t d[3] = { (uint8_t)(knowsPage ? 2 : 1), brState, 0 };     // version 2: it shows its page through the XIAO
+        const uint8_t d[3] = { (uint8_t)(!knowsPage ? 1 : knowsMach ? 3 : 2), brState, 0 };   // 2: its page through the XIAO; 3: PGN 152 too
         writeFrame(PGN_BRIDGE, d, 3);
         if (brState != told) toldSince = now;
         told = brState;

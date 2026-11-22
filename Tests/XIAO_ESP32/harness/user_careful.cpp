@@ -375,6 +375,8 @@ SCENARIO(User::Careful, "careful-bridge-modules", "No router on the tractor: the
          "With no program running yet the XIAO already knows both modules, from their own packets, and Messages say so", fmt("%u listed", (unsigned)st["bridge"]["mods"].a.size()));
     must("room", w.dev.apMaxStations >= 6, "The XIAO's network lets in a tablet, two modules and phones (the core's own limit is 4 devices)", fmt("%d devices", w.dev.apMaxStations));
     must("quiet", sprayer.got == 0 && drill.got == 0 && w.tab.got == 0, "... and sends them nothing while no program runs", fmt("%u and %u datagrams", sprayer.got, drill.got));
+    must("machine-tab", w.teensy.machFrom.count("192.168.5.123") && w.teensy.machFrom.count("192.168.5.124") && w.teensy.machIn >= 10 && w.teensy.machBad == 0,
+         "The module's page (Machine tab) hears both modules through the XIAO too, with no program running", fmt("%u packets from %u modules", w.teensy.machIn, (unsigned)w.teensy.machFrom.size()));
     if (beginSteer(w))
     {
         w.run(1000);

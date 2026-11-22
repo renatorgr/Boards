@@ -66,6 +66,9 @@
 //                   data = [version][0 free / 1 a program on the cable has the module / 2 the program on the WiFi has it]
 //                   A XIAO that does not hear it sends no PGN 146 (an older Teensy would send them on to UDP 9999).
 //                   Version 2 (Nov 2026): this firmware also serves its page through the XIAO (PGN 150 / 151).
+//                   Version 3 (Nov 2026): it also takes PGN 152.
+//   XIAO -> Teensy  PGN 152: a machine module (sprayer, seed drill) on the XIAO's WiFi sent this to UDP 9999:
+//                   data = [the module's IP, 4 bytes][the datagram]; only for the Machine tab (zMachine.ino), never sent on.
 // The module's page through the XIAO (Nov 2026; "the page through the XIAO" below), for a phone on the XIAO's WiFi:
 //   XIAO -> Teensy  PGN 150: [1 open][session][window, 2 bytes LE] a browser's new request (window: answer bytes the
 //                   XIAO holds for it); [2][session][offset, 2 bytes LE][bytes] the request; [3][session] the browser
@@ -104,7 +107,8 @@
 #define XIAO_PGN_BRIDGE         149     // Teensy -> XIAO: the bridge's state
 #define XIAO_PGN_WEB_IN         150     // XIAO -> Teensy: the page through the XIAO, a browser's request (not sent to UDP)
 #define XIAO_PGN_WEB_OUT        151     // Teensy -> XIAO: the answer
-#define BRIDGE_VERSION          2       // 2: the page through the XIAO too (PGN 150 / 151)
+#define XIAO_PGN_MACH_IN        152     // XIAO -> Teensy: a machine module's datagram on the XIAO's WiFi (not sent to UDP)
+#define BRIDGE_VERSION          3       // 2: the page through the XIAO too (PGN 150 / 151); 3: PGN 152 too
 #define XWEB_PIECE              240     // answer bytes per PGN 151
 #define XWEB_STUCK_MS           5000    // an answer that cannot move for this long (the XIAO takes nothing): given up
 #define BRIDGE_CABLE_MS         3000    // a program packet on the cable in this time: the cable has the module
@@ -791,6 +795,7 @@ static uint8_t xfScan()
             else if (xf[3] == XIAO_PGN_NET_IN) { xiaoTakeNet(xf + 5, xf[4]); sent++; }   // the WiFi bridge: a program packet (counted: one of this loop's frames)
             else if (xf[3] == XIAO_PGN_RTCM)   xiaoTakeRtcm(xf + 5, xf[4]);   // the WiFi bridge: corrections for the receiver
             else if (xf[3] == XIAO_PGN_WEB_IN) xiaoTakeWeb(xf + 5, xf[4]);    // the page through the XIAO: a browser's request
+            else if (xf[3] == XIAO_PGN_MACH_IN) machineFromXiao(xf + 5, xf[4]);   // a machine module on the XIAO's WiFi: Machine tab only
             else                               { xiaoSendFrame(xf, need); sent++; }
             xfShift(need);
         }

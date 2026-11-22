@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -168,7 +168,8 @@ A module set to the subnet **192.168.4** for the first version of this (XIAO `.b
 **Limits**
 
 - Nothing is passed on while the Teensy does not answer the bridge (an older Teensy firmware, or the Teensy silent): the XIAO takes no program then.
-- A program on the Teensy's **network cable** does not reach a module on the XIAO's WiFi, and the Teensy page's Machine tab does not show it (that tab listens on the cable).
+- A program on the Teensy's **network cable** does not reach a module on the XIAO's WiFi.
+- The Teensy page's **Machine tab** shows it: the XIAO passes the module's own packets to the Teensy too (PGN 152: its address and the packet; only the hello reply and PGN 237, 160, 161, and only when the link has room), with a program or without. Needs a Teensy firmware that says bridge version 3 (22 Nov 2026 evening); an older one gets none of them.
 - The program's scan for modules does not list it; it answers the hello like any machine module, so the program shows it as connected.
 - **Not yet tried with real modules**: see [What was tested](#what-was-tested).
 

@@ -741,7 +741,7 @@ function renderMach(m){
  if(!m)return;
  $("navMach").classList.remove("hidden");
  set("mState",m.here?"sending":"silent",m.here?"ok":"bad");
- set("mIp",m.ip);set("mAgo",ago(m.ago),m.here?"":"warn");
+ set("mIp",m.ip+(m.wifi?" · on the XIAO's WiFi":""));set("mAgo",ago(m.ago),m.here?"":"warn");
  set("mPkts",String(m.pkts));set("mBad",String(m.bad),m.bad?"warn":"");set("mPgn",m.lastPgn<0?"–":String(m.lastPgn));
  set("mHello",m.helloAgo<0?"none yet":ago(m.helloAgo)+" · "+m.helloN);$("mNoCrc").classList.toggle("hidden",!m.helloNoCrc);
  const have=m.secAgo>=0&&m.secAgo<5;

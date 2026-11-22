@@ -290,3 +290,39 @@ SCENARIO(User::Careful, "careful-page-through-xiao", "A phone on the XIAO's WiFi
     must("follows-line", fabsf(w.tractor.x) < 0.15f, "Kept its line", fmt("%.2f m off the line", w.tractor.x));
     reportRules(w);
 }
+
+// ---------------------------------------------------------------- a sprayer module on the XIAO's WiFi
+// No router on the tractor: the sprayer joins the XIAO's WiFi, and its packets reach the module only through the XIAO
+// (PGN 152, [its IP][the datagram]). The Machine tab shows it as one on the network cable, with no program running.
+SCENARIO(User::Careful, "careful-machine-on-xiao-wifi", "A sprayer module on the XIAO's WiFi, AgOpenWeb not open yet: the module's page shows it in its Machine tab", { Kit::PumaCytron })
+{
+    World w(kit);
+    w.cableIn = false;
+    wifiTablet(w);
+    w.tab.on = false;                               // AgOpenWeb not open yet
+    w.startUp();
+    must("version", w.xiao.version >= 3, "Tells the XIAO it takes the machine modules on its WiFi (bridge version 3)", fmt("version %u", w.xiao.version));
+    const Http st0 = w.httpXiao("GET", "/api/status");    // its page through the XIAO: the tablet has no network cable
+    must("no-tab-yet", st0.code == 200 && st0.jsonOk && !st0.json.has("mach"), "No Machine tab before a module is heard", fmt("HTTP %d", st0.code));
+    uint64_t next = w.now();
+    w.watchers.push_back([&] {                      // the sprayer: PGN 160 every 200 ms, 2.35 bar, 12.5 L/min, sections 1-3 on
+        if (w.now() < next) return;
+        next = w.now() + 200;
+        const uint8_t d[4 + 16] = { 192, 168, 5, 123, 0x80, 0x81, 0x7B, 0xA0, 10, 235, 0, 0xE2, 0x04, 100, 0, 0, 0, 1, 0x07, 0 };
+        std::vector<uint8_t> f(d, d + sizeof(d));
+        uint8_t sum = 0;
+        for (size_t i = 4 + 2; i < f.size() - 1; i++) sum += f[i];
+        f.back() = sum;
+        w.xiao.frame(152, f.data(), f.size());
+    });
+    w.run(3000);
+    w.watchers.pop_back();
+    const Http sh = w.httpXiao("GET", "/api/status");
+    const Json& st = sh.json;
+    must("tab", st.has("mach") && st["mach"]["ip"].str() == "192.168.5.123" && st["mach"]["wifi"].num() != 0 && st["mach"]["here"].num() != 0,
+         "The Machine tab is there, with the sprayer's address, heard through the XIAO", st.has("mach") ? st["mach"]["ip"].str() : "no mach");
+    must("readings", st.has("mach") && st["mach"]["bar"].num() > 2.34 && st["mach"]["bar"].num() < 2.36 && st["mach"]["lmin"].num() > 12.49 && st["mach"]["bad"].num() == 0,
+         "... with its pressure and flow", st.has("mach") ? fmt("%.2f bar, %.2f L/min", st["mach"]["bar"].num(), st["mach"]["lmin"].num()) : "");
+    must("says-so", w.aio.logHas("192.168.5.123 heard on the XIAO's WiFi"), "Says in the messages that the module is heard on the XIAO's WiFi", w.aio.logLine("[machine]"));
+    must("not-sent-on", w.xiao.pgns[152] == 0, "Nothing of it is sent back to the XIAO or out to the program", "");
+}

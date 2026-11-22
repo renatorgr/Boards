@@ -26,6 +26,8 @@
 //                    [1 open][session][window LE16] a new request (window: answer bytes we hold for the browser),
 //                    [2][session][offset LE16][bytes] the request, [3][session] the browser went, [4][session][count
 //                    LE16] answer bytes the browser has taken so far (offsets and counts: the low 16 bits)
+//                    PGN 152 (source 0x50): a machine module (sprayer, seed drill) on our WiFi sent this to UDP 9999:
+//                    [its IP, 4 bytes][the datagram], for the module's Machine tab only (Nov 2026)
 //   Teensy -> XIAO   AgOpenGPS packets from UDP 8888 (source 0x7F): PGN 254, 239, 229, 200, ...
 //                    PGN 141 (source 0x7E): the module status JSON, once a second, in pieces
 //                    PGN 142 (source 0x7E): one line of the module's [status] log
@@ -33,6 +35,7 @@
 //                    PGN 148 (source 0x7E): the WiFi bridge: a datagram for the program on our WiFi (its UDP 9999)
 //                    PGN 149 (source 0x7E): the WiFi bridge's state, once a second: [version][0 free / 1 a program on
 //                    the module's network cable has it / 2 the program on our WiFi has it]; version 2: it knows PGN 150
+//                    and 151; version 3: PGN 152 too
 //                    PGN 151 (source 0x7E): the module's page through the XIAO: [2][session][offset LE16][bytes] the
 //                    answer (never more than the window ahead of our count), [3][session] its end
 // Every frame: [0x80][0x81][source][pgn][length][data...][checksum = low 8 bits of the sum of the
@@ -76,6 +79,8 @@ static inline uint32_t msStamp(uint32_t now) { return now != 0 ? now : 0xFFFFFFF
 #define LINK_PGN_WEB_IN         150      // XIAO -> Teensy: the module's page through the XIAO, a browser's request (Nov 2026)
 #define LINK_PGN_WEB_OUT        151      // Teensy -> XIAO: its answer
 #define LINK_WEB_VERSION        2        // the PGN 149 version of a Teensy that knows PGN 150 / 151
+#define LINK_PGN_MACH_IN        152      // XIAO -> Teensy: a machine module's datagram on our WiFi (Nov 2026)
+#define LINK_MACH_VERSION       3        // the PGN 149 version of a Teensy that knows PGN 152
 #define LINK_BRIDGE_FREE        0
 #define LINK_BRIDGE_CABLE       1        // a program on the module's network cable has the module
 #define LINK_BRIDGE_WIFI        2        // the program on our WiFi has it
@@ -124,6 +129,7 @@ public:
     void   (*onWeb)(const uint8_t* d, uint8_t n, uint32_t now) = nullptr;   // PGN 151: the module's page, for a browser on our WiFi
     bool bridgeKnown(uint32_t now) const { return bridgeMs != 0 && now - bridgeMs < LINK_BRIDGE_MS; }
     bool pageKnown(uint32_t now) const { return bridgeKnown(now) && bridgeVersion >= LINK_WEB_VERSION; }
+    bool machKnown(uint32_t now) const { return bridgeKnown(now) && bridgeVersion >= LINK_MACH_VERSION; }
 
     bool teensyTalking(uint32_t now) const { return lastFrameMs != 0 && now - lastFrameMs < LINK_SILENT_MS; }
 

@@ -181,3 +181,17 @@ SCENARIO(User::BadLink, "module-page-noisy-link", "The serial link is noisy (one
     must("after", pageGet(w, "/").body == w.teensy.webPage, "With the noise gone the page loads whole again", "");
     rules(w);
 }
+
+SCENARIO(User::WrongConnections, "machine-tab-old-teensy", "A sprayer module on the XIAO's WiFi, the Teensy's firmware older than the one that shows such a module in its Machine tab", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.teensy.knowsMach = false;             // PGN 149 version 2: the page through the XIAO, not PGN 152
+    w.start();
+    w.mod[0].on = true;
+    w.run(4000);
+    must("nothing", w.teensy.machIn == 0 && w.teensy.old152 == 0, "Nothing of the module went to the older Teensy (it would send it on to the network cable)",
+         fmt("%u taken, %u sent on", w.teensy.machIn, w.teensy.old152));
+    must("listed", w.state()["bridge"]["mods"].a.size() == 1, "The XIAO page still lists the module", "");
+    rules(w);
+}
