@@ -616,6 +616,7 @@ struct Device
 };
 extern Device* cur;
 extern uint64_t clockMs;
+extern uint32_t freeHeap;                   // what ESP.getFreeHeap() says (a scenario makes it short)
 extern std::function<void()> onMs;          // the world around the XIAO: one step, every millisecond
 void tick(uint32_t ms = 1);                 // pretend time passes (the watchdog may bite: throws Restart)
 }

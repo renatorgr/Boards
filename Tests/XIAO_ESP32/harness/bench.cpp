@@ -373,6 +373,7 @@ std::string UPLOAD(const std::string& pathAndQuery, const std::string& fileName,
 World::World(Kit k) : dev(xiao.dev)
 {
     xiao.kit = k;
+    fake::freeHeap = 182000;                // plenty (a scenario may make it short)
     dev.s3 = k == Kit::S3;
     dev.usbOpen = true;                     // a serial monitor on the USB-C port: every event of the XIAO is printed there
     knownSsid = fmt("XIAO-%02X%02X", (unsigned)((dev.mac >> 32) & 0xFF), (unsigned)((dev.mac >> 40) & 0xFF));

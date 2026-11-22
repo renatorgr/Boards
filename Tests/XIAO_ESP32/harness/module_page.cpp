@@ -195,3 +195,22 @@ SCENARIO(User::WrongConnections, "machine-tab-old-teensy", "A sprayer module on 
     must("listed", w.state()["bridge"]["mods"].a.size() == 1, "The XIAO page still lists the module", "");
     rules(w);
 }
+
+SCENARIO(User::BadLink, "module-page-low-memory", "The XIAO is short of memory (a busy WiFi) while a phone loads the module's page through it", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    w.run(1500);
+    fake::freeHeap = 20000;                 // as on the bench, 22 Nov 2026: the C3 fell to 2 kB free while the page loaded
+    const int a = w.ask(GET("/", host8080(w)), page(30));
+    w.run(4000);
+    JsonDoc st = w.state();
+    must("waits", st["tpage"]["lowMem"].num() >= 1 && w.teensy.webOpens == 0, "With little memory the XIAO does not start the request (nothing to the Teensy)",
+         fmt("waited %g times, %u requests opened", st["tpage"]["lowMem"].num(), w.teensy.webOpens));
+    tell("told", w.said("short of memory"), "Messages say the module's page waits for memory", "");
+    fake::freeHeap = 182000;                // the memory comes back
+    const Reply r = w.wait(a);
+    must("then", r.done && r.code == 200 && r.body == w.teensy.webPage, "With the memory back the page loads whole", fmt("code %d, %u bytes, %s", r.code, (unsigned)r.body.size(), r.why.c_str()));
+    rules(w);
+}
