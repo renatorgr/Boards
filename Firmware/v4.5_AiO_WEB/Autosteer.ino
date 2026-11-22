@@ -802,11 +802,32 @@ void ReceiveUdp()
 		static uint8_t udpPacket[512];
 		const int got = Eth_udpAutoSteer.read(udpPacket, sizeof(udpPacket));
 		if (got <= 0) return;
-		memcpy(autoSteerUdpData, udpPacket, got < (int)UDP_TX_PACKET_MAX_SIZE ? got : (int)UDP_TX_PACKET_MAX_SIZE);
+		const int kept = got < (int)UDP_TX_PACKET_MAX_SIZE ? got : (int)UDP_TX_PACKET_MAX_SIZE;
+		memcpy(autoSteerUdpData, udpPacket, kept);
+		memset(autoSteerUdpData + kept, 0, UDP_TX_PACKET_MAX_SIZE - kept);   // AiO_WEB: nothing left from the packet before
 		xiaoForward(udpPacket, (uint16_t)got, len);
 
 		if (autoSteerUdpData[0] == 0x80 && autoSteerUdpData[1] == 0x81 && autoSteerUdpData[2] == 0x7F) //Data
 		{
+			// AiO_WEB: steering data, steer settings and steer config (PGN 254, 252, 251) are read from bytes 5 to 12:
+			// one shorter than that, or than its own length byte says, is dropped. Its missing bytes came from the
+			// packet before (a short 252 saved counts per degree 1 instead of 120; Teensy harness, short-settings-packet).
+			const uint8_t pgnNo = autoSteerUdpData[3];
+			if ((pgnNo == 0xFE || pgnNo == 0xFC || pgnNo == 0xFB) && (autoSteerUdpData[4] < 8 || got < 5 + (int)autoSteerUdpData[4]))
+			{
+				static uint32_t shortLogMs = 0;
+				static bool shortLogged = false;
+				if (!shortLogged || millis() - shortLogMs >= 10000)   // one line per 10 s at most
+				{
+					shortLogged = true;
+					shortLogMs = millis();
+					IPAddress from = Eth_udpAutoSteer.remoteIP();
+					StatusLog.line("[status] PGN %u from %u.%u.%u.%u shorter than it says (%d bytes, length byte %u): ignored",
+					               pgnNo, from[0], from[1], from[2], from[3], got, autoSteerUdpData[4]);
+				}
+				return;
+			}
+
 			if (autoSteerUdpData[3] == 0xFE && Autosteer_running)  //254
 			{
 				steerNote254();                // last steering data (zSafety.ino)
@@ -1026,15 +1047,22 @@ void ReceiveUdp()
 			else if (autoSteerUdpData[3] == 201)
 			{
 				//make really sure this is the subnet pgn
-				if (autoSteerUdpData[4] == 5 && autoSteerUdpData[5] == 201 && autoSteerUdpData[6] == 201)
+				if (autoSteerUdpData[4] == 5 && autoSteerUdpData[5] == 201 && autoSteerUdpData[6] == 201 && got >= 10)
 				{
-					networkAddress.ipOne = autoSteerUdpData[7];
-					networkAddress.ipTwo = autoSteerUdpData[8];
-					networkAddress.ipThree = autoSteerUdpData[9];
-
-					//save in EEPROM and restart
-					EEPROM.put(60, networkAddress);
-					SCB_AIRCR = 0x05FA0004; //Teensy Reset
+					// AiO_WEB: through netSetSubnet (zEthernet.ino), as the XIAO page's change: it refuses 0.x.x, 127.x.x
+					// and 224 and up (the module would answer nobody), the subnet it is on already (a restart for
+					// nothing) and any change while autosteer is engaged (a restart in the field). Saved, then restart.
+					const char* err = netSetSubnet(autoSteerUdpData[7], autoSteerUdpData[8], autoSteerUdpData[9], "the program (PGN 201)");
+					if (err)
+					{
+						StatusLog.line("[status] subnet %u.%u.%u from the program (PGN 201) refused: %s",
+						               autoSteerUdpData[7], autoSteerUdpData[8], autoSteerUdpData[9], err);
+					}
+					else
+					{
+						SCB_AIRCR = 0x05FA0004; //Teensy Reset
+						for (;;) {}
+					}
 				}
 			}//end 201
 
