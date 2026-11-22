@@ -20,6 +20,25 @@ inline void engage(World& w, bool on)
     if (w.ki.steerMode == 1) w.sw.steerClosed = on;
 }
 
+// The tablet with no network cable: AgOpenWeb on the XIAO's own WiFi (w.tab), the XIAO's WiFi bridge switched on.
+// alone: there is no tablet on the network cable (w.aow off)
+inline void wifiTablet(World& w, bool alone = true)
+{
+    w.xiao.fitted = true;
+    w.xiao.bridge = true;
+    w.tab.ss = w.aow.ss;
+    w.tab.sc = w.aow.sc;
+    w.tab.on = true;
+    if (alone) w.aow.on = false;
+}
+
+// ... and its AutoSteer button (with the steer switch, as engage())
+inline void engageWifi(World& w, bool on)
+{
+    w.tab.engage = on;
+    if (w.ki.steerMode == 1) w.sw.steerClosed = on;
+}
+
 // Started, driving at kmh, AgOpenWeb steering for ms
 inline void steerFor(World& w, float kmh, uint32_t ms)
 {

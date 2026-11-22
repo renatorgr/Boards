@@ -372,6 +372,8 @@ World::World(Kit kit) : ki(info(kit))
     aio.dev.i2c[1][0x48] = &ads;
     fake::worldTick = [this](uint64_t ms) { tick(ms); };
     fake::wdtWarn = nullptr;
+    tab.on = false;
+    tab.ip = IPAddress(192, 168, 4, 2);     // the XIAO's own network (the XIAO is 192.168.4.1)
     setUpProgram();
 }
 
@@ -710,9 +712,13 @@ void World::deliverToModule(const fake::UdpPacket& p)
     if (it == d.udpIn.end()) return;
     if (it->second.size() >= 64) { d.udpInDropped++; return; }
     it->second.push_back(p);
-    // what the module has been asked (for the rules)
-    const auto& x = p.data;
-    if (p.dstPort == 8888 && x.size() >= 13 && x[0] == 0x80 && x[1] == 0x81 && x[2] == 0x7F && x[3] == 254)
+    if (p.dstPort == 8888) noteAsk(p.data);
+}
+
+// what the module has been asked (for the rules): a steering packet that reached it, on the cable or through the XIAO
+void World::noteAsk(const std::vector<uint8_t>& x)
+{
+    if (x.size() >= 13 && x[0] == 0x80 && x[1] == 0x81 && x[2] == 0x7F && x[3] == 254)
     {
         const float kmh = (x[5] | x[6] << 8) * 0.1f;
         if ((x[7] & 1) && kmh >= 0.1f) lastAskMs = now();
@@ -721,9 +727,9 @@ void World::deliverToModule(const fake::UdpPacket& p)
     }
 }
 
-void World::tickNetwork(uint64_t ms)
+// A program's own clock: its hello every second, its steering packets
+void World::programStep(Program& a, uint64_t ms)
 {
-    Program& a = aow;
     if (a.on)
     {
         if (a.sendHello && ms - a.lastHelloMs >= 1000)
@@ -746,22 +752,22 @@ void World::tickNetwork(uint64_t ms)
                 float st = atanf(2.0f * tractor.wheelbase * sinf(alpha) / ld) * 180.0f / (float)M_PI;
                 a.setDeg = st > 35 ? 35 : st < -35 ? -35 : st;
             }
+            // as AgOpenWeb (AutoSteerService, SteerStatusHoldTicks): the packet with a changed AutoSteer button goes at
+            // once, the unchanged ones after it wait 30 ms, so the firmware's 25 ms steering block sees the change
+            if (a.engage != a.lastEngageSent) { a.lastEngageSent = a.engage; a.holdUntilMs = ms + 30; }
+            else if (ms < a.holdUntilMs) return;
             a.send(a.packet254(a.kmhOverride >= 0 ? a.kmhOverride : tractor.kmh));
         }
     }
-    while (!a.out.empty())
+}
+
+// What a program gets on its UDP 9999: NMEA lines (their checksums checked) and PGNs
+void World::programHears(Program& a, const std::vector<uint8_t>& data, uint16_t srcPort, uint64_t ms)
+{
     {
-        deliverToModule(a.out.front());
-        a.out.pop_front();
-    }
-    // from the module
-    auto& d = aio.dev;
-    for (const auto& p : d.udpOut)
-    {
-        if (!cableIn || !tabletOnNet || !a.on || !reaches(p.dst, a.ip) || p.dstPort != 9999) continue;
-        if (!p.data.empty() && p.data[0] == '$')
+        if (!data.empty() && data[0] == '$')
         {
-            std::string s(p.data.begin(), p.data.end());
+            std::string s(data.begin(), data.end());
             size_t at = 0;
             while (at < s.size())
             {
@@ -779,15 +785,35 @@ void World::tickNetwork(uint64_t ms)
                 if (l.find("GGA,") != std::string::npos) a.nmeaGga++;
                 if (a.nmea.size() < 400) a.nmea.push_back(l);
             }
-            continue;
+            return;
         }
-        Heard h { ms, p.srcPort, p.data };
-        if (h.pgn() == 221 && p.data.size() >= 8)
-            a.screen.push_back(std::string(p.data.begin() + 7, p.data.end() - 1));
+        Heard h { ms, srcPort, data };
+        if (h.pgn() == 221 && data.size() >= 8)
+            a.screen.push_back(std::string(data.begin() + 7, data.end() - 1));
         if (a.heard.size() > 40000) a.heard.erase(a.heard.begin(), a.heard.begin() + 20000);
         a.heard.push_back(h);
     }
+}
+
+void World::tickNetwork(uint64_t ms)
+{
+    Program& a = aow;
+    programStep(a, ms);
+    while (!a.out.empty())
+    {
+        deliverToModule(a.out.front());
+        a.out.pop_front();
+    }
+    // from the module
+    auto& d = aio.dev;
+    for (const auto& p : d.udpOut)
+    {
+        if (p.dstPort == 9999) netTo9999++;
+        if (!cableIn || !tabletOnNet || !a.on || !reaches(p.dst, a.ip) || p.dstPort != 9999) continue;
+        programHears(a, p.data, p.srcPort, ms);
+    }
     d.udpOut.clear();
+    tickXiao(ms);
     // the browser reads what the module wrote (the socket's window opens again)
     for (auto& c : d.conns) if (!c->browserClosed && c->window < 8192) c->window = std::min<size_t>(8192, c->window + 4000);
     // the module's other serial ports drain at their baud rate; the receiver reads what comes to it at its own speed
@@ -812,6 +838,7 @@ void World::tickNetwork(uint64_t ms)
             }
             if (rx.fromModule.size() > 4096) rx.fromModule.erase(0, 2048);
         }
+        if (i == 2 && xiao.fitted && s.baud == 460800) xiaoHears(s.tx.data(), n, ms);
         s.tx.erase(s.tx.begin(), s.tx.begin() + n);
     }
     // the USB serial: the log
@@ -820,6 +847,104 @@ void World::tickNetwork(uint64_t ms)
         aio.log.append(d.serial[0].tx.begin(), d.serial[0].tx.end());
         d.serial[0].tx.clear();
     }
+}
+
+// ---------------------------------------------------------------- the XIAO on the GPS2 port and the tablet on its WiFi
+void Xiao::frame(uint8_t pgn, const uint8_t* data, size_t n)
+{
+    if (wire.size() + n + 6 > 1024) { dropped++; return; }     // never waits for the link: dropped and counted
+    uint8_t sum = (uint8_t)(0x50 + pgn + n);
+    wire.push_back(0x80); wire.push_back(0x81); wire.push_back(0x50); wire.push_back(pgn); wire.push_back((uint8_t)n);
+    for (size_t i = 0; i < n; i++) { wire.push_back(data[i]); sum += data[i]; }
+    wire.push_back(sum);
+}
+
+void World::tickXiao(uint64_t ms)
+{
+    Xiao& x = xiao;
+    if (!x.fitted)
+    {
+        x.wire.clear(); x.in.clear(); x.state = 255; x.helloSent = false;
+        tab.out.clear();
+        return;
+    }
+    if (!x.helloSent || ms - x.lastHelloMs >= 2000)
+    {
+        x.helloSent = true;
+        x.lastHelloMs = ms;
+        for (const char* c = "ESP32-hello"; *c; c++) x.wire.push_back((uint8_t)*c);
+    }
+    if (x.state != 255 && ms - x.stateMs >= 3000) x.state = 255;       // the module no longer says it knows the bridge
+
+    // the tablet on the XIAO's WiFi: what it sends to everyone on that network reaches the XIAO
+    programStep(tab, ms);
+    for (const auto& p : tab.out)
+    {
+        if (!x.bridge) continue;
+        const auto& q = p.data;
+        if (p.dstPort == 8888)
+        {
+            if (q.size() < 6 || q[0] != 0x80 || q[1] != 0x81 || q.size() > 251) continue;
+            if (!x.forwardsAll && (x.state == 255 || (x.state == 1 && q[3] != 200))) continue;
+            std::vector<uint8_t> f = { p.src[0], p.src[1], p.src[2], p.src[3] };
+            f.insert(f.end(), q.begin(), q.end());
+            x.frame(146, f.data(), f.size());
+            x.toModule++;
+            if (x.state != 1) noteAsk(q);                              // (the cable's program has the module: not an ask)
+        }
+        else if (p.dstPort == 2233 && (x.forwardsAll || x.state == 2))
+        {
+            for (size_t at = 0; at < q.size(); at += 255)
+            {
+                const size_t n = std::min<size_t>(255, q.size() - at);
+                x.frame(147, q.data() + at, n);
+                x.rtcmToModule += n;
+            }
+        }
+    }
+    tab.out.clear();
+
+    // its bytes reach the module at 460800 baud
+    auto& s = aio.dev.serial[2];
+    x.credit += 46.08;
+    while (x.credit >= 1 && !x.wire.empty())
+    {
+        x.credit -= 1;
+        if (aio.on() && s.baud == 460800) s.put(x.wire.front());
+        x.wire.pop_front();
+    }
+    if (x.wire.empty()) x.credit = 0;
+}
+
+// The module's bytes on the GPS2 port, as the XIAO reads them: frames 80 81 src pgn len data sum
+void World::xiaoHears(const uint8_t* b, size_t n, uint64_t ms)
+{
+    Xiao& x = xiao;
+    x.in.insert(x.in.end(), b, b + n);
+    size_t at = 0;
+    while (x.in.size() - at >= 2)
+    {
+        if (x.in[at] != 0x80 || x.in[at + 1] != 0x81) { at++; continue; }
+        if (x.in.size() - at < 5) break;
+        const size_t need = 6 + x.in[at + 4];
+        if (x.in.size() - at < need) break;
+        uint8_t sum = 0;
+        for (size_t i = at + 2; i < at + need - 1; i++) sum += x.in[i];
+        if (sum != x.in[at + need - 1]) { x.badSum++; at++; continue; }
+        const uint8_t src = x.in[at + 2], pgn = x.in[at + 3];
+        const std::vector<uint8_t> data(x.in.begin() + at + 5, x.in.begin() + at + need - 1);
+        x.frames++;
+        x.pgns[pgn]++;
+        if (src == 0x7E && pgn == 149 && data.size() >= 2) { x.state = data[1]; x.stateMs = ms; x.states++; }
+        else if (src == 0x7E && pgn == 148)
+        {
+            x.toProgram++;
+            if (tab.on && x.bridge) programHears(tab, data, 8888, ms);  // to that program only, from the XIAO's UDP 8888
+        }
+        at += need;
+    }
+    if (x.in.size() - at == 1 && x.in[at] != 0x80) at++;
+    x.in.erase(x.in.begin(), x.in.begin() + at);
 }
 
 // ---------------------------------------------------------------- the rules
@@ -926,7 +1051,12 @@ void World::startUp(uint32_t ms)
 {
     aio.powerOn();
     run(300);
-    aow.sendSettings();
+    if (aow.on || !tab.on) aow.sendSettings();
+    if (tab.on)                                 // the tablet on the XIAO's WiFi: its settings once the module answers it
+    {
+        runUntil([&] { return xiao.state == 2; }, 4000);
+        tab.sendSettings();
+    }
     run(ms > 300 ? ms - 300 : 0);
 }
 

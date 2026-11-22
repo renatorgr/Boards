@@ -834,26 +834,37 @@ void ReceiveUdp()
 	}
 
 	uint16_t len = Eth_udpAutoSteer.parsePacket();
-	if (len > 0) statusNoteAogPacket(Eth_udpAutoSteer.remoteIP());   // [status] messages (zStatus.ino)
-
-	// if (len > 0)
-	// {
-	//  Serial.print("ReceiveUdp: ");
-	//  Serial.println(len);
-	// }
+	if (len > 0)
+	{
+		xiaoBridgeNoteCable();                                     // a program on the cable: the WiFi bridge stands by (zXiao.ino)
+		statusNoteAogPacket(Eth_udpAutoSteer.remoteIP());          // [status] messages (zStatus.ino)
+	}
 
 	// Check for len > 4, because we check byte 0, 1, 3 and 3
 	if (len > 4)
 	{
 		// read the whole packet, so the XIAO ESP32C3 gets all of it (zXiao.ino). The steering code
-		// below still uses only the first UDP_TX_PACKET_MAX_SIZE (24) bytes, as before.
+		// still uses only the first UDP_TX_PACKET_MAX_SIZE (24) bytes, as before.
 		static uint8_t udpPacket[512];
 		const int got = Eth_udpAutoSteer.read(udpPacket, sizeof(udpPacket));
 		if (got <= 0) return;
+		xiaoForward(udpPacket, (uint16_t)got, len);
+		programPacket(udpPacket, got, Eth_udpAutoSteer.remoteIP(), false);
+	}
+}
+
+// One packet from the program (AgOpenWeb / AgIO, for UDP 8888): the first `got` bytes of it, sent from `from`.
+// From the network (ReceiveUdp, above) or, 22 Nov 2026, from a program on the XIAO's WiFi with no program on
+// the cable (viaXiao, zXiao.ino "the WiFi bridge"). The answers go back the way it came (progSend, below).
+// Not taken from the WiFi: the subnet change (PGN 201; the XIAO page has its own) and the scan (PGN 202).
+void programPacket(uint8_t* udpPacket, int got, IPAddress from, bool viaXiao)
+{
+	// Check for more than 4 bytes, because bytes 0, 1, 2 and 3 are looked at
+	if (got > 4)
+	{
 		const int kept = got < (int)UDP_TX_PACKET_MAX_SIZE ? got : (int)UDP_TX_PACKET_MAX_SIZE;
 		memcpy(autoSteerUdpData, udpPacket, kept);
 		memset(autoSteerUdpData + kept, 0, UDP_TX_PACKET_MAX_SIZE - kept);   // AiO_WEB: nothing left from the packet before
-		xiaoForward(udpPacket, (uint16_t)got, len);
 
 		if (autoSteerUdpData[0] == 0x80 && autoSteerUdpData[1] == 0x81 && autoSteerUdpData[2] == 0x7F) //Data
 		{
@@ -869,7 +880,6 @@ void ReceiveUdp()
 				{
 					shortLogged = true;
 					shortLogMs = millis();
-					IPAddress from = Eth_udpAutoSteer.remoteIP();
 					StatusLog.line("[status] PGN %u from %u.%u.%u.%u shorter than it says (%d bytes, length byte %u): ignored",
 					               pgnNo, from[0], from[1], from[2], from[3], got, autoSteerUdpData[4]);
 				}
@@ -940,7 +950,7 @@ void ReceiveUdp()
 				PGN_253[PGN_253_Size] = CK_A;
 
 				//off to AOG
-				SendUdp(PGN_253, sizeof(PGN_253), Eth_ipDestination, portDestination);
+				progSend(PGN_253, sizeof(PGN_253));
 
 				//Steer Data 2 -------------------------------------------------
 				if (steerConfig.PressureSensor || steerConfig.CurrentSensor)
@@ -961,7 +971,7 @@ void ReceiveUdp()
 						PGN_250[PGN_250_Size] = CK_A;
 
 						//off to AOG
-						SendUdp(PGN_250, sizeof(PGN_250), Eth_ipDestination, portDestination);
+						progSend(PGN_250, sizeof(PGN_250));
 						aog2Count = 0;
 					}
 				}
@@ -1072,7 +1082,7 @@ void ReceiveUdp()
 			else if (autoSteerUdpData[3] == 200) // Hello from AgIO
 			{
 				// AgOpenWeb or AgOpenGPS? (automatic output mode, zStatus.ino)
-				statusNoteHello(udpPacket, (uint16_t)got, Eth_udpAutoSteer.remoteIP());
+				statusNoteHello(udpPacket, (uint16_t)got, from);
 				safetyNoteHello();             // restart / WAS check off on the program's screen (zSafety.ino)
 
 				if (Autosteer_running)
@@ -1086,12 +1096,20 @@ void ReceiveUdp()
 					helloFromAutoSteer[8] = helloSteerPosition >> 8;
 					helloFromAutoSteer[9] = switchByte;
 
-					SendUdp(helloFromAutoSteer, sizeof(helloFromAutoSteer), Eth_ipDestination, portDestination);
+					progSend(helloFromAutoSteer, sizeof(helloFromAutoSteer));
 				}
 				// the IMU hello only when there is an IMU (TM171 or BNO085, zImu.ino), as in the AiO firmware
-				if (imuType != IMU_NONE) SendUdp(helloFromIMU, sizeof(helloFromIMU), Eth_ipDestination, portDestination);
+				if (imuType != IMU_NONE) progSend(helloFromIMU, sizeof(helloFromIMU));
 			}
 
+			else if (autoSteerUdpData[3] == 201 && viaXiao)   // never from the XIAO's WiFi: it would restart the module under the tablet
+			{
+				if (autoSteerUdpData[4] == 5 && autoSteerUdpData[5] == 201 && autoSteerUdpData[6] == 201 && got >= 10)
+				{
+					StatusLog.line("[status] subnet %u.%u.%u from the program on the XIAO's WiFi (PGN 201) not done: the module's subnet is for its network cable (the XIAO's page changes it, WiFi tab)",
+					               autoSteerUdpData[7], autoSteerUdpData[8], autoSteerUdpData[9]);
+				}
+			}
 			else if (autoSteerUdpData[3] == 201)
 			{
 				//make really sure this is the subnet pgn
@@ -1115,12 +1133,12 @@ void ReceiveUdp()
 			}//end 201
 
 			//whoami
-			else if (autoSteerUdpData[3] == 202)
+			else if (autoSteerUdpData[3] == 202 && !viaXiao)   // (the scan is for the network the module is on)
 			{
 				//make really sure this is the reply pgn
 				if (autoSteerUdpData[4] == 3 && autoSteerUdpData[5] == 202 && autoSteerUdpData[6] == 202)
 				{
-					IPAddress rem_ip = Eth_udpAutoSteer.remoteIP();
+					IPAddress rem_ip = from;
 
 					//hello from AgIO
 					uint8_t scanReply[] = { 128, 129, Eth_myip[3], 203, 7,
@@ -1153,6 +1171,14 @@ void SendUdp(uint8_t* data, uint8_t datalen, IPAddress dip, uint16_t dport)
 	Eth_udpAutoSteer.beginPacket(dip, dport);
 	Eth_udpAutoSteer.write(data, datalen);
 	Eth_udpAutoSteer.endPacket();
+}
+
+// To the program (its UDP 9999): on the network, to everyone, as always; or, while the program is on the
+// XIAO's WiFi, through the XIAO to that program only (22 Nov 2026, zXiao.ino "the WiFi bridge").
+void progSend(uint8_t* data, uint8_t datalen)
+{
+	if (xiaoBridgeWifi()) { xiaoNetOut(data, datalen); return; }
+	if (Ethernet_running) SendUdp(data, datalen, Eth_ipDestination, portDestination);
 }
 #endif
 

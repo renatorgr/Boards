@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | The five firmware bugs fixed: `known-bugs.txt` is empty, 2 more "not told" are told, and `eeprom-subnet-damaged` is new (54 scenarios, 116 runs, about 765 checks) ([What it found](#what-it-found), [The users](#the-users)). |
+| 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 5 scenarios for the WiFi bridge ([The users](#the-users)). Now 59 scenarios, 128 runs, about 940 checks. |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
 
 ## Running it
@@ -69,7 +69,12 @@ puts the report in the run's summary and as a download.
   - **AgOpenWeb**: a hello every second, PGN 254 ten times a second with the angle from a pure-pursuit guidance to the
     line, its steer settings (252, 251) and on request 201, 202. What the module sends reaches it only when the
     network lets it through (the same subnet, or to everyone); it reads the NMEA and checks each checksum, and
-    keeps the PGN 221 texts (its screen).
+    keeps the PGN 221 texts (its screen). At 100 packets a second it holds the unchanged ones back for 30 ms after
+    its AutoSteer button changed, as AgOpenWeb does (the firmware reads the change every 25 ms).
+  - **the XIAO** on the GPS2 port (only in the scenarios that fit one): its hello every 2 s and its WiFi bridge, with
+    a second AgOpenWeb on **a tablet on the XIAO's own WiFi** (192.168.4.2, no network cable). The pretend XIAO keeps
+    the real program's rules (nothing to a module that does not send PGN 149, only the hello while the cable's
+    program has the module) and can be told to keep none, so the module's own rules are tested.
   - **power and restarts**: power off / on, a hang (the loop stops: the watchdog warning, then the reset), a crash
     (the crash hook, then the core's handler until the watchdog), the 49.7-day `millis()` wrap.
 - Rules watched every millisecond in every scenario: the outputs are on only while AgOpenWeb asks (within its 2.5 s
@@ -91,11 +96,11 @@ puts the report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering) |
+| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering), `careful-wifi-bridge` (no network cable: the tablet on the XIAO's WiFi steers 40 s through the XIAO, GPS at 10 Hz, corrections to the receiver), `careful-wifi-bridge-cable-first` (a second tablet on the WiFi while the cable's steers: not answered, even through a XIAO that keeps no rules; it gets the module 3 s after the cable's goes silent) |
 | Never set up | `new-board-no-program`, `no-steer-settings` (AgOpenWeb never sent 252), `no-ads1115` (GPS only, .120), `nothing-plugged`, `cable-late`, `eeprom-damaged`, `eeprom-subnet-damaged` |
-| Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps` |
+| Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps`, `wifi-bridge-subnet` (a subnet and a scan sent over the XIAO's WiFi: not done, said in Messages) |
 | Wrong wiring | `gps-on-gps2-port`, `gps-wrong-baud`, `imu-other-baud`, `was-not-connected`, `was-signal-to-ground`, `was-3wire-differential`, `keya-can-unplugged`, `keya-powered-late`, `tablet-other-subnet` |
-| Failures in the field | `was-unplugged-steering`, `was-wire-cut`, `keya-lost`, `keya-fault`, `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `too-fast`, `packet-loss`, `short-settings-packet`, `udp-garbage`, `gps-lost`, `rtk-lost`, `imu-frozen`, `web-hammer`, `bad-requests`, `ntrip-flood`, `millis-wrap`, `update-while-steering`, `update-bad-files`, `update-and-back` |
+| Failures in the field | `was-unplugged-steering`, `was-wire-cut`, `keya-lost`, `keya-fault`, `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `too-fast`, `packet-loss`, `short-settings-packet`, `udp-garbage`, `gps-lost`, `rtk-lost`, `imu-frozen`, `web-hammer`, `bad-requests`, `ntrip-flood`, `millis-wrap`, `update-while-steering`, `update-bad-files`, `update-and-back`, `wifi-bridge-xiao-stops` (the XIAO stops while it carries the steering, then comes back), `wifi-bridge-tablet-leaves` (100 steering packets a second, nothing on the cable meanwhile, then the tablet out of range) |
 
 ## The checks
 
@@ -160,8 +165,10 @@ changes is not found any more.
 - The Teensy build itself (the "Teensy firmware" check does it), the real timing of the 600 MHz chip, and the
   hardware: the pretend core does what the real one is documented to do, nothing more. A flash write here takes
   pretend time but never fails.
-- The web page's own JavaScript (the simulator check does that) and the XIAO program.
-- The dual F9P on the GPS2 port, the XIAO link (PGN 141-145), the correction radio on Serial3, the TM171
+- The web page's own JavaScript (the simulator check does that) and the XIAO program itself: the XIAO here is a
+  pretend one that follows the same rules, with no WiFi behind it (no delay, no lost packet in the air).
+- The dual F9P on the GPS2 port, the XIAO link's firmware update and subnet command (PGN 144, 145; the status, log
+  and WiFi bridge frames, PGN 141-143 and 146-149, are read by the pretend XIAO), the correction radio on Serial3, the TM171
   calibration, the receiver configuration from the page and the machine module tab.
 - Hydraulics: the wheels follow the valve in a straight line of speed against PWM, with no oil temperature, relief
   valve or pump flow.

@@ -453,3 +453,79 @@ SCENARIO(User::FieldFailures, "update-and-back", "Updates with the repository's 
     must("eeprom-kept", w.status()["steerCfg"]["counts"].num() == w.aow.ss.counts, "The steer settings survive both", fmt("counts %g", w.status()["steerCfg"]["counts"].num()));
     reportRules(w);
 }
+
+// ---------------------------------------------------------------- the WiFi bridge (a tablet on the XIAO's own WiFi)
+SCENARIO(User::FieldFailures, "wifi-bridge-xiao-stops", "Steering through the XIAO's WiFi bridge, the XIAO stops (its plug, a restart), then comes back", { Kit::PumaCytron, Kit::F9pIbt2, Kit::Um982Keya })
+{
+    World w(kit);
+    wifiTablet(w);
+    w.startUp();
+    w.tractor.kmh = 8;
+    w.run(1000);
+    engageWifi(w, true);
+    w.run(8000);
+    must("steering", w.engaged(), "Steers for the program on the XIAO's WiFi");
+    const size_t mark = w.aio.logMark();
+    const uint32_t boots = w.aio.boots;
+    w.xiao.fitted = false;                          // nothing more from the XIAO
+    const uint64_t off = msUntilOff(w, 5000);
+    note("xiao-off", fmt("outputs off %llu ms after the XIAO's last byte", (unsigned long long)off));
+    must("off-in-time", off <= 2600, "Outputs off within 2.6 s of the last steering packet", fmt("%llu ms", (unsigned long long)off));
+    w.run(6000);
+    must("stays-off", !w.engaged(), "Stays off while the XIAO is silent");
+    tell("says-free", w.aio.logHas("the module is free again", mark), "Says the program on the XIAO's WiFi is gone", logSince(w, mark, 400));
+    const uint32_t net0 = w.netTo9999;
+    w.run(3000);
+    must("gps-on-cable", w.netTo9999 - net0 >= 25, "GPS goes out on the network cable again", fmt("%u datagrams in 3 s", w.netTo9999 - net0));
+
+    w.xiao.fitted = true;                           // the XIAO is back
+    w.runUntil([&] { return w.xiao.state == 2; }, 8000);
+    w.run(8000);
+    must("back", w.xiao.state == 2 && !w.tab.heardPgn(253, w.now() - 2000).empty(), "With the XIAO back the program is answered again",
+         fmt("bridge state %u, %zu PGN 253 in 2 s", w.xiao.state, w.tab.heardPgn(253, w.now() - 2000).size()));
+    must("no-restart", w.aio.boots == boots, "No restart of the module", fmt("%u starts", w.aio.boots));
+    engageWifi(w, false);
+    w.run(1000);
+    reportRules(w);
+}
+
+SCENARIO(User::FieldFailures, "wifi-bridge-tablet-leaves", "Steering through the XIAO's WiFi bridge, the tablet loses the XIAO's WiFi", { Kit::PumaCytron, Kit::F9pDanfoss })
+{
+    World w(kit);
+    wifiTablet(w);
+    w.tab.period254 = 10;                           // AgOpenWeb's 100 steering packets a second
+    w.startUp();
+    Json st = w.status();
+    must("page-says", st["xiao"]["bridge"].num() == 2 && st["net"]["aogWifi"].num() == 1 && st["net"]["aogIp"].str() == "192.168.4.2",
+         "The module's page says the program is on the XIAO's WiFi", fmt("bridge %g, program IP %s", st["xiao"]["bridge"].num(), st["net"]["aogIp"].str().c_str()));
+    const uint32_t net0 = w.netTo9999;
+    w.tractor.kmh = 8;
+    w.run(1000);
+    engageWifi(w, true);
+    w.run(8000);
+    must("steering", w.engaged(), "Steers for the program on the XIAO's WiFi");
+    must("one-way", w.netTo9999 == net0, "Nothing for the program goes out on the network cable while it is on the WiFi (it would get everything twice)",
+         fmt("%u datagrams to UDP 9999 on the cable in 9 s", w.netTo9999 - net0));
+    st = w.status();
+    must("none-lost", st["xiao"]["brDrop"].num() == 0 && w.xiao.dropped == 0, "At 100 steering packets a second nothing is dropped at the link, either way",
+         fmt("to the program: %g dropped of %g; to the module: %u dropped of %u", st["xiao"]["brDrop"].num(), st["xiao"]["brOut"].num(), w.xiao.dropped, w.xiao.toModule));
+    const size_t n253 = w.tab.heardPgn(253, w.now() - 5000).size();
+    must("pgn253-100hz", n253 >= 480, "PGN 253 back for every steering packet (100 a second)", fmt("%zu in 5 s", n253));
+    const uint32_t s141 = w.xiao.pgns[141];
+    w.run(3000);
+    must("page-data-goes-on", w.xiao.pgns[141] - s141 >= 20, "The module's status for the XIAO's page still gets through beside the program's packets",
+         fmt("%u status frames in 3 s", w.xiao.pgns[141] - s141));
+
+    const size_t mark = w.aio.logMark();
+    w.tab.on = false;                               // out of the XIAO's range
+    const uint64_t off = msUntilOff(w, 5000);
+    must("off-in-time", off <= 2600, "Outputs off within 2.6 s of the last steering packet", fmt("%llu ms", (unsigned long long)off));
+    w.run(4000);
+    st = w.status();
+    must("free", st["xiao"]["bridge"].num() == 0, "After 3 s of silence the module is free again", fmt("bridge %g", st["xiao"]["bridge"].num()));
+    tell("says-free", w.aio.logHas("the module is free again", mark), "Says the program on the XIAO's WiFi went silent", logSince(w, mark, 400));
+    const uint32_t net1 = w.netTo9999;
+    w.run(3000);
+    must("gps-on-cable", w.netTo9999 - net1 >= 25, "GPS goes out on the network cable again", fmt("%u datagrams in 3 s", w.netTo9999 - net1));
+    reportRules(w);
+}

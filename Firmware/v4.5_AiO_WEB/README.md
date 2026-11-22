@@ -19,7 +19,7 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **Steering settings** | fixed in the code | on the page: minimum and maximum speed, soft start, kickout delay (pressure or current sensor). The wheelbase comes from AgOpenWeb; its maximum wheel angle and minimum steering speed are shown. |
 | **Diagnostics** | serial prints | `[boot]` and `[status]` messages on the page, a diagnostic report file, why the Teensy last started (with the crash address), the longest loop time. |
 | **Network** | NativeEthernet as it comes | the network stack runs from the loop (a browser could crash the Teensy); 8 KB buffers. |
-| **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi. |
+| **XIAO ESP32 on the GPS2 port** | none | its own WiFi network and page: module status, messages, settings, update over WiFi; a [WiFi bridge](#wifi-bridge) for a tablet with no network cable. |
 | **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. The in-between state alternates red and green, readable through a panel window. |
 | **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5, the AiO v26's machine part, the sprayer module or the seed drill module (several at once), their sections, and the sprayer's pressure, flow, rate and alarms (PGN 160 and 161). |
 
@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | Refused update keeps steering ([Firmware update](#firmware-update-over-the-network)). Short packets dropped ([Network stack](#network-stack)), bad PGN 201 subnet refused ([Web page](#web-page)). Damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled in the cloud. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable runs the program on the XIAO's WiFi. Refused update keeps steering ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled in the cloud. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
 | 17 Nov 2026 | Changing the steer switch mode in the program with the module running no longer leaves autosteer off until a restart ([Steering](#steering)). The [kickout delay](#settings) and the [WAS check](#was-check)'s times always count: on an even millisecond they were skipped. |
@@ -585,11 +585,33 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 - Teensy → XIAO, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
 - XIAO → Teensy: PGN 143 (the XIAO's state, for its card); PGN 144 (a command: 1 = the module's subnet, which the Teensy saves and restarts with).
 - Both ways: PGN 145 (the module's firmware from the XIAO page): the XIAO sends begin (size, name, "other firmware"), the `.hex` text in numbered pieces of 252 bytes, end, cancel, or "go back to the previous firmware"; the Teensy answers each one (ok, or the reason it refused) before the XIAO sends the next piece, so nothing arrives while a flash sector is written with interrupts off.
-- PGN 141-145 never go on the network.
+- XIAO → Teensy: PGN 146 (a datagram the program on the XIAO's WiFi sent to UDP 8888: its IP, then the datagram) and PGN 147 (the corrections it sent to UDP 2233). Teensy → XIAO: PGN 148 (a datagram for that program's UDP 9999) and PGN 149 (the bridge's state, once a second and at each change). See [WiFi bridge](#wifi-bridge).
+- PGN 141-149 never go on the network.
 - Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).
 - At 460800, AgOpenWeb's 100 Hz steering packets use 6-10 % of the link.
 
 The XIAO program (`v4.5_XIAO_ESP32`) has its own WiFi network and page: module status and messages, what the program sends to the module, WiFi settings, update over WiFi. See its README, or try the page in the [simulator](https://renatorgr.github.io/Boards/xiao/).
+
+### WiFi bridge
+
+For a tablet with **no network cable to the module** (no USB-Ethernet adapter). The tablet joins the XIAO's own WiFi; the XIAO hands the program's datagrams to the Teensy over the link and sends the Teensy's answers to that tablet only. Switched on on the XIAO's page (WiFi tab, off from new); the Teensy has no setting for it. How to set it up, and its limits: the XIAO program's README, [WiFi bridge](v4.5_XIAO_ESP32/README.md#wifi-bridge).
+
+Why not the router's WiFi: there the module's packets are broadcasts, which a router holds for its beacon. Measured on a tractor (22 Nov 2026): 8 at a time every 0.2 s, each 1.5 s late, half of them lost. To one address they are not held.
+
+What the Teensy does (`zXiao.ino`, "the WiFi bridge"; `programPacket` and `progSend` in `Autosteer.ino`):
+
+| | |
+|---|---|
+| A packet from the WiFi (PGN 146) | is taken as a packet on UDP 8888: hello, steering (254), settings (252, 251), machine (239, 229). The program's IP in Messages and on the page is the tablet's on the XIAO's network, with "on the XIAO's WiFi". |
+| What goes to the program | GPS sentences, PGN 253, 250, the hello replies and the texts for its screen go to the XIAO (PGN 148) and **not** on the network cable: a tablet on both would get everything twice, from two addresses. |
+| The cable comes first | a program packet on the network cable in the last 3 s keeps the module the cable's: packets from the WiFi are not taken (counted, and said in Messages once per 30 s). |
+| The module is free again | after 3 s with nothing from the WiFi, or when the XIAO is gone. GPS then goes out on the network cable as before. |
+| Corrections (PGN 147) | written to the receiver as those from UDP 2233, only while the program on the WiFi has the module. |
+| Subnet (PGN 201) and scan (PGN 202) | not done from the WiFi: the subnet is for the network cable, and a change would restart the module under the tablet. Messages says so. |
+| A link that stops | no steering data: the steering watchdog turns the outputs off, as with a pulled cable. |
+| The Teensy's own frames (status, log lines) | wait for a nearly empty transmit buffer while the program is on the WiFi, so a GPS sentence never waits behind more than one of them. |
+
+The XIAO card (Status) has a **WiFi bridge** row: off, on with no program, standing by (a program is on the cable), or the program on the XIAO's WiFi with the datagrams in / out and those lost at the link.
 
 ## Credits and licence
 

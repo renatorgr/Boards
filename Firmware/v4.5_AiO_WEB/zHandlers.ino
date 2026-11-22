@@ -729,7 +729,9 @@ static void sendLine(const char* line, uint8_t slot)
         memcpy(lastSent[slot], line, n);
         lastSent[slot][n] = '\0';
     }
-    if (Ethernet_running)
+    if (xiaoBridgeWifi())                                  // the program is on the XIAO's WiFi: to it only (zXiao.ino)
+        xiaoNetOut((const uint8_t*)line, (uint16_t)strlen(line));
+    else if (Ethernet_running)
     {
         Eth_udpPAOGI.beginPacket(Eth_ipDestination, portDestination);
         Eth_udpPAOGI.write(line, strlen(line));

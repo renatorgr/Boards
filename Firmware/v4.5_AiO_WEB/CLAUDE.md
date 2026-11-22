@@ -131,7 +131,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Companion modules
 | File | Purpose |
 |------|---------|
-| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144 / 145, frames to and from UDP; PGN 145 takes the loop over (`xiaoFwRun`, loop step 20) while a firmware comes over the link |
+| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144 / 145, frames to and from UDP; PGN 145 takes the loop over (`xiaoFwRun`, loop step 20) while a firmware comes over the link; the WiFi bridge (PGN 146-149: a program on the XIAO's own WiFi, `xiaoTakeNet` → `programPacket`, `xiaoNetOut`, `xiaoBridgeTick`) |
 | `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5, sprayer Nano / ESP32, seed drill ESP32) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160, plus the program's PGN 229 (sections 1-64), for the Machine tab (read only) |
 
 ## Architecture Overview
@@ -228,6 +228,11 @@ update (both ways: XIAO → Teensy `[1 begin][flags][size LE32][name]`, `[2][seq
 `[3 end]`, `[4 cancel]`, `[5 revert]`; Teensy → XIAO `[cmd][seq LE16][0 ok / 1 refused][text]` for each one. Stop and
 wait: the XIAO sends a piece only after the answer to the one before, because the Teensy writes flash sectors with
 interrupts off and the LPUART FIFO is small; the Teensy answers a repeated `seq` again for a lost answer).
+The WiFi bridge (22 Nov 2026, README "WiFi bridge"): 146 a datagram a program on the XIAO's own WiFi sent to UDP 8888
+(XIAO → Teensy: `[its IP, 4 bytes][the datagram]`, taken by `programPacket(..., viaXiao = true)`), 147 its corrections
+from UDP 2233 (XIAO → Teensy, to the receiver), 148 a datagram for that program's UDP 9999 (Teensy → XIAO, which sends it
+to that address only), 149 the bridge's state (Teensy → XIAO, once a second and at each change: `[version 1][0 free /
+1 a program on the cable has the module / 2 the program on the WiFi has it][0]`; a XIAO that does not hear it sends no 146).
 
 ### Machine module (UDP 9999 in)
 123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B, the AiO v26 layout (sections 1-16 the module drives in bytes 5-6, lift, tramline, geo stop, status; Seeder_ESP32 adds sections 17-64 in bytes 13-18), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts. A module's sections come from its 237 when it sends one (the AiO v26 leaves them at 0 in its hello reply); up to 4 modules (IPs) are kept apart and their sections put together.
@@ -350,10 +355,12 @@ The addresses must not move: settings must survive a firmware update.
     answers, JSON, set-up, text) gets `FLASHMEM`; keep the steering, GNSS, IMU and anything that runs during a flash
     write (FlasherX, `FlashTxx.c` RAMFUNC) in RAM. The GitHub check fails under 32 KB "free for local variables".
 14. **XIAO web answers never hold up its loop** (13 Nov 2026): the XIAO program serves its page through
-    `LinkWebServer`, a `WebServer` whose writes take what the connection takes and keep `teensy.poll()` going while
+    `LinkWebServer`, a `WebServer` whose writes take what the connection takes and keep `linkPoll()` (the link to the
+    Teensy and, since 22 Nov 2026, the WiFi bridge) going while
     the browser catches up (the core's own write waited up to 10 s on a weak WiFi link: no hello, "XIAO silent for
     10 s" in the Teensy log). Send every answer with `server.send` / `send_P` / `sendContent`, never
-    `server.client().write()`; a handler that waits for something else calls `teensy.poll()` itself. The page has
+    `server.client().write()`; a handler that waits for something else calls `linkPoll()` itself (the module's
+    firmware over the link keeps `teensy.poll()`: the bridge is down for it on both sides). The page has
     an ETag (build date, `Cache-Control: no-cache`, 304 when unchanged), as the Teensy page.
 15. **A timer where 0 means "not running"** is started with `msStamp(now)` (`zSafety.ino`), never `millis() | 1`
     (17 Nov 2026): on an even millisecond `| 1` is one millisecond ahead, the unsigned `now - timer` of the same loop
@@ -362,6 +369,11 @@ The addresses must not move: settings must survive a firmware update.
     "once a second" job ran twice, "heard lately" read no, a page time read 49 days); the XIAO has its own (`xLink.h`).
     A stamp taken with `millis()` can still be a millisecond ahead of a `now` read earlier in the pass: compare those
     with `tmElapsed()` (`TM171.ino`, signed).
+16. **Everything for the program goes through `progSend()` or `sendLine()`** (22 Nov 2026, the WiFi bridge): they
+    send on the network cable, or to the XIAO (PGN 148) while the program is on the XIAO's WiFi (`xiaoBridgeWifi()`),
+    never both. A new sender that calls `SendUdp` / `beginPacket` to `Eth_ipDestination` itself would be missing for
+    a tablet on the WiFi. What a program sends arrives in `programPacket()` from either way; `viaXiao` marks the
+    WiFi, where PGN 201 and 202 are not done. The cable always wins (`xiaoBridgeNoteCable`, 3 s).
 
 ## Version and Publishing
 

@@ -206,6 +206,7 @@ p.chk{text-align:right;margin:4px 0 0}
   <dl style="margin-top:6px"><dt>Last hello</dt><dd id="xHello" class="nw">–</dd>
    <dt>Packets to the XIAO</dt><dd id="xTo">–</dd><dt>PGNs from the XIAO</dt><dd id="xFrom">–</dd><dt>Last PGN from the XIAO</dt><dd id="xLast">–</dd>
    <dt>Checksum errors</dt><dd id="xCrc">–</dd><dt>Lost</dt><dd id="xDrop">–</dd><dt>Received / sent</dt><dd id="xKB" class="nw">–</dd>
+   <dt>WiFi bridge</dt><dd id="xBr">–</dd>
    <dt>XIAO version</dt><dd id="xProg">–</dd><dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>WiFi network</dt><dd id="xSta">–</dd><dt>IP on the WiFi network</dt><dd id="xIp">–</dd><dt>XIAO temperature</dt><dd id="xTemp">–</dd></dl>
   <p class="note hidden" id="xNote"></p>
   </div>
@@ -662,7 +663,7 @@ function render(s){
  const n=s.net;
  pill("link",n.link?"connected":"unplugged",n.link?"ok":"bad");
  const hn=n.host==="AgOpenWeb"||n.host==="AgOpenGPS"?n.host:"";
- pill("aog",!n.aog?"no communication":n.hostBoth?"two programs":hn?hn+" · "+"talking":"talking",!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp:"–");set("mdns",n.mdns||"–");
+ pill("aog",!n.aog?"no communication":n.hostBoth?"two programs":hn?hn+" · "+"talking":"talking",!n.aog||n.hostBoth?"warn":"ok");set("aogIp",n.aog?n.aogIp+(n.aogWifi?" · "+"on the XIAO's WiFi":""):"–");set("mdns",n.mdns||"–");
  pill("rtcm",(n.rtcm?"arriving":"stopped"),n.rtcm?"ok":"warn");set("rtcmKB",n.rtcmKB.toFixed(0)+" kB"+(n.rtcm?" · "+n.rtcmBps+" B/s":""));
  set("rtcmMsg",n.rtcmOk+" · "+n.rtcmBad+" "+"with errors",n.rtcmBad?"warn":"");set("rtcmTypes",n.rtcmTypes||"–");
  pill("radio",(n.radio?"arriving":n.radioKB>0?"stopped":"nothing received"),n.radio?"ok":n.radioKB>0?"warn":"");
@@ -694,6 +695,12 @@ function render(s){
    setLink("xIp",xi.sta&&xi.st==="ok"?"":"–",xi.sta&&xi.st==="ok"&&xi.ip?"http://"+xi.ip+"/":"");   /* its page on that network */
    set("xTemp",xi.t!==undefined?Number(xi.t).toFixed(1)+" °C":NO_TEMP);}   /* the ESP32's own sensor, in its PGN 143 (a XIAO program before 4 Nov 2026 sends none) */
   else{set("xProg","–");set("xAp","–");set("xSta","–");set("xIp","–");set("xTemp","–");}
+  /* the WiFi bridge (22 Nov 2026): a program on the XIAO's own WiFi, for a tablet with no network cable; switched on on the XIAO's page */
+  set("xBr",x.bridge===2?"the program is on the XIAO's WiFi"+" · "+x.brIn+" in / "+x.brOut+" out"+(x.brDrop?" · "+x.brDrop+" lost":"")
+   :!xi||xi.br===undefined?"–"                              /* a XIAO program before 22 Nov 2026 does not say */
+   :!xi.br?"off (the XIAO's page switches it on, WiFi tab)"
+   :x.bridge===1?"on · standing by: a program is on the network cable"+(x.brIgn?" · "+x.brIgn+" from the WiFi not taken":"")
+   :"on · no program on the XIAO's WiFi",x.bridge===2?(x.brDrop?"warn":"ok"):"");
   // the XIAO program must be the one of this firmware version (same number): a new XIAO has to be programmed first
   const tv=s.fw.slice(s.fw.lastIndexOf(" ")+1),bins="https://github.com/renatorgr/Boards/tree/main/Firmware/v"+tv+"_AiO_WEB/v"+tv+"_XIAO_ESP32_bin";
   let xn="",xnc="";

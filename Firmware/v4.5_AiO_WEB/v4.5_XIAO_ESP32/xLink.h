@@ -19,10 +19,16 @@
 //                    PGN 145 (source 0x50): a firmware update for the Teensy (2 Nov 2026): [1][flags][size LE32][name]
 //                    begins it, [2][block LE16][up to 252 bytes of the .hex] one block, [3] end, [4] cancel, [5] go
 //                    back to the previous firmware the Teensy keeps. Each one is answered before the next is sent.
+//                    PGN 146 (source 0x50): the WiFi bridge (22 Nov 2026): a datagram a program on our WiFi sent to
+//                    UDP 8888: [its IP, 4 bytes][the datagram]
+//                    PGN 147 (source 0x50): the WiFi bridge: corrections that program sent to UDP 2233: [the bytes]
 //   Teensy -> XIAO   AgOpenGPS packets from UDP 8888 (source 0x7F): PGN 254, 239, 229, 200, ...
 //                    PGN 141 (source 0x7E): the module status JSON, once a second, in pieces
 //                    PGN 142 (source 0x7E): one line of the module's [status] log
 //                    PGN 145 (source 0x7E): the answer to ours: [command][block LE16][0 ok / 1 refused][text]
+//                    PGN 148 (source 0x7E): the WiFi bridge: a datagram for the program on our WiFi (its UDP 9999)
+//                    PGN 149 (source 0x7E): the WiFi bridge's state, once a second: [version][0 free / 1 a program on
+//                    the module's network cable has it / 2 the program on our WiFi has it]
 // Every frame: [0x80][0x81][source][pgn][length][data...][checksum = low 8 bits of the sum of the
 // bytes from source to the last data byte]. Frames with a wrong checksum are dropped.
 //
@@ -55,6 +61,15 @@ static inline uint32_t msStamp(uint32_t now) { return now != 0 ? now : 0xFFFFFFF
 #define LINK_PGN_CMD            144      // XIAO -> Teensy: a command, 1 = the module's subnet a.b.c (2026-10-24)
 #define LINK_PGN_FW             145      // both ways: a firmware update for the Teensy from this page (2026-11-02)
 #define LINK_FW_BLOCK           252      // bytes of the .hex file per frame (255 - command - block number)
+#define LINK_PGN_NET_IN         146      // XIAO -> Teensy: the WiFi bridge, a datagram from the program (22 Nov 2026)
+#define LINK_PGN_RTCM           147      // XIAO -> Teensy: the WiFi bridge, corrections from the program
+#define LINK_PGN_NET_OUT        148      // Teensy -> XIAO: the WiFi bridge, a datagram for the program
+#define LINK_PGN_BRIDGE         149      // Teensy -> XIAO: the WiFi bridge's state
+#define LINK_NET_MAX            251      // the longest datagram a PGN 146 carries (255 - the IP)
+#define LINK_BRIDGE_MS          3000     // no PGN 149 for this long: the Teensy does not know the bridge (older firmware)
+#define LINK_BRIDGE_FREE        0
+#define LINK_BRIDGE_CABLE       1        // a program on the module's network cable has the module
+#define LINK_BRIDGE_WIFI        2        // the program on our WiFi has it
 
 struct LinkLogLine
 {
@@ -91,6 +106,12 @@ public:
     LinkLogLine logRing[LINK_LOG_LINES];
     uint32_t logLast = 0;                // highest sequence number stored
     uint32_t logEpoch = 1;               // +1 when the Teensy restarted (its numbers start again)
+
+    // ---- the WiFi bridge (22 Nov 2026): what the Teensy says (PGN 149), and its datagrams for the program (PGN 148)
+    uint8_t  bridgeState = LINK_BRIDGE_FREE;
+    uint32_t bridgeMs = 0;               // when the Teensy last said so (0 = never)
+    void   (*onNetOut)(const uint8_t* d, uint8_t n) = nullptr;
+    bool bridgeKnown(uint32_t now) const { return bridgeMs != 0 && now - bridgeMs < LINK_BRIDGE_MS; }
 
     bool teensyTalking(uint32_t now) const { return lastFrameMs != 0 && now - lastFrameMs < LINK_SILENT_MS; }
 
@@ -223,6 +244,16 @@ private:
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_STATUS && n >= 3) { statusPiece(d, n, now); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_LOG && n >= 8)     { logLine(d, n); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_FW && n >= 4)      { fwAnswer(d, n); return; }
+        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_NET_OUT)           { if (onNetOut && n) onNetOut(d, n); return; }
+        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_BRIDGE)            { if (n >= 2) { bridgeState = d[1]; bridgeMs = msStamp(now); } return; }
+        aogPacket(pgn, d, n, now);
+    }
+
+public:
+    // One packet of AgOpenGPS / AgOpenWeb for the module, counted and decoded for the page: from the module's network
+    // cable (the Teensy passes them on), or from the program on our own WiFi (the WiFi bridge, which sees them first)
+    void aogPacket(uint8_t pgn, const uint8_t* d, uint8_t n, uint32_t now)
+    {
         pgnCount[pgn]++;
         if (pgn == 254 && n >= 8)
         {
@@ -247,6 +278,8 @@ private:
         }
         else if (pgn == 200) last200Ms = msStamp(now);
     }
+
+private:
 
     // PGN 141: [set][piece][pieces][JSON text]; a set is kept only when every piece arrived in order
     void statusPiece(const uint8_t* d, uint8_t n, uint32_t now)

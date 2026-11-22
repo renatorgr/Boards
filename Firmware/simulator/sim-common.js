@@ -497,7 +497,7 @@ function Module(key) {
   const j = {fw: fwName() + " " + fwVer(), built: built(), target: "fw_teensy41", marker: "AiO-WEB-OTA-1", up: up, ip: ip(),
    cpuMhz: 450, cpuTemp: r2(46.2 + wob(t, 1.5, 0.05), 1), cpuTempMax: 51.2, cpuHot: false,   // the Teensy's clock and temperature (zSafety.ino)
    prev: st.prev || null};   // the firmware that ran before the last update, kept in the flash (zOTA.ino otaPrevGet)
-  j.net = {link: true, mdns: "AiO-3F2A", aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
+  j.net = {link: true, mdns: "AiO-3F2A", aog: t >= 6, aogIp: t >= 6 ? st.net + ".10" : "0.0.0.0", aogWifi: false, host: host, hostBoth: false, helloAgo: t >= 6 ? 0 : -1,
    rtcm: rtcm, rtcmKB: r2(rtcmT * 1.31, 1), rtcmBps: rtcm ? Math.round(1310 + wob(t, 60, 0.2)) : 0, rtcmOk: Math.floor(rtcmT * 4.6), rtcmBad: t > 60 ? 1 : 0,
    rtcmTypes: rtcm ? (um ? "1006 1008 1033 1075 1085 1095 1125 1230" : "1005 1074 1084 1094 1124 1230") : "",
    radio: false, radioKB: 0, radioBps: 0, radioOk: 0, radioBad: 0, radioTypes: ""};
@@ -566,14 +566,16 @@ function Module(key) {
   const xHere = h.xiao && cfg.xiaoOff !== 1 && t > 5.2, xt = Math.max(0, t - 5.2);
   j.xiao = {on: cfg.xiaoOff !== 1 && !f9pOn(), port: cfg.xiaoOff === 1 ? 1 : f9pOn() ? 2 : 0, det: xHere, helloAgo: xHere ? up % 2 : -1, hellos: xHere ? Math.floor(xt / 2) + 1 : 0,
    to: xHere ? Math.floor(xt * 13) : 0, from: xHere ? Math.floor(xt / 5) + 3 : 0, lastPgn: xHere ? 143 : -1, crcErr: 0, cut: 0, drop: 0,
-   rxKB: r2(xHere ? xt * 0.05 : 0, 1), txKB: r2(xHere ? xt * 1.9 : 0, 1), text: 0};
+   rxKB: r2(xHere ? xt * 0.05 : 0, 1), txKB: r2(xHere ? xt * 1.9 : 0, 1), text: 0,
+   // the WiFi bridge (zXiao.ino): the pretend program is on the network cable, so it has the module (1) once it talks
+   bridge: t >= 6 ? 1 : 0, brIn: 0, brOut: 0, brDrop: 0, brIgn: 0, brRtcmKB: 0};
   if (full) j.xiao.info = xHere ? JSON.stringify(xiaoInfo(up)) : "";
   j.xiao.infoAgo = xHere ? up % 5 : -1;
   if (full && h.mach && t > 5.5) j.mach = machine(t, tr, engaged);
   return j;
  }
  function xiaoInfo(up) {
-  return {v: VERSION, c: opt.chip === "s3" ? "ESP32-S3" : "ESP32-C3", ap: "XIAO-3F2A", apIp: "192.168.4.1", cl: 1, sta: "Farm WiFi", st: "ok", ip: "192.168.1.57", rssi: -61, t: 44.3, up: up};
+  return {v: VERSION, c: opt.chip === "s3" ? "ESP32-S3" : "ESP32-C3", ap: "XIAO-3F2A", apIp: "192.168.4.1", cl: 1, sta: "Farm WiFi", st: "ok", ip: "192.168.1.57", rssi: -61, t: 44.3, br: 0, up: up};
  }
  function steerCfg() {
   const base = {kp: 12, hiPwm: 235, minPwm: 9, lowPwm: 28, counts: 134, offset: -36, ackerman: 97, invertWas: false, singleWas: true, relayHigh: false,

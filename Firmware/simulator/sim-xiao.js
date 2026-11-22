@@ -6,7 +6,7 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The XIAO's answers (v4.5_XIAO_ESP32.ino apiState, apiTeensy, apiLog, apiSettings*, apiScan, apiSubnet,
-// apiRestart, the program update on /update, the module's firmware over the link on /api/teensy-update and
+// apiRestart, the WiFi bridge's switch and state, the program update on /update, the module's firmware over the link on /api/teensy-update and
 // /api/teensy-revert), with the module's status from the pretend Teensy of
 // sim-common.js (its short copy, as the Teensy sends it to the XIAO once a second). The XIAO network password
 // is the XIAO's default, agopengps.
@@ -32,6 +32,7 @@ function event(x, t) {
 function events() {
  const L = [[0.3, "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3") + " started (" + X.reset + ")"],
   [0.5, "WiFi: own network '" + X.ap + "' at 192.168.4.1" + (X.staOn ? ", joining the other network" : "")]];
+ if (X.bridge) L.push([0.6, "WiFi bridge on: a program on the XIAO's network (UDP 8888) reaches the module through the XIAO"]);
  if (X.staOn) L.push([3.2, "WiFi: joined '" + X.sta + "', IP 192.168.1.57, -61 dBm, channel 6"]);
  L.push([8.0, "WiFi: 1 device(s) on the XIAO network"]);
  const tB = T();
@@ -53,6 +54,8 @@ function state() {
  return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: (S.BUILD.xiaoBuilt || {})[C3 ? "c3" : "s3"] || S.BUILD.built || "Oct 25 2026 09:00:00",
   up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
+  // the WiFi bridge: the pretend program is on the module's network cable, so the bridge (when switched on) stands by
+  bridge: {on: !!X.bridge, teensy: mod && mt > 5.2, state: mod && mt > 5.2 ? (prog ? 1 : 0) : -1, prog: "", steer: false, in: 0, out: 0, rtcmKB: 0, lost: 0, other: 0},
   link: {talking: mod && mt > 5.2, lastAgo: mod ? 0 : Math.floor((Date.now() - lostAt) / 1000), frames: Math.floor(mt * 12), crcErr: 0, cut: 0,
    rxKB: S.r2(mt * 1.9, 1), txKB: S.r2(mt * 0.05, 1), hellos: Math.floor(mt / 2), sets: Math.floor(mt), broken: 0},
   aog: {helloAgo: prog ? 0 : -1, rate254: prog ? 10 : 0, ago254: prog ? 0 : -1, kmh: prog ? S.r2(tr.kmh, 1) : 0, angle: eng ? S.r2(M.tractor(mt + 0.25).steer, 2) : 0,
@@ -82,11 +85,14 @@ function settingsPost(b) {
  if (staOn && !b.staSsid) return S.err(400, "other network: no name");
  const host = String(b.host || "").toLowerCase();
  if (!/^[a-z0-9-]{1,24}$/.test(host)) return S.err(400, "name on the network: letters, digits and '-', up to 24");
+ const bridge = b.bridge === undefined ? !!X.bridge : b.bridge === "1";
+ if (bridge && (b.apPass || X.pass) === "agopengps")
+  return S.err(400, "WiFi bridge: first give the XIAO's network a password of your own (the field above) - whoever is on this network can then steer the tractor");
  if (b.staPass) X.staPassSet = true;                    // another network without a password: an open one
  else if ((b.staSsid || "") !== X.sta) X.staPassSet = false;
- Object.assign(X, {ap: b.apSsid, staOn: staOn, sta: b.staSsid || "", host: host});
+ Object.assign(X, {ap: b.apSsid, staOn: staOn, sta: b.staSsid || "", host: host, bridge: bridge});
  if (b.apPass) X.pass = b.apPass;
- event("Settings saved: own network '" + X.ap + "', other network " + (X.staOn ? X.sta : "off") + ", name " + X.host + ".local - restarting");
+ event("Settings saved: own network '" + X.ap + "', other network " + (X.staOn ? X.sta : "off") + ", name " + X.host + ".local, WiFi bridge " + (X.bridge ? "on" : "off") + " - restarting");
  restart("restart requested", 3000);
  return S.ok();
 }
@@ -117,7 +123,8 @@ S.hook((method, path, q, body) => {
  if (get && path === "/api/state") r = S.ok(state());
  else if (get && path === "/api/teensy") r = S.ok(teensy());
  else if (get && path === "/api/log") r = S.ok(log(parseInt(q.get("after") || "0", 10) || 0, parseInt(q.get("xafter") || "0", 10) || 0));
- else if (get && path === "/api/settings") r = S.ok({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host});
+ else if (get && path === "/api/settings") r = S.ok({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host,
+  bridge: !!X.bridge, apPassOwn: X.pass !== "agopengps"});
  else if (post && path === "/api/settings") r = settingsPost(b);
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/subnet") r = subnet(b);

@@ -15,6 +15,7 @@
 #include "../fake/fake_core.h"
 #include "json.h"
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -238,6 +239,8 @@ struct Program
     uint32_t  nmeaLines = 0, nmeaBadSum = 0, nmeaGga = 0;
     uint64_t  lastNmeaMs = 0;
     uint64_t  last254Ms = 0, lastHelloMs = 0;
+    bool      lastEngageSent = false;   // AgOpenWeb holds an unchanged steering packet back for 30 ms after its AutoSteer
+    uint64_t  holdUntilMs = 0;          // button changed (the firmware reads the change every 25 ms; matters at 100 a second)
     uint32_t  dropEvery = 0;            // the network loses every Nth packet to the module (0 = none)
     uint32_t  sentToModule = 0;
     std::deque<fake::UdpPacket> out;    // sent, not delivered yet
@@ -251,6 +254,32 @@ struct Program
     std::vector<uint8_t> packet254(float kmh) const;
     std::vector<Heard> heardPgn(uint8_t number, uint64_t sinceMs = 0) const;
     bool screenHas(const std::string& text, size_t from = 0) const;
+};
+
+// The XIAO on the GPS2 port (Serial2, 460800 baud), as its program does it (Firmware/.../v4.5_XIAO_ESP32): the hello
+// every 2 s and, with the WiFi bridge switched on in its page, the packets of a program on its own WiFi to and from
+// the module. The bridge's rules of the real program: nothing to a module that does not say it knows the bridge
+// (PGN 149, at most 3 s old); only the program's hello while a program on the network cable has the module.
+struct Xiao
+{
+    bool     fitted = false;            // plugged in and running
+    bool     bridge = false;            // the WiFi bridge switched on
+    bool     forwardsAll = false;       // a XIAO that keeps none of the rules (the module must keep its own)
+    std::deque<uint8_t> wire;           // bytes on their way to the module
+    double   credit = 0;
+    uint64_t lastHelloMs = 0;
+    bool     helloSent = false;
+    std::vector<uint8_t> in;            // bytes from the module, not a whole frame yet
+    uint8_t  state = 255;               // what the module says (PGN 149): 0 free, 1 a program on the cable has it, 2 the
+                                        // program on the WiFi has it; 255 = it has not said (for 3 s)
+    uint64_t stateMs = 0;
+    uint32_t frames = 0, badSum = 0, states = 0;
+    uint32_t toModule = 0;              // program packets handed to the module (PGN 146)
+    uint32_t toProgram = 0;             // datagrams for the program from the module (PGN 148)
+    uint32_t rtcmToModule = 0;          // bytes of corrections handed to the module (PGN 147)
+    uint32_t dropped = 0;               // not sent: its transmit buffer (1024 bytes) was full
+    std::map<uint8_t, uint32_t> pgns;   // frames from the module, by PGN
+    void frame(uint8_t pgn, const uint8_t* data, size_t n);
 };
 
 // A rule the module must keep all the time, checked every millisecond
@@ -278,6 +307,9 @@ public:
     Keya     keya;
     Switches sw;
     Program  aow;
+    Xiao     xiao;                      // on the GPS2 port (not fitted unless a scenario says so)
+    Program  tab;                       // AgOpenWeb on a tablet with no network cable, on the XIAO's own WiFi (off unless...)
+    uint32_t netTo9999 = 0;             // datagrams the module put on the network cable for the program's port
     bool     cableIn = true;            // the module's network cable
     bool     tabletOnNet = true;
 
@@ -326,8 +358,13 @@ private:
     void tickImu(uint64_t ms);
     void tickKeya(uint64_t ms);
     void tickNetwork(uint64_t ms);
+    void tickXiao(uint64_t ms);
+    void xiaoHears(const uint8_t* b, size_t n, uint64_t ms);
     void tickRules(uint64_t ms);
     void deliverToModule(const fake::UdpPacket& p);
+    void noteAsk(const std::vector<uint8_t>& x);
+    void programStep(Program& a, uint64_t ms);
+    void programHears(Program& a, const std::vector<uint8_t>& data, uint16_t srcPort, uint64_t ms);
     std::string offWhy_;
     uint64_t offFrom_ = 0;
     uint32_t seed_ = 12345;

@@ -147,6 +147,7 @@ p.chk{text-align:right;margin:4px 0 0}
  <div class="card"><h2>XIAO</h2>
   <dl><dt>Up for</dt><dd id="xUp">–</dd><dt>Start-up reason</dt><dd id="xRst">–</dd>
    <dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>Devices connected</dt><dd id="xCl">–</dd><dt>Other network</dt><dd id="xSta">–</dd><dt>IP on the other network</dt><dd id="xIp">–</dd>
+   <dt>WiFi bridge</dt><dd id="xBr">–</dd>
    <dt>Link to the Teensy</dt><dd id="xLink">–</dd><dt>Received / sent</dt><dd id="xKB">–</dd><dt>Checksum errors</dt><dd id="xCrc">–</dd>
    <dt>Free memory</dt><dd id="xHeap">–</dd><dt>Temperature</dt><dd id="xTemp">–</dd></dl></div>
 </div>
@@ -166,6 +167,8 @@ p.chk{text-align:right;margin:4px 0 0}
  <label class="field"><span>Network name</span><input type="text" name="apSsid" maxlength="32"></label>
  <label class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" name="apPass" maxlength="63"></label>
  <p class="note">Always on, at 192.168.4.1. Its password is also the one for changing the settings and the firmware.</p>
+ <label class="opt"><input type="checkbox" name="bridge" value="1"><span>WiFi bridge: run AgOpenWeb / AgOpenGPS on this network<small>For a tablet with no network cable to the module: it joins this network and the program reaches the module through the XIAO. Needs a password of your own here (whoever is on this network can steer the tractor) and the Teensy firmware of 22 Nov 2026 or later. A program on the module's network cable comes first. No internet here: corrections (NTRIP) come through the tablet's mobile data.</small></span></label>
+ <p class="note" id="brNote"></p>
 </div>
 <div class="card"><h2>Other WiFi network (optional)</h2>
  <label class="opt"><input type="checkbox" name="staOn" value="1"><span>Also connect the XIAO to another network<small>The farm network or the phone's hotspot. The page is then also at http://<b id="hostShow">xiao</b>.local/ or at the IP the XIAO gets.</small></span></label>
@@ -319,8 +322,14 @@ function renderState(x){
  set("xUp",dur(x.up));set("xRst",(x.reset),x.resetBad?"warn":"");
  set("xAp",x.wifi.ap+" · "+"channel"+" "+x.wifi.ch);set("xCl",String(x.wifi.apCl));
  const w=x.wifi;
- set("xSta",!w.staOn?"off":w.st==="ok"?w.sta+" · "+w.rssi+" dBm":w.sta+" · "+"connecting"+"…",w.staOn&&w.st!=="ok"?"warn":"");
+ set("xSta",!w.staOn?"off":w.st==="ok"?w.sta+" · "+w.rssi+" dBm":w.st==="wait"?w.sta+" · "+"not searched for while a program runs on this network":w.sta+" · "+"connecting"+"…",w.staOn&&w.st!=="ok"&&w.st!=="wait"?"warn":"");
  set("xIp",w.staOn&&w.st==="ok"?w.ip:"–");
+ // the WiFi bridge (22 Nov 2026): a program on this network reaches the module through the XIAO
+ const br=x.bridge;
+ set("xBr",!br?"–":!br.on?"off (WiFi tab)":!br.teensy?"on, but the Teensy does not answer it: it needs the firmware of 22 Nov 2026 or later"
+  :br.state===2&&br.prog?"program at "+br.prog+" · "+br.in+" in / "+br.out+" out"+(br.lost?" · "+br.lost+" lost":"")
+  :br.state===1?"standing by: a program is on the module's network cable":"on · no program on this network",
+  !br||!br.on?"":!br.teensy||br.lost?"warn":br.state===2?"ok":"");
  pill("xLink",(x.link.talking?"talking":"no data"),x.link.talking?"ok":"bad");
  set("xKB",x.link.rxKB.toFixed(1)+" / "+x.link.txKB.toFixed(1)+" kB");
  set("xCrc",String(x.link.crcErr),x.link.crcErr?"warn":"");
@@ -408,14 +417,22 @@ function show(t){
 $("nav").addEventListener("click",e=>{if(e.target.dataset.t)show(e.target.dataset.t);});
 
 // ---- WiFi settings
+let apPassOwn=true;     // the XIAO network has a password of the owner's (not the one every XIAO starts with)
 async function loadSettings(){try{const s=await getJ("/api/settings");if(s.error)return;const f=$("fs");setLoaded=true;
  f.apSsid.value=s.apSsid;f.staOn.checked=s.staOn;f.staSsid.value=s.staSsid;f.host.value=s.host;$("hostShow").textContent=s.host;
- f.apPass.value="";f.staPass.value="";f.staPass.placeholder=s.staPassSet?"(saved)":"";}catch(e){}}
+ f.apPass.value="";f.staPass.value="";f.staPass.placeholder=s.staPassSet?"(saved)":"";
+ f.bridge.checked=!!s.bridge;apPassOwn=s.apPassOwn!==false;brNote();}catch(e){}}
+// the WiFi bridge needs a password of one's own on the XIAO's network: said as the box is ticked, not only at Save
+function brNote(){const f=$("fs"),n=$("brNote"),need=f.bridge.checked&&!apPassOwn&&!f.apPass.value;
+ n.textContent=need?"The WiFi bridge needs a password of your own on this network: type one in «New password» above.":"";n.className=need?"note warn":"note";return need;}
+$("fs").bridge.addEventListener("change",brNote);$("fs").apPass.addEventListener("input",brNote);
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs"),m=$("setMsg");
  if(f.apPass.value&&f.apPass.value.length<8){m.textContent="The password must have 8 characters or more.";m.className="note bad";return;}
+ if(brNote()){m.textContent="The WiFi bridge needs a password of your own on the XIAO network.";m.className="note bad";f.apPass.focus();return;}
  if(!f.pw.value){m.textContent="Type the current password of the XIAO network.";m.className="note bad";f.pw.focus();return;}
  if(!await ask("Save and restart the XIAO? The XIAO WiFi goes off for a few seconds."))return;
  const p=new URLSearchParams();for(const k of ["apSsid","apPass","staSsid","staPass","host","pw"])p.set(k,f[k].value);p.set("staOn",f.staOn.checked?"1":"0");
+ p.set("bridge",f.bridge.checked?"1":"0");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});
   if(j.ok){setLoaded=false;m.textContent="Saved. The XIAO is restarting.";m.className="note ok";}else{m.textContent="Error: "+j.error;m.className="note bad";}
  }catch(e){m.textContent="No connection to the XIAO.";m.className="note bad";}});
@@ -445,7 +462,8 @@ function showNets(list){lastNets=list;const box=$("netList"),f=$("fs");box.textC
   box.appendChild(b);}}
 function netsMsg(list){const n=list.length;$("scanMsg").textContent=n?(n===1?"1 network":n+" networks")+" · "+"tap one to choose it":"no network found";}
 $("scan").addEventListener("click",async()=>{const m=$("scanMsg");m.textContent="searching…";m.className="note";$("netList").textContent="";
- for(let i=0;i<20;i++){try{const j=await getJ("/api/scan");if(j.list){j.list.sort((a,b)=>b.r-a.r);showNets(j.list);
+ for(let i=0;i<20;i++){try{const j=await getJ("/api/scan");if(j.note){m.textContent=j.note;m.className="note warn";return;}   /* not while a program runs over the WiFi bridge */
+   if(j.list){j.list.sort((a,b)=>b.r-a.r);showNets(j.list);
    netsMsg(j.list);return;}}catch(e){}
   await new Promise(r=>setTimeout(r,800));}
  m.textContent="no answer";});

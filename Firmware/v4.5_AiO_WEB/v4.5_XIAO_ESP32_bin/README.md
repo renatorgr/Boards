@@ -4,7 +4,7 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
-**Built:** 13 Nov 2026 (C3 16:54, S3 16:55), from the program as it is after the pull request that redoes the Firmware tab (one card per device, one box that confirms each install). Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
+**Built:** 22 Nov 2026 (C3 and S3 12:52 UTC), from the program with the WiFi bridge (a tablet with no network cable runs the program on the XIAO's network; off from new, switched on in the WiFi tab). Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
 When the program in `v4.5_XIAO_ESP32` changes, compile these files again and upload them over the old ones, with the same names. **Install from GitHub** on the XIAO page offers a file when it was compiled later than the program running on the XIAO (the date is read from the file).
 
 | File | What for |

@@ -345,6 +345,7 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
         snprintf(ip, sizeof(ip), "%u.%u.%u.%u", aogIp[0], aogIp[1], aogIp[2], aogIp[3]);
         j.str("aogIp", ip);
     }
+    j.bo("aogWifi", xiaoBridgeWifi());                     // the program is on the XIAO's WiFi (the WiFi bridge, zXiao.ino)
     // the program, from its hello (zStatus.ino)
     j.str("host", hostNow == HOST_AGOPENWEB ? "AgOpenWeb" : hostNow == HOST_AGOPENGPS ? "AgOpenGPS" : hostNow == HOST_OTHER ? "other" : "");
     j.bo("hostBoth", hostBoth());
@@ -564,6 +565,13 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.u("text", xiao.textLines);
     if (full) j.str("info", xiaoInfo);                        // the XIAO's own JSON (program, WiFi), as text
     j.i("infoAgo", xiaoInfoMs ? (long)((now - xiaoInfoMs) / 1000) : -1);
+    // the WiFi bridge (zXiao.ino): 0 free, 1 a program on the cable has the module, 2 the program on the XIAO's WiFi has it
+    j.i("bridge", xiaoBridgeState());
+    j.u("brIn", xiao.netIn);
+    j.u("brOut", xiao.netOut);
+    j.u("brDrop", xiao.netOutDrop);
+    j.u("brIgn", xiao.netIgnored);
+    j.num("brRtcmKB", xiao.rtcmIn / 1024.0, 1);
     j.close();
 
     if (full) machineJson(j, now);                            // the machine module (Machine tab, zMachine.ino)
