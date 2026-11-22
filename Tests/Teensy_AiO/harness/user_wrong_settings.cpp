@@ -127,8 +127,8 @@ SCENARIO(User::WrongSettings, "min-above-max-pwm", "Minimum PWM (Min To Move) se
     World w(kit);
     w.aow.ss.minPwm = 200;
     w.aow.ss.highPwm = 100;
+    const size_t mark = w.aio.logMark(), smark = w.aow.screen.size();   // before the start: said when the settings come
     w.startUp();
-    const size_t mark = w.aio.logMark(), smark = w.aow.screen.size();
     w.tractor.x = -0.5f;
     int top = 0;                               // the highest PWM the driver got
     w.watchers.push_back([&] {

@@ -63,6 +63,9 @@ void calcSteeringPID(void)
         newMax = (errorAbs * highLowPerDeg) + steerSettings.lowPWM;
     }
     else newMax = steerSettings.highPWM;
+    // AiO_WEB: never above the Max Limit. With Min To Move above it the low PWM (Min x 1.2) is above it too, and the
+    // PWM went up to that (215 with Max Limit 100; Teensy harness, min-above-max-pwm)
+    if (newMax > steerSettings.highPWM) newMax = steerSettings.highPWM;
 
     //add min throttle factor so no delay from motor resistance.
     if (pwmDrive < 0) pwmDrive -= steerSettings.minPWM;

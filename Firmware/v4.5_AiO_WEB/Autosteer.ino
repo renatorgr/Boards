@@ -242,6 +242,53 @@ void steerSettingsInit()
 {
 	// for PWM High to Low interpolator
 	highLowPerDeg = ((float)(steerSettings.highPWM - steerSettings.lowPWM)) / LOW_HIGH_DEGREES;
+
+	// AiO_WEB: Min To Move above the Max Limit let the PWM go above the Max Limit (calcSteeringPID now keeps it at
+	// the Max Limit): said once, until the settings change (Teensy harness, min-above-max-pwm)
+	static bool saidMinAboveMax = false;
+	const bool minAboveMax = steerSettings.minPWM > steerSettings.highPWM;
+	if (minAboveMax && !saidMinAboveMax)
+		StatusLog.line("[status] Min To Move (min PWM %u) is above the Max Limit (PWM %u): the PWM is kept at the Max Limit - set Min To Move lower in the program",
+		               steerSettings.minPWM, steerSettings.highPWM);
+	saidMinAboveMax = minAboveMax;
+}
+
+// AiO_WEB: the stored steer settings, steer config and subnet are checked before use (autosteerSetup). An erased or
+// damaged EEPROM reads 0xFF behind a good mark: every flag on (an IBT2 then driven as a Cytron with the relay
+// inverted: full lock, nobody asked), counts per degree and Ackerman not numbers, the subnet 255.255.255. A block
+// with a value the program cannot send goes back to a new board's defaults (saved), with a line in the messages;
+// the program's next PGN 252 / 251 puts its own values back. (Teensy harness, eeprom-damaged.)
+static void steerStoredCheck()
+{
+	const Storage& s = steerSettings;
+	if (!(isfinite(s.steerSensorCounts) && s.steerSensorCounts >= 0 && s.steerSensorCounts <= 255 &&
+	      isfinite(s.AckermanFix) && s.AckermanFix >= 0 && s.AckermanFix <= 2.56f))
+	{
+		steerSettings = Storage();
+		EEPROM.put(10, steerSettings);
+		StatusLog.line("[status] stored steer settings damaged (counts per degree or Ackerman not a number): the defaults until the program sends its own");
+	}
+
+	const Setup& c = steerConfig;
+	const uint8_t flags[] = { c.InvertWAS, c.IsRelayActiveHigh, c.MotorDriveDirection, c.SingleInputWAS, c.CytronDriver, c.SteerSwitch,
+	                          c.SteerButton, c.ShaftEncoder, c.PressureSensor, c.CurrentSensor, c.IsDanfoss, c.IsUseY_Axis };
+	bool flagsOk = true;
+	for (uint8_t f : flags) if (f > 1) flagsOk = false;
+	if (!flagsOk)
+	{
+		steerConfig = Setup();
+		EEPROM.put(40, steerConfig);
+		StatusLog.line("[status] stored steer config damaged (a setting neither on nor off): the defaults until the program sends its own");
+	}
+
+	const uint8_t a = networkAddress.ipOne;
+	if (a == 0 || a == 127 || a > 223)
+	{
+		StatusLog.line("[status] stored subnet %u.%u.%u damaged: 192.168.5 (set it again in the program or on the XIAO page)",
+		               networkAddress.ipOne, networkAddress.ipTwo, networkAddress.ipThree);
+		networkAddress = ConfigIP();
+		EEPROM.put(60, networkAddress);
+	}
 }
 
 void autosteerSetup()
@@ -302,6 +349,7 @@ void autosteerSetup()
 		EEPROM.get(10, steerSettings);     // read the Settings
 		EEPROM.get(40, steerConfig);
 		EEPROM.get(60, networkAddress);
+		steerStoredCheck();                // AiO_WEB: a damaged EEPROM gives the defaults, not full lock
 	}
 
 	steerSettingsInit();
@@ -935,7 +983,7 @@ void ReceiveUdp()
 				steerSettings.minPWM = autoSteerUdpData[8]; //read the minimum amount of PWM for instant on
 
 				float temp = (float)steerSettings.minPWM * 1.2;
-				steerSettings.lowPWM = (byte)temp;
+				steerSettings.lowPWM = temp < 255 ? (byte)temp : 255;   // AiO_WEB: Min To Move above 212 overflowed the byte
 
 				steerSettings.steerSensorCounts = autoSteerUdpData[9]; //sent as setting displayed in AOG
 
