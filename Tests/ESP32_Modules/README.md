@@ -14,7 +14,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | A tractor with no router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). 38 scenarios, 105 runs, about 470 checks. |
+| 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 39 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
 
 ## Running it
@@ -63,7 +63,9 @@ report in the run's summary and as a download.
     stop. An own network and a tractor network with the same first three numbers leave the module sending
     nowhere, as two such networks do on the chip.
   - **power and restarts**: a restart (asked by the page, by PGN 201, by `ESP.restart()`) loads the program
-    again, so everything in RAM starts fresh while the flash keeps what was saved, as on a board.
+    again, so everything in RAM starts fresh while the flash keeps what was saved, as on a board. A reset by
+    itself (a brownout, a crash, the watchdog: `Module::resetBy`) does the same, and `esp_reset_reason()` gives
+    the program the reason, as the chip does.
 - Each scenario runs in its own process: a crash, or a memory error the sanitizer catches in the firmware, is a
   finding for that scenario and the others still run.
 
@@ -71,7 +73,7 @@ report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle. `careful-on-xiao-wifi` (no router: through the XIAO's WiFi bridge, sections switched 20 times, a power cycle), `careful-tablet-hotspot` |
+| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle. `careful-on-xiao-wifi` (no router: through the XIAO's WiFi bridge, sections switched 20 times, a power cycle), `careful-tablet-hotspot`; `sprayer-litres-kept` (the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning) |
 | Module never set up | `power-on-quiet` (no relay closes at power-on or across a restart), `sprayer-never-set-up`, `seeder-never-set-up`, `aow-default-pins` (8-section boom, AgOpenWeb's pin config as it comes), `sensors-ticked-none-fitted`, `no-section-widths` |
 | Wrong settings | `relay-active-high-ticked`, `page-typos` (impossible values on the page), `flash-garbage`, `long-lift-times`, `wrong-wifi-password`, `wrong-subnet-from-program`, `nozzle-flow-typo` (as on 20 Nov), `flow-meter-calibration-typo`, `first-section-past-drill`, `xiao-wifi-subnet-forgotten` (on the XIAO's WiFi with the subnet left at 192.168.5) |
 | Wrong slots | `two-relays-one-section`, `relay-on-missing-section`, `more-sections-than-relays`, `two-seeders-right`, `two-seeders-same-first`, `two-seeders-same-ip`, `seeder-fewer-sections`, `seeder-pin-config-19`, `sensors-swapped`, `other-modules-program` (the other module's .bin, a .merged.bin) |

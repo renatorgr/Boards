@@ -86,6 +86,80 @@ SCENARIO(User::Careful, "careful-sprayer", "sets up the sprayer module right and
     statusAlwaysJson(m);
 }
 
+// The litres applied survive every kind of restart, and the module says why it started: the counter used to live in RAM
+// only, and on 22 Nov 2026 it went back to 0 in the middle of a job with nothing restarted by hand (the module had
+// restarted by itself, a voltage drop suspected).
+SCENARIO(User::Careful, "sprayer-litres-kept", "sprays; the module restarts by itself (voltage drop), the power is cut mid-job, then a new tank",
+         sprayerBoards())
+{
+    World w;
+    Module& m = carefulSprayer(w, board);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    const double tenSeconds = 76.8 * 10 / 60;   // the litres of the longest wait between two saves (76.8 L/min sprayed)
+    driveAndCompare(w, m, first(8), rs, 20000);
+    const double first20 = m.status()["spr"]["total"].num();
+    must("litres-counted", fabs(first20 - 76.8 * 20 / 60) < 3, "20 s of spraying counts about 25.6 L", fmt("%.1f L", first20));
+
+    // the supply voltage drops while spraying: the chip resets by itself
+    uint64_t from = w.now();
+    m.resetBy(ESP_RST_BROWNOUT);
+    w.run(3000);
+    Json s = m.status();
+    double now = s["spr"]["total"].num();
+    must("kept-after-brownout", now >= first20 - tenSeconds - 1.5 && now <= first20 + 4,
+         "the litres applied survive a restart by itself (10 s of spraying lost at most)", fmt("%.1f L before, %.1f L after", first20, now));
+    must("start-brownout", contains(s["start"].str(), "brownout") && s["startBad"].num() == 1, "the Module tab says the module restarted on a voltage drop",
+         s["start"].str());
+    must("log-brownout", contains(pageLog(m), "start: supply voltage dropped"), "the events say why the module started", pageLog(m));
+    must("screen-brownout", contains(screenMessages(w, from), "restarted: supply voltage dropped"),
+         "AgOpenWeb's screen says the module restarted on a voltage drop", screenMessages(w, from));
+
+    // the power is cut in the middle of the work (a loose wire, a fuse): a power on while the program asks for sections
+    driveAndCompare(w, m, first(8), rs, 12000);
+    const double beforeCut = m.status()["spr"]["total"].num();
+    from = w.now();
+    m.powerOff();
+    w.run(500);
+    m.powerOn();
+    w.run(3000);
+    s = m.status();
+    now = s["spr"]["total"].num();
+    must("kept-after-power-cut", now >= beforeCut - tenSeconds - 1.5 && now <= beforeCut + 4,
+         "the litres applied survive a power cut (10 s of spraying lost at most)", fmt("%.1f L before, %.1f L after", beforeCut, now));
+    must("screen-power-cut", contains(screenMessages(w, from), "power cut"), "AgOpenWeb's screen says the power was cut while spraying",
+         screenMessages(w, from));
+    must("start-power-cut", s["startBad"].num() == 1, "the Module tab shows that start in red", s["start"].str());
+
+    // a new tank: sections off, "Total back to 0", then a restart from the page: it stays at 0, and nothing on the screen
+    driveAndCompare(w, m, 0, rs, 3000);
+    Http r = m.http(HTTP_POST, "/api/total", { { "pw", "agopengps" } });
+    must("total-to-0", r.code == 200 && m.status()["spr"]["total"].num() == 0, "Total back to 0 sets 0", fmt("answer %d", r.code));
+    from = w.now();
+    m.http(HTTP_POST, "/api/restart", { { "pw", "agopengps" } });
+    w.run(3000);
+    s = m.status();
+    must("zero-kept", s["spr"]["total"].num() == 0, "the 0 survives the restart (the old litres do not come back)", fmt("%.1f L", s["spr"]["total"].num()));
+    must("start-asked", s["start"].str() == "restart asked" && s["startBad"].num() == 0, "a restart from the page is not shown as a fault",
+         s["start"].str());
+    must("screen-quiet-asked", screenMessages(w, from).empty(), "nothing on AgOpenWeb's screen for a restart asked for", screenMessages(w, from));
+
+    // the start of the day: power on with every section off
+    driveAndCompare(w, m, first(8), rs, 5000);
+    driveAndCompare(w, m, 0, rs, 15000);
+    const double evening = m.status()["spr"]["total"].num();
+    m.powerOff();
+    w.run(60000);
+    from = w.now();
+    m.powerOn();
+    w.run(3000);
+    s = m.status();
+    must("kept-overnight", fabs(s["spr"]["total"].num() - evening) < 0.05, "the litres of the day before are still there in the morning",
+         fmt("%.2f L in the evening, %.2f L in the morning", evening, s["spr"]["total"].num()));
+    must("start-power-on", s["start"].str() == "power on" && s["startBad"].num() == 0, "a power on at the start of the day is not a fault", s["start"].str());
+    must("screen-quiet-power-on", screenMessages(w, from).empty(), "nothing on AgOpenWeb's screen at the start of the day", screenMessages(w, from));
+    statusAlwaysJson(m);
+}
+
 SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sections, cable) and sows a field", seederBoards())
 {
     World w;

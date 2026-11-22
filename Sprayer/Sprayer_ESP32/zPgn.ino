@@ -280,6 +280,29 @@ void sendAlarmMessage()
     lastMs = now;
 }
 
+// Once a second, until the program talks to the module after a start: a start nobody asked for is said on the program's
+// screen (PGN 221) as a warning for START_WARNING_S, so the screen and the program's log show it. While the module starts
+// again every valve is closed for a few seconds and the flow meter counts nothing: a strip the program paints as sprayed.
+// That is a start for a reason of its own (the supply voltage dropped, a crash, the watchdog: startRead()), or a power on
+// while the program is already asking for sections at the first message (the power was cut in the middle of the work: a
+// loose wire, a fuse). A power on with every section off (the start of the day) and a restart asked for say nothing.
+void startNoteTick()
+{
+    static bool done = false;
+    if (done || !linkOk) return;
+    done = true;
+    if (!startUnexpected && !strcmp(startWhy, "power on") && sectionsReq != 0)
+    {
+        startWhy = "power on while spraying (power cut?)";
+        startUnexpected = true;
+        logEvent("the program was already spraying: the power was cut?");
+    }
+    if (!startUnexpected) return;
+    char text[61];
+    snprintf(text, sizeof(text), "Sprayer module restarted: %s", startWhy);
+    sendHardwareMessage(text, START_WARNING_S, true);
+}
+
 // ==== shared "pgn-common-cases": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddress from)
 {

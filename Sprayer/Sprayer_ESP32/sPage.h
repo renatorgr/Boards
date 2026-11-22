@@ -208,6 +208,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <dt>Board</dt><dd id="board">–</dd>
 <dt>Name on the network</dt><dd id="name">–</dd>
 <dt>Up</dt><dd id="up">–</dd>
+<dt>Last start</dt><dd id="start">–</dd>
 <dt>Free memory</dt><dd id="heap">–</dd>
 <dt>Own Wi-Fi network</dt><dd id="ap">–</dd>
 <dt>Tractor network</dt><dd id="sta">–</dd>
@@ -420,7 +421,7 @@ async function refresh(){
     $('log').textContent=d.log.join('\n');
     // Firmware tab
     $('ver').textContent=d.fw+' '+verText(d.ver,d.built);$('board').textContent=d.board||'–';
-    $('up').textContent=Math.floor(d.up/60)+' min';$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
+    $('up').textContent=Math.floor(d.up/60)+' min';say($('start'),d.startBad?'bad':'',d.start||'–');$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
   }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot';if(waitBoot)progMsg('The module is restarting…','warn')}

@@ -31,6 +31,10 @@
 //       boom (or one the program asks for) has no relay following it (a hole in the pin config, more sections than
 //       relays), again every 60 s while the program asks for it. The log and the page say it too.
 //   - no message from the program for 2 s (Wi-Fi gone, tablet frozen): every section closes.
+//   - the litres applied are kept in flash (every 10 s while they change, and before a restart it is asked for), so a
+//       restart or a power cut does not lose them; only "Total back to 0" on the page (or "total-reset") clears them.
+//   - why the chip started (power on, a drop of the supply voltage, a crash, a watchdog) is in the events and on the
+//       Module tab; a start nobody asked for while the program was spraying is also said on the program's screen.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
 //       http://192.168.4.1/ (192.168.40.1 when the tractor network is 192.168.4.x, the WiFi of the AiO board's
 //       XIAO: the "xiao-network" notes below). On the tractor network: http://<subnet>.123/ or http://sprayer.local/
@@ -58,7 +62,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.15"
+#define FW_VERSION          "0.10.16"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -123,6 +127,8 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define ALARM_REPEAT_S      10      // while an alarm is on, the PGN 221 message is sent again this often
 #define INVERT_REPEAT_S     10      // while the outputs are inverted on a POLARITY_FIXED board, that warning comes again this often
 #define NO_RELAY_REPEAT_S   60      // while the program asks for a section no relay follows, that warning comes again this often
+#define TOTAL_SAVE_S        10      // the litres applied go to flash this often while they change (zSensors.ino)
+#define START_WARNING_S     30      // how long the program's screen shows a restart nobody asked for (zPgn.ino)
 #define SCREEN_NAME         "Sprayer"   // how the module's messages start on the program's screen
 #define MAX_TOOL_SECTIONS   16      // PGN 235 has the widths of sections 1-16
 
@@ -193,8 +199,11 @@ uint32_t count239 = 0, count229 = 0, countHello = 0, countCrcErr = 0, countOther
 
 float    pressureBar = 0, sensorVolts = 0;
 bool     pressureUnplugged = false; // the pressure sensor reads under 0.3 V (sensorsTick): a 0.5-4.5 V sensor never does
-float    flowLpm = 0, totalLitres = 0;
+float    flowLpm = 0, totalLitres = 0;   // the litres applied: kept in flash (totalLoad / totalSave in zSensors.ino)
 uint32_t totalPulses = 0;
+
+const char* startWhy = "";      // why the chip started (startRead), for the events, the page and the program's screen
+bool     startUnexpected = false;   // a start nobody asked for: a voltage drop, a crash, a watchdog, power back while spraying
 
 // worked out once a second from the readings (zRate.ino); -1 = none
 float    openWidthM = 0;        // width of the open sections, m (from PGN 235)
@@ -229,6 +238,10 @@ void noRelayTick();
 void invertTick();
 void sensorsTick();
 uint64_t noRelaySections();
+void totalLoad();
+void totalSave();
+void totalTick();
+void startNoteTick();
 const char* noRelayWhere();
 void rateTick();
 void outputsInit();
@@ -341,7 +354,7 @@ static void serialCommands()
         if      (!strcmp(line, "status"))      printStatus();
         else if (!strcmp(line, "restart"))     { logEvent("restart (serial)"); restartAtMs = millis() + 200; }
         else if (!strcmp(line, "wifi-reset"))  { settingsResetWifi(); logEvent("Wi-Fi settings back to the defaults (serial)"); restartAtMs = millis() + 200; }
-        else if (!strcmp(line, "total-reset")) { totalLitres = 0; totalPulses = 0; logEvent("total set to 0 (serial)"); }
+        else if (!strcmp(line, "total-reset")) { totalLitres = 0; totalPulses = 0; totalSave(); logEvent("total set to 0 (serial)"); }
         else if (line[0]) Serial.println("commands: status, wifi-reset, total-reset, restart");
     }
 }
@@ -361,6 +374,31 @@ static void buttonTick()
     }
 }
 
+// Why the chip started, read once at the start: the events, the Module tab and the report say it, so a module that
+// restarted by itself in the field (the supply voltage dropped, a crash, the watchdog) shows why. On the ESP32 the EN
+// button reads as a power on. A power on while the program is already spraying is told apart in startNoteTick().
+static void startRead()
+{
+    static char other[24];
+    const esp_reset_reason_t r = esp_reset_reason();
+    startUnexpected = true;
+    switch (r)
+    {
+    case ESP_RST_POWERON:   startWhy = "power on"; startUnexpected = false; break;
+    case ESP_RST_SW:        startWhy = "restart asked"; startUnexpected = false; break;   // the page, an update, PGN 201, serial
+    case ESP_RST_DEEPSLEEP: startWhy = "woke from sleep"; startUnexpected = false; break;
+    case ESP_RST_BROWNOUT:  startWhy = "supply voltage dropped (brownout)"; break;
+    case ESP_RST_PANIC:     startWhy = "program crash"; break;
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:       startWhy = "watchdog (the program stopped)"; break;
+    default:
+        snprintf(other, sizeof(other), "other (code %d)", (int)r);
+        startWhy = other;
+        break;
+    }
+}
+
 // ---------------------------------------------------------------- setup and loop
 void setup()
 {
@@ -374,6 +412,9 @@ void setup()
     Serial.printf("\n%s v%s\n", FW_NAME, FW_VERSION);
 
     settingsLoad();
+    startRead();                    // why the chip started
+    totalLoad();                    // the litres applied so far, from flash
+    logEvent("start: %s; %.1f L applied so far", startWhy, totalLitres);
     sensorsInit();
     wifiStart();
     udpStart();
@@ -416,13 +457,16 @@ void loop()
         sendReadings();
         sendProcessData();
         sendAlarmMessage();
+        startNoteTick();            // a restart nobody asked for, on the program's screen
         noRelayTick();              // a section with no relay: the log, the page, the program's screen
         invertTick();               // outputs inverted on a board that closes one way only
         wifiWatch();
+        totalTick();                // the litres applied to flash while they change
     }
 
     if (restartAtMs && (int32_t)(now - restartAtMs) >= 0)
     {
+        totalSave();                // the last litres, so the restart keeps them
         outputsAllOff();
         delay(100);
         ESP.restart();
