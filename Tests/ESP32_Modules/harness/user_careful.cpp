@@ -221,7 +221,7 @@ SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sec
     statusAlwaysJson(m);
 }
 
-SCENARIO(User::Careful, "careful-on-xiao-wifi", "no router on the tractor: joins the WiFi of the AiO board's XIAO and works through its WiFi bridge", allBoards())
+SCENARIO(User::Careful, "careful-on-xiao-wifi", "no router on the tractor: joins the WiFi of the AiO board's XIAO (the AiO's numbers, 192.168.5.x) with its subnet kept, and works through its WiFi bridge", allBoards())
 {
     World w;
     Module& m = onXiaoWifi(w, board);
@@ -230,18 +230,18 @@ SCENARIO(User::Careful, "careful-on-xiao-wifi", "no router on the tractor: joins
     std::string bad;
 
     Json s = m.status();
-    must("joined", m.dev.staUp() && m.dev.tractorIp() == IPAddress(192, 168, 4, 123), "joins the XIAO's WiFi as 192.168.4.123", m.dev.tractorIp().toString().str());
-    must("own-network-moved", m.dev.apOn && m.dev.apIp == IPAddress(192, 168, 40, 1) && !m.dev.sameNumbers() && s["wifi"]["apIp"].str() == "192.168.40.1" && contains(pageLog(m), "at 192.168.40.1"),
-         "its own network moves to 192.168.40.1 (the XIAO's network has the numbers 192.168.4.x too), and the page and the log say so",
+    must("joined", m.dev.staUp() && m.dev.tractorIp() == IPAddress(192, 168, 5, 123), "joins the XIAO's WiFi as 192.168.5.123, its usual address", m.dev.tractorIp().toString().str());
+    must("own-network-stays", m.dev.apOn && m.dev.apIp == IPAddress(192, 168, 4, 1) && !m.dev.sameNumbers() && s["wifi"]["apIp"].str() == "192.168.4.1",
+         "its own network stays at 192.168.4.1 (the XIAO's network has other numbers)",
          fmt("own network at %s, page says '%s'", m.dev.apIp.toString().c_str(), s["wifi"]["apIp"].str().c_str()));
-    must("page-there", m.http(HTTP_GET, "/").code == 200, "the page still opens on the own network, at the new address", "");
+    must("page-there", m.http(HTTP_GET, "/").code == 200, "the page opens", "");
 
     const uint64_t patterns[] = { first(nSec), 0x0F, 0xF0, 0xAA, 0x55, 0x01, 0x80, 0x00, first(nSec) };
     int wrong = 0;
     for (uint64_t p : patterns) wrong += driveAndCompare(w, m, p, rs, 3000, wrong ? nullptr : &bad);
     must("relays-follow", wrong == 0, "the relays follow the sections, which reach the module through the XIAO", bad);
     s = m.status();
-    must("said", s["aog"]["via"].str() == "192.168.4.1" && contains(pageLog(m), "come from 192.168.4.1"),
+    must("said", s["aog"]["via"].str() == "192.168.5.1" && contains(pageLog(m), "come from 192.168.5.1"),
          "the page and the log say that the program's packets come through the access point (the XIAO)", "via '" + s["aog"]["via"].str() + "'; log: " + pageLog(m));
 
     // what the tablet hears comes through the XIAO, and nothing is sent to everyone
@@ -278,7 +278,24 @@ SCENARIO(User::Careful, "careful-on-xiao-wifi", "no router on the tractor: joins
     w.aow.on = true;
     w.run(3500);
     const int n = driveAndCompare(w, m, first(nSec), rs, 3000, &bad);
-    must("after-power-cycle", n == 0 && m.dev.apIp == IPAddress(192, 168, 40, 1), "after a power cycle it is back on the XIAO's WiFi and the relays follow at once", bad);
+    must("after-power-cycle", n == 0 && m.dev.apIp == IPAddress(192, 168, 4, 1), "after a power cycle it is back on the XIAO's WiFi and the relays follow at once", bad);
+    statusAlwaysJson(m);
+}
+
+SCENARIO(User::Careful, "careful-on-xiao-wifi-192-168-4", "no router, and the AiO module itself is on 192.168.4: the XIAO's network has those numbers, the module's own network moves to 192.168.40.1", sprayerBoards())
+{
+    World w;
+    Module& m = onXiaoWifi(w, board, "192.168.4", 4);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    std::string bad;
+    Json s = m.status();
+    must("joined", m.dev.staUp() && m.dev.tractorIp() == IPAddress(192, 168, 4, 123), "joins the XIAO's WiFi as 192.168.4.123", m.dev.tractorIp().toString().str());
+    must("own-network-moved", m.dev.apOn && m.dev.apIp == IPAddress(192, 168, 40, 1) && !m.dev.sameNumbers() && s["wifi"]["apIp"].str() == "192.168.40.1" && contains(pageLog(m), "at 192.168.40.1"),
+         "its own network moves to 192.168.40.1 (the tractor network has the numbers 192.168.4.x too), and the page and the log say so",
+         fmt("own network at %s, page says '%s'", m.dev.apIp.toString().c_str(), s["wifi"]["apIp"].str().c_str()));
+    must("page-there", m.http(HTTP_GET, "/").code == 200, "the page still opens on the own network, at the new address", "");
+    const int n = driveAndCompare(w, m, first(8), rs, 3000, &bad);
+    must("relays-follow", n == 0 && m.status()["aog"]["via"].str() == "192.168.4.1", "the relays follow the sections, which come through the XIAO at 192.168.4.1", bad);
     statusAlwaysJson(m);
 }
 

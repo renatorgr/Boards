@@ -286,13 +286,13 @@ SCENARIO(User::BadNetwork, "xiao-wifi-bridge-stops", "working through the XIAO, 
     n = driveAndCompare(w, m, first(nSec), rs, 3000, &bad);
     must("follows-broadcasts", n == 0, "3 s after the last copy the module listens to the program's broadcasts again and the relays follow", bad);
     Json s = m.status();
-    chk::tell("told", contains(pageLog(m), "no longer from 192.168.4.1") && s["aog"]["via"].str().empty(), "the log says that the packets no longer come through the XIAO", pageLog(m));
+    chk::tell("told", contains(pageLog(m), "no longer from 192.168.5.1") && s["aog"]["via"].str().empty(), "the log says that the packets no longer come through the XIAO", pageLog(m));
     const uint32_t all0 = w.xiao.toEveryone;
     w.run(2000);
     must("answers-everyone", w.xiao.toEveryone > all0 + 8, "... and it sends to everyone again", fmt("%u messages to everyone in 2 s", w.xiao.toEveryone - all0));
     w.xiao.bridge = true;                   // the XIAO passes on again
     w.run(2000);
     n = driveAndCompare(w, m, 0x0F, rs, 3000, &bad);
-    must("through-xiao-again", n == 0 && m.status()["aog"]["via"].str() == "192.168.4.1", "the XIAO passes on again: the module goes back to it", bad);
+    must("through-xiao-again", n == 0 && m.status()["aog"]["via"].str() == "192.168.5.1", "the XIAO passes on again: the module goes back to it", bad);
     statusAlwaysJson(m);
 }

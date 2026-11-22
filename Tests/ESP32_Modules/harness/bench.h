@@ -144,7 +144,7 @@ struct SprayerRig
 };
 
 // The AiO board's XIAO on a tractor with no router, its WiFi bridge on: the tablet and the modules are on its
-// network (192.168.4.x, the XIAO at .1). It gives every module it knows its own copy of each message of the tablet,
+// network (the AiO module's numbers, 192.168.5.x by default; the XIAO at .1). It gives every module it knows its own copy of each message of the tablet,
 // at once and from its own address; the tablet's own broadcast reaches the modules too, but late (an access point
 // holds a broadcast for its next beacon) or not at all. What a module sends reaches the tablet through the XIAO.
 // A module is known from what it sends, and forgotten 3 s after the last.
@@ -160,7 +160,8 @@ struct XiaoAp
     uint32_t passedOn = 0;                  // modules' messages passed on to the tablet
     uint32_t toEveryone = 0;                // modules' messages that went to everyone (not to the XIAO only)
     uint32_t lateCount = 0;
-    static IPAddress ip() { return IPAddress(192, 168, 4, 1); }
+    uint8_t  net[3] = { 192, 168, 5 };      // its network's first three numbers (World::useXiao())
+    IPAddress ip() const { return IPAddress(net[0], net[1], net[2], 1); }
 };
 
 class World
@@ -170,7 +171,7 @@ public:
     ~World();
     Aow aow;
     XiaoAp xiao;
-    void useXiao();                         // no router: the tractor network is the XIAO's (name XIAO-3F2A, password trator-2026)
+    void useXiao(uint8_t third = 5);        // no router: the tractor network is the XIAO's (name XIAO-3F2A, password trator-2026), 192.168.<third>.x
     std::vector<std::unique_ptr<Module>> mods;
     std::unique_ptr<SprayerRig> rig;
     std::vector<std::function<void()>> watchers;    // run every ms (rules that must hold all the time)

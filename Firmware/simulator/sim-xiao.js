@@ -31,7 +31,7 @@ function event(x, t) {
 // the XIAO's own messages at start-up
 function events() {
  const L = [[0.3, "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3") + " started (" + X.reset + ")"],
-  [0.5, "WiFi: own network '" + X.ap + "' at 192.168.4.1" + (X.staOn ? ", joining the other network" : "")]];
+  [0.5, "WiFi: own network '" + X.ap + "' at " + (X.bridge ? "192.168.5.1" : "192.168.4.1") + (X.staOn ? ", joining the other network" : "")]];
  if (X.bridge) L.push([0.6, "WiFi bridge on: a program on the XIAO's network (UDP 8888) reaches the module through the XIAO"]);
  if (X.staOn) L.push([3.2, "WiFi: joined '" + X.sta + "', IP 192.168.1.57, -61 dBm, channel 6"]);
  L.push([8.0, "WiFi: 1 device(s) on the XIAO network"]);
@@ -49,7 +49,7 @@ let lastS = null, lostAt = 0;
 function state() {
  const t = T(), up = Math.floor(t), mod = !M.offline(), mt = Math.max(0, M.T());
  const tr = M.tractor(mt), eng = mod && M.engaged(), prog = mod && mt >= 6, n = Math.max(0, mt - 6);
- const w = {ap: X.ap, apCl: t > 8 ? 1 : 0, ch: 6, host: X.host, staOn: X.staOn && !!X.sta, sta: X.sta, st: staSt()};
+ const w = {ap: X.ap, apIp: X.bridge ? "192.168.5.1" : "192.168.4.1", apCl: t > 8 ? 1 : 0, ch: 6, host: X.host, staOn: X.staOn && !!X.sta, sta: X.sta, st: staSt()};
  if (w.st === "ok") { w.ip = "192.168.1.57"; w.rssi = -61 + Math.round(S.wob(t, 3, 0.1)); }
  return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: (S.BUILD.xiaoBuilt || {})[C3 ? "c3" : "s3"] || S.BUILD.built || "Oct 25 2026 09:00:00",
   up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
@@ -124,7 +124,7 @@ S.hook((method, path, q, body) => {
  else if (get && path === "/api/teensy") r = S.ok(teensy());
  else if (get && path === "/api/log") r = S.ok(log(parseInt(q.get("after") || "0", 10) || 0, parseInt(q.get("xafter") || "0", 10) || 0));
  else if (get && path === "/api/settings") r = S.ok({apSsid: X.ap, staOn: X.staOn, staSsid: X.sta, staPassSet: X.staPassSet, host: X.host,
-  bridge: !!X.bridge, apPassOwn: X.pass !== "agopengps"});
+  bridge: !!X.bridge, apPassOwn: X.pass !== "agopengps", modNet: "192.168.5"});
  else if (post && path === "/api/settings") r = settingsPost(b);
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/subnet") r = subnet(b);

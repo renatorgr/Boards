@@ -21,9 +21,9 @@ SCENARIO(User::WrongConnections, "conn-two-tablets", "Two tablets on the XIAO's 
         must("first-only", w.tab2.nPassed == 0 && w.tab2.got == 0, "Only the first tablet's program reaches the Teensy and gets its answers",
              fmt("second tablet: %u packets passed, %u answers", w.tab2.nPassed, w.tab2.got));
         const JsonDoc st = w.state();
-        must("counted", st["bridge"]["other"].num() > 1000 && st["bridge"]["prog"].str() == "192.168.4.2", "The page counts the second program's packets as 'from another program'",
+        must("counted", st["bridge"]["other"].num() > 1000 && st["bridge"]["prog"].str() == "192.168.5.2", "The page counts the second program's packets as 'from another program'",
              fmt("other %g", st["bridge"]["other"].num()));
-        tell("told", w.said("192.168.4.3") || w.teensy.logged("192.168.4.3"), "Messages say that a second program (at 192.168.4.3) is calling and is not answered",
+        tell("told", w.said("192.168.5.3") || w.teensy.logged("192.168.5.3"), "Messages say that a second program (at 192.168.5.3) is calling and is not answered",
              "nothing: only a counter in the page's data moves ('other'), and the page does not show it");
         endSteer(w);
         must("first-untouched", w.tab.nNotPassed == 0 && w.tab.worstDelayMs <= 20, "The first tablet's steering was not disturbed", fmt("%u not passed, longest delay %u ms", w.tab.nNotPassed, w.tab.worstDelayMs));
@@ -69,7 +69,7 @@ SCENARIO(User::WrongConnections, "conn-forged-address", "Something on the farm's
     w.flash("staPass", "farm12345");
     w.start();
     must("joined", w.runUntil([&]() { return w.dev.staJoined; }, 5000), "The XIAO is on the farm's WiFi", "");
-    w.far.forged = true;                    // "from 192.168.4.77", sent to the XIAO's address on the farm's network
+    w.far.forged = true;                    // "from 192.168.5.77", sent to the XIAO's address on the farm's network
     w.far.on = w.far.engaged = true;
     w.run(8000);
     const bool passed = w.teensy.netIn > 0 || w.teensy.steering();
@@ -90,14 +90,14 @@ SCENARIO(User::WrongConnections, "conn-forged-module", "Something on the farm's 
     w.flash("staPass", "farm12345");
     w.start();
     must("joined", w.runUntil([&]() { return w.dev.staJoined; }, 5000), "The XIAO is on the farm's WiFi", "");
-    w.far.forged = true;                    // "from 192.168.4.77", sent to the XIAO's address on the farm's network
+    w.far.forged = true;                    // "from 192.168.5.77", sent to the XIAO's address on the farm's network
     for (int k = 0; k < 10; k++)
     {
         w.far.send(9999, packet(237, { (uint8_t)k, 0, 0, 0, 0, 1, 0, 0 }, 0x7B), false);
         w.run(200);
     }
-    must("not-taken", w.state()["bridge"]["mods"].a.empty() && !w.said("a module at 192.168.4.77"), "It is not taken for a module on the XIAO's network",
-         "the XIAO lists a module at 192.168.4.77: the program's packets would go to that address on its own network (where nobody is), and such packets would go on to the program");
+    must("not-taken", w.state()["bridge"]["mods"].a.empty() && !w.said("a module at 192.168.5.77"), "It is not taken for a module on the XIAO's network",
+         "the XIAO lists a module at 192.168.5.77: the program's packets would go to that address on its own network (where nobody is), and such packets would go on to the program");
     w.run(4000);
     rules(w);
 }
@@ -123,7 +123,7 @@ SCENARIO(User::WrongConnections, "conn-five-modules", "Five section modules join
     World w(kit);
     w.bridgeSaved();
     w.start();
-    for (Machine& m : w.mod) m.on = true;   // 192.168.4.123 to .127
+    for (Machine& m : w.mod) m.on = true;   // 192.168.5.123 to .127
     if (beginSteer(w))
     {
         w.run(20000);

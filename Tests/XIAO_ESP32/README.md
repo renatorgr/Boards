@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | First version, then section modules on the XIAO's WiFi: 64 scenarios for five users on the two XIAOs (75 runs, about 970 checks) ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
+| 22 Nov 2026 | First version, then section modules on the XIAO's WiFi and its network on the module's numbers: 67 scenarios, five users, two XIAOs (78 runs, about 1010 checks) ([How it works](#how-it-works)). Two of four findings fixed ([What it found](#what-it-found)). |
 
 ## Running it
 
@@ -85,9 +85,9 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-first-start`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-modules` (a sprayer and a seed drill module on the XIAO's WiFi), `careful-bridge-page-while-steering`, `careful-usb-and-restart` |
+| Careful user | `careful-first-start`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-network-numbers` (the XIAO's network on the module's numbers, 192.168.5.x, and back), `careful-bridge-modules` (a sprayer and a seed drill module on the XIAO's WiFi), `careful-bridge-page-while-steering`, `careful-usb-and-restart` |
 | XIAO never set up | `new-bridge-needs-password`, `new-no-teensy`, `new-gps2-port-not-set`, `new-older-teensy`, `new-wrong-password` (every change with a wrong password), `new-phones-join` (the phones' "is there internet?" checks) |
-| Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later` |
+| Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `settings-bridge-router-same-numbers` (an other network at 192.168.5.1 too: left), `settings-bridge-module-subnet` (the module's subnet changed: the XIAO's network follows), `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later` |
 | Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering`, `conn-forged-module`, `conn-modules-bridge-off`, `conn-five-modules` (there are places for four), `conn-module-subnet-and-scan` |
 | Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-page-wait-other-network-away`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap`, `link-module-goes-wrong` (3000 packets a second from one module while the tablet steers) |
 

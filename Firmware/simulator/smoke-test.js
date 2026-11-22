@@ -369,12 +369,13 @@ async function teensy(browser, port, q, name) {
    if (!(await pg.locator("#t-" + t).isVisible())) fail.push(what + ": tab " + t + " does not show");
    if (t === "wifi") { await pg.click("#scan"); await pg.waitForTimeout(3500); await expect(pg, what, "#scanMsg", /networks/);
     // the WiFi bridge asks for a password of one's own on the XIAO's network (the simulator's XIAO has the default one):
-    // said as the box is ticked, gone once a new password is typed
+    // said as the box is ticked; once a new password is typed, the note says the network moves to the module's numbers
     await pg.check('#fs input[name="bridge"]'); await pg.waitForTimeout(200);
     await expect(pg, what + " (WiFi bridge ticked, default password)", "#brNote", /needs a password of your own/);
     await pg.fill('#fs input[name="apPass"]', "my-own-pass"); await pg.waitForTimeout(200);
-    await expect(pg, what + " (WiFi bridge ticked, a new password typed)", "#brNote", /^$/);
-    await pg.fill('#fs input[name="apPass"]', ""); await pg.uncheck('#fs input[name="bridge"]'); }
+    await expect(pg, what + " (WiFi bridge ticked, a new password typed)", "#brNote", /moves from 192\.168\.4\.x to 192\.168\.5\.x: the XIAO page is then at http:\/\/192\.168\.5\.1\//);
+    await pg.fill('#fs input[name="apPass"]', ""); await pg.uncheck('#fs input[name="bridge"]'); await pg.waitForTimeout(200);
+    await expect(pg, what + " (WiFi bridge unticked again)", "#brNote", /^$/); }
    await shot(pg, "xiao-" + t);
   }
   await pg.close();

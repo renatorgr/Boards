@@ -240,6 +240,60 @@ SCENARIO(User::WrongSettings, "settings-subnet-values", "A subnet for the module
     rules(w);
 }
 
+SCENARIO(User::WrongSettings, "settings-bridge-router-same-numbers", "The WiFi bridge is on, and the XIAO is also set to join the tractor's router, which has the module's numbers too (192.168.5.1)", oneKit())
+{
+    World w(kit);
+    w.dev.router.subnet[2] = 5;             // the router at 192.168.5.1, as the module (192.168.5.126) and so the XIAO's network
+    w.bridgeSaved();
+    w.flash("staOn", true);
+    w.flash("staSsid", "Farm");
+    w.flash("staPass", "farm12345");
+    w.start();
+    const bool left = w.runUntil([&]() { return w.said("WiFi: left 'Farm'"); }, 10000);
+    must("left", left && !w.dev.staJoined, "It joins the router, sees the numbers of its own network there and leaves it, saying why in Messages",
+         "two networks with the same numbers on the XIAO: the program's packets could go out on the wrong one");
+    must("state", w.state()["wifi"]["st"].str() == "same", "The page says why it is not on that network", w.state()["wifi"]["st"].str());
+    const uint32_t begins = w.dev.staBegins;
+    if (beginSteer(w))
+    {
+        w.run(20000);
+        endSteer(w);
+    }
+    w.tab.on = false;
+    w.run(15000);                           // the program has left: the search for the other network would start again after 10 s
+    must("stays-off", w.dev.staBegins == begins && !w.dev.staJoined, "It does not join it again, not even after the program has left",
+         fmt("%u more searches", w.dev.staBegins - begins));
+    rules(w);
+}
+
+SCENARIO(User::WrongSettings, "settings-bridge-module-subnet", "With the bridge on, the module's subnet is changed from the XIAO page to 192.168.1: the XIAO's network follows it", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    w.run(2000);
+    must("at-5", w.dev.apIp == IPAddress(192, 168, 5, 1), "With the bridge on the XIAO's network is at 192.168.5.1 (the module is at 192.168.5.126)", w.dev.apIp.toString().c_str());
+    const int boots = w.xiao.boots;
+    const Reply r = w.post("/api/subnet", { { "subnet", "192.168.1" }, { "pw", "trator-2026" } });
+    w.noteUserRestart();
+    must("sent", r.code == 200 && w.runUntil([&]() { return w.teensy.subnets.size() == 1; }, 1000), "The subnet goes to the Teensy, which restarts with it", r.error());
+    const bool followed = w.runUntil([&]() { return w.said("The module is now on 192.168.1.x") && w.xiao.boots > boots && w.xiao.on; }, 20000);
+    must("followed", followed, "Once the Teensy says its new address the XIAO says so in Messages and restarts", "");
+    w.run(3000);
+    must("at-1", w.dev.apIp == IPAddress(192, 168, 1, 1) && w.state()["wifi"]["apIp"].str() == "192.168.1.1", "... and its network is then at 192.168.1.1",
+         w.dev.apIp.toString().c_str());
+    must("kept", w.flashStr("modNet") == "192.168.1", "The module's numbers are kept in the XIAO's flash (the next start has them at once)", w.flashStr("modNet"));
+    if (beginSteer(w))
+    {
+        w.run(5000);
+        endSteer(w);
+    }
+    const int again = w.xiao.boots;
+    w.run(20000);
+    must("once", w.xiao.boots == again, "It restarts once, not again", fmt("%d more restarts", w.xiao.boots - again));
+    rules(w);
+}
+
 SCENARIO(User::WrongSettings, "update-wrong-files", "The wrong file is chosen for the XIAO's own update", bothKits())
 {
     World w(kit);

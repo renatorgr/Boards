@@ -256,8 +256,8 @@ SCENARIO(User::Careful, "careful-bridge", "A tablet with no network cable: the W
     {
         JsonDoc st;
         for (int s = 0; s < 60; s++) { w.run(1000); st = w.state(); }
-        must("state", st["bridge"]["on"].num() == 1 && st["bridge"]["teensy"].num() == 1 && st["bridge"]["state"].num() == 2 && st["bridge"]["prog"].str() == "192.168.4.2" && st["bridge"]["steer"].num() == 1,
-             "The page shows the bridge: on, the Teensy knows it, the program at 192.168.4.2 has the module and steers",
+        must("state", st["bridge"]["on"].num() == 1 && st["bridge"]["teensy"].num() == 1 && st["bridge"]["state"].num() == 2 && st["bridge"]["prog"].str() == "192.168.5.2" && st["bridge"]["steer"].num() == 1,
+             "The page shows the bridge: on, the Teensy knows it, the program at 192.168.5.2 has the module and steers",
              fmt("state %g, prog %s, steer %g", st["bridge"]["state"].num(), st["bridge"]["prog"].str().c_str(), st["bridge"]["steer"].num()));
         must("state-count", st["bridge"]["in"].num() > 6000 && st["bridge"]["out"].num() > 9000 && st["bridge"]["lost"].num() == 0 && st["bridge"]["other"].num() == 0,
              "... with its counters, none lost", fmt("in %g, out %g, lost %g", st["bridge"]["in"].num(), st["bridge"]["out"].num(), st["bridge"]["lost"].num()));
@@ -270,7 +270,7 @@ SCENARIO(User::Careful, "careful-bridge", "A tablet with no network cable: the W
              fmt("%u of %u; %u steering answers, %u sentences", w.tab.got, w.teensy.netOut, w.tab.got253, w.tab.gotNmea));
         must("rtcm", w.teensy.rtcm.size() >= 295 * 256 && w.teensy.rtcm.size() <= w.tab.rtcmSent.size() && std::equal(w.teensy.rtcm.begin(), w.teensy.rtcm.end(), w.tab.rtcmSent.begin()),
              "The corrections (NTRIP) reached the receiver whole and in order", fmt("%u of %u bytes", (unsigned)w.teensy.rtcm.size(), (unsigned)w.tab.rtcmSent.size()));
-        must("teensy-log", w.teensy.logged("WiFi bridge: the program at 192.168.4.2 is on the XIAO's WiFi") && w.said("WiFi bridge: a program at 192.168.4.2 is calling the module"),
+        must("teensy-log", w.teensy.logged("WiFi bridge: the program at 192.168.5.2 is on the XIAO's WiFi") && w.said("WiFi bridge: a program at 192.168.5.2 is calling the module"),
              "The Teensy's log and the XIAO's Messages both say who has the module", "");
         bool ok = false;
         const JsonDoc inf = JsonDoc::parse(w.teensy.info, ok);
@@ -279,6 +279,56 @@ SCENARIO(User::Careful, "careful-bridge", "A tablet with no network cable: the W
         must("silent", w.runUntil([&]() { return w.said("is silent"); }, 5000) && w.runUntil([&]() { return w.teensy.brState == 0; }, 5000),
              "The program is closed: 3 s later the XIAO says it is silent and the module is free again", "");
     }
+    rules(w);
+}
+
+SCENARIO(User::Careful, "careful-bridge-network-numbers", "The WiFi bridge is switched on: the XIAO's network takes the module's numbers (192.168.5.x), a sprayer module joins it as it is; switched off, back to 192.168.4.x", oneKit())
+{
+    World w(kit);
+    w.start();
+    w.run(1500);                            // (the Teensy's status, with its address, has come)
+    JsonDoc st = w.state();
+    must("before", st["wifi"]["apIp"].str() == "192.168.4.1" && w.get("/api/settings").json["modNet"].str() == "192.168.5",
+         "With the bridge off the XIAO's network is at 192.168.4.1, and the page knows the module's numbers (192.168.5, from the Teensy's status)",
+         st["wifi"]["apIp"].str());
+    int boots = w.xiao.boots;
+    Reply r = w.post("/api/settings", settings("agopengps", w.knownSsid, "trator-2026", true));
+    w.noteUserRestart();
+    must("saved", r.code == 200, "The bridge is switched on together with a password of one's own", r.error());
+    backAfterRestart(w, boots);
+    w.knownPass = "trator-2026";
+    w.run(3000);
+    st = w.state();
+    must("moved", w.dev.apIp == IPAddress(192, 168, 5, 1) && st["wifi"]["apIp"].str() == "192.168.5.1" && w.said("own network '" + w.knownSsid + "' at 192.168.5.1"),
+         "After the restart the XIAO's network is at 192.168.5.1, the module's numbers, and Messages say so", st["wifi"]["apIp"].str());
+    const Reply probe = w.http(GET("/generate_204", "connectivitycheck.gstatic.com"));
+    must("captive", probe.code == 302 && probe.hdr("location") == "http://192.168.5.1/", "A phone that checks for internet there is sent to http://192.168.5.1/",
+         fmt("code %d, to '%s'", probe.code, probe.hdr("location").c_str()));
+    must("page", w.http(GET("/", "192.168.5.1")).code == 200, "The page answers at its new address", "");
+    w.runUntil([&]() { return has(w.teensy.info, "192.168.5.1"); }, 6000);        // (its info goes to the Teensy every 5 s)
+    bool ok = false;
+    const JsonDoc inf = JsonDoc::parse(w.teensy.info, ok);
+    must("info", ok && inf["apIp"].str() == "192.168.5.1", "The Teensy's page is told the new address", w.teensy.info);
+    Machine& sprayer = w.mod[0];            // 192.168.5.123: the subnet it always had
+    sprayer.on = true;
+    if (beginSteer(w))
+    {
+        w.run(10000);
+        endSteer(w);
+        must("module", sprayer.got239 >= 90 && w.tab.gotMachine >= 45 && sprayer.throughXiao(),
+             "A sprayer module at 192.168.5.123, its subnet unchanged, gets the program's section data through the XIAO, and the tablet its packets",
+             fmt("%u section packets to it, %u of its packets to the tablet", sprayer.got239, w.tab.gotMachine));
+    }
+    w.tab.on = false;
+    sprayer.on = false;
+    w.run(4000);
+    boots = w.xiao.boots;
+    r = w.post("/api/settings", settings("trator-2026", w.knownSsid, "", false));
+    w.noteUserRestart();
+    must("off", r.code == 200 && backAfterRestart(w, boots), "The bridge is switched off again", r.error());
+    w.run(3000);
+    must("back", w.dev.apIp == IPAddress(192, 168, 4, 1) && w.state()["wifi"]["apIp"].str() == "192.168.4.1", "... and the XIAO's network is at 192.168.4.1 again",
+         w.dev.apIp.toString().c_str());
     rules(w);
 }
 
@@ -293,7 +343,7 @@ SCENARIO(User::Careful, "careful-bridge-page-while-steering", "While the tablet 
         Link slow;
         slow.ipLast = 21;
         slow.downPerMs = 3;                 // 3 kB a second: the page takes over 20 s
-        const int slowPage = w.ask(GET("/"), slow);
+        const int slowPage = w.ask(GET("/", w.hostFor(slow)), slow);
         const Reply page = w.get("/");
         must("page", page.code == 200 && page.body.size() > 50000, "The phone on the good link gets the page", fmt("code %d %s", page.code, page.why.c_str()));
         int okAnswers = 0;
@@ -316,12 +366,12 @@ SCENARIO(User::Careful, "careful-bridge-modules", "No router on the tractor: the
     World w(kit);
     w.bridgeSaved();
     w.start();
-    Machine& sprayer = w.mod[0];            // 192.168.4.123
-    Machine& drill = w.mod[1];              // 192.168.4.124
+    Machine& sprayer = w.mod[0];            // 192.168.5.123
+    Machine& drill = w.mod[1];              // 192.168.5.124
     sprayer.on = drill.on = true;
     w.run(2000);
     JsonDoc st = w.state();
-    must("known", st["bridge"]["mods"].a.size() == 2 && w.said("a module at 192.168.4.123 is on this network") && w.said("a module at 192.168.4.124 is on this network"),
+    must("known", st["bridge"]["mods"].a.size() == 2 && w.said("a module at 192.168.5.123 is on this network") && w.said("a module at 192.168.5.124 is on this network"),
          "With no program running yet the XIAO already knows both modules, from their own packets, and Messages say so", fmt("%u listed", (unsigned)st["bridge"]["mods"].a.size()));
     must("room", w.dev.apMaxStations >= 6, "The XIAO's network lets in a tablet, two modules and phones (the core's own limit is 4 devices)", fmt("%d devices", w.dev.apMaxStations));
     must("quiet", sprayer.got == 0 && drill.got == 0 && w.tab.got == 0, "... and sends them nothing while no program runs", fmt("%u and %u datagrams", sprayer.got, drill.got));
@@ -345,12 +395,12 @@ SCENARIO(User::Careful, "careful-bridge-modules", "No router on the tractor: the
              fmt("%u heard straight from a module", w.tab.gotMachineDirect - d0));
         st = w.state();
         const JsonDoc& ml = st["bridge"]["mods"];
-        must("page", ml.a.size() == 2 && ml.a[0]["ip"].str() == "192.168.4.123" && ml.a[1]["ip"].str() == "192.168.4.124" && ml.a[0]["to"].num() > 600 && ml.a[0]["from"].num() > 350 && st["bridge"]["lost"].num() == 0,
+        must("page", ml.a.size() == 2 && ml.a[0]["ip"].str() == "192.168.5.123" && ml.a[1]["ip"].str() == "192.168.5.124" && ml.a[0]["to"].num() > 600 && ml.a[0]["from"].num() > 350 && st["bridge"]["lost"].num() == 0,
              "The page lists both modules with what went to them and came from them, nothing lost", fmt("%u listed, lost %g", (unsigned)ml.a.size(), st["bridge"]["lost"].num()));
         note("Through the XIAO to the modules", fmt("the tablet sent %u packets in the minute; %u went on to each module (machine data, hellos), longest delay %u ms", w.tab.nSent - n0, sprayer.got239 - a0 + 60, std::max(sprayer.worstDelayMs, drill.worstDelayMs)));
 
         drill.on = false;                   // the seed drill module is switched off
-        const bool silent = w.runUntil([&]() { return w.said("the module at 192.168.4.124 is silent"); }, 5000);
+        const bool silent = w.runUntil([&]() { return w.said("the module at 192.168.5.124 is silent"); }, 5000);
         must("gone", silent && w.state()["bridge"]["mods"].a.size() == 1, "The seed drill module is switched off: 3 s later the XIAO says it is silent and sends it nothing more", "");
         const uint32_t b1 = drill.got239;
         drill.on = true;                    // ... and on again

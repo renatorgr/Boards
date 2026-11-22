@@ -168,6 +168,7 @@ void Device::stopped(esp_reset_reason_t why)
     inTask = -1;
     wifiMode = WIFI_OFF;
     apOn = false;
+    apIp = IPAddress(192, 168, 4, 1);
     staBegun = staJoined = false;
     staAuto = true;
     scanState = -2;
@@ -356,7 +357,7 @@ HardwareSerial::operator bool() const { return n_ == 0 ? cur->usbOpen : cur->uar
 WiFiClass WiFi;
 bool WiFiClass::setHostname(const char* h) { cur->hostName = h ? h : ""; return true; }
 bool WiFiClass::mode(int m) { cur->wifiMode = m; if (!(m & WIFI_AP)) cur->apOn = false; return true; }
-bool WiFiClass::softAPConfig(IPAddress, IPAddress, IPAddress) { return true; }
+bool WiFiClass::softAPConfig(IPAddress ip, IPAddress, IPAddress) { cur->apIp = ip; return true; }
 bool WiFiClass::softAP(const char* ssid, const char* pass, int, int, int maxStations)
 {
     if (!ssid || !*ssid || strlen(ssid) > 32) return false;
@@ -367,7 +368,7 @@ bool WiFiClass::softAP(const char* ssid, const char* pass, int, int, int maxStat
     cur->apOn = (cur->wifiMode & WIFI_AP) != 0;
     return cur->apOn;
 }
-IPAddress WiFiClass::softAPIP() { return IPAddress(192, 168, 4, 1); }
+IPAddress WiFiClass::softAPIP() { return cur->apIp; }
 int WiFiClass::softAPgetStationNum() { return cur->apOn ? cur->apStations : 0; }
 bool WiFiClass::setAutoReconnect(bool on) { cur->staAuto = on; return true; }
 wl_status_t WiFiClass::begin(const char* ssid, const char* pass)
@@ -633,7 +634,7 @@ int lwip_sendto(int s, const void* data, size_t size, int, const struct sockaddr
     const struct sockaddr_in* a = (const struct sockaddr_in*)to;
     fake::Datagram d;
     d.ms = fake::clockMs;
-    d.src = IPAddress(192, 168, 4, 1).raw();
+    d.src = cur->apIp.raw();
     d.srcPort = u->port;
     d.dst = a->sin_addr.s_addr;
     d.dstPort = htons(a->sin_port);
@@ -714,7 +715,7 @@ unsigned long NetworkClient::getTimeout() const { fake::Conn* c = conn(); return
 void NetworkClient::clear() { fake::Conn* c = conn(); if (c) c->rx.clear(); }
 void NetworkClient::stop() { h_.reset(); }
 int NetworkClient::fd() const { fake::Conn* c = conn(); return c ? c->fd : -1; }
-IPAddress NetworkClient::localIP() { fake::Conn* c = conn(); return !c ? IPAddress() : c->fromAp ? IPAddress(192, 168, 4, 1) : cur->staIp(); }
+IPAddress NetworkClient::localIP() { fake::Conn* c = conn(); return !c ? IPAddress() : c->fromAp ? cur->apIp : cur->staIp(); }
 IPAddress NetworkClient::remoteIP() { fake::Conn* c = conn(); return c ? c->peer : IPAddress(); }
 
 bool NetworkServer::hasClient() { return !cur->pending.empty(); }

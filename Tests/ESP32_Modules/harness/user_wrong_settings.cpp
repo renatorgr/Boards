@@ -275,10 +275,10 @@ SCENARIO(User::WrongSettings, "first-section-past-drill", "sets 'relay 1 = secti
     must("first-past-drill-refused", r.code == 400, "the page refuses relay 1 past the drill's last section", fmt("answer %d; log: %s", r.code, log.c_str()));
 }
 
-SCENARIO(User::WrongSettings, "xiao-wifi-subnet-forgotten", "joins the WiFi of the AiO board's XIAO but leaves the subnet at 192.168.5", allBoards())
+SCENARIO(User::WrongSettings, "xiao-wifi-subnet-forgotten", "joins the WiFi of the AiO board's XIAO (192.168.5.x) with the subnet 192.168.4 the first version of the bridge asked for", allBoards())
 {
     World w;
-    Module& m = onXiaoWifi(w, board, "192.168.5");
+    Module& m = onXiaoWifi(w, board, "192.168.4");
     const int nSec = m.bi.sprayer ? 8 : 19;
     w.aow.sections = first(nSec);
     w.run(10000);
@@ -286,13 +286,13 @@ SCENARIO(User::WrongSettings, "xiao-wifi-subnet-forgotten", "joins the WiFi of t
     Json s = m.status();
     const std::string said = pageLog(m) + s["wifi"]["why"].str() + screenMessages(w, 0);
     chk::tell("told", contains(said, "subnet"), "the module says that its subnet is not this network's",
-              "it shows 'joined' as 192.168.5.123 and 'program silent', as if only the program were missing (the page's note names the subnet for the XIAO's network)");
+              "it shows 'joined' as 192.168.4.123 and 'program silent', as if only the program were missing (the page's note says to keep the subnet on the XIAO's network)");
     // the subnet put right
-    joinTractorWifi(w, m, fake::net.pass, "192.168.4");
+    joinTractorWifi(w, m, fake::net.pass, "192.168.5");
     w.run(2000);
     std::string bad;
     const int n = driveAndCompare(w, m, first(nSec), inARow(m.bi.relays, 1, nSec), 3000, &bad);
-    must("works-once-right", n == 0 && m.dev.apIp == IPAddress(192, 168, 40, 1), "with the subnet 192.168.4 the relays follow, and the own network is at 192.168.40.1", bad);
+    must("works-once-right", n == 0 && m.dev.apIp == IPAddress(192, 168, 4, 1), "with the subnet 192.168.5 the relays follow, and the own network is at 192.168.4.1", bad);
     // ... and back to a router later
     fake::net = fake::Network();
     w.xiao = XiaoAp();
@@ -301,6 +301,6 @@ SCENARIO(User::WrongSettings, "xiao-wifi-subnet-forgotten", "joins the WiFi of t
     w.run(2000);
     const int n2 = driveAndCompare(w, m, first(nSec), inARow(m.bi.relays, 1, nSec), 3000, &bad);
     must("back-on-a-router", n2 == 0 && m.dev.apIp == IPAddress(192, 168, 4, 1) && m.status()["aog"]["via"].str().empty(),
-         "moved to a tractor with a router (subnet 192.168.5): the relays follow, the own network is back at 192.168.4.1", bad);
+         "moved to a tractor with a router (subnet 192.168.5): the relays follow, the own network is at 192.168.4.1", bad);
     statusAlwaysJson(m);
 }

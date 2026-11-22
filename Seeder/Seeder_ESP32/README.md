@@ -20,7 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | **0.2.15**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge; its own network is then at 192.168.40.1 ([No router on the tractor](#no-router-on-the-tractor)). |
+| 22 Nov 2026 | **0.2.15**, **0.2.16**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge, with the subnet it has (192.168.5) ([No router on the tractor](#no-router-on-the-tractor)). |
 | 21 Nov 2026 | **0.2.10-0.2.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); two harness fixes; Wi-Fi reason, name and program checked; outputs inverted said on screen ([Notes](#notes)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -176,9 +176,10 @@ other board in that box, as soon as it is chosen.
 
 Since 0.2.15 the module also works on a tractor with no router, with the tablet on the Wi-Fi of the AiO board's XIAO (its WiFi bridge on: the XIAO program's README, *Section modules on the XIAO's WiFi*). **Not tried on a real module yet**: the harness (`Tests/ESP32_Modules`) plays it with a pretend XIAO, late and lost packets included. With no router there is no network cable to plug in: the module uses the Wi-Fi.
 
-1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*: join the **XIAO's network** (`XIAO-xxxx`) with its password, and set the *Program subnet* to **192.168.4**. *Save and restart the module*.
-2. The module's own network moves from 192.168.4.1 to **192.168.40.1**: the XIAO's network has the numbers 192.168.4.x, and two networks with the same numbers on one module leave neither working. The page shows the address in use (*Module* card, *Network settings*). With any other subnet it is at 192.168.4.1 again.
-3. Open AgOpenWeb on the tablet. The XIAO sends the module a copy of each packet of the program, to the module's own address, and passes the module's packets on to the tablet. The Module tab's *Program* row then says *talking · through the access point (192.168.4.1)*; the events say it too.
+1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*: join the **XIAO's network** (`XIAO-xxxx`) with its password. Keep the *Program subnet* as it is (**192.168.5**): with its bridge on the XIAO's network has the AiO module's numbers (the XIAO program's README, *The XIAO's network numbers*). *Save and restart the module*.
+2. Open AgOpenWeb on the tablet. The XIAO sends the module a copy of each packet of the program, to the module's own address, and passes the module's packets on to the tablet. The Module tab's *Program* row then says *talking · through the access point (192.168.5.1)*; the events say it too.
+
+The first XIAO program with the bridge (22 Nov 2026, 16:03 UTC) had its network at 192.168.4.x, and the module was set to the subnet 192.168.4: set it back to 192.168.5. With the subnet 192.168.4 the module's own network moves from 192.168.4.1 to 192.168.40.1 (two networks with the same numbers on one module leave neither working); the page shows the address in use (*Module* card, *Network settings*).
 
 While the XIAO's copies come:
 
@@ -188,7 +189,7 @@ While the XIAO's copies come:
 
 The same goes for a tablet whose **own hotspot** is the tractor network: the program is then at `<subnet>.1`, and the module answers that address only.
 
-From the tablet, on the XIAO's network, the page is at `http://192.168.4.123/` (the module's IP there).
+From the tablet, on the XIAO's network, the page is at its usual address, `http://192.168.5.123/`.
 
 ## Wiring: Relay24_ESP32
 
@@ -317,6 +318,8 @@ messages with a right checksum from source `0x7F` (the program).
 
 ## Notes
 
+- 0.2.16: only words on the page: on the XIAO's WiFi the subnet stays as it is (192.168.5), since the XIAO's
+  network takes the AiO module's numbers with its bridge on.
 - 0.2.15: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)). With the
   program subnet 192.168.4 the own network is at 192.168.40.1. Packets of the program that come over
   the Wi-Fi from the network's own address (`<subnet>.1`: the XIAO's WiFi bridge, or a tablet's
