@@ -250,3 +250,22 @@ SCENARIO(User::WrongSettings, "output-mode-for-agopengps", "Uses AgOpenGPS (AgIO
     tell("says-mode-later", w.aio.logHas("does not read", mark), "Says it too when the mode is changed while AgOpenGPS talks", logSince(w, mark, 300));
     reportRules(w);
 }
+
+SCENARIO(User::WrongSettings, "wifi-bridge-subnet", "On the XIAO's WiFi (no network cable to the tablet), presses 'send subnet' and scans in the program", { Kit::PumaCytron })
+{
+    World w(kit);
+    wifiTablet(w);                                  // the module's cable goes to a switch with no program on it
+    w.startUp();
+    const uint32_t before = w.aio.boots;
+    const size_t mark = w.aio.logMark();
+    w.tab.sendSubnet(192, 168, 4);
+    w.tab.scan();
+    w.run(6000);
+    const Json st = w.status();
+    must("no-restart", w.aio.boots == before, "A subnet sent over the XIAO's WiFi does not restart the module", fmt("%u starts", w.aio.boots));
+    must("subnet-kept", st["ip"].str() == "192.168.5.126", "The module keeps its subnet (it is for the network cable)", st["ip"].str());
+    must("still-answered", !w.tab.heardPgn(126, w.now() - 2500).empty(), "The program on the WiFi is still answered");
+    must("no-scan-reply", w.tab.heardPgn(203).empty(), "No scan reply over the WiFi (it would name the cable's subnet)");
+    tell("says-why", w.aio.logHas("PGN 201) not done", mark), "Says the subnet from the XIAO's WiFi was not done, and where to change it", logSince(w, mark, 300));
+    reportRules(w);
+}

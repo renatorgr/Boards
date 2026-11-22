@@ -31,6 +31,12 @@ struct XiaoStats
     uint32_t statusSent;      // module status JSONs sent to the XIAO (PGN 141)
     uint32_t logSent;         // [status] lines sent to the XIAO (PGN 142)
     uint32_t infoRx;          // XIAO info frames received (PGN 143)
+    // the WiFi bridge (22 Nov 2026): a program on the XIAO's own WiFi
+    uint32_t netIn;           // its packets taken (PGN 146)
+    uint32_t netIgnored;      // its packets not taken: a program is talking on the network cable
+    uint32_t netOut;          // datagrams for it handed to the XIAO (PGN 148)
+    uint32_t netOutDrop;      // ... dropped: Serial2's transmit buffer was full, or over 255 bytes
+    uint32_t rtcmIn;          // bytes of its corrections written to the receiver (PGN 147)
 };
 
 extern XiaoStats xiao;               // defined in zXiao.ino
@@ -38,5 +44,14 @@ extern bool      xiaoDetected;       // "ESP32-hello" in the last XIAO_HELLO_TIM
 extern uint32_t  xiaoLastHelloMs;
 extern char      xiaoInfo[];         // the XIAO's info JSON (program version, WiFi), "" = none yet
 extern uint32_t  xiaoInfoMs;         // when it arrived (millis, 0 = never)
+
+// The WiFi bridge (zXiao.ino): a tablet with no network cable runs the program on the XIAO's own WiFi
+#define BRIDGE_FREE   0              // no program on the cable, none on the XIAO's WiFi
+#define BRIDGE_CABLE  1              // a program is talking on the network cable: it has the module
+#define BRIDGE_WIFI   2              // the program is on the XIAO's WiFi: what goes to it goes through the XIAO
+bool    xiaoBridgeWifi();            // BRIDGE_WIFI
+uint8_t xiaoBridgeState();
+void    xiaoBridgeNoteCable();       // a program packet came in on the cable (UDP 8888)
+void    xiaoNetOut(const uint8_t* d, uint16_t n);   // one datagram for the program, through the XIAO
 
 #endif

@@ -55,6 +55,16 @@
 //                   data = [command][block number, 2 bytes LE][0 = ok, 1 = refused][text: why, or the size].
 //   These go out only when Serial2's transmit buffer has room to spare (XIAO_TX_RESERVE), so the
 //   AgOpenGPS packets for the XIAO always come first (the PGN 145 answers wait for room instead).
+// The WiFi bridge (22 Nov 2026), for a tablet with no network cable: the program runs on the XIAO's own WiFi
+// and the XIAO carries its datagrams to and from the Teensy on this link (see "the WiFi bridge" below):
+//   XIAO -> Teensy  PGN 146: a datagram the program sent to UDP 8888 on the XIAO's WiFi:
+//                   data = [the program's IP, 4 bytes][the datagram, as sent]
+//   XIAO -> Teensy  PGN 147: bytes of the corrections the program sent to UDP 2233: data = [the bytes]
+//   Teensy -> XIAO  PGN 148: a datagram for the program's UDP 9999 (a GPS sentence, a PGN): data = [the datagram].
+//                   The XIAO sends it to that program only, never to everyone.
+//   Teensy -> XIAO  PGN 149: the bridge's state, once a second and when it changes:
+//                   data = [version 1][0 free / 1 a program on the cable has the module / 2 the program on the WiFi has it]
+//                   A XIAO that does not hear it sends no PGN 146 (an older Teensy would send them on to UDP 9999).
 //
 // The XIAO is powered from the board's 3.3 V: never plug its USB-C (with 5 V) while it is on the board.
 // The Teensy cannot program the XIAO (its BOOT / RESET pins are not wired): program it over USB-C
@@ -81,6 +91,16 @@
 #define XIAO_PGN_INFO           143     // XIAO -> Teensy: XIAO info JSON (not sent to UDP)
 #define XIAO_PGN_CMD            144     // XIAO -> Teensy: a command (not sent to UDP): 1 = subnet a.b.c
 #define XIAO_PGN_FW             145     // both ways: a firmware update for the Teensy from the XIAO page (not sent to UDP)
+#define XIAO_PGN_NET_IN         146     // XIAO -> Teensy: a datagram from the program on the XIAO's WiFi (not sent to UDP)
+#define XIAO_PGN_RTCM           147     // XIAO -> Teensy: corrections from the program on the XIAO's WiFi (not sent to UDP)
+#define XIAO_PGN_NET_OUT        148     // Teensy -> XIAO: a datagram for the program on the XIAO's WiFi
+#define XIAO_PGN_BRIDGE         149     // Teensy -> XIAO: the bridge's state
+#define BRIDGE_VERSION          1
+#define BRIDGE_CABLE_MS         3000    // a program packet on the cable in this time: the cable has the module
+#define BRIDGE_GONE_MS          3000    // nothing from the program on the WiFi for this long: the module is free again
+#define BRIDGE_STATE_MS         1000    // the state to the XIAO this often
+#define XIAO_TX_IDLE_WIFI       128     // while the program is on the WiFi: the Teensy's own frames wait until the
+                                        // transmit buffer holds less than this (a status piece is 5 ms of the link)
 #define XIAO_FW_TIMEOUT_MS      15000   // nothing from the XIAO for this long during an update: given up
 #define XIAO_INFO_MAX           250
 
@@ -91,7 +111,7 @@ static const char XIAO_HELLO[] = "ESP32-hello";
 uint8_t XIAOrxbuffer[1024];
 uint8_t XIAOtxbuffer[2048];            // 2 kB (status JSON pieces + log lines + AgOpenGPS packets)
 
-XiaoStats xiao = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0};
+XiaoStats xiao = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0};
 
 char     xiaoInfo[XIAO_INFO_MAX + 1] = "";
 uint32_t xiaoInfoMs = 0;
@@ -120,6 +140,62 @@ static uint32_t xcrcLogged  = 0;
 static bool     xFirstFrame = true;    // log the first good frame after each hello / detection
 
 static inline bool xiaoOn() { return gps2XiaoOn(); }
+
+// ---------------------------------------------------------------- the WiFi bridge (22 Nov 2026)
+// A tablet with no network cable (no USB-Ethernet adapter) joins the XIAO's own WiFi and runs AgOpenWeb / AgIO
+// there. The XIAO listens on UDP 8888 and 2233 on its WiFi and hands each datagram to the Teensy (PGN 146, 147);
+// the Teensy takes it as if it had come in on the network (programPacket, Autosteer.ino) and what it sends to
+// the program (GPS sentences, PGN 253, 250, 126, 121, 221) goes to the XIAO (PGN 148), which sends it to that
+// program only. Never to everyone: on a router's WiFi the module's broadcasts were held and came 1.5 s late,
+// half of them lost (measured on a tractor, 22 Nov 2026).
+// ONE way at a time, decided here. The cable wins: a program packet on the network (UDP 8888) in the last
+// BRIDGE_CABLE_MS keeps the module the cable's, and the packets from the WiFi are not taken. With no program on
+// the cable, the first packet from the WiFi makes the module the WiFi's: from then on NOTHING for the program
+// goes out on the network (a tablet on both would get everything twice, from two addresses), until a program
+// talks on the cable or the WiFi is silent for BRIDGE_GONE_MS. A link that dies is covered by what covers a
+// pulled cable: no PGN 254, the steering watchdog turns the outputs off (Autosteer.ino).
+// Switched on and off on the XIAO's page (off from new); the Teensy has no setting for it.
+static uint8_t  brState     = BRIDGE_FREE;
+static uint8_t  brStateSent = 255;       // the state the XIAO was last told (255 = not yet)
+static uint32_t brStateMs   = 0;         // when (PGN 149)
+static uint32_t brCableMs   = 0;         // the last program packet on the cable (msStamp; 0 = none since the start)
+static uint32_t brWifiMs    = 0;         // the last program packet taken from the WiFi
+static uint32_t brIgnoreMs  = 0;         // the last "not taken" line in the log (0 = none yet)
+static uint8_t  brIp[4]     = {0, 0, 0, 0};   // the program on the WiFi
+
+bool    xiaoBridgeWifi()  { return brState == BRIDGE_WIFI; }
+uint8_t xiaoBridgeState() { return brState; }
+
+// Called from ReceiveUdp() (Autosteer.ino) for every packet on UDP 8888 of the network
+void xiaoBridgeNoteCable()
+{
+    brCableMs = msStamp(millis());
+    if (brState == BRIDGE_WIFI)
+        StatusLog.line("[xiao] WiFi bridge: a program is talking on the network cable - the cable has the module, the program on the XIAO's WiFi (%u.%u.%u.%u) is no longer answered",
+                       brIp[0], brIp[1], brIp[2], brIp[3]);
+    brState = BRIDGE_CABLE;
+}
+
+// one frame to the XIAO, as it is (the caller has checked the room)
+static void xiaoWriteFrame(uint8_t pgn, const uint8_t* data, uint8_t len)
+{
+    uint8_t h[5] = {0x80, 0x81, XIAO_SRC_TEENSY, pgn, len};
+    uint8_t sum = XIAO_SRC_TEENSY + pgn + len;
+    for (uint8_t i = 0; i < len; i++) sum += data[i];
+    SerialXIAO.write(h, 5);
+    SerialXIAO.write(data, len);
+    SerialXIAO.write(&sum, 1);
+    xiao.txBytes += len + 6;
+}
+
+// One datagram for the program on the XIAO's WiFi (what would go to UDP 9999 on the network). Never waits:
+// with the transmit buffer full it is dropped and counted, like a packet for the XIAO.
+void xiaoNetOut(const uint8_t* d, uint16_t n)
+{
+    if (n == 0 || n > 255 || SerialXIAO.availableForWrite() < (int)n + 6) { xiao.netOutDrop++; return; }
+    xiaoWriteFrame(XIAO_PGN_NET_OUT, d, (uint8_t)n);
+    xiao.netOut++;
+}
 
 // AiO_WEB: the GPS2 port (Serial2) is the XIAO's or the second F9P's, found by itself, or off (cfg.xiaoOff,
 // zDualF9P.ino); gps2Begin() starts it (460800 for both)
@@ -395,17 +471,80 @@ static void xiaoFwRun()
     loopStep = 7;
 }
 
-// one frame of the Teensy's own to the XIAO, only with room to spare in the transmit buffer
+// A datagram the program sent to UDP 8888 on the XIAO's WiFi (PGN 146): [its IP, 4 bytes][the datagram].
+// Taken only with no program on the cable ("the WiFi bridge", at the top), and not during a firmware update.
+static void xiaoTakeNet(uint8_t* d, uint8_t n)
+{
+    if (n < 4 + 5 || xfw.active) return;                   // an IP and at least 80 81 src pgn len
+    const uint32_t now = millis();
+    if (brCableMs != 0 && now - brCableMs < BRIDGE_CABLE_MS)
+    {
+        xiao.netIgnored++;
+        if (brIgnoreMs == 0 || now - brIgnoreMs >= 30000)  // one line per 30 s at most
+        {
+            brIgnoreMs = msStamp(now);
+            StatusLog.line("[xiao] WiFi bridge: a program on the XIAO's WiFi (%u.%u.%u.%u) is calling, but one is talking on the network cable: the cable has the module, the WiFi one is not answered",
+                           d[0], d[1], d[2], d[3]);
+        }
+        return;
+    }
+    if (brState != BRIDGE_WIFI)
+    {
+        brState = BRIDGE_WIFI;
+        StatusLog.line("[xiao] WiFi bridge: the program at %u.%u.%u.%u is on the XIAO's WiFi - GPS and steering go to it through the XIAO, nothing for the program goes out on the network",
+                       d[0], d[1], d[2], d[3]);
+    }
+    memcpy(brIp, d, 4);
+    brWifiMs = msStamp(now);
+    xiao.netIn++;
+    const IPAddress from(d[0], d[1], d[2], d[3]);
+    statusNoteAogPacket(from);                             // [status] messages, the LEDs (zStatus.ino)
+    programPacket(d + 4, (int)n - 4, from, true);          // as a packet on UDP 8888 (Autosteer.ino)
+}
+
+// Corrections the program sent to UDP 2233 on the XIAO's WiFi (PGN 147), to the receiver as udpNtrip() does
+// (zUdpNtrip.ino). Only from the program that has the module.
+static void xiaoTakeRtcm(const uint8_t* d, uint8_t n)
+{
+    if (n == 0 || brState != BRIDGE_WIFI || xfw.active) return;
+    if (!rxCkOwns(RXCK_GPS)) SerialGPS->write(d, n);       // (not while the receiver check searches its baud rate)
+    statusNoteRtcm(d, n);
+    xiao.rtcmIn += n;
+}
+
+// The bridge's clock, from xiaoProcess(): the module is free again when the WiFi (or the cable) has been
+// silent, or the XIAO is gone; the XIAO is told the state once a second and at each change.
+static void xiaoBridgeTick()
+{
+    const uint32_t now = millis();
+    const bool here = xiaoDetected && xiaoOn();
+    if (brState == BRIDGE_WIFI && (!here || now - brWifiMs >= BRIDGE_GONE_MS))
+    {
+        brState = BRIDGE_FREE;
+        StatusLog.line("[xiao] WiFi bridge: %s - the module is free again, GPS goes out on the network",
+                       here ? "nothing from the program on the XIAO's WiFi for 3 s" : "the XIAO is gone");
+    }
+    else if (brState == BRIDGE_CABLE && now - brCableMs >= BRIDGE_CABLE_MS) brState = BRIDGE_FREE;
+
+    if (!here) { brStateSent = 255; return; }
+    if ((brState != brStateSent || now - brStateMs >= BRIDGE_STATE_MS) && SerialXIAO.availableForWrite() >= 3 + 6)
+    {
+        const uint8_t d[3] = { BRIDGE_VERSION, brState, 0 };
+        xiaoWriteFrame(XIAO_PGN_BRIDGE, d, 3);
+        brStateSent = brState;
+        brStateMs = now;
+    }
+}
+
+// One frame of the Teensy's own to the XIAO, only with room to spare in the transmit buffer. While the program
+// is on the XIAO's WiFi its datagrams share the link: the Teensy's own frames then go one at a time into a
+// buffer that is nearly empty, so a GPS sentence never waits behind more than one of them.
 static bool xiaoSendOwn(uint8_t pgn, const uint8_t* data, uint8_t len)
 {
-    if (SerialXIAO.availableForWrite() < (int)len + 6 + XIAO_TX_RESERVE) return false;
-    uint8_t h[5] = {0x80, 0x81, XIAO_SRC_TEENSY, pgn, len};
-    uint8_t sum = XIAO_SRC_TEENSY + pgn + len;
-    for (uint8_t i = 0; i < len; i++) sum += data[i];
-    SerialXIAO.write(h, 5);
-    SerialXIAO.write(data, len);
-    SerialXIAO.write(&sum, 1);
-    xiao.txBytes += len + 6;
+    const int room = SerialXIAO.availableForWrite();
+    if (brState == BRIDGE_WIFI ? room < (int)sizeof(XIAOtxbuffer) - XIAO_TX_IDLE_WIFI
+                               : room < (int)len + 6 + XIAO_TX_RESERVE) return false;
+    xiaoWriteFrame(pgn, data, len);
     return true;
 }
 
@@ -467,7 +606,7 @@ static void xfShift(uint16_t n)
     xfLen -= n;
 }
 
-// Take the complete frames out of xf. Returns how many good frames were sent.
+// Take the complete frames out of xf. Returns how many good frames were sent (to UDP, or taken as program packets).
 // After a bad checksum the search starts again one byte later: when a byte was lost, the next
 // frame may already be inside the bytes received.
 static uint8_t xfScan()
@@ -487,6 +626,8 @@ static uint8_t xfScan()
             else if (xf[3] == XIAO_PGN_INFO)   xiaoTakeInfo(xf + 5, xf[4]);   // kept here, not sent to UDP
             else if (xf[3] == XIAO_PGN_CMD)    xiaoTakeCmd(xf + 5, xf[4]);    // a command: the subnet (not sent to UDP)
             else if (xf[3] == XIAO_PGN_FW)     xiaoTakeFw(xf + 5, xf[4]);     // a firmware update for the Teensy (not sent to UDP)
+            else if (xf[3] == XIAO_PGN_NET_IN) { xiaoTakeNet(xf + 5, xf[4]); sent++; }   // the WiFi bridge: a program packet (counted: one of this loop's frames)
+            else if (xf[3] == XIAO_PGN_RTCM)   xiaoTakeRtcm(xf + 5, xf[4]);   // the WiFi bridge: corrections for the receiver
             else                               { xiaoSendFrame(xf, need); sent++; }
             xfShift(need);
         }
@@ -537,6 +678,7 @@ void xiaoProcess()
         if (xiaoDetected) xiaoDetected = false;
         xfLen = 0;
         xtextLen = 0;
+        xiaoBridgeTick();                      // (no XIAO: a program that was on its WiFi no longer has the module)
         return;
     }
 
@@ -574,6 +716,7 @@ void xiaoProcess()
 
     if (xfw.pending) xiaoFwRun();              // a firmware update from the XIAO page: takes over the loop until done
 
+    xiaoBridgeTick();                          // the WiFi bridge: free again after a silence, its state to the XIAO
     xiaoTxTick(now);                           // status and log lines to the XIAO
 }
 

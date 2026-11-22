@@ -54,7 +54,7 @@ void hwMessage(const char* text, uint8_t seconds, bool warning)
     uint8_t ck = 0;
     for (size_t i = 2; i < 7 + n; i++) ck += b[i];
     b[7 + n] = ck;
-    if (Ethernet_running) SendUdp(b, (uint8_t)(8 + n), Eth_ipDestination, portDestination);
+    progSend(b, (uint8_t)(8 + n));                 // on the network, or to the program on the XIAO's WiFi (Autosteer.ino)
     hwMsgCount++;
     strncpy(hwMsgLast, text, sizeof(hwMsgLast) - 1);
     hwMsgLast[sizeof(hwMsgLast) - 1] = '\0';

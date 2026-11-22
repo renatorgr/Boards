@@ -366,7 +366,12 @@ void statusUpdate()
     const int aogOn = (aogLastMs != 0 && now - aogLastMs < STATUS_SILENCE_MS) ? 1 : 0;
     if (aog.update(aogOn))
     {
-        if (aogOn) { StatusLog.print("[status] "); StatusLog.print(hostName(hostNow)); StatusLog.print(" connected, IP "); printIp(aogIp); StatusLog.println(); }
+        if (aogOn)
+        {
+            StatusLog.print("[status] "); StatusLog.print(hostName(hostNow)); StatusLog.print(" connected, IP "); printIp(aogIp);
+            if (xiaoBridgeWifi()) StatusLog.print(" (on the XIAO's WiFi, through the XIAO)");
+            StatusLog.println();
+        }
         else if (aogLastMs != 0) { StatusLog.print("[status] "); StatusLog.print(hostName(hostNow)); StatusLog.println(" silent for 5 s"); }
     }
     if (both.update(hostBoth() ? 1 : 0) && hostBoth())

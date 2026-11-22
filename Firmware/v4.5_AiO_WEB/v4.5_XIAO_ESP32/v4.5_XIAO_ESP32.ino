@@ -32,6 +32,8 @@
 //     Changes (WiFi, update, restart) ask for the password of the XIAO's own WiFi network.
 //   - tells the Teensy its version and WiFi state (shown in the XIAO card of the Teensy page) and
 //     writes its events to the Teensy log ("[xiao] > ...")
+//   - the WiFi bridge (22 Nov 2026; off from new, WiFi tab): a tablet with no network cable joins the XIAO's own
+//     network and runs AgOpenWeb / AgOpenGPS there; the XIAO carries its datagrams to and from the Teensy
 //   - USB-C serial monitor (any baud), for the bench or the panel USB port: "status", "wifi-reset"
 //     (WiFi settings back to the defaults, e.g. a forgotten password), "restart"
 //
@@ -69,6 +71,7 @@
 
 HardwareSerial&           TeensyPort = Serial1;
 TeensyLink<HardwareSerial> teensy(TeensyPort);
+static void linkPoll(uint32_t now);   // the link to the Teensy and the WiFi bridge (below): what loop() does all the time
 
 // ---------------------------------------------------------------- web server that never holds up the Teensy link
 // 13 Nov 2026. The core's WebServer writes an answer in one go and returns only when the browser has taken all of
@@ -110,7 +113,7 @@ private:
             if (r > 0) { done += r; takenMs = millis(); continue; }
             if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) break;    // the browser has gone
             if (millis() - takenMs >= SEND_WAIT_MS) break;                  // it took nothing for 20 s: given up
-            teensy.poll(millis());                                          // meanwhile: the hello, the Teensy's data
+            linkPoll(millis());                                             // meanwhile: the hello, the Teensy's data, the bridge
             feedLoopWDT();
             delay(1);                                                       // and the WiFi gets the core
         }
@@ -129,6 +132,7 @@ struct Settings
     bool   staOn = false;        // also join another network
     String staSsid, staPass;
     String host;                 // name on the other network: http://<host>.local/
+    bool   bridge = false;       // the WiFi bridge: a program on our own network reaches the module through us
 } cfg;
 
 static String defaultApSsid()
@@ -148,10 +152,12 @@ static void settingsLoad()
     cfg.staSsid = prefs.getString("staSsid", "");
     cfg.staPass = prefs.getString("staPass", "");
     cfg.host    = prefs.getString("host", DEFAULT_HOST);
+    cfg.bridge  = prefs.getBool("bridge", false);
     prefs.end();
     if (cfg.apSsid.length() < 1 || cfg.apSsid.length() > 32) cfg.apSsid = defaultApSsid();
     if (cfg.apPass.length() < 8 || cfg.apPass.length() > 63) cfg.apPass = DEFAULT_AP_PASS;
     if (cfg.host.length() < 1 || cfg.host.length() > 24)    cfg.host = DEFAULT_HOST;
+    if (cfg.apPass == DEFAULT_AP_PASS) cfg.bridge = false;      // never with the password every XIAO starts with
 }
 
 static void settingsSave()
@@ -163,6 +169,7 @@ static void settingsSave()
     prefs.putString("staSsid", cfg.staSsid);
     prefs.putString("staPass", cfg.staPass);
     prefs.putString("host", cfg.host);
+    prefs.putBool("bridge", cfg.bridge);
     prefs.end();
 }
 
@@ -231,6 +238,209 @@ struct Json
 static char jbuf[8192];
 static uint32_t sketchSize = 0, sketchFree = 0;   // read once at start-up (getSketchSize() reads the whole program)
 
+// ---------------------------------------------------------------- the WiFi bridge (22 Nov 2026)
+// For a tablet with no network cable (no USB-Ethernet adapter): it joins the XIAO's own network and runs
+// AgOpenWeb / AgOpenGPS there. The program's datagrams for the module (UDP 8888, and its corrections on UDP 2233)
+// are taken here and handed to the Teensy over the link (PGN 146, 147); what the Teensy has for the program comes
+// back (PGN 148) and goes to that program's UDP 9999 - to it only, never to everyone: a broadcast waits for the
+// WiFi's beacon (on a router's WiFi the module's broadcasts came 1.5 s late, half of them lost; a tractor,
+// 22 Nov 2026). The rules:
+//   - off from new; switched on in the WiFi tab, and only with a password of one's own on the XIAO's network,
+//     because whoever is on this network can then steer the tractor.
+//   - only from the XIAO's own network (192.168.4.x), never from the other network the XIAO may have joined.
+//   - one program at a time: the first one heard, until it has been silent for BRIDGE_PROG_GONE_MS.
+//   - the Teensy decides who has the module (xLink.h, bridgeState): a program on its network cable comes first,
+//     and then only our program's hello is passed on (so the Teensy's log can say that it is calling).
+//   - nothing is passed to a Teensy that does not say it knows the bridge (PGN 149): an older firmware would
+//     send these frames on to UDP 9999.
+//   - while the program has the module the XIAO does not search for the other network, and the page does not
+//     search for networks: a search takes the radio off our own channel, and the steering data with it.
+//   - with autosteer on over the bridge, the page does not restart the XIAO (settings, update, restart).
+#define BRIDGE_PORT_IN       8888    // the program -> the module
+#define BRIDGE_PORT_RTCM     2233    // the program's corrections (NTRIP) -> the receiver
+#define BRIDGE_PORT_OUT      9999    // the module -> the program
+#define BRIDGE_PROG_GONE_MS  3000
+#define BRIDGE_PER_LOOP      16      // datagrams taken per loop pass at most
+#define BRIDGE_TX_SPARE      64      // room asked for in the link's transmit buffer beside the frame itself: the
+                                     // serial driver keeps a few bytes of its own with every write, and a write
+                                     // with too little room waits
+#define BRIDGE_STA_BACK_MS   10000   // the search for the other network starts again this long after the program left
+
+struct Bridge
+{
+    int      sIn = -1, sRtcm = -1;   // the sockets (-1: the bridge is off)
+    uint32_t progIp = 0;             // the program (as in the datagram: first number in the low byte), 0 = none
+    uint32_t progMs = 0;             // its last datagram
+    uint32_t steerMs = 0;            // its last PGN 254 with autosteer on (0 = never)
+    uint32_t busyMs = 0;             // the last time the program had the module (0 = never)
+    uint32_t in = 0, out = 0;        // datagrams passed to the Teensy / sent to the program
+    uint32_t rtcm = 0;               // bytes of corrections passed on
+    uint32_t dropLink = 0;           // not passed on: no room on the link to the Teensy
+    uint32_t dropBig = 0;            // not passed on: longer than a frame carries
+    uint32_t dropOut = 0;            // not sent to the program: the WiFi did not take it
+    uint32_t other = 0;              // from another program while one has the bridge
+    bool     staPaused = false;      // the search for the other network is stopped (bridgeStaWatch)
+} bridge;
+
+static void ipText(char* b, size_t cap, uint32_t ip)
+{
+    const uint8_t* p = (const uint8_t*)&ip;
+    snprintf(b, cap, "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
+}
+
+// the program has the module (the Teensy says so) and is still sending
+static bool bridgeBusy(uint32_t now)
+{
+    return bridge.progIp != 0 && teensy.bridgeState == LINK_BRIDGE_WIFI && teensy.bridgeKnown(now);
+}
+
+// ... and asked for autosteer in the last 2 s
+static bool bridgeSteering(uint32_t now)
+{
+    return bridgeBusy(now) && bridge.steerMs != 0 && now - bridge.steerMs < 2000;
+}
+
+static int bridgeSocket(uint16_t port)
+{
+    const int s = lwip_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s < 0) return -1;
+    const int one = 1;
+    lwip_setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    lwip_setsockopt(s, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));   // the program sends to everyone on the network
+    struct sockaddr_in a;
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_port = htons(port);
+    a.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (lwip_bind(s, (struct sockaddr*)&a, sizeof(a)) < 0) { lwip_close(s); return -1; }
+    return s;
+}
+
+// A datagram for the program from the Teensy (PGN 148, called by teensy.poll): to that program only
+static void bridgeNetOut(const uint8_t* d, uint8_t n)
+{
+    if (bridge.sIn < 0 || bridge.progIp == 0) return;
+    struct sockaddr_in to;
+    memset(&to, 0, sizeof(to));
+    to.sin_family = AF_INET;
+    to.sin_port = htons(BRIDGE_PORT_OUT);
+    to.sin_addr.s_addr = bridge.progIp;
+    if (lwip_sendto(bridge.sIn, d, n, MSG_DONTWAIT, (struct sockaddr*)&to, sizeof(to)) == (int)n) bridge.out++;
+    else bridge.dropOut++;
+}
+
+// Is this datagram's sender the program we carry? The first one heard on our own network, until it goes silent.
+static bool bridgeTakes(uint32_t ip, uint32_t now)
+{
+    const uint8_t* p = (const uint8_t*)&ip;
+    if (p[0] != 192 || p[1] != 168 || p[2] != 4) return false;        // our own network only (softAPConfig, wifiStart)
+    if (!teensy.bridgeKnown(now)) return false;                       // the Teensy does not know the bridge, or is silent
+    if (bridge.progIp == 0)
+    {
+        bridge.progIp = ip;
+        bridge.steerMs = 0;
+        char t[20];
+        ipText(t, sizeof(t), ip);
+        logEvent("WiFi bridge: a program at %s is calling the module", t);
+    }
+    else if (ip != bridge.progIp) { bridge.other++; return false; }
+    bridge.progMs = msStamp(now);
+    return true;
+}
+
+static void bridgePoll(uint32_t now)
+{
+    if (bridge.sIn < 0) return;
+    if (bridge.progIp != 0 && now - bridge.progMs >= BRIDGE_PROG_GONE_MS)
+    {
+        char t[20];
+        ipText(t, sizeof(t), bridge.progIp);
+        logEvent("WiFi bridge: the program at %s is silent (%lu packets to the module, %lu to it)", t, (unsigned long)bridge.in, (unsigned long)bridge.out);
+        bridge.progIp = 0;
+    }
+    if (bridgeBusy(now)) bridge.busyMs = msStamp(now);
+
+    static uint8_t b[4 + 1472];                                       // [the sender's IP][one datagram]
+    struct sockaddr_in from;
+    for (int k = 0; k < BRIDGE_PER_LOOP; k++)                         // the program's packets for the module
+    {
+        socklen_t fl = sizeof(from);
+        const int n = lwip_recvfrom(bridge.sIn, b + 4, sizeof(b) - 4, MSG_DONTWAIT, (struct sockaddr*)&from, &fl);
+        if (n <= 0) break;
+        const uint32_t ip = from.sin_addr.s_addr;
+        if (n < 6 || b[4] != 0x80 || b[5] != 0x81) continue;          // AgOpenGPS packets only
+        if (!bridgeTakes(ip, now)) continue;
+        if (n > LINK_NET_MAX) { bridge.dropBig++; continue; }
+        if (b[4 + 3] == 254 && n >= 8 && (b[4 + 7] & 1)) bridge.steerMs = msStamp(now);
+        if (teensy.bridgeState == LINK_BRIDGE_CABLE && b[4 + 3] != 200) continue;   // the cable has the module: only our hello
+        if (TeensyPort.availableForWrite() < n + 4 + 6 + BRIDGE_TX_SPARE) { bridge.dropLink++; continue; }   // never waits for the link
+        memcpy(b, &ip, 4);
+        teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_NET_IN, b, (uint8_t)(4 + n));
+        bridge.in++;
+        if (n >= 6 + b[4 + 4]) teensy.aogPacket(b[4 + 3], b + 4 + 5, b[4 + 4], now);   // for the page's "Program -> module" card
+    }
+    for (int k = 0; k < 4; k++)                                       // its corrections, in frames of up to 255 bytes
+    {
+        socklen_t fl = sizeof(from);
+        const int n = lwip_recvfrom(bridge.sRtcm, b, sizeof(b), MSG_DONTWAIT, (struct sockaddr*)&from, &fl);
+        if (n <= 0) break;
+        if (from.sin_addr.s_addr != bridge.progIp || !bridgeBusy(now)) continue;   // only from the program that has the module
+        for (int at = 0; at < n; at += 255)
+        {
+            const int part = n - at < 255 ? n - at : 255;
+            if (TeensyPort.availableForWrite() < part + 6 + BRIDGE_TX_SPARE) { bridge.dropLink++; break; }
+            teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_RTCM, b + at, (uint8_t)part);
+            bridge.rtcm += part;
+        }
+    }
+}
+
+// What loop() does all the time, and every wait for a browser too: the link to the Teensy, then the bridge
+static void linkPoll(uint32_t now)
+{
+    teensy.poll(now);
+    bridgePoll(now);
+}
+
+static void bridgeStart()
+{
+    teensy.onNetOut = bridgeNetOut;
+    if (!cfg.bridge) return;
+    bridge.sIn = bridgeSocket(BRIDGE_PORT_IN);
+    bridge.sRtcm = bridgeSocket(BRIDGE_PORT_RTCM);
+    if (bridge.sIn < 0 || bridge.sRtcm < 0)
+    {
+        if (bridge.sIn >= 0) lwip_close(bridge.sIn);
+        if (bridge.sRtcm >= 0) lwip_close(bridge.sRtcm);
+        bridge.sIn = bridge.sRtcm = -1;
+        logEvent("WiFi bridge: could NOT open UDP %u / %u - the bridge is off", BRIDGE_PORT_IN, BRIDGE_PORT_RTCM);
+        return;
+    }
+    logEvent("WiFi bridge on: a program on the XIAO's network (UDP %u) reaches the module through the XIAO", BRIDGE_PORT_IN);
+}
+
+// While the program has the module the XIAO does not go looking for the other network (and starts again
+// BRIDGE_STA_BACK_MS after the program left). Called twice a second from loop().
+static void bridgeStaWatch(uint32_t now)
+{
+    if (!cfg.staOn || cfg.staSsid.length() == 0) return;
+    const bool busy = bridgeBusy(now);
+    if (busy && !bridge.staPaused && WiFi.status() != WL_CONNECTED)
+    {
+        bridge.staPaused = true;
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect();                                            // stops the search; the settings stay
+        logEvent("WiFi: not searching for '%s' while a program runs on the XIAO's network", cfg.staSsid.c_str());
+    }
+    else if (!busy && bridge.staPaused && now - bridge.busyMs >= BRIDGE_STA_BACK_MS)
+    {
+        bridge.staPaused = false;
+        WiFi.setAutoReconnect(true);
+        WiFi.begin(cfg.staSsid.c_str(), cfg.staPass.c_str());
+        logEvent("WiFi: searching for '%s' again", cfg.staSsid.c_str());
+    }
+}
+
 // ---------------------------------------------------------------- WiFi
 static bool     staWasUp = false;
 static int      apClientsWas = -1;
@@ -257,6 +467,7 @@ static const char* resetReasonText()
 static const char* staState()
 {
     if (!cfg.staOn || cfg.staSsid.length() == 0) return "off";
+    if (bridge.staPaused) return "wait";               // not searched for while a program runs over the WiFi bridge
     return WiFi.status() == WL_CONNECTED ? "ok" : "con";
 }
 
@@ -326,6 +537,7 @@ static void sendInfo()
         if (WiFi.status() == WL_CONNECTED) { j.str("ip", WiFi.localIP().toString().c_str()); j.i("rssi", WiFi.RSSI()); }
     }
     j.num("t", temperatureRead(), 1);         // 4 Nov 2026: the chip's temperature (its own sensor), degrees C
+    j.i("br", bridge.sIn >= 0 ? 1 : 0);       // 22 Nov 2026: the WiFi bridge is switched on
     j.u("up", millis() / 1000);
     j.raw("}");
     if (j.n + 1 < sizeof(b)) teensy.sendInfo(b);
@@ -399,6 +611,20 @@ static void apiState()
     j.str("sta", cfg.staSsid.c_str());
     j.str("st", staState());
     if (WiFi.status() == WL_CONNECTED) { j.str("ip", WiFi.localIP().toString().c_str()); j.i("rssi", WiFi.RSSI()); }
+    j.close();
+
+    j.obj("bridge");                           // the WiFi bridge (22 Nov 2026)
+    j.bo("on", bridge.sIn >= 0);
+    j.bo("teensy", teensy.bridgeKnown(now));   // the Teensy's firmware knows the bridge
+    j.i("state", teensy.bridgeKnown(now) ? teensy.bridgeState : -1);   // 0 free, 1 a program on the cable has the module, 2 ours has it
+    if (bridge.progIp) { char t[20]; ipText(t, sizeof(t), bridge.progIp); j.str("prog", t); }
+    else j.str("prog", "");
+    j.bo("steer", bridgeSteering(now));
+    j.u("in", bridge.in);
+    j.u("out", bridge.out);
+    j.num("rtcmKB", bridge.rtcm / 1024.0, 1);
+    j.u("lost", bridge.dropLink + bridge.dropBig + bridge.dropOut);
+    j.u("other", bridge.other);
     j.close();
 
     j.obj("link");
@@ -510,8 +736,21 @@ static void apiSettingsGet()
     j.str("staSsid", cfg.staSsid.c_str());
     j.bo("staPassSet", cfg.staPass.length() > 0);
     j.str("host", cfg.host.c_str());
+    j.bo("bridge", cfg.bridge);
+    j.bo("apPassOwn", cfg.apPass != DEFAULT_AP_PASS);       // the WiFi bridge asks for a password of one's own
     j.raw("}");
     sendJson(j);
+}
+
+// Things that restart the XIAO or take its radio away are refused while the program on our WiFi steers the
+// tractor through us (the WiFi bridge): the steering would stop in the middle of the field.
+static bool bridgeLetsUs(const char* what)
+{
+    if (!bridgeSteering(millis())) return true;
+    char m[150];
+    snprintf(m, sizeof(m), "%s: not now - autosteer is on in the program that reaches the module through this XIAO. Switch autosteer off first.", what);
+    sendError(409, m);
+    return false;
 }
 
 static bool printable(const String& s, size_t lo, size_t hi)
@@ -524,6 +763,7 @@ static bool printable(const String& s, size_t lo, size_t hi)
 static void apiSettingsPost()
 {
     if (!passwordOk()) return;
+    if (!bridgeLetsUs("Save")) return;
     Settings s = cfg;
     s.apSsid = server.arg("apSsid");
     if (!printable(s.apSsid, 1, 32)) { sendError(400, "network name: 1 to 32 characters"); return; }
@@ -545,10 +785,16 @@ static void apiSettingsPost()
     for (size_t i = 0; i < host.length(); i++) if (!isalnum((unsigned char)host[i]) && host[i] != '-') hostOk = false;
     if (!hostOk) { sendError(400, "name on the network: letters, digits and '-', up to 24"); return; }
     s.host = host;
+    if (server.hasArg("bridge")) s.bridge = server.arg("bridge") == "1";      // a page of before 22 Nov 2026 sends none: kept
+    if (s.bridge && s.apPass == DEFAULT_AP_PASS)
+    {
+        sendError(400, "WiFi bridge: first give the XIAO's network a password of your own (the field above) - whoever is on this network can then steer the tractor");
+        return;
+    }
     cfg = s;
     settingsSave();
-    logEvent("Settings saved: own network '%s', other network %s, name %s.local - restarting", cfg.apSsid.c_str(),
-          cfg.staOn ? cfg.staSsid.c_str() : "off", cfg.host.c_str());
+    logEvent("Settings saved: own network '%s', other network %s, name %s.local, WiFi bridge %s - restarting", cfg.apSsid.c_str(),
+          cfg.staOn ? cfg.staSsid.c_str() : "off", cfg.host.c_str(), cfg.bridge ? "on" : "off");
     server.send(200, "application/json", "{\"ok\":true}");
     rebootAtMs = millis() + 1500;
 }
@@ -560,7 +806,15 @@ static void apiScan()
     Json j(jbuf, sizeof(jbuf));
     j.raw("{");
     const int16_t n = WiFi.scanComplete();
-    if (n == WIFI_SCAN_RUNNING) { j.bo("busy", true); }
+    if (bridgeBusy(millis()) && n != WIFI_SCAN_RUNNING && scanState != -1)
+    {
+        // a search takes the radio to every channel in turn, away from the program that has the module (the WiFi bridge)
+        j.bo("busy", false);
+        j.str("note", "Not searching now: a program is running through this XIAO's WiFi. Type the network's name, or search when the program is closed.");
+        j.arr("list");
+        j.closeArr();
+    }
+    else if (n == WIFI_SCAN_RUNNING) { j.bo("busy", true); }
     else if (n >= 0 && scanState == -1)
     {
         j.bo("busy", false);
@@ -602,13 +856,14 @@ static void updateUpload()
 {
     HTTPUpload& up = server.upload();
     feedLoopWDT();
-    teensy.poll(millis());                  // keep saying hello to the Teensy while the file comes in
+    linkPoll(millis());                     // keep saying hello to the Teensy while the file comes in (and the WiFi bridge going)
     if (up.status == UPLOAD_FILE_START)
     {
         updOk = false;
         updErr = "";
         server.client().setTimeout(UPLOAD_WAIT_MS);
         if (server.arg("pw") != cfg.apPass) { updErr = "wrong password"; return; }
+        if (bridgeSteering(millis())) { updErr = "not now: autosteer is on in the program that reaches the module through this XIAO - switch autosteer off first"; return; }
         logEvent("Program update: receiving %s", up.filename.c_str());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) updErr = Update.errorString();
     }
@@ -732,6 +987,7 @@ static void teensyUpdateUpload()
         tfwSize = 0;
         server.client().setTimeout(UPLOAD_WAIT_MS);
         if (server.arg("pw") != cfg.apPass) { tfwErr = "wrong password"; return; }
+        if (bridgeSteering(millis())) { tfwErr = "not now: autosteer is on in the program that reaches the module through this XIAO - switch autosteer off first"; return; }
         if (!teensy.teensyTalking(millis())) { tfwErr = "no data from the module: is the Teensy on and the link working?"; return; }
         const uint32_t size = strtoul(server.arg("size").c_str(), nullptr, 10);
         logEvent("Module firmware: sending %s (%lu kB) to the Teensy over the link", up.filename.c_str(), (unsigned long)(size / 1024));
@@ -819,6 +1075,7 @@ static void apiTeensyRevert()
 static void apiRestart()
 {
     if (!passwordOk()) return;
+    if (!bridgeLetsUs("Restart")) return;
     logEvent("Restart requested from the page");
     server.send(200, "application/json", "{\"ok\":true}");
     rebootAtMs = millis() + 1000;
@@ -884,6 +1141,16 @@ static void printState()
     if (cfg.staOn) Serial.printf("Other network '%s': %s %s\n", cfg.staSsid.c_str(), staState(), WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
     Serial.printf("Teensy: %s, %lu frames, %lu bad checksums, status %ld s ago\n", teensy.teensyTalking(millis()) ? "talking" : "SILENT",
                   (unsigned long)teensy.goodFrames, (unsigned long)teensy.crcErr, teensy.statusMs ? (long)((millis() - teensy.statusMs) / 1000) : -1L);
+    if (bridge.sIn < 0) Serial.println("WiFi bridge: off");
+    else
+    {
+        char t[20] = "none";
+        if (bridge.progIp) ipText(t, sizeof(t), bridge.progIp);
+        Serial.printf("WiFi bridge: on, Teensy %s, program %s, %lu packets to the module, %lu to the program, %lu lost\n",
+                      !teensy.bridgeKnown(millis()) ? "does NOT know it (older firmware?)" : teensy.bridgeState == LINK_BRIDGE_WIFI ? "gives it the module"
+                      : teensy.bridgeState == LINK_BRIDGE_CABLE ? "has a program on its cable" : "free", t,
+                      (unsigned long)bridge.in, (unsigned long)bridge.out, (unsigned long)(bridge.dropLink + bridge.dropBig + bridge.dropOut));
+    }
     Serial.println("Commands: status | wifi-reset | restart");
 }
 
@@ -914,6 +1181,7 @@ void setup()
 {
     Serial.begin(115200);                                     // USB-C (bench / panel port)
     TeensyPort.setRxBufferSize(4096);                         // a busy web page must not lose the Teensy's data
+    TeensyPort.setTxBufferSize(1024);                         // the WiFi bridge: a write never waits for the link (bridgePoll asks for room first)
     TeensyPort.begin(LINK_BAUD, SERIAL_8N1, PIN_FROM_TEENSY, PIN_TO_TEENSY);
     TeensyPort.setRxFIFOFull(64);                             // see README: room for the WiFi's busy moments
     teensy.poll(millis());                                      // first hello at once
@@ -922,6 +1190,7 @@ void setup()
     sketchFree = ESP.getFreeSketchSpace();
     logEvent("%s started (%s)", XIAO_FW_NAME, resetReasonText());
     wifiStart();
+    bridgeStart();
     webSetup();
     esp_task_wdt_config_t w = {15000, 0, true};               // restart if the program hangs for 15 s
     esp_task_wdt_reconfigure(&w);
@@ -933,12 +1202,12 @@ void loop()
     static uint32_t infoMs = 0, watchMs = 0;
     const uint32_t now = millis();
 
-    teensy.poll(now);
+    linkPoll(now);
     dns.processNextRequest();
     server.handleClient();
     usbCommands();
 
-    if (now - watchMs >= 500) { watchMs = now; wifiWatch(); }
+    if (now - watchMs >= 500) { watchMs = now; wifiWatch(); bridgeStaWatch(now); }
     if (now - infoMs >= LINK_INFO_MS || infoMs == 0) { infoMs = msStamp(now); sendInfo(); }
     if (rebootAtMs && (int32_t)(now - rebootAtMs) >= 0) { delay(50); ESP.restart(); }
     delay(1);                                                 // let the WiFi have the core

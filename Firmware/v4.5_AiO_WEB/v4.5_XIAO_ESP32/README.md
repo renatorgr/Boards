@@ -23,6 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable to the module joins the XIAO's network and AgOpenWeb / AgOpenGPS reach the module through the XIAO. Off from new; switched on in the WiFi tab. The `.bin` files are rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -59,9 +60,9 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 |---|---|
 | **Status** | **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network, the Teensy's clock and temperature. The fix is green whenever the receiver has a position (GPS, DGPS, RTK float, RTK fixed: the name says which) and red only without one. |
 | | **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, requested steer angle, autosteer on / off, sections (one box each: 16, or up to 64 with PGN 229), hydraulic lift (up / down), tramline, PGN 254 per second. |
-| | **XIAO**: uptime, start-up reason, WiFi, the link to the Teensy, memory, the chip's temperature (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
+| | **XIAO**: uptime, start-up reason, WiFi, the [WiFi bridge](#wifi-bridge), the link to the Teensy, memory, the chip's temperature (its version is in the header and the Firmware tab; the requested steer angle is in Program → module). |
 | **Messages** | The module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates). |
-| **WiFi** | The XIAO's network name and password. |
+| **WiFi** | The XIAO's network name and password, and the [WiFi bridge](#wifi-bridge)'s switch. |
 | | The other network: a scan lists the networks found, one per line, strongest first; tap one to choose it. |
 | | The name on the network (`xiao` → `xiao.local`). |
 | | Saved in the XIAO; it restarts to apply them. |
@@ -80,8 +81,46 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
   - Just viewing the page needs nothing more than being on the network.
 - It tells the Teensy its version and WiFi state: they show in the **XIAO** card of the Teensy page (normally http://192.168.5.126/; the module's IP is shown on the Status tab). Its events also go to the Teensy log as `[xiao] > ...`. From the WiFi tab it can set the module's subnet (PGN 144 to the Teensy).
 - **Watchdog**: if the program ever stops for 15 s, the XIAO restarts by itself.
-- The Teensy sends it the program's packets and the module status; the XIAO sends back only its hello, its state and text lines.
+- The Teensy sends it the program's packets and the module status; the XIAO sends back only its hello, its state and text lines (and, with the [WiFi bridge](#wifi-bridge) on, the packets of a program on its own network).
   - Its timers start with the time itself (`msStamp`, never 0). Until 21 Nov 2026 they started one millisecond ahead half the time: a hello could go out twice in that millisecond, and "heard from the Teensy lately" read no for it.
+
+## WiFi bridge
+
+For a tablet with **no network cable to the module** (no USB-Ethernet adapter): the tablet joins the XIAO's own network and AgOpenWeb (or AgOpenGPS / AgIO) reaches the module through the XIAO. Off from new. With a network cable to the tablet, leave it off: the cable is the better link.
+
+Why the XIAO's own network, and not the farm's or the tractor router's WiFi: on a router's WiFi the module's packets are broadcasts, which the router holds for its beacon. Measured on a tractor (22 Nov 2026): 8 at a time every 0.2 s, each 1.5 s late, and half of them lost. The XIAO sends every datagram to the tablet's own address, which is not held (a ping over that link: 3 ms).
+
+**Switching it on**
+
+1. WiFi tab: give the XIAO's network **a password of your own**. Whoever is on this network can then steer the tractor, so the bridge is refused with the password every XIAO starts with (`agopengps`), and `wifi-reset` switches it off again.
+2. Tick **WiFi bridge**, type the current password, **Save and restart the XIAO**.
+3. The Teensy needs the firmware of 22 Nov 2026 or later. The Status tab's **WiFi bridge** row says when the Teensy does not answer it.
+4. On the tablet: join the XIAO's network and start the program. AgOpenWeb looks on every network of the tablet and should find the module by itself (it shows at 192.168.4.1). In AgOpenGPS (AgIO) set the subnet to 192.168.4 by hand: the scan is not answered over the WiFi.
+
+**The rules**
+
+| Rule | Why |
+|---|---|
+| A program on the module's **network cable comes first** | One program has the module at a time. While one talks on the cable (and for 3 s after) the one on the WiFi is not answered; only its hello goes to the Teensy, which says in Messages that it is calling. |
+| **One way at a time** | While the program on the WiFi has the module, nothing for the program goes out on the network cable: a tablet on both would get everything twice, from two addresses. |
+| **One program** on the WiFi | The first one heard, until it has been silent for 3 s. |
+| Only from the XIAO's **own network** (192.168.4.x) | Never from the other network the XIAO joined. |
+| The module's **subnet (PGN 201) and scan (PGN 202) are not done** | They are for the module's network cable, and a subnet change would restart the module under the tablet. Messages says so. |
+| While the program has the module, **no search for networks** | The XIAO has one radio: a search (for the other network when it is out of reach, or the WiFi tab's button) takes it to every channel in turn, away from the steering data. The search for the other network starts again 10 s after the program left; a network already joined stays joined. |
+| With **autosteer on** over the bridge, the page refuses a save, an update (the XIAO's or the module's) and a restart | Each would stop the steering in the middle of the field. Switch autosteer off first. |
+
+**When the link stops** (the XIAO restarts or loses power, the tablet goes out of range): the Teensy gets no steering data and its own watchdog turns the outputs off, as with a pulled network cable (within 2.5 s). After 3 s of silence the module is free again and its GPS goes out on the network cable as before.
+
+**Limits**
+
+- The XIAO's network has **no internet**. The corrections (NTRIP) must come through the tablet's own mobile data while it is joined to this network. Not tested yet: it depends on the tablet keeping mobile data in use on a WiFi with no internet.
+- The program reaches **this module only** (GPS, IMU, steering, the Teensy's own machine outputs). A section-control module on the network cable (sprayer, seed drill) is not reached through the bridge.
+- Datagrams of up to 251 bytes (every AgOpenGPS PGN is shorter); a longer one is dropped and counted.
+- The range is the XIAO's: in an aluminium box use the external antenna.
+
+**Where it shows:** Status → XIAO → **WiFi bridge**: off, on with no program, standing by (a program is on the cable), or the program's address with the packets to the module, to the program, and those lost. **Program → module** shows the program's data as before. The Teensy page has the same row in its XIAO card, and "on the XIAO's WiFi" beside the program's IP. Both write each change in Messages.
+
+**How it travels** (PGN 146-149 on the link, never on the network): the XIAO listens on UDP 8888 and 2233 of its own network, hands each datagram to the Teensy (PGN 146 with the sender's address, PGN 147 for the corrections) and sends what the Teensy has for the program (PGN 148) to that program's UDP 9999. The Teensy says once a second who has the module (PGN 149); without that, from an older Teensy firmware, the XIAO hands nothing over. The XIAO never waits for the link: with its transmit buffer full a datagram is dropped and counted.
 
 ## Install the first time (USB-C, off the board)
 
@@ -205,6 +244,11 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
   - `xLink.h` was also fed random bytes with memory checks on.
 - The page was checked in a browser at phone and PC size with test data.
 - **Not yet tested on a real XIAO.** The first time, watch the Serial Monitor and the Messages tab.
+- The [WiFi bridge](#wifi-bridge) (22 Nov 2026):
+  - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,167,723 bytes (89 %), XIAO_ESP32S3 1,053,300 bytes (31 %);
+  - the Teensy's side runs in the Teensy harness (`Tests/Teensy_AiO`) with a pretend XIAO and a pretend tablet on its WiFi: steering 40 s on a line through the bridge on the four kits, 100 steering packets a second with nothing dropped, the cable's program first, the XIAO or the tablet gone while steering (outputs off within 2.5 s);
+  - the pages were opened in the simulator's browser check;
+  - **not yet tried on a real XIAO, tablet and tractor**: the WiFi itself, the tablet's mobile data for the corrections, and AgOpenWeb / AgOpenGPS finding the module on this network are what the first bench test has to show.
 
 ## Credits and licence
 

@@ -29,6 +29,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | The XIAO page's WiFi bridge: its switch (refused with the XIAO's starting password) and its row on both pages; the pretend program is on the network cable, so a bridge switched on stands by. |
 | 21 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.13): settings in AgOpenWeb's order; Smoothing row; a hard field edge gives the margin as distance from boundary ([the page](#set-up-agopenweb-from-your-measures)). |
 | 15 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.11): Renato's centre-pivot mower with his measures, onto the next pass (the tractor on the cut strip), swung across to the other side as the pass ends: a 4 m turn ([the page](#set-up-agopenweb-from-your-measures)). |
 | 13 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.8): measured noses (Maxxum 1 m, Farmall 0.85 m, Puma 1.1 m), the boom 2.1 m ahead, Renato's one-axle manure spreader, his centre-pivot mower ([the page](#set-up-agopenweb-from-your-measures)). |
