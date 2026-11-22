@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | A firmware update refused because autosteer is on or the tractor moves no longer stops the steering loop while the file comes in ([Firmware update](#firmware-update-over-the-network)). Not compiled in the cloud. |
+| 22 Nov 2026 | A refused firmware update no longer stops the steering loop ([Firmware update](#firmware-update-over-the-network)). Short steering packets are dropped ([Network stack](#network-stack)); a bad subnet from the program is refused ([Web page](#web-page)). Not compiled in the cloud. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
 | 17 Nov 2026 | Changing the steer switch mode in the program with the module running no longer leaves autosteer off until a restart ([Steering](#steering)). The [kickout delay](#settings) and the [WAS check](#was-check)'s times always count: on an even millisecond they were skipped. |
@@ -78,7 +78,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second under the module's name on the network, **AiO** and four digits of the Teensy's own id (e.g. `AiO-3F2A`, shown on the Connections card), next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
 
-**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
+**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). Since 22 Nov 2026 the module refuses, with a line in the messages, a subnet starting with 0, 127 or 224 and up (it would answer nobody), the subnet it is on already (a restart for nothing) and any change while autosteer is engaged (a restart in the field), as the XIAO page's change does. It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
@@ -434,6 +434,8 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 ## Network stack
 
 NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
+
+A steering, steer settings or steer config packet from the program (PGN 254, 252, 251) shorter than its length byte says (8 data bytes) is dropped, with a line in the messages at most every 10 s. Until 22 Nov 2026 the bytes it lacked came from the packet before: a short steer settings packet saved counts per degree 1 instead of 120.
 
 The mDNS responder (`aio.local`; the page announced as `_http._tcp` for the fork's **Search the network** and as `_aowcard._tcp` with TXT `v=1` and `path=/` for the official AgOpenWeb's add-on cards, `Docs/ADD_ON_CARDS.md`, both under the instance name `AiO-xxxx`) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
 

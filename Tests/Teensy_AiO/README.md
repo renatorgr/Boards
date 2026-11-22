@@ -118,9 +118,10 @@ The first run (21 Nov 2026) found five things in the firmware, listed in `known-
   the steering loop stops for as long as the upload takes (10.6 s for the 2 MB `.hex` at 200 kB/s), the outputs as
   they were. Fixed 22 Nov 2026: the file is read and dropped a piece per pass of the loop.
 - PGN 252 (and 251) shorter than its length byte is taken: the missing bytes come from the packet before
-  (counts per degree 120 became 1).
+  (counts per degree 120 became 1). Fixed 22 Nov 2026: PGN 254, 252 and 251 shorter than 8 data bytes are dropped.
 - PGN 201 saves and restarts for any subnet: 0.0.0 (the module then answers nobody), the subnet it is on already,
-  and while steering. The XIAO's subnet change (`netSetSubnet`) refuses all three.
+  and while steering. The XIAO's subnet change (`netSetSubnet`) refuses all three. Fixed 22 Nov 2026: PGN 201 goes
+  through `netSetSubnet` too.
 - The stored steer settings are taken from the EEPROM without a check: 0xFF bytes after a good mark turn every flag
   on, and an IBT2 is then driven as a Cytron with the relay inverted (full lock, nobody asked).
 - Min To Move above the Max Limit lets the PWM go above the Max Limit.
