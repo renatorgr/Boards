@@ -63,7 +63,7 @@ function events() {
 }
 // the module restarts: offMs without an answer, then up again from 0
 function restart(offMs) {
- setTimeout(() => { X.t0 = Date.now() + offMs; X.ev = []; X.evAt = -1; X.secTop = 0; S.save(KEY, X); }, 500);
+ setTimeout(() => { X.t0 = Date.now() + offMs; X.ev = []; X.evAt = -1; X.secTop = 0; X.start = "restart asked"; S.save(KEY, X); }, 500);
 }
 
 // what the sprayer is doing: the program's request, the relays (they follow at once, applyOutputs), the readings
@@ -129,7 +129,7 @@ function status() {
  let bits = 0, on = 0;                                              // the relays on, and the sections they open
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
- return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", kind: "Sprayer", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
+ return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", kind: "Sprayer", up: Math.floor(t), start: X.start || "power on", startBad: false, heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
   wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
   aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,

@@ -212,6 +212,7 @@ static void apiStatus()
     j += ",\"board\":\"" BOARD_NAME "\"";
     j += ",\"kind\":\"Sprayer\"";                     // which implement the module drives (the seed drill's says "Seeder")
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
+    j += ",\"start\":" + jsonStr(startWhy) + ",\"startBad\":" + String(startUnexpected ? "true" : "false");
     j += ",\"name\":" + jsonStr(moduleName());
 
     j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());
@@ -414,6 +415,7 @@ static void apiTotalPost()
     if (!passwordOk()) return;
     totalLitres = 0;
     totalPulses = 0;
+    totalSave();                                            // or a restart would bring the old litres back
     logEvent("total set to 0 from the page");
     sendJson("{\"ok\":true}");
 }

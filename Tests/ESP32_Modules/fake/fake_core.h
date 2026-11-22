@@ -164,6 +164,11 @@ public:
 };
 extern EspClass ESP;
 
+// Why the chip started (esp_system.h): the values of ESP-IDF, as many as the programs read
+typedef enum { ESP_RST_UNKNOWN, ESP_RST_POWERON, ESP_RST_EXT, ESP_RST_SW, ESP_RST_PANIC, ESP_RST_INT_WDT, ESP_RST_TASK_WDT,
+               ESP_RST_WDT, ESP_RST_DEEPSLEEP, ESP_RST_BROWNOUT, ESP_RST_SDIO } esp_reset_reason_t;
+esp_reset_reason_t esp_reset_reason();
+
 namespace fake { struct Device; }
 
 // ---------------------------------------------------------------- Wi-Fi
@@ -320,6 +325,8 @@ public:
     void   end();
     uint8_t getUChar(const char* key, uint8_t def = 0);
     size_t  putUChar(const char* key, uint8_t v);
+    uint32_t getUInt(const char* key, uint32_t def = 0);
+    size_t  putUInt(const char* key, uint32_t v);
     bool    getBool(const char* key, bool def = false);
     size_t  putBool(const char* key, bool v);
     float   getFloat(const char* key, float def = NAN);
@@ -412,6 +419,7 @@ struct Device
     std::string label;
     uint64_t mac = 0x0000A1B2C3D4E5F6ull;
     uint64_t bootAt = 0;                    // clockMs at the last start
+    esp_reset_reason_t resetReason = ESP_RST_POWERON;   // why it started: esp_reset_reason() (power on, ESP.restart(), a brownout...)
     uint32_t millisOffset = 0;              // millis() = clockMs - bootAt + millisOffset (to try the 49-day wrap)
 
     // pins

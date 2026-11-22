@@ -159,6 +159,15 @@ void Module::unload()
 void Module::powerOn()
 {
     if (so_) return;
+    dev.resetReason = ESP_RST_POWERON;
+    load();
+}
+
+void Module::resetBy(esp_reset_reason_t why)
+{
+    if (!so_) return;
+    unload();
+    dev.resetReason = why;
     load();
 }
 

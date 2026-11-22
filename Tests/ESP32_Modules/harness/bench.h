@@ -61,6 +61,7 @@ public:
 
     void powerOn();
     void powerOff();
+    void resetBy(esp_reset_reason_t why);   // the chip resets by itself (a brownout, a crash, the watchdog) and starts again
     bool on() const { return so_ != nullptr; }
     void step();                // loop() once; a restart the program asks for loads it again
     uint32_t relays() const;    // relays whose coil is on, relay 1 = bit 0

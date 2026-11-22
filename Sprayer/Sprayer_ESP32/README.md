@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | **0.10.15**: the litres applied are kept in flash through a restart or a power cut; the Module tab, the events and the program's screen say why the module started ([How it works](#how-it-works), [Notes](#notes)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
@@ -59,6 +60,19 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
   while it lasts. With no sensor ticked it sends none of them: see *Sensors fitted* below.
 - The valves are normally closed: no power = valve closed. No message from the program
   for **2 seconds** (Wi-Fi gone, tablet frozen): every section closes.
+- **The litres applied** (*Applied* on the Settings tab, the total in PGN 160 and 161) are
+  kept in flash: saved every 10 s while they change, when they are set to 0 and before a
+  restart that is asked for, so a restart or a power cut loses 10 s of spraying at most.
+  Only **Total back to 0** (Settings, Sensors card) or the serial `total-reset` clears them:
+  at a new tank or a new job.
+- **Why the module started** (*Last start* on the Module tab, the first line of the events,
+  the report): power on, restart asked (the page, an update, the program's subnet, serial),
+  supply voltage dropped (brownout), program crash, watchdog. A start nobody asked for, and a
+  power on while the program is already asking for sections (the power cut in the middle of
+  the work: a loose wire, a fuse), is shown in red and on the program's screen for 30 s
+  (*Sprayer module restarted: …*, PGN 221): while the module starts again every valve is
+  closed for a few seconds. A power on with every section off (the start of the day) and a
+  restart asked for say nothing there. On the ESP32 the EN button reads as a power on.
 - **Sections with no relay.** A section of the boom (the
   tool's sections from PGN 235) or one the program asks for, that no relay follows, never
   sprays, while the program paints it as sprayed. The module says so: the page shows the
@@ -273,7 +287,7 @@ Monitor: `wifi-reset`.
 | 237 | module → program | every 200 ms, in the layout of the AgOpenGPS AiO v26 firmware: sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives) |
 | 160 | module → program | once a second, only with a sensor ticked: pressure (bar × 100), flow (L/min × 100), total (L × 10, uint32), master switch, sections open 1–8 (byte 14) and 9–16 (byte 15). See `Docs/PGN.md` of the AgOpenWeb fork, which reads byte 14 |
 | 161 | module → program | right after each 160: ISOBUS process data, 8 bytes per value (table below) |
-| 221 | module → program | when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)), and when an alarm comes on or goes off, and every 10 s while one is on: the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most). The official AgOpenWeb shows it; the fork has the alarms from 161 as well |
+| 221 | module → program | when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)), when an alarm comes on or goes off, and every 10 s while one is on, and once after a start nobody asked for (*Why the module started* in [How it works](#how-it-works)): the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most). The official AgOpenWeb shows it; the fork has the alarms from 161 as well |
 
 All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
 bytes from the source byte to the one before the checksum. The module only accepts
@@ -331,6 +345,13 @@ level the module is using.
 
 ## Notes
 
+- 0.10.15: on 22 Nov 2026 the litres applied went back to 0 in the middle of a job, with the
+  sections put On by hand in some turns and nothing restarted by hand. The count lived in RAM
+  only, and nothing but a start of the module (or *Total back to 0*) clears it, so the module
+  had started again by itself and did not say why. Now the litres are kept (*The litres
+  applied* in [How it works](#how-it-works)) and the module says why it started. A restart by
+  itself while many valves switch points at the supply: a drop of the 12 V (a thin or long
+  cable, a bad crimp or fuse holder) or the valves' spikes (a 1N4007 missing or reversed).
 - 0.10.14: a pressure sensor ticked on the page that reads under 0.3 V for 3 s is not there (a
   0.5–4.5 V sensor gives 0.5 V at 0 bar): the page, the log and the program's screen say *pressure
   sensor unplugged?* instead of *low pressure 0.0 bar*, which read like a pump problem. On the

@@ -14,6 +14,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | `sprayer-litres-kept`: the litres applied survive a restart by itself (a brownout), a power cut and the night, 0 stays 0; why the module started on its page and AgOpenWeb's screen. The pretend ESP32 says why it started ([How it works](#how-it-works)). |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
 
 ## Running it
@@ -55,7 +56,9 @@ report in the run's summary and as a download.
   - **the network**: the tractor's router (it can be switched off), the cable (it can be pulled out), a static IP or
     one from the router.
   - **power and restarts**: a restart (asked by the page, by PGN 201, by `ESP.restart()`) loads the program
-    again, so everything in RAM starts fresh while the flash keeps what was saved, as on a board.
+    again, so everything in RAM starts fresh while the flash keeps what was saved, as on a board. A reset by
+    itself (a brownout, a crash, the watchdog: `Module::resetBy`) does the same, and `esp_reset_reason()` gives
+    the program the reason, as the chip does.
 - Each scenario runs in its own process: a crash, or a memory error the sanitizer catches in the firmware, is a
   finding for that scenario and the others still run.
 
@@ -63,7 +66,7 @@ report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle |
+| Careful user | `careful-sprayer`, `careful-seeder`: set up right, a field sprayed / sown, the L/ha and the pressure for the target checked against the sprayer, the program going silent, the cable pulled out, a power cycle; `sprayer-litres-kept`: the module restarts by itself (a brownout) and loses its power mid-job, a new tank, the next morning |
 | Module never set up | `power-on-quiet` (no relay closes at power-on or across a restart), `sprayer-never-set-up`, `seeder-never-set-up`, `aow-default-pins` (8-section boom, AgOpenWeb's pin config as it comes), `sensors-ticked-none-fitted`, `no-section-widths` |
 | Wrong settings | `relay-active-high-ticked`, `page-typos` (impossible values on the page), `flash-garbage`, `long-lift-times`, `wrong-wifi-password`, `wrong-subnet-from-program`, `nozzle-flow-typo` (as on 20 Nov), `flow-meter-calibration-typo`, `first-section-past-drill` |
 | Wrong slots | `two-relays-one-section`, `relay-on-missing-section`, `more-sections-than-relays`, `two-seeders-right`, `two-seeders-same-first`, `two-seeders-same-ip`, `seeder-fewer-sections`, `seeder-pin-config-19`, `sensors-swapped`, `other-modules-program` (the other module's .bin, a .merged.bin) |

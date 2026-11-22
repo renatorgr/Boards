@@ -100,9 +100,11 @@ size_t HardwareSerial::println(const char* s) { cur->serialOut += s; cur->serial
 // ---------------------------------------------------------------- ESP
 EspClass ESP;
 uint64_t EspClass::getEfuseMac() { return cur->mac; }
+esp_reset_reason_t esp_reset_reason() { return cur->resetReason; }
 void EspClass::restart()
 {
     cur->restarts++;
+    cur->resetReason = ESP_RST_SW;
     throw fake::Restart();
 }
 
@@ -366,6 +368,15 @@ uint8_t Preferences::getUChar(const char* key, uint8_t def)
     return v && v->bytes.size() == 1 ? v->bytes[0] : def;
 }
 size_t Preferences::putUChar(const char* key, uint8_t x) { return prefPut(ns_, open_, readOnly_, key, 'u', &x, 1); }
+uint32_t Preferences::getUInt(const char* key, uint32_t def)
+{
+    const fake::PrefValue* v = open_ ? prefGet(ns_, key, 'u') : nullptr;
+    if (!v || v->bytes.size() != sizeof(uint32_t)) return def;
+    uint32_t x;
+    memcpy(&x, v->bytes.data(), sizeof(x));
+    return x;
+}
+size_t Preferences::putUInt(const char* key, uint32_t x) { return prefPut(ns_, open_, readOnly_, key, 'u', &x, sizeof(x)); }
 bool Preferences::getBool(const char* key, bool def)
 {
     const fake::PrefValue* v = open_ ? prefGet(ns_, key, 'u') : nullptr;  // stored as a byte by the ESP32 core too
