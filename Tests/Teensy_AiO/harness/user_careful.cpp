@@ -221,3 +221,72 @@ SCENARIO(User::Careful, "careful-wifi-bridge-cable-first", "Two tablets: one on 
     w.status();
     reportRules(w);
 }
+
+// ---------------------------------------------------------------- the module's page through the XIAO
+// A phone on the XIAO's own WiFi has no way to the module's network: it opens http://<the XIAO>:8080/, and the XIAO
+// passes the request and the answer over the link (PGN 150 / 151, zXiao.ino). Here with a tablet steering through the
+// bridge at the same time, so the page shares the link with the steering.
+SCENARIO(User::Careful, "careful-page-through-xiao", "A phone on the XIAO's WiFi opens the module's page through the XIAO while a tablet steers through the bridge", { Kit::PumaCytron, Kit::Um982Keya })
+{
+    World w(kit);
+    w.cableIn = false;
+    wifiTablet(w);
+    w.startUp();
+    must("version", w.xiao.version >= 2, "Tells the XIAO it serves its page through it (bridge version 2)", fmt("version %u", w.xiao.version));
+    w.tractor.kmh = 8;
+    w.tractor.x = -0.5f;
+    w.run(2000);
+    engageWifi(w, true);
+    w.run(10000);
+    must("steering", w.engaged(), "Steers through the bridge before the page is opened");
+
+    Http st0 = w.httpXiao("GET", "/api/status");
+    must("status", st0.code == 200 && st0.jsonOk && st0.json["xiao"]["bridge"].num() == 2, "/api/status answers through the XIAO (and says the WiFi has the module)",
+         fmt("HTTP %d, %zu bytes", st0.code, st0.body.size()));
+    const double drop0 = st0.json["xiao"]["brDrop"].num();
+
+    // the program's GPS while the page goes through: the longest gap between two GGA lines
+    uint32_t gga = w.tab.nmeaGga;
+    uint64_t lastGga = w.now(), worstGap = 0;
+    w.watchers.push_back([&] {
+        if (w.tab.nmeaGga == gga) return;
+        gga = w.tab.nmeaGga;
+        worstGap = std::max<uint64_t>(worstGap, w.now() - lastGga);
+        lastGga = w.now();
+    });
+    w.aio.resetLoopMax();
+    const Http page = w.httpXiao("GET", "/");
+    w.watchers.pop_back();
+    const size_t clAt = page.head.find("Content-Length: ");
+    const size_t cl = clAt == std::string::npos ? 0 : (size_t)atol(page.head.c_str() + clAt + 16);
+    note("page-time", fmt("the page (%zu bytes) took %.1f s through the XIAO, a tablet steering beside it", page.body.size(), page.ms / 1000.0));
+    must("page", page.code == 200 && page.body.size() > 50000 && page.body.size() == cl && page.body.find("</html>") != std::string::npos,
+         "The page comes whole through the XIAO", fmt("HTTP %d, %zu of %zu bytes, %u ms", page.code, page.body.size(), cl, page.ms));
+    must("page-time", page.ms < 12000, "... within 12 s", fmt("%u ms", page.ms));
+    must("window", w.xiao.web.overWindow == 0 && w.xiao.web.badOffset == 0, "Never sends more than the XIAO holds, every piece in its place",
+         fmt("%u over the window, %u out of place", w.xiao.web.overWindow, w.xiao.web.badOffset));
+    note("gga-gap", fmt("longest gap between two GGA lines to the program while the page went through: %llu ms", (unsigned long long)worstGap));
+    must("gga-gap", worstGap < 300, "The program's GPS keeps coming while the page goes through (no gap over 0.3 s)", fmt("%llu ms", (unsigned long long)worstGap));
+    must("loop", w.aio.loopMaxUs < 50000, "The page through the XIAO does not hold the steering loop (no pass over 50 ms)", fmt("%.1f ms", w.aio.loopMaxUs / 1000.0));
+    must("steering-on", w.engaged(), "Still steering after the page");
+
+    const size_t etAt = page.head.find("ETag: ");
+    const std::string etag = etAt == std::string::npos ? "" : page.head.substr(etAt + 6, page.head.find("\r\n", etAt) - etAt - 6);
+    const Http again = w.httpXiao("GET", "/", "", { "If-None-Match: " + etag });
+    must("etag", again.code == 304, "The page again: the browser has it (304, nothing sent again)", fmt("HTTP %d, %zu bytes", again.code, again.body.size()));
+
+    // a setting through the XIAO: the installation note
+    const std::string text = "Written on a phone on the XIAO's WiFi";
+    const Http saved = w.httpXiao("POST", "/api/note", text);
+    const Http back = w.httpXiao("GET", "/api/note");
+    must("note", saved.code == 200 && back.jsonOk && back.json["note"].s == text, "A setting saved through the XIAO is kept (the installation note)",
+         fmt("HTTP %d, then %s", saved.code, back.body.substr(0, 120).c_str()));
+    const Http diag = w.httpXiao("GET", "/api/diag");
+    must("diag", diag.jsonOk && diag.json["web"]["viaXiao"].num() >= 5 && diag.json["web"]["viaXiaoBroken"].num() == 0,
+         "The report counts the requests through the XIAO, none broken", diag.body.substr(0, 300));
+    const Http st1 = w.httpXiao("GET", "/api/status");
+    must("no-drop", st1.jsonOk && st1.json["xiao"]["brDrop"].num() == drop0, "No datagram for the program was dropped for the page",
+         fmt("%g dropped", st1.json["xiao"]["brDrop"].num() - drop0));
+    must("follows-line", fabsf(w.tractor.x) < 0.15f, "Kept its line", fmt("%.2f m off the line", w.tractor.x));
+    reportRules(w);
+}

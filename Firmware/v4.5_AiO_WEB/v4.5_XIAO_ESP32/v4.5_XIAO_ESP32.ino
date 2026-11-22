@@ -35,6 +35,8 @@
 //     writes its events to the Teensy log ("[xiao] > ...")
 //   - the WiFi bridge (22 Nov 2026; off from new, WiFi tab): a tablet with no network cable joins the XIAO's own
 //     network and runs AgOpenWeb / AgOpenGPS there; the XIAO carries its datagrams to and from the Teensy
+//   - the module's own page through the XIAO (Nov 2026): http://<its address on its own network>:8080/ (normally
+//     http://192.168.5.1:8080/ with the bridge on) is the Teensy's page, carried over the link; with a password of one's own
 //   - USB-C serial monitor (any baud), for the bench or the panel USB port: "status", "wifi-reset"
 //     (WiFi settings back to the defaults, e.g. a forgotten password), "restart"
 //
@@ -591,11 +593,306 @@ static void bridgePoll(uint32_t now)
     }
 }
 
-// What loop() does all the time, and every wait for a browser too: the link to the Teensy, then the bridge
+// ---------------------------------------------------------------- the module's (Teensy's) page through the XIAO (Nov 2026)
+// The module's own page (http://<its IP>/) is on its network cable only. With the WiFi bridge the tablet has no cable,
+// and nobody on our WiFi could open the module's settings at all. So we listen on port 8080 of our own network, pass what
+// a browser sends there on to the Teensy over the link (PGN 150) and its answer back to the browser (PGN 151):
+// http://<our address>:8080/ is the module's own page, every tab of it, the same as on the cable. The rules:
+//   - our own network only, and only with a password of one's own on it (as the bridge): whoever opens this page can
+//     change how the tractor steers.
+//   - one request at a time, as the module serves them: a page asks for several things at once, they wait their turn.
+//   - a firmware update for the module, or going back to its previous one, is not passed on: our Firmware tab does both,
+//     with its checks (and the module refuses them from here too).
+//   - nothing goes to a Teensy that does not say it knows this (PGN 149, version 2): an older firmware would send the
+//     frames on to UDP 9999. We answer the browser ourselves then, in words, as for every refusal.
+//   - the answer comes as the link has room and waits here until the browser takes it: TPAGE_WINDOW bytes at most, which
+//     the Teensy never goes past (we tell it what the browser took). A slow phone never holds up the link, and a tablet
+//     steering through the bridge comes first on it both ways (TPAGE_LINK_SPARE here, the Teensy's xiaoSendOwn there).
+//   - nothing here waits: it runs in linkPoll(), from the loop and from the link task.
+#define TPAGE_PORT        8080
+#define TPAGE_CONNS       6          // browsers' connections held at once (a page opens a few)
+#define TPAGE_WINDOW      6144       // answer bytes held here for the browser
+#define TPAGE_REQ_MAX     4608       // the most of one request passed on (the Teensy takes no more: XWEB_RX_MAX)
+#define TPAGE_PIECE       240        // request bytes per PGN 150; the first line is read before anything goes (one piece)
+#define TPAGE_ACK_BYTES   1024       // the Teensy hears what the browser took every this many bytes
+#define TPAGE_LINK_SPARE  128        // room on the link left to the bridge's datagrams (beside BRIDGE_TX_SPARE)
+#define TPAGE_ASK_MS      10000      // a connection that asked nothing for this long is closed (a spare one)
+#define TPAGE_STILL_MS    15000      // nothing moved for this long (the Teensy sent nothing, the browser took nothing): given up
+
+// "since" is at least ms ago. Signed: a time stamp taken in this pass can be a millisecond later than the pass's own
+// time (firmware CLAUDE.md, gotcha 15), and the unsigned difference would read four billion.
+static inline bool tpageAfter(uint32_t now, uint32_t since, uint32_t ms) { return (int32_t)(now - since) >= (int32_t)ms; }
+
+struct TPageConn { NetworkClient c; uint32_t ms = 0; bool used = false; };
+struct TPage
+{
+    TPageConn conn[TPAGE_CONNS];
+    int      cur = -1;               // the connection being served (-1: none)
+    uint8_t  sid = 0;                // its session number (the Teensy's answers carry it)
+    bool     open = false;           // the Teensy has it ("open" sent)
+    bool     ended = false;          // the whole answer is here: the Teensy's "end", or an answer of our own
+    bool     lost = false;           // a piece of the answer went missing on the link
+    char     line[TPAGE_PIECE];      // the request's first line (or its first TPAGE_PIECE bytes)
+    uint16_t lineLen = 0;
+    bool     lineDone = false, lineSent = false;
+    uint32_t reqSent = 0;            // request bytes passed to the Teensy
+    uint8_t  ring[TPAGE_WINDOW];     // the answer, waiting for the browser
+    uint16_t head = 0, len = 0;
+    uint32_t got = 0, passed = 0, acked = 0;
+    uint32_t startMs = 0, moveMs = 0;
+    uint32_t drainMs = 0;            // the last time the rest of a refused request was read and dropped (0: none)
+    uint32_t req = 0, refused = 0, broken = 0;   // for the page: requests passed on, answered here, broken off
+} tpage;
+static NetworkServer tpageServer(TPAGE_PORT);
+static bool          tpageOn = false;
+
+static bool tpageRoom(int n) { return TeensyPort.availableForWrite() >= n + 6 + BRIDGE_TX_SPARE + TPAGE_LINK_SPARE; }
+
+// Why the module's page cannot be passed on now (nullptr: it can), in a few words for our page and the browser
+static const char* tpageNot(uint32_t now)
+{
+    if (cfg.apPass == DEFAULT_AP_PASS) return "this WiFi still has the password it came with: give it one of your own first (WiFi tab), because whoever opens the module's page can change how the tractor steers";
+    if (!teensy.teensyTalking(now))    return "the module (Teensy) does not answer on the link: is it on, with its GPS2 port set to the XIAO?";
+    if (!teensy.pageKnown(now))        return "the module's firmware is older than this XIAO program: install its newer firmware (Firmware tab, Module (Teensy) firmware), or open its page on the network cable";
+    return nullptr;
+}
+
+// An answer of our own instead of the module's: a short page, or for the page's own requests (/api/...) the error as
+// the module gives it, {"ok":false,"error":"..."}
+static void tpageOwn(int code, const char* why)
+{
+    const bool api = !strncmp(tpage.line, "GET /api/", 9) || !strncmp(tpage.line, "POST /api/", 10);
+    char body[900];
+    int bn = api ? snprintf(body, sizeof(body), "{\"ok\":false,\"error\":\"%s\"}", why)
+                 : snprintf(body, sizeof(body), "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                            "<title>Module page</title></head><body style=\"font-family:sans-serif;max-width:40em;margin:2em auto;padding:0 1em\">"
+                            "<h2>The module's page through the XIAO</h2><p>Not now: %s.</p><p><a href=\"http://%s/\">The XIAO page</a></p></body></html>", why, apIpText);
+    if (bn < 0) bn = 0;
+    if (bn >= (int)sizeof(body)) bn = sizeof(body) - 1;
+    const int hn = snprintf((char*)tpage.ring, 200, "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+                            code, code == 403 ? "Forbidden" : code == 503 ? "Service Unavailable" : "Gateway Timeout",
+                            api ? "application/json" : "text/html; charset=utf-8", bn);
+    memcpy(tpage.ring + hn, body, bn);
+    tpage.head = 0;
+    tpage.len = (uint16_t)(hn + bn);
+    tpage.open = false;
+    tpage.ended = true;
+    tpage.refused++;
+}
+
+// The session is over: the browser's connection closed (what it sent and we did not read is read first: closing with
+// it unread would reset the connection and the browser could lose the end of the answer), the Teensy told when the
+// browser went before the end
+static void tpageFinish(bool tellTeensy, uint32_t now)
+{
+    if (tpage.cur < 0) return;
+    if (tellTeensy && tpage.open && !tpage.ended && teensy.pageKnown(now) && tpageRoom(2))
+    {
+        const uint8_t d[2] = { 3, tpage.sid };
+        teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_WEB_IN, d, 2);
+    }
+    NetworkClient& c = tpage.conn[tpage.cur].c;
+    uint8_t junk[64];
+    for (int k = 0; k < 16 && c.available() > 0; k++) if (c.read(junk, sizeof(junk)) <= 0) break;
+    c.stop();
+    tpage.conn[tpage.cur].used = false;
+    tpage.cur = -1;
+    tpage.open = tpage.ended = tpage.lost = false;
+    tpage.len = 0;
+}
+
+// PGN 151 from the Teensy (called by teensy.poll): the answer's pieces into the ring, and its end
+static void tpageFromTeensy(const uint8_t* d, uint8_t n, uint32_t now)
+{
+    if (tpage.cur < 0 || !tpage.open || tpage.ended || d[1] != tpage.sid) return;   // an older request's: done with
+    if (d[0] == 3) { tpage.ended = true; tpage.moveMs = msStamp(now); return; }
+    if (d[0] != 2 || n < 4) return;
+    const uint16_t off = (uint16_t)(d[2] | d[3] << 8), k = n - 4;
+    if (off != (uint16_t)tpage.got || tpage.len + k > TPAGE_WINDOW) { tpage.lost = true; return; }
+    for (uint16_t i = 0; i < k; i++) tpage.ring[(tpage.head + tpage.len + i) % TPAGE_WINDOW] = d[4 + i];
+    tpage.len += k;
+    tpage.got += k;
+    tpage.moveMs = msStamp(now);
+}
+
+// One piece of the request to the Teensy
+static void tpagePiece(const uint8_t* b, int n)
+{
+    uint8_t d[4 + TPAGE_PIECE];
+    d[0] = 2;
+    d[1] = tpage.sid;
+    d[2] = (uint8_t)tpage.reqSent;
+    d[3] = (uint8_t)(tpage.reqSent >> 8);
+    memcpy(d + 4, b, n);
+    teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_WEB_IN, d, (uint8_t)(4 + n));
+    tpage.reqSent += n;
+}
+
+// The first line is in: passed on to the Teensy, or answered here
+static void tpageBegin(uint32_t now)
+{
+    NetworkClient& c = tpage.conn[tpage.cur].c;
+    const char* why = nullptr;
+    int code = 403;
+    if (!(c.localIP() == WiFi.softAPIP())) why = "it opens only from the XIAO's own WiFi, at its address on that network, port 8080";
+    else if (!strncmp(tpage.line, "POST /api/ota", 13) || !strncmp(tpage.line, "POST /api/revert", 16))
+        why = "the module's firmware is installed, or put back, on the XIAO page (Firmware tab, Module (Teensy) firmware), not through here";
+    else if ((why = tpageNot(now)) != nullptr) code = cfg.apPass == DEFAULT_AP_PASS ? 403 : 503;
+    if (why) { tpageOwn(code, why); return; }
+    if (!tpageRoom(4)) return;                                       // no room on the link now: the next pass
+    tpage.sid++;
+    const uint8_t d[4] = { 1, tpage.sid, (uint8_t)TPAGE_WINDOW, (uint8_t)(TPAGE_WINDOW >> 8) };
+    teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_WEB_IN, d, 4);
+    tpage.open = true;
+    tpage.reqSent = tpage.got = tpage.passed = tpage.acked = 0;
+    tpage.moveMs = msStamp(now);
+    tpage.req++;
+}
+
+static void tpagePoll(uint32_t now)
+{
+    if (!tpageOn) return;
+    // ---- new connections: a free place, or the oldest one that asked nothing gives way to it
+    while (tpageServer.hasClient())
+    {
+        int at = -1, idle = -1;
+        for (int i = 0; i < TPAGE_CONNS; i++)
+        {
+            if (!tpage.conn[i].used) { at = i; break; }
+            if (i != tpage.cur && tpage.conn[i].c.available() <= 0 && (idle < 0 || (int32_t)(tpage.conn[i].ms - tpage.conn[idle].ms) < 0)) idle = i;
+        }
+        if (at < 0 && idle < 0) break;                               // each one has a request waiting: the new one waits too
+        if (at < 0) { tpage.conn[idle].c.stop(); tpage.conn[idle].used = false; at = idle; }
+        tpage.conn[at].c = tpageServer.accept();
+        if (!tpage.conn[at].c) break;
+        tpage.conn[at].used = true;
+        tpage.conn[at].ms = msStamp(now);
+    }
+    // ---- the ones waiting for their turn: gone, or silent for too long
+    for (int i = 0; i < TPAGE_CONNS; i++)
+    {
+        TPageConn& w = tpage.conn[i];
+        if (!w.used || i == tpage.cur) continue;
+        if (!w.c.connected() || (w.c.available() <= 0 && tpageAfter(now, w.ms, TPAGE_ASK_MS))) { w.c.stop(); w.used = false; }
+    }
+    // ---- the next one with a request, the oldest first
+    if (tpage.cur < 0)
+    {
+        for (int i = 0; i < TPAGE_CONNS; i++)
+            if (tpage.conn[i].used && tpage.conn[i].c.available() > 0 && (tpage.cur < 0 || (int32_t)(tpage.conn[i].ms - tpage.conn[tpage.cur].ms) < 0)) tpage.cur = i;
+        if (tpage.cur < 0) return;
+        tpage.lineLen = 0;
+        tpage.lineDone = tpage.lineSent = false;
+        tpage.open = tpage.ended = tpage.lost = false;
+        tpage.head = tpage.len = 0;
+        tpage.drainMs = 0;
+        tpage.startMs = msStamp(now);
+    }
+    NetworkClient& c = tpage.conn[tpage.cur].c;
+    // ---- its first line, then the Teensy's (or our own answer)
+    if (!tpage.lineDone)
+    {
+        while (tpage.lineLen < TPAGE_PIECE && c.available() > 0)
+        {
+            const int b = c.read();
+            if (b < 0) break;
+            tpage.line[tpage.lineLen++] = (char)b;
+            if (b == '\n') break;
+        }
+        tpage.lineDone = tpage.lineLen == TPAGE_PIECE || (tpage.lineLen > 0 && tpage.line[tpage.lineLen - 1] == '\n');
+        if (!tpage.lineDone)
+        {
+            if (!c.connected() || tpageAfter(now, tpage.startMs, TPAGE_ASK_MS)) tpageFinish(false, now);
+            return;
+        }
+    }
+    if (!tpage.open && !tpage.ended) { tpageBegin(now); if (!tpage.open && !tpage.ended) return; }
+    // ---- the rest of the request, as the link has room (more than the Teensy takes is read and dropped)
+    if (tpage.open && !tpage.ended && !tpage.lost)
+    {
+        if (!teensy.pageKnown(now) || !teensy.teensyTalking(now))  // the Teensy went (a restart, the wires): nobody answers
+        {
+            if (tpage.got == 0) { tpageOwn(503, "the module (Teensy) stopped answering on the link"); }
+            else { tpage.broken++; tpageFinish(false, now); return; }
+        }
+        else
+        {
+            if (!tpage.lineSent && tpageRoom(4 + tpage.lineLen)) { tpagePiece((const uint8_t*)tpage.line, tpage.lineLen); tpage.lineSent = true; }
+            for (int k = 0; k < 4 && tpage.lineSent && c.available() > 0; k++)
+            {
+                uint8_t b[TPAGE_PIECE];
+                if (tpage.reqSent >= TPAGE_REQ_MAX) { c.read(b, sizeof(b)); continue; }
+                int n = c.available();
+                if (n > TPAGE_PIECE) n = TPAGE_PIECE;
+                if (n > (int)(TPAGE_REQ_MAX - tpage.reqSent)) n = TPAGE_REQ_MAX - tpage.reqSent;
+                const int room = TeensyPort.availableForWrite() - (4 + 6 + BRIDGE_TX_SPARE + TPAGE_LINK_SPARE);
+                if (room < 32 && room < n) break;                    // (one write takes at most half the buffer: ~500 bytes)
+                if (n > room) n = room;
+                n = c.read(b, n);
+                if (n <= 0) break;
+                tpagePiece(b, n);
+                tpage.moveMs = msStamp(now);
+            }
+        }
+    }
+    else if (tpage.ended)                                            // answered here: the rest of the request (an upload) is read and dropped,
+    {                                                                // or closing would reset the connection and lose our answer
+        uint8_t junk[256];
+        for (int k = 0; k < 16 && c.available() > 0; k++) if (c.read(junk, sizeof(junk)) > 0) tpage.drainMs = msStamp(now);
+    }
+    if (tpage.lost) { tpage.broken++; tpageFinish(true, now); return; }   // the browser gets a cut answer and asks again
+    // ---- the answer, as the browser takes it
+    const int fd = c.fd();
+    while (tpage.len > 0)
+    {
+        uint16_t k = tpage.len;
+        if (k > TPAGE_WINDOW - tpage.head) k = TPAGE_WINDOW - tpage.head;
+        const int r = fd < 0 ? -1 : ::send(fd, tpage.ring + tpage.head, k, MSG_DONTWAIT);
+        if (r > 0)
+        {
+            tpage.head = (uint16_t)((tpage.head + r) % TPAGE_WINDOW);
+            tpage.len -= r;
+            tpage.passed += r;
+            tpage.moveMs = msStamp(now);
+            continue;
+        }
+        if (fd < 0 || (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) { if (!tpage.ended) tpage.broken++; tpageFinish(true, now); return; }   // the browser went
+        break;
+    }
+    if (tpage.open && !tpage.ended && tpage.passed - tpage.acked >= TPAGE_ACK_BYTES && tpageRoom(4))
+    {
+        const uint8_t d[4] = { 4, tpage.sid, (uint8_t)tpage.passed, (uint8_t)(tpage.passed >> 8) };
+        teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_WEB_IN, d, 4);
+        tpage.acked = tpage.passed;
+    }
+    if (tpage.ended && tpage.len == 0 && (tpage.drainMs == 0 || (c.available() <= 0 && tpageAfter(now, tpage.drainMs, 300))))
+    { tpageFinish(false, now); return; }                             // all of it with the browser: closed, as the answer says
+    if (!c.connected() && tpage.len == 0) { if (tpage.open) tpage.broken++; tpageFinish(true, now); return; }   // the browser went
+    if (tpageAfter(now, tpage.moveMs, TPAGE_STILL_MS))                        // nothing moved for 15 s: given up
+    {
+        if (tpage.open && tpage.passed == 0 && tpage.len == 0)
+        {
+            if (tpageRoom(2)) { const uint8_t d[2] = { 3, tpage.sid }; teensy.sendFrame(LINK_SRC_XIAO, LINK_PGN_WEB_IN, d, 2); }
+            tpageOwn(504, "the module (Teensy) did not answer in 15 s");
+            tpage.moveMs = msStamp(now);
+        }
+        else { tpage.broken++; tpageFinish(true, now); }
+    }
+}
+
+static void tpageStart()
+{
+    teensy.onWeb = tpageFromTeensy;
+    tpageServer.begin();
+    tpageOn = true;
+}
+
+// What loop() does all the time, and every wait for a browser too: the link to the Teensy, the bridge, the module's page
 static void linkPoll(uint32_t now)
 {
     teensy.poll(now);
     bridgePoll(now);
+    tpagePoll(now);
 }
 
 // ---- the link task and the watchdog (the why is at the top, with the lock)
@@ -923,6 +1220,15 @@ static void apiState()
         j.close();
     }
     j.closeArr();
+    j.close();
+
+    j.obj("tpage");                            // the module's page through the XIAO (Nov 2026): http://<apIp>:8080/
+    const char* tn = tpageNot(now);
+    j.bo("ready", tn == nullptr);
+    j.str("why", tn ? tn : "");
+    j.u("req", tpage.req);
+    j.u("refused", tpage.refused);
+    j.u("broken", tpage.broken);
     j.close();
 
     j.obj("link");
@@ -1493,6 +1799,7 @@ void setup()
     wifiStart();
     bridgeStart();
     webSetup();
+    tpageStart();                                             // the module's page through the XIAO (port 8080)
     esp_task_wdt_config_t w = {15000, 0, true};               // restart if the program hangs for 15 s
     esp_task_wdt_reconfigure(&w);
     if (esp_task_wdt_add_user("program", &wdtProgram) != ESP_OK) { wdtProgram = nullptr; enableLoopWDT(); }

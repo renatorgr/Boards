@@ -22,13 +22,19 @@
 //                    PGN 146 (source 0x50): the WiFi bridge (22 Nov 2026): a datagram a program on our WiFi sent to
 //                    UDP 8888: [its IP, 4 bytes][the datagram]
 //                    PGN 147 (source 0x50): the WiFi bridge: corrections that program sent to UDP 2233: [the bytes]
+//                    PGN 150 (source 0x50): the module's page through the XIAO (Nov 2026), a browser on our WiFi:
+//                    [1 open][session][window LE16] a new request (window: answer bytes we hold for the browser),
+//                    [2][session][offset LE16][bytes] the request, [3][session] the browser went, [4][session][count
+//                    LE16] answer bytes the browser has taken so far (offsets and counts: the low 16 bits)
 //   Teensy -> XIAO   AgOpenGPS packets from UDP 8888 (source 0x7F): PGN 254, 239, 229, 200, ...
 //                    PGN 141 (source 0x7E): the module status JSON, once a second, in pieces
 //                    PGN 142 (source 0x7E): one line of the module's [status] log
 //                    PGN 145 (source 0x7E): the answer to ours: [command][block LE16][0 ok / 1 refused][text]
 //                    PGN 148 (source 0x7E): the WiFi bridge: a datagram for the program on our WiFi (its UDP 9999)
 //                    PGN 149 (source 0x7E): the WiFi bridge's state, once a second: [version][0 free / 1 a program on
-//                    the module's network cable has it / 2 the program on our WiFi has it]
+//                    the module's network cable has it / 2 the program on our WiFi has it]; version 2: it knows PGN 150
+//                    PGN 151 (source 0x7E): the module's page through the XIAO: [2][session][offset LE16][bytes] the
+//                    answer (never more than the window ahead of our count), [3][session] its end
 // Every frame: [0x80][0x81][source][pgn][length][data...][checksum = low 8 bits of the sum of the
 // bytes from source to the last data byte]. Frames with a wrong checksum are dropped.
 //
@@ -67,6 +73,9 @@ static inline uint32_t msStamp(uint32_t now) { return now != 0 ? now : 0xFFFFFFF
 #define LINK_PGN_BRIDGE         149      // Teensy -> XIAO: the WiFi bridge's state
 #define LINK_NET_MAX            251      // the longest datagram a PGN 146 carries (255 - the IP)
 #define LINK_BRIDGE_MS          3000     // no PGN 149 for this long: the Teensy does not know the bridge (older firmware)
+#define LINK_PGN_WEB_IN         150      // XIAO -> Teensy: the module's page through the XIAO, a browser's request (Nov 2026)
+#define LINK_PGN_WEB_OUT        151      // Teensy -> XIAO: its answer
+#define LINK_WEB_VERSION        2        // the PGN 149 version of a Teensy that knows PGN 150 / 151
 #define LINK_BRIDGE_FREE        0
 #define LINK_BRIDGE_CABLE       1        // a program on the module's network cable has the module
 #define LINK_BRIDGE_WIFI        2        // the program on our WiFi has it
@@ -109,9 +118,12 @@ public:
 
     // ---- the WiFi bridge (22 Nov 2026): what the Teensy says (PGN 149), and its datagrams for the program (PGN 148)
     uint8_t  bridgeState = LINK_BRIDGE_FREE;
+    uint8_t  bridgeVersion = 0;          // ... and its version (2: it shows its page through us too, PGN 150 / 151)
     uint32_t bridgeMs = 0;               // when the Teensy last said so (0 = never)
     void   (*onNetOut)(const uint8_t* d, uint8_t n) = nullptr;
+    void   (*onWeb)(const uint8_t* d, uint8_t n, uint32_t now) = nullptr;   // PGN 151: the module's page, for a browser on our WiFi
     bool bridgeKnown(uint32_t now) const { return bridgeMs != 0 && now - bridgeMs < LINK_BRIDGE_MS; }
+    bool pageKnown(uint32_t now) const { return bridgeKnown(now) && bridgeVersion >= LINK_WEB_VERSION; }
 
     bool teensyTalking(uint32_t now) const { return lastFrameMs != 0 && now - lastFrameMs < LINK_SILENT_MS; }
 
@@ -245,7 +257,8 @@ private:
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_LOG && n >= 8)     { logLine(d, n); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_FW && n >= 4)      { fwAnswer(d, n); return; }
         if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_NET_OUT)           { if (onNetOut && n) onNetOut(d, n); return; }
-        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_BRIDGE)            { if (n >= 2) { bridgeState = d[1]; bridgeMs = msStamp(now); } return; }
+        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_BRIDGE)            { if (n >= 2) { bridgeVersion = d[0]; bridgeState = d[1]; bridgeMs = msStamp(now); } return; }
+        if (src == LINK_SRC_TEENSY && pgn == LINK_PGN_WEB_OUT)           { if (onWeb && n >= 2) onWeb(d, n, now); return; }
         aogPacket(pgn, d, n, now);
     }
 

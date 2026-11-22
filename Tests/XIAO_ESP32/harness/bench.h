@@ -81,6 +81,8 @@ struct Teensy
     bool gps2On = true;             // the GPS2 port is set to "XIAO" in the Teensy's settings
     bool knowsBridge = true;        // firmware of 22 Nov 2026 or later: says the bridge's state (PGN 149)
     bool knowsFw = true;            // firmware of 2 Nov 2026 or later: takes an update over the link (PGN 145)
+    bool knowsPage = true;          // a firmware that shows its page through the XIAO (PGN 149 version 2, PGN 150 / 151)
+    size_t pageBytes = 136000;      // the size of its page (the real one is about 136 kB)
     bool engaged = false;           // autosteer is engaged (it then refuses an update, a subnet)
     bool moving = false;
     bool cable = false;             // a program is talking on its network cable
@@ -109,6 +111,12 @@ struct Teensy
     uint32_t fwDone = 0, fwRefused = 0, reverts = 0;
     std::string fwWhy;
     std::string lastStatus;         // the last status it sent whole
+    // its page through the XIAO (PGN 150 / 151)
+    std::vector<std::string> webAsked;      // the first line of every request it got that way
+    std::vector<std::string> webBodies;     // ... and the body of every POST /api/settings
+    std::string webPage;            // its page (pageBytes of it), as it sends it
+    uint32_t webOpens = 0, webGone = 0, webBroken = 0, webEnds = 0, old150 = 0, webOverWindow = 0;
+    uint32_t webMostAhead = 0;      // the most answer bytes it had on the way, not yet taken by the browser
     uint32_t statusN = 0;           // ... and its number ("n" in it)
     uint8_t brState = 0;            // 0 free, 1 the cable has the module, 2 the program on the XIAO's WiFi has it
     uint8_t told = 255;             // the state it last told the XIAO (PGN 149; 255: none yet) ...
@@ -149,6 +157,9 @@ private:
     void programPacket(const uint8_t* d, int n);
     void bridgeTick();
     void txTick();
+    void takeWeb(const uint8_t* d, uint8_t n);
+    void webServe();
+    void webPump();
     void boot();
 
     uint64_t backAt_ = 0, lastHelloMs_ = 0, xfLastMs_ = 0, xRxMs_ = 0, textWinMs_ = 0, brStateMs_ = 0, brCableMs_ = 0, brWifiMs_ = 0, brIgnoreMs_ = 0;
@@ -163,10 +174,20 @@ private:
     size_t xsPos_ = 0;
     uint8_t xsSet_ = 0, xsPart_ = 0, xsParts_ = 0;
     bool fwPending_ = false, fwActive_ = false, fwForce_ = false;
+    bool rebootWhenSent_ = false;
     uint16_t fwExpectSeq_ = 0;
     uint32_t fwSize_ = 0;
     std::vector<uint8_t> fwGot_;
     std::deque<uint8_t> in_;
+    struct Web
+    {
+        bool open = false, answered = false, gone = false, ending = false, rebootAfter = false;
+        uint8_t sid = 0;
+        uint16_t window = 0;
+        std::string rx, tx;
+        uint32_t rxGot = 0, txSent = 0, txTaken = 0;
+        uint64_t openMs = 0, moveMs = 0;
+    } web_;
 };
 
 // ---------------------------------------------------------------- a program (AgOpenWeb / AgOpenGPS) on a tablet
@@ -238,6 +259,8 @@ struct Link
 {
     bool fromAp = true;             // on the XIAO's own network (else: on the other network it joined)
     uint8_t ipLast = 20;
+    uint16_t port = 80;             // the XIAO's port it asks (8080: the module's page through the XIAO)
+    bool cutOk = false;             // an answer cut short is no rule break here (the link loses pieces on purpose)
     size_t upPerMs = 2000;          // bytes it sends a millisecond (a good link)
     size_t downPerMs = 2000;        // bytes it takes a millisecond
     size_t stallAt = SIZE_MAX;      // after this many bytes of the request: nothing for stallMs (a lost packet, a weak link)

@@ -67,21 +67,45 @@ public:
 };
 extern EthernetClass Ethernet;
 
-class EthernetClient
+// The Teensy core's Client (Client.h, with Print's availableForWrite): the web server serves the cable's
+// EthernetClient and the page through the XIAO (zXiao.ino, XiaoWebClient) through it
+class Client
+{
+public:
+    virtual ~Client() {}
+    virtual int     connect(IPAddress ip, uint16_t port) = 0;
+    virtual int     connect(const char* host, uint16_t port) = 0;
+    virtual size_t  write(uint8_t) = 0;
+    virtual size_t  write(const uint8_t* buf, size_t size) = 0;
+    virtual int     availableForWrite() { return 0; }
+    virtual int     available() = 0;
+    virtual int     read() = 0;
+    virtual int     read(uint8_t* buf, size_t size) = 0;
+    virtual int     peek() = 0;
+    virtual void    flush() = 0;
+    virtual void    stop() = 0;
+    virtual uint8_t connected() = 0;
+    virtual operator bool() = 0;
+};
+
+class EthernetClient : public Client
 {
 public:
     EthernetClient() : sock_(MAX_SOCK_NUM) {}
     explicit EthernetClient(uint8_t sock) : sock_(sock) {}
-    operator bool();
-    uint8_t connected();
-    int     available();
-    int     read();
-    int     read(uint8_t* buf, size_t n);
-    size_t  write(uint8_t b) { return write(&b, 1); }
-    size_t  write(const uint8_t* buf, size_t n);
-    int     availableForWrite();
-    void    flush() {}
-    void    stop();
+    int     connect(IPAddress, uint16_t) override { return 0; }
+    int     connect(const char*, uint16_t) override { return 0; }
+    operator bool() override;
+    uint8_t connected() override;
+    int     available() override;
+    int     read() override;
+    int     read(uint8_t* buf, size_t n) override;
+    int     peek() override { return -1; }
+    size_t  write(uint8_t b) override { return write(&b, 1); }
+    size_t  write(const uint8_t* buf, size_t n) override;
+    int     availableForWrite() override;
+    void    flush() override {}
+    void    stop() override;
     IPAddress remoteIP() { return IPAddress(192, 168, 5, 10); }
 private:
     fake::TcpConn* conn();

@@ -29,6 +29,8 @@
 // Only the firmware update takes over the loop, with the steering switched off.
 //
 // There is no password: anyone on the module's network can open the page.
+// A phone on the XIAO's own WiFi gets the same page through the XIAO (http://<the XIAO>:8080/, zXiao.ino): its request
+// comes over the link, through xiaoWeb, one more connection here (rq.cl). No firmware goes that way (WEB_USE_XIAO_PAGE).
 
 #include "zWebPage.h"            // the page itself (HTML, CSS, JavaScript), kept in flash
 #include "zWebJson.h"            // small JSON writer for the answers
@@ -41,6 +43,8 @@
 #define WEB_TIMEOUT_MS   3000
 #define WEB_FIRST_BYTE_MS 500    // a connection with no request yet (browser "preconnect") is closed after this
 #define OTA_MAX_KMH      1.0f    // no firmware update above this speed
+// The page through the XIAO carries no firmware: the XIAO page has its own way for the Teensy's (zXiao.ino, PGN 145)
+#define WEB_USE_XIAO_PAGE "through the XIAO: install the firmware, or go back to the previous one, on the XIAO page (Firmware tab, AiO module)"
 
 // The listening socket, FNET's own, accepted by webAccept(). NativeEthernet's EthernetServer is not used:
 // its poll() (NativeEthernetServer.cpp) calls fnet_socket_accept() with an address length it never sets
@@ -56,7 +60,9 @@ static bool webRunning = false;
 
 static struct
 {
-    EthernetClient client;
+    EthernetClient eth;           // a browser on the network cable
+    Client*  cl;                  // the request's connection: &eth, or &xiaoWeb (the page through the XIAO, zXiao.ino)
+    bool     viaXiao;             // ... the XIAO's
     bool     active;
     uint32_t startMs;
     char     head[WEB_HEAD_MAX + 1];
@@ -123,7 +129,7 @@ static char     webErrLast[96] = "";
 // headers and the small answers, which fit the empty socket buffer and go out without a wait. A body that
 // stays in memory (the page in flash, webBuf) is not written here: webTxStart keeps it and webLoop() writes
 // a piece per pass (webTxStep), so the loop never waits for the browser.
-static bool webWrite(EthernetClient& c, const char* d, size_t n)
+static bool webWrite(Client& c, const char* d, size_t n)
 {
     uint32_t t0 = millis();
     while (n > 0)
@@ -152,7 +158,7 @@ static bool webWrite(EthernetClient& c, const char* d, size_t n)
 // browser gone, or taking nothing for WEB_TIMEOUT_MS: the rest is dropped (counted in webDropN).
 static void webTxStep()
 {
-    EthernetClient& c = rq.client;
+    Client& c = *rq.cl;
     if (!c.connected()) { webDropN++; rq.txLeft = 0; return; }
     const int room = c.availableForWrite();
     if (room <= 0)
@@ -177,7 +183,7 @@ static void webTxStart(const char* body, size_t len)
     webTxStep();                                         // the first piece now; webLoop() sends the rest
 }
 
-static void webSend(EthernetClient& c, int code, const char* type, const char* body, size_t len)
+static void webSend(Client& c, int code, const char* type, const char* body, size_t len)
 {
     const char* text = code == 200 ? "OK" : code == 400 ? "Bad Request" : code == 404 ? "Not Found" :
                        code == 409 ? "Conflict" : code == 413 ? "Payload Too Large" : "Error";
@@ -193,7 +199,7 @@ static void webSend(EthernetClient& c, int code, const char* type, const char* b
 
 // GET /: the page, from flash. A browser that has this build's page sends its ETag back and gets "304 Not
 // Modified"; otherwise the page goes out in pieces from webLoop().
-static void webSendPage(EthernetClient& c)
+static void webSendPage(Client& c)
 {
     char h[260];
     if (webHeaderHas("If-None-Match", webEtag))
@@ -210,12 +216,12 @@ static void webSendPage(EthernetClient& c)
     webTxStart(WEB_PAGE, len);
 }
 
-static void webSendJson(EthernetClient& c, int code, const char* json)
+static void webSendJson(Client& c, int code, const char* json)
 {
     webSend(c, code, "application/json", json, strlen(json));
 }
 
-static void webSendError(EthernetClient& c, int code, const char* msg)
+static void webSendError(Client& c, int code, const char* msg)
 {
     char j[300];
     char e[200];
@@ -579,14 +585,14 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.raw("}");
 }
 
-static void apiStatus(EthernetClient& c)
+static void apiStatus(Client& c)
 {
     Json j(webBuf, sizeof(webBuf));
     statusJson(j, millis(), true);
     webSendJson(c, 200, webBuf);
 }
 
-FLASHMEM static void apiLog(EthernetClient& c)
+FLASHMEM static void apiLog(Client& c)
 {
     const uint32_t after = queryAfter();
     Json j(webBuf, sizeof(webBuf));
@@ -631,7 +637,7 @@ FLASHMEM static void settingsJson(Json& j)
     j.bo("wdt", wdtRunning);
 }
 
-FLASHMEM static void apiSettingsGet(EthernetClient& c)
+FLASHMEM static void apiSettingsGet(Client& c)
 {
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
@@ -641,7 +647,7 @@ FLASHMEM static void apiSettingsGet(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
-static void apiSettingsPost(EthernetClient& c, const char* body)
+static void apiSettingsPost(Client& c, const char* body)
 {
     WebSettings s = cfg;
     char v[24];
@@ -729,7 +735,7 @@ static void apiSettingsPost(EthernetClient& c, const char* body)
     webSendJson(c, 200, webBuf);
 }
 
-static void apiUm982Post(EthernetClient& c, const char* body)
+static void apiUm982Post(Client& c, const char* body)
 {
     char cmd[128];
     if (!formValue(body, "cmd", cmd, sizeof(cmd))) { webSendError(c, 400, "no command"); return; }
@@ -749,7 +755,7 @@ static void apiUm982Post(EthernetClient& c, const char* body)
     webSendJson(c, 200, "{\"ok\":true}");
 }
 
-FLASHMEM static void apiUm982Get(EthernetClient& c)
+FLASHMEM static void apiUm982Get(Client& c)
 {
     const uint32_t after = queryAfter();
     Json j(webBuf, sizeof(webBuf));
@@ -768,7 +774,7 @@ FLASHMEM static void apiUm982Get(EthernetClient& c)
 }
 
 // the receiver (zReceiver.ino): what it is, and the u-blox and UM982 settings
-static void apiGpsGet(EthernetClient& c)
+static void apiGpsGet(Client& c)
 {
     Json j(webBuf, sizeof(webBuf));
     receiverJson(j);
@@ -777,7 +783,7 @@ static void apiGpsGet(EthernetClient& c)
 
 // GET /api/rxdump: the settings "Read all settings" found different from the factory defaults, as a u-center
 // configuration file (the form of the AOGConfigOMatic files; zRxCheck.ino). Line by line: it can be longer than webBuf.
-FLASHMEM static void apiRxDump(EthernetClient& c)
+FLASHMEM static void apiRxDump(Client& c)
 {
     if (!rxCkDumpReady()) { webSend(c, 404, "text/plain", "No settings read yet", 20); return; }
     size_t total = 0;
@@ -789,7 +795,7 @@ FLASHMEM static void apiRxDump(EthernetClient& c)
     for (uint16_t i = 0;; i++) { const size_t n = rxCkDumpLine(i, webBuf, sizeof(webBuf)); if (!n || !webWrite(c, webBuf, n)) break; }
 }
 
-static void apiGpsPost(EthernetClient& c, const char* body)
+static void apiGpsPost(Client& c, const char* body)
 {
     char act[16], v[16];
     if (!formValue(body, "act", act, sizeof(act))) { webSendError(c, 400, "no action"); return; }
@@ -850,6 +856,7 @@ static void apiGpsPost(EthernetClient& c, const char* body)
 
 static void restartTeensy()
 {
+    if (rq.viaXiao) xiaoWebFlush();                        // the answer through the XIAO (zXiao.ino)
     netDelay(300);                                         // let the answer leave
     SCB_AIRCR = 0x05FA0004;
     for (;;) {}
@@ -860,7 +867,7 @@ static void restartTeensy()
 // the file is read and dropped from webLoop(), a piece per pass (webDrainStep), so the steering loop goes on
 // meanwhile. (It was read here in one go: refused because autosteer was on, the loop stopped for the whole
 // upload, 10 s for a 2 MB .hex, with the outputs as they were. Teensy harness, update-while-steering.)
-static void otaRefuse(EthernetClient& c, int code, const char* why, uint32_t got)
+static void otaRefuse(Client& c, int code, const char* why, uint32_t got)
 {
     StatusLog.line("[web] firmware update REFUSED: %s (old firmware kept)", why);
     if (rq.contentLength <= 8000000 && got < rq.contentLength && c.connected())
@@ -894,7 +901,7 @@ static bool tractorMoving()
 
 // POST /api/imu act=calib (TM171 gyro calibration, RAM) / act=install (new install calibration, flash) /
 // act=calibstop (TM171.ino)
-static void apiImuPost(EthernetClient& c, const char* body)
+static void apiImuPost(Client& c, const char* body)
 {
     char act[16];
     if (!formValue(body, "act", act, sizeof(act))) { webSendError(c, 400, "no act"); return; }
@@ -937,7 +944,7 @@ static void apiImuPost(EthernetClient& c, const char* body)
     webSendJson(c, 200, "{\"ok\":true}");
 }
 
-static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
+static void apiOta(Client& c, const uint8_t* pre, size_t preLen)
 {
     char v[8];
     const bool force = formValue(rq.query, "force", v, sizeof(v)) && !strcmp(v, "1");
@@ -990,7 +997,7 @@ static void apiOta(EthernetClient& c, const uint8_t* pre, size_t preLen)
 
 // POST /api/revert: the previous firmware kept in the flash (zOTA.ino) back over the running one. The same
 // conditions as an update, and no file: the Teensy has it already.
-static void apiRevert(EthernetClient& c)
+static void apiRevert(Client& c)
 {
     if (autosteerEngaged()) { webSendError(c, 409, "autosteer is engaged - disengage it first"); return; }
     if (tractorMoving())    { webSendError(c, 409, "the tractor is moving - stop first (on a bench, switch simulator mode on)"); return; }
@@ -1010,9 +1017,19 @@ static void apiRevert(EthernetClient& c)
 }
 
 // ---------------------------------------------------------------- request handling
+// The XIAO opened a new request while this one was still on (it is done with this one): over, with no answer
+void webXiaoDropped()
+{
+    if (!rq.active || rq.cl != &xiaoWeb) return;
+    rq.active = false;
+    rq.txLeft = 0;
+    rq.drainLeft = 0;
+    webDropN++;
+}
+
 static void webFinish()
 {
-    rq.client.stop();
+    rq.cl->stop();
     rq.active = false;
     rq.txLeft = 0;
     rq.drainLeft = 0;
@@ -1029,7 +1046,7 @@ static void webDone()
 // once it is all in, or 5 s after the last bytes, or never when the browser has gone
 static void webDrainStep()
 {
-    EthernetClient& c = rq.client;
+    Client& c = *rq.cl;
     static uint8_t drop[2048];
     for (int i = 0; i < 8 && rq.drainLeft; i++)          // up to 16 KB per pass of loop()
     {
@@ -1047,7 +1064,7 @@ static void webDrainStep()
 }
 
 // GET /api/diag: the firmware's own state, for the report (web page, Firmware tab)
-FLASHMEM static void apiDiag(EthernetClient& c)
+FLASHMEM static void apiDiag(Client& c)
 {
     const uint32_t now = millis();
     Json j(webBuf, sizeof(webBuf));
@@ -1090,6 +1107,8 @@ FLASHMEM static void apiDiag(EthernetClient& c)
     j.u("err", webErrN);
     j.u("drop", webDropN);
     j.str("lastErr", webErrLast);
+    j.u("viaXiao", xiao.webReq);                               // requests through the XIAO (zXiao.ino)
+    j.u("viaXiaoBroken", xiao.webBroken);
     j.close();
     j.u("logLines", StatusLog.nextSeq - 1);
     j.raw("}");
@@ -1098,7 +1117,7 @@ FLASHMEM static void apiDiag(EthernetClient& c)
 
 // GET /api/note: the installation note (zSettings.ino, EEPROM). POST /api/note: the body is the new text itself (plain
 // text, not a form), up to NOTE_MAX bytes; control characters other than tabs and line breaks are refused.
-FLASHMEM static void apiNoteGet(EthernetClient& c)
+FLASHMEM static void apiNoteGet(Client& c)
 {
     Json j(webBuf, sizeof(webBuf));
     j.raw("{");
@@ -1109,7 +1128,7 @@ FLASHMEM static void apiNoteGet(EthernetClient& c)
     webSendJson(c, 200, webBuf);
 }
 
-static void apiNotePost(EthernetClient& c, const char* body)
+static void apiNotePost(Client& c, const char* body)
 {
     const size_t n = rq.contentLength;
     if (n > NOTE_MAX) { webSendError(c, 413, "the note is too long (the limit counts bytes: an accented letter is 2)"); return; }
@@ -1121,7 +1140,7 @@ static void apiNotePost(EthernetClient& c, const char* body)
 static void webDispatch()
 {
     webReqN++;
-    EthernetClient& c = rq.client;
+    Client& c = *rq.cl;
     const bool get = !strcmp(rq.method, "GET"), post = !strcmp(rq.method, "POST");
     const char* body = rq.bodyAt >= 0 ? rq.head + rq.bodyAt : "";
     if      (get  && (!strcmp(rq.path, "/") || !strcmp(rq.path, "/index.html")))
@@ -1139,7 +1158,11 @@ static void webDispatch()
     else if (post && !strcmp(rq.path, "/api/imu"))      apiImuPost(c, body);     // AiO_WEB: TM171 calibration
     else if (get  && !strcmp(rq.path, "/api/note"))     apiNoteGet(c);           // the installation note (zSettings.ino)
     else if (post && !strcmp(rq.path, "/api/note"))     apiNotePost(c, body);
-    else if (post && !strcmp(rq.path, "/api/revert"))   apiRevert(c);            // the previous firmware back (zOTA.ino)
+    else if (post && !strcmp(rq.path, "/api/revert"))                             // the previous firmware back (zOTA.ino)
+    {
+        if (rq.viaXiao) webSendError(c, 403, WEB_USE_XIAO_PAGE);
+        else apiRevert(c);
+    }
     else if (post && !strcmp(rq.path, "/api/reboot"))
     {
         StatusLog.line("[web] restart requested");
@@ -1235,9 +1258,16 @@ void webLoop()
     }
     if (!rq.active)
     {
-        EthernetClient c = webAccept();
-        if (!c) return;
-        rq.client = c;
+        EthernetClient e = webAccept();
+        if (e) { rq.eth = e; rq.cl = &rq.eth; rq.viaXiao = false; }
+        else if (xiaoWeb.waiting)                           // a browser on the XIAO's WiFi (zXiao.ino): after the cable's
+        {
+            xiaoWeb.waiting = false;
+            if (xiaoWeb.gone) { xiaoWeb.stop(); return; }   // it went before its turn
+            rq.cl = &xiaoWeb;
+            rq.viaXiao = true;
+        }
+        else return;
         rq.active = true;
         rq.startMs = millis();
         rq.len = 0;
@@ -1247,7 +1277,7 @@ void webLoop()
         rq.txLeft = 0;
         rq.drainLeft = 0;
     }
-    EthernetClient& c = rq.client;
+    Client& c = *rq.cl;
     if (millis() - rq.startMs > WEB_TIMEOUT_MS ||
         (rq.len == 0 && millis() - rq.startMs > WEB_FIRST_BYTE_MS)) { if (rq.len) webDropN++; webFinish(); return; }
 
@@ -1278,6 +1308,7 @@ void webLoop()
         rq.head[rq.len] = '\0';
         if (!strcmp(rq.method, "POST") && !strcmp(rq.path, "/api/ota"))
         {
+            if (rq.viaXiao) { webSendError(c, 403, WEB_USE_XIAO_PAGE); webFinish(); return; }   // (the XIAO refuses it first)
             apiOta(c, (const uint8_t*)rq.head + rq.bodyAt, have);
             webDone();
             return;

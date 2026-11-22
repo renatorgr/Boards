@@ -37,6 +37,9 @@ struct XiaoStats
     uint32_t netOut;          // datagrams for it handed to the XIAO (PGN 148)
     uint32_t netOutDrop;      // ... dropped: Serial2's transmit buffer was full, or over 255 bytes
     uint32_t rtcmIn;          // bytes of its corrections written to the receiver (PGN 147)
+    // the page through the XIAO (Nov 2026): a browser on the XIAO's WiFi
+    uint32_t webReq;          // its requests (PGN 150 "open")
+    uint32_t webBroken;       // ... broken off: a piece lost on the link, or an answer the XIAO stopped taking
 };
 
 extern XiaoStats xiao;               // defined in zXiao.ino
@@ -53,5 +56,43 @@ bool    xiaoBridgeWifi();            // BRIDGE_WIFI
 uint8_t xiaoBridgeState();
 void    xiaoBridgeNoteCable();       // a program packet came in on the cable (UDP 8888)
 void    xiaoNetOut(const uint8_t* d, uint16_t n);   // one datagram for the program, through the XIAO
+
+// The module's page through the XIAO (zXiao.ino): a browser on the XIAO's own WiFi opens http://<the XIAO>:8080/,
+// the XIAO passes its request on over the link (PGN 150) and the answer goes back the same way (PGN 151). webLoop()
+// (zWeb.ino) serves it as one more connection, through xiaoWeb: one request at a time, as on the cable.
+#define XWEB_RX_MAX   4608           // the request: WEB_HEAD_MAX (zWeb.ino) and a margin; more is dropped (413 there)
+#define XWEB_TX_MAX   8192           // the answer, waiting for its turn on the link (as a socket's buffer, 8 kB)
+class XiaoWebClient : public Client
+{
+public:
+    int     connect(IPAddress, uint16_t) override { return 0; }
+    int     connect(const char*, uint16_t) override { return 0; }
+    size_t  write(uint8_t b) override { return write(&b, 1); }
+    size_t  write(const uint8_t* buf, size_t size) override;
+    int     availableForWrite() override;
+    int     available() override;
+    int     read() override;
+    int     read(uint8_t* buf, size_t size) override;
+    int     peek() override;
+    void    flush() override {}
+    void    stop() override;         // the answer is complete: the rest goes out, then "the end" (or dropped: the browser went)
+    uint8_t connected() override;
+    operator bool() override { return open; }
+
+    bool     open = false;           // a session: from the XIAO's "open" until the end of the answer went out
+    bool     waiting = false;        // opened, not taken by webLoop() yet
+    bool     gone = false;           // the browser went (the XIAO said so), or the session broke
+    bool     ending = false;         // stop(): the answer is complete
+    uint8_t  sid = 0;                // the session's number (the XIAO's)
+    uint16_t window = 0;             // answer bytes the XIAO holds for the browser (it says so at "open")
+    uint16_t rxLen = 0, rxPos = 0;   // the request
+    uint32_t rxGot = 0;              // request bytes the XIAO sent (each piece says where it starts)
+    uint16_t txHead = 0, txLen = 0;  // the answer bytes not sent yet (a ring)
+    uint32_t txSent = 0, txTaken = 0;    // answer bytes sent to the XIAO / passed on by it to the browser
+    uint32_t moveMs = 0;             // the last time the answer moved (a stuck one is given up)
+};
+extern XiaoWebClient xiaoWeb;
+void xiaoWebFlush();                 // before a restart: the last answer out to the XIAO (zXiao.ino)
+void webXiaoDropped();               // the session webLoop() has on xiaoWeb is over (zWeb.ino)
 
 #endif

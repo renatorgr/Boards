@@ -137,7 +137,7 @@ p.chk{text-align:right;margin:4px 0 0}
    <dt>Wheel angle (WAS)</dt><dd id="mWas">–</dd><dt>Autosteer</dt><dd id="mAct">–</dd>
    <dt>Ethernet cable</dt><dd id="mLink">–</dd><dt>Program</dt><dd id="mAog">–</dd><dt>RTCM corrections</dt><dd id="mRtcm">–</dd>
    <dt>Firmware</dt><dd id="mFw" class="mono">–</dd><dt>Processor</dt><dd id="mCpu">–</dd></dl>
-  <p class="note">The module's full page opens only over the Ethernet cable, on the module's network: <a class="mono" id="mPage" href="http://192.168.5.126/">http://192.168.5.126/</a>. Another network: WiFi tab, «Module network».</p></div>
+  <p class="note">The module's full page: on its Ethernet cable at <a class="mono" id="mPage" href="http://192.168.5.126/">http://192.168.5.126/</a>; from this XIAO's own WiFi at <a class="mono" id="mPageX" href="http://192.168.4.1:8080/">http://192.168.4.1:8080/</a><span id="mPageXNot"></span>. Another network: WiFi tab, «Module network».</p></div>
  <div class="card"><h2><span id="aName">Program</span> → module<span class="age" id="aAge"></span></h2>
   <div class="big" id="aKmh">–</div>
   <dl style="margin-top:6px"><dt>Autosteer requested</dt><dd id="aSt">–</dd><dt>Requested angle</dt><dd id="aAng">–</dd>
@@ -306,6 +306,8 @@ function renderVer(){
 function renderState(x){
  lastState=x;lastUp=x.up;if(x.chipId!==undefined){chipId=x.chipId;chipName=x.chip;}
  if(x.wifi.apIp){apAddr=x.wifi.apIp;$("apAt").textContent=apAddr;}
+ {const a=$("mPageX"),tp=x.tpage;a.href="http://"+apAddr+":8080/";a.textContent=a.href;   // the module's page through the XIAO (Nov 2026)
+  set("mPageXNot",tp&&!tp.ready?" (not now: "+tp.why+")":"",tp&&!tp.ready?"warn":"");}
  $("hdr").textContent=x.fw+" · "+(x.wifi.st==="ok"?x.wifi.ip:apAddr);
  const a=x.aog;
  set("aAge",a.ago254<0?"nothing received":ago(a.ago254>2?a.ago254:0),a.ago254<0||a.ago254>2?"warn":"");

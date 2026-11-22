@@ -904,6 +904,36 @@ void World::tickXiao(uint64_t ms)
     }
     tab.out.clear();
 
+    // the page through the XIAO: "open", the request in pieces, and the count of what the browser took
+    auto& wb = x.web;
+    if (wb.on)
+    {
+        if (!wb.opened && x.wire.size() + 10 <= 1024)
+        {
+            const uint8_t o[4] = { 1, wb.sid, (uint8_t)wb.window, (uint8_t)(wb.window >> 8) };
+            x.frame(150, o, 4);
+            wb.opened = true;
+        }
+        while (wb.opened && wb.reqSent < wb.req.size() && x.wire.size() + 250 <= 1024)
+        {
+            const size_t k = std::min<size_t>(240, wb.req.size() - wb.reqSent);
+            std::vector<uint8_t> f = { 2, wb.sid, (uint8_t)wb.reqSent, (uint8_t)(wb.reqSent >> 8) };
+            f.insert(f.end(), wb.req.begin() + wb.reqSent, wb.req.begin() + wb.reqSent + k);
+            if ((int)wb.reqSent != wb.dropPieceAt) x.frame(150, f.data(), f.size());
+            wb.reqSent += k;
+        }
+        const size_t t = std::min<size_t>(wb.takePerMs, wb.held.size());
+        wb.got += wb.held.substr(0, t);
+        wb.held.erase(0, t);
+        wb.taken += (uint32_t)t;
+        if (wb.taken != wb.ackedAt && (wb.taken - wb.ackedAt >= 1024 || wb.held.empty()) && x.wire.size() + 10 <= 1024)
+        {
+            const uint8_t a[4] = { 4, wb.sid, (uint8_t)wb.taken, (uint8_t)(wb.taken >> 8) };
+            x.frame(150, a, 4);
+            wb.ackedAt = wb.taken;
+        }
+    }
+
     // its bytes reach the module at 460800 baud
     auto& s = aio.dev.serial[2];
     x.credit += 46.08;
@@ -935,7 +965,20 @@ void World::xiaoHears(const uint8_t* b, size_t n, uint64_t ms)
         const std::vector<uint8_t> data(x.in.begin() + at + 5, x.in.begin() + at + need - 1);
         x.frames++;
         x.pgns[pgn]++;
-        if (src == 0x7E && pgn == 149 && data.size() >= 2) { x.state = data[1]; x.stateMs = ms; x.states++; }
+        if (src == 0x7E && pgn == 149 && data.size() >= 2) { x.state = data[1]; x.stateMs = ms; x.states++; x.version = data[0]; }
+        else if (src == 0x7E && pgn == 151 && data.size() >= 2)
+        {
+            auto& wb = x.web;
+            if (!wb.on || data[1] != wb.sid) {}                         // an older request's: the XIAO is done with it
+            else if (data[0] == 2 && data.size() >= 4)
+            {
+                const uint16_t off = (uint16_t)(data[2] | data[3] << 8);
+                if (off != (uint16_t)(wb.taken + wb.held.size())) wb.badOffset++;
+                wb.held.append(data.begin() + 4, data.end());
+                if (wb.held.size() > wb.window) wb.overWindow++;
+            }
+            else if (data[0] == 3) wb.ended = true;
+        }
         else if (src == 0x7E && pgn == 148)
         {
             x.toProgram++;
@@ -1094,6 +1137,50 @@ Http World::http(const std::string& method, const std::string& path, const std::
     if (method == "POST") r += "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: " + std::to_string(body.size()) + "\r\n";
     r += "Connection: close\r\n\r\n" + body;
     return httpRaw(r, timeoutMs);
+}
+
+Http World::httpXiaoRaw(const std::string& request, uint32_t timeoutMs, bool sayGone)
+{
+    Http h;
+    auto& wb = xiao.web;
+    const uint32_t speed = wb.takePerMs;
+    const int drop = wb.dropPieceAt;
+    wb = Xiao::Web();
+    wb.takePerMs = speed;
+    wb.dropPieceAt = drop;
+    if (!xiao.fitted) { run(std::min<uint32_t>(timeoutMs, 200)); return h; }
+    wb.sid = (uint8_t)++xiao.webSessions;
+    wb.req = request;
+    wb.on = true;
+    const uint64_t t0 = fake::clockUs;
+    runUntil([&] { return wb.ended && wb.held.empty(); }, timeoutMs);
+    h.ms = (uint32_t)((fake::clockUs - t0) / 1000);
+    if (!wb.ended && sayGone)                                   // the phone went: the XIAO says so
+    {
+        const uint8_t c[2] = { 3, wb.sid };
+        xiao.frame(150, c, 2);
+    }
+    wb.on = false;
+    const std::string& r = wb.got;
+    const size_t he = r.find("\r\n\r\n");
+    if (r.compare(0, 5, "HTTP/") == 0 && he != std::string::npos)
+    {
+        h.code = atoi(r.c_str() + 9);
+        h.head = r.substr(0, he);
+        h.body = r.substr(he + 4);
+        if (h.body.size() && (h.body[0] == '{' || h.body[0] == '[')) h.json = Json::parse(h.body, h.jsonOk);
+    }
+    return h;
+}
+
+Http World::httpXiao(const std::string& method, const std::string& path, const std::string& body,
+                     const std::vector<std::string>& headers, uint32_t timeoutMs)
+{
+    std::string r = method + " " + path + " HTTP/1.1\r\nHost: 192.168.5.1:8080\r\n";
+    for (auto& x : headers) r += x + "\r\n";
+    if (method == "POST") r += "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: " + std::to_string(body.size()) + "\r\n";
+    r += "Connection: close\r\n\r\n" + body;
+    return httpXiaoRaw(r, timeoutMs);
 }
 
 Json World::status()

@@ -135,7 +135,7 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 ### Companion modules
 | File | Purpose |
 |------|---------|
-| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144 / 145, frames to and from UDP; PGN 145 takes the loop over (`xiaoFwRun`, loop step 20) while a firmware comes over the link; the WiFi bridge (PGN 146-149: a program on the XIAO's own WiFi, `xiaoTakeNet` → `programPacket`, `xiaoNetOut`, `xiaoBridgeTick`) |
+| `zXiao.ino` / `.h` | XIAO ESP32 on Serial2 (460800): hello, PGN 141 / 142 / 143 / 144 / 145, frames to and from UDP; PGN 145 takes the loop over (`xiaoFwRun`, loop step 20) while a firmware comes over the link; the WiFi bridge (PGN 146-149: a program on the XIAO's own WiFi, `xiaoTakeNet` → `programPacket`, `xiaoNetOut`, `xiaoBridgeTick`); the page through the XIAO (PGN 150 / 151, `xiaoWeb`, `xiaoTakeWeb`, `xiaoWebPump`) |
 | `zMachine.ino` | Machine module (IP .123: official Machine_UDP_v5, sprayer Nano / ESP32, seed drill ESP32) on UDP 9999: hello reply PGN 123, PGN 237, PGN 160, plus the program's PGN 229 (sections 1-64), for the Machine tab (read only) |
 
 ## Architecture Overview
@@ -236,7 +236,12 @@ The WiFi bridge (22 Nov 2026, README "WiFi bridge"): 146 a datagram a program on
 (XIAO → Teensy: `[its IP, 4 bytes][the datagram]`, taken by `programPacket(..., viaXiao = true)`), 147 its corrections
 from UDP 2233 (XIAO → Teensy, to the receiver), 148 a datagram for that program's UDP 9999 (Teensy → XIAO, which sends it
 to that address only), 149 the bridge's state (Teensy → XIAO, once a second and at each change: `[version 1][0 free /
-1 a program on the cable has the module / 2 the program on the WiFi has it][0]`; a XIAO that does not hear it sends no 146).
+1 a program on the cable has the module / 2 the program on the WiFi has it][0]`; a XIAO that does not hear it sends no 146;
+version 2: it knows 150 / 151). The module's page through the XIAO (XIAO README "The module's page through the XIAO"): 150 a
+browser's request on the XIAO's port 8080 (XIAO → Teensy: `[1 open][session][window LE16]`, `[2][session][offset LE16][bytes]`,
+`[3][session]` the browser went, `[4][session][count LE16]` answer bytes the browser took), 151 the answer (Teensy → XIAO:
+`[2][session][offset LE16][≤240 bytes]`, `[3][session]` its end; never more than the window ahead of the count). `webLoop()`
+serves it through `xiaoWeb` (a `Client`, zXiao.h) as one more connection; `/api/ota` and `/api/revert` are refused that way.
 The section modules on the XIAO's WiFi (sprayer, seed drill; XIAO README "Section modules on the XIAO's WiFi") never
 come onto the link: the XIAO itself passes the program's datagrams on to them and theirs on to the program, each to
 one address (`bridgeToModules()`, `bridgeFromModules()`), and the Teensy's Machine tab does not see them.
