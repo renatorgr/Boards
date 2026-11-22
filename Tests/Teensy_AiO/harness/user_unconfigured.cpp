@@ -113,6 +113,7 @@ SCENARIO(User::Unconfigured, "eeprom-damaged", "Stored steer settings damaged: t
     w.run(5000);
     const Json st = w.status();
     must("json", w.badStatus == 0, "The web page's status stays valid JSON with odd stored settings", w.lastBadStatus);
+    tell("says-damaged", told(w, 0, 0, "damaged"), "Says the stored settings were damaged", logSince(w, 0, 300));
     w.tractor.kmh = 6;
     engage(w, true);
     w.run(5000);
@@ -123,5 +124,18 @@ SCENARIO(User::Unconfigured, "eeprom-damaged", "Stored steer settings damaged: t
     w.run(8000);
     must("recovers", w.status()["steerCfg"]["counts"].num() == w.aow.ss.counts, "AgOpenWeb's settings replace them");
     w.ruleRightWay = false;
+    reportRules(w);
+}
+
+SCENARIO(User::Unconfigured, "eeprom-subnet-damaged", "Stored subnet damaged: the mark 2400 is right, the subnet reads 255.255.255", { Kit::PumaCytron })
+{
+    World w(kit);
+    auto& e = w.aio.dev.eeprom;
+    e[0] = 0x60; e[1] = 0x09;                  // EEP_Ident 2400 (Autosteer.ino); the steer settings as new
+    e[60] = e[61] = e[62] = 0xFF;
+    w.startUp();
+    must("default-subnet", w.aio.dev.ip == IPAddress(192, 168, 5, 126), "Starts on 192.168.5 (reachable), not 255.255.255",
+         w.aio.dev.ip.str());
+    tell("says-damaged", told(w, 0, 0, "damaged"), "Says the stored subnet was damaged", logSince(w, 0, 300));
     reportRules(w);
 }

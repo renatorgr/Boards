@@ -31,7 +31,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | A refused firmware update no longer stops the steering loop ([Firmware update](#firmware-update-over-the-network)). Short steering packets are dropped ([Network stack](#network-stack)); a bad subnet from the program is refused ([Web page](#web-page)). Not compiled in the cloud. |
+| 22 Nov 2026 | Refused update keeps steering ([Firmware update](#firmware-update-over-the-network)). Short packets dropped ([Network stack](#network-stack)), bad PGN 201 subnet refused ([Web page](#web-page)). Damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled in the cloud. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
 | 17 Nov 2026 | Changing the steer switch mode in the program with the module running no longer leaves autosteer off until a restart ([Steering](#steering)). The [kickout delay](#settings) and the [WAS check](#was-check)'s times always count: on an even millisecond they were skipped. |
@@ -353,6 +353,10 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 **For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
 **Steer switch mode** (the program's None, Switch or Button): a change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages. A steer switch left closed when the mode changes to Switch must be opened and closed again. Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
+
+**Min To Move and the Max Limit:** the PWM never goes above the Max Limit. With Min To Move set above it, the PWM is kept at the Max Limit and the Messages say so once. Until 22 Nov 2026 the PWM then went up to Min To Move x 1.2 (215 with a Max Limit of 100).
+
+**Stored settings:** the steer settings, the steer config and the subnet are kept in the EEPROM and checked at start-up. A value the program cannot send (an erased or damaged EEPROM reads 0xFF: every setting on, counts per degree not a number, subnet 255.255.255) gives that part a new board's defaults, saved, with a line in the Messages; the program's next settings put its own back. Until 22 Nov 2026 they were used as read: an IBT2 was then driven as a Cytron with the relay inverted, full lock, nobody asked.
 
 AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
 

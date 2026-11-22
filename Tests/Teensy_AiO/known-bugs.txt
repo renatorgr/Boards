@@ -1,6 +1,3 @@
 # Known bugs: the harness reports them but does not fail the run. One per line:
 #   <scenario>/<check key>[@<kit>]  why, and what fixes it
 # Take a line out when the fix is merged (the harness says "passes now" when one is fixed).
-eeprom-damaged/steer-only-when-asked  Autosteer.ino autosteerSetup takes the stored steer settings / config without a check: a 0xFF byte turns every flag on (an IBT2 driven as a Cytron with the relay inverted: full lock, nobody asked). Check flags 0/1 and counts > 0, else the defaults
-eeprom-damaged/no-output-nan@f9p-ibt2  the same
-min-above-max-pwm/max-limit  AutosteerPID.ino calcSteeringPID: with Min To Move above the Max Limit, the low PWM (Min x 1.2) is above it too and the PWM goes up to it. Keep lowPWM and minPWM at or below highPWM

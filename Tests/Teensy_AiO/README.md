@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | The firmware fixes take their bugs out of `known-bugs.txt` ([What it found](#what-it-found)). |
+| 22 Nov 2026 | The five firmware bugs fixed: `known-bugs.txt` is empty, 2 more "not told" are told, and `eeprom-subnet-damaged` is new (54 scenarios, 116 runs, about 765 checks) ([What it found](#what-it-found), [The users](#the-users)). |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
 
 ## Running it
@@ -92,7 +92,7 @@ puts the report in the run's summary and as a download.
 | User | Scenarios |
 |---|---|
 | Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering) |
-| Never set up | `new-board-no-program`, `no-steer-settings` (AgOpenWeb never sent 252), `no-ads1115` (GPS only, .120), `nothing-plugged`, `cable-late`, `eeprom-damaged` |
+| Never set up | `new-board-no-program`, `no-steer-settings` (AgOpenWeb never sent 252), `no-ads1115` (GPS only, .120), `nothing-plugged`, `cable-late`, `eeprom-damaged`, `eeprom-subnet-damaged` |
 | Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps` |
 | Wrong wiring | `gps-on-gps2-port`, `gps-wrong-baud`, `imu-other-baud`, `was-not-connected`, `was-signal-to-ground`, `was-3wire-differential`, `keya-can-unplugged`, `keya-powered-late`, `tablet-other-subnet` |
 | Failures in the field | `was-unplugged-steering`, `was-wire-cut`, `keya-lost`, `keya-fault`, `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `too-fast`, `packet-loss`, `short-settings-packet`, `udp-garbage`, `gps-lost`, `rtk-lost`, `imu-frozen`, `web-hammer`, `bad-requests`, `ntrip-flood`, `millis-wrap`, `update-while-steering`, `update-bad-files`, `update-and-back` |
@@ -123,10 +123,12 @@ The first run (21 Nov 2026) found five things in the firmware, listed in `known-
   and while steering. The XIAO's subnet change (`netSetSubnet`) refuses all three. Fixed 22 Nov 2026: PGN 201 goes
   through `netSetSubnet` too.
 - The stored steer settings are taken from the EEPROM without a check: 0xFF bytes after a good mark turn every flag
-  on, and an IBT2 is then driven as a Cytron with the relay inverted (full lock, nobody asked).
-- Min To Move above the Max Limit lets the PWM go above the Max Limit.
+  on, and an IBT2 is then driven as a Cytron with the relay inverted (full lock, nobody asked). Fixed 22 Nov 2026:
+  a value the program cannot send gives a new board's defaults, said in the messages (the subnet too).
+- Min To Move above the Max Limit lets the PWM go above the Max Limit. Fixed 22 Nov 2026: the PWM stays at the Max
+  Limit, said in the messages.
 
-And 25 "not told": for example the wheels turning the other way (Invert WAS or Motor direction) is reported as
+And 25 "not told" (23 after the fixes of 22 Nov 2026): for example the wheels turning the other way (Invert WAS or Motor direction) is reported as
 "did not follow", counts per degree 0 as an angle of millions of degrees, a current sensor ticked but not fitted
 stops autosteer with no message, and a restart after a power dip is not shown on AgOpenWeb's screen.
 
