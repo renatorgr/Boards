@@ -19,6 +19,7 @@ text to paste into GitHub as a raw markdown code block.
 | `Sprayer/Sprayer_ESP32/`, `Sprayer/Sprayer_Nano/` | sprayer section controller (ESP32 relay board; the older Nano) | their `README.md` |
 | `AiO_Micro45_XIAO_C3/`, `AiO_Std45_XIAO_C3/` | KiCad adapter boards XIAO → GPS2 socket, with JLCPCB files | their `README.md` |
 | `Tests/ESP32_Modules/` | harness: the real sprayer and seed drill programs on a pretend ESP32, five kinds of user, all four boards | its `README.md` |
+| `Tests/Teensy_AiO/` | harness: the real Teensy firmware on a pretend Teensy and tractor, five kinds of user, four kits | its `README.md` |
 
 ## Rules for every change
 
@@ -37,6 +38,9 @@ text to paste into GitHub as a raw markdown code block.
   `// ==== end shared "name"` (Wi-Fi, web helpers, network settings, PGN handling, relays). Change both the same way,
   or move a line out of the block: `.github/scripts/check_shared_blocks.py` compares them on every pull request
   (the "Shared code" check). What is only one module's (sensors, rate, the cable, the relays setting) stays outside.
+- A change to `Firmware/v4.5_AiO_WEB` runs `Tests/Teensy_AiO/run.sh` (the "Teensy harness" check; about a minute, needs
+  `g++-multilib`): it builds the firmware for the PC, so it works in the cloud too, and is not a Teensy compile. Run
+  it before the pull request; a fixed bug comes out of `Tests/Teensy_AiO/known-bugs.txt`.
 - A change to `Sprayer/Sprayer_ESP32` or `Seeder/Seeder_ESP32` runs `Tests/ESP32_Modules/run.sh` (the "Module harness"
   check; about a minute, needs `g++-multilib`). Run it before the pull request. A change to what a program sends or saves
   may need the harness's bench to follow; a fixed bug comes out of `Tests/ESP32_Modules/known-bugs.txt`.

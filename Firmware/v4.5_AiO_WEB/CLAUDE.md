@@ -40,6 +40,12 @@ with gcc 15 has not been checked).
 are blocked there. Read the code carefully, say in the pull request that it was not compiled, and Renato
 compiles it before merging. Do not commit a `.hex` built from code he has not compiled.
 
+`Tests/Teensy_AiO/run.sh` does run there: it builds this firmware for the PC with a pretend Teensy core and plays
+five kinds of user against it on a pretend tractor (the "Teensy harness" check; its README). Run it after a change.
+Its `tools/prep.py` changes a few things in a copy (the `asm` interrupt entries, the RAM2 crash record addresses,
+`FLASH_BASE_ADDR` in `FlashTxx.h`, `otaPutByte` in `zOTA.ino`): when one of them moves, prep.py stops with a message
+or the harness fails at once, so the harness follows the change in the same pull request.
+
 There is no PlatformIO build (`platformio.ini`) and no `src/` folder: the Arduino IDE builds every `.ino`,
 `.cpp` and `.c` in this folder, and ignores the XIAO subfolders.
 

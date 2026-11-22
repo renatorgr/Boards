@@ -103,7 +103,7 @@ simulator does in `Firmware/simulator`.
 
 ## What it does not test
 
-- The Teensy and the XIAO programs (the Teensy one does not build here; a later step).
+- The Teensy firmware (its own harness: `Tests/Teensy_AiO`) and the XIAO program.
 - The web pages' own JavaScript (the simulator check does that) and the radio, the real timing and the ESP32 core
   itself: the pretend core does what the real one is documented to do, nothing more.
 - A message with the right header whose 8-bit checksum matches by chance (once in 256): the AgOpenGPS protocol

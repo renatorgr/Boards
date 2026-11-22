@@ -1,0 +1,63 @@
+# Teensy harness check.
+# Builds the real Teensy firmware (Firmware/v4.5_AiO_WEB) for the PC, with a pretend Teensy core, and runs
+# Tests/Teensy_AiO: five kinds of user (careful, never set up, wrong settings, wrong wiring, failures in the field)
+# on four kits, checking what the steering outputs really do. A failing "must" check that known-bugs.txt does not
+# list fails the run; the report goes in the run's summary and as a download. Plain g++ with 32-bit support, no
+# packages. (The Teensy build itself is the "Teensy firmware" check.)
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Teensy harness
+
+on:
+  pull_request:
+    paths:
+      - 'Firmware/v4.5_AiO_WEB/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '!Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/**'
+      - '!Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin/**'
+      - 'Tests/Teensy_AiO/**'
+      - '!Tests/**/*.md'
+      - '.github/workflows/teensy-harness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Firmware/v4.5_AiO_WEB/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - '!Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/**'
+      - '!Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin/**'
+      - 'Tests/Teensy_AiO/**'
+      - '!Tests/**/*.md'
+      - '.github/workflows/teensy-harness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  users:
+    name: users
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the 32-bit compiler support
+        run: sudo apt-get update -q && sudo apt-get install -y -q g++-multilib
+
+      - name: Build the firmware for the PC and run the users
+        run: Tests/Teensy_AiO/run.sh
+
+      - name: Report in the summary
+        if: always()
+        run: cat Tests/Teensy_AiO/build/report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: teensy-harness-report
+          path: Tests/Teensy_AiO/build/report.md
+          if-no-files-found: ignore
