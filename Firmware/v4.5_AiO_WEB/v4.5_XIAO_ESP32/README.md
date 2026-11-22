@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable to the module joins the XIAO's network and AgOpenWeb / AgOpenGPS reach the module through the XIAO. Off from new; switched on in the WiFi tab. The `.bin` files are rebuilt. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable joins the XIAO's network and AgOpenWeb / AgOpenGPS reach the module through the XIAO. Off from new. The `.bin` files are rebuilt. A harness plays five kinds of user against it ([What was tested](#what-was-tested)). |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -249,6 +249,9 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
   - the Teensy's side runs in the Teensy harness (`Tests/Teensy_AiO`) with a pretend XIAO and a pretend tablet on its WiFi: steering 40 s on a line through the bridge on the four kits, 100 steering packets a second with nothing dropped, the cable's program first, the XIAO or the tablet gone while steering (outputs off within 2.5 s);
   - the pages were opened in the simulator's browser check;
   - **not yet tried on a real XIAO, tablet and tractor**: the WiFi itself, the tablet's mobile data for the corrections, and AgOpenWeb / AgOpenGPS finding the module on this network are what the first bench test has to show.
+- The harness (22 Nov 2026, `Tests/XIAO_ESP32`, the "XIAO harness" check on GitHub): this program itself runs on a PC on a pretend XIAO, with a pretend Teensy on its link, phones on its page and a tablet steering through the bridge.
+  - Five kinds of user (careful, never set up, wrong settings, wrong connections, a bad link), 55 scenarios on the ESP32C3 and the ESP32S3, with memory checks on.
+  - What it found is in its README and in its `known-bugs.txt`: four things in this program, not fixed yet. The two that matter in the field: a browser's request that arrives late, or a refused file for the Teensy, holds the program for seconds, and the WiFi bridge stands still that long.
 
 ## Credits and licence
 

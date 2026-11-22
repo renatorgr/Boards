@@ -21,6 +21,8 @@ Hardware and firmware for the AgOpenGPS **AiO v4.5** autosteer boards (Micro and
 | [`Sprayer/Sprayer_ESP32`](Sprayer/Sprayer_ESP32) | Program for an ESP32 relay board (the ESP32_Relay_X8, or a plain ESP32 with relay modules, up to 16 relays) that runs the sprayer sections over Wi-Fi. Opens and closes the section valves on command from AgOpenWeb or AgOpenGPS (the official machine-module messages), reports boom pressure and flow, and has its own web page for setup and updates. |
 | [`Sprayer/Sprayer_Nano`](Sprayer/Sprayer_Nano) | The earlier Arduino Nano + Ethernet version of the same sprayer controller. |
 | [`Tests/ESP32_Modules`](Tests/ESP32_Modules) | Test harness: runs the real sprayer and seed drill programs on a PC with a pretend board, and plays five kinds of user against them (careful, never set up, wrong settings, modules or sensors in the wrong place, a bad network). Runs on every change to either program. |
+| [`Tests/Teensy_AiO`](Tests/Teensy_AiO) | Test harness: runs the real Teensy firmware on a PC with a pretend Teensy and tractor, and plays five kinds of user against it on four kits (careful, never set up, wrong settings, wrong wiring, failures in the field). Runs on every change to the firmware. |
+| [`Tests/XIAO_ESP32`](Tests/XIAO_ESP32) | Test harness: runs the real XIAO program on a PC with a pretend XIAO, a pretend Teensy on its link, phones on its page and a tablet on its WiFi bridge, and plays five kinds of user against it (careful, never set up, wrong settings, wrong connections, a bad link). Runs on every change to the XIAO program. |
 
 Each folder has its own README with the details.
 

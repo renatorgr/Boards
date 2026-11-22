@@ -165,8 +165,9 @@ changes is not found any more.
 - The Teensy build itself (the "Teensy firmware" check does it), the real timing of the 600 MHz chip, and the
   hardware: the pretend core does what the real one is documented to do, nothing more. A flash write here takes
   pretend time but never fails.
-- The web page's own JavaScript (the simulator check does that) and the XIAO program itself: the XIAO here is a
-  pretend one that follows the same rules, with no WiFi behind it (no delay, no lost packet in the air).
+- The web page's own JavaScript (the simulator check does that) and the XIAO program itself (its own harness:
+  `Tests/XIAO_ESP32`): the XIAO here is a pretend one that follows the same rules, with no WiFi behind it (no
+  delay, no lost packet in the air).
 - The dual F9P on the GPS2 port, the XIAO link's firmware update and subnet command (PGN 144, 145; the status, log
   and WiFi bridge frames, PGN 141-143 and 146-149, are read by the pretend XIAO), the correction radio on Serial3, the TM171
   calibration, the receiver configuration from the page and the machine module tab.
