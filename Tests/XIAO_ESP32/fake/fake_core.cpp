@@ -16,6 +16,7 @@ namespace fake
 {
 Device* cur = nullptr;
 uint64_t clockMs = 100000;      // the bench was switched on a while ago
+uint32_t freeHeap = 182000;
 std::function<void()> onMs;
 
 // The program's other tasks: each one whose sleep is over runs until it sleeps again (vTaskDelay throws TaskSleep).
@@ -265,7 +266,7 @@ esp_reset_reason_t esp_reset_reason() { return cur->resetReason; }
 // ---------------------------------------------------------------- ESP
 EspClass ESP;
 uint64_t EspClass::getEfuseMac() { return cur->mac; }
-uint32_t EspClass::getFreeHeap() { return 182000; }
+uint32_t EspClass::getFreeHeap() { return fake::freeHeap; }
 uint32_t EspClass::getMinFreeHeap() { return 151000; }
 uint32_t EspClass::getSketchSize() { return 1167872; }
 uint32_t EspClass::getFreeSketchSpace() { return (uint32_t)cur->updPartition; }

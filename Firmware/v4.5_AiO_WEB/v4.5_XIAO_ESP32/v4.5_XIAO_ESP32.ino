@@ -637,6 +637,7 @@ static void bridgePoll(uint32_t now)
 #define TPAGE_PIECE       240        // request bytes per PGN 150; the first line is read before anything goes (one piece)
 #define TPAGE_ACK_BYTES   1024       // the Teensy hears what the browser took every this many bytes
 #define TPAGE_LINK_SPARE  128        // room on the link left to the bridge's datagrams (beside BRIDGE_TX_SPARE)
+#define TPAGE_HEAP_LOW    32768      // free memory under this: the page waits (no new browser, no answer bytes sent on)
 #define TPAGE_ASK_MS      10000      // a connection that asked nothing for this long is closed (a spare one)
 #define TPAGE_STILL_MS    15000      // nothing moved for this long (the Teensy sent nothing, the browser took nothing): given up
 
@@ -663,6 +664,9 @@ struct TPage
     uint32_t startMs = 0, moveMs = 0;
     uint32_t drainMs = 0;            // the last time the rest of a refused request was read and dropped (0: none)
     uint32_t req = 0, refused = 0, broken = 0;   // for the page: requests passed on, answered here, broken off
+    uint32_t lowMem = 0;             // ... and the times it waited for memory
+    uint32_t lowMs = 0;              // the last of them began (0: not waiting now)
+    uint32_t lowToldMs = 0;          // Messages said so (once a minute at most)
 } tpage;
 static NetworkServer tpageServer(TPAGE_PORT);
 static bool          tpageOn = false;
@@ -773,6 +777,26 @@ static void tpageBegin(uint32_t now)
 static void tpagePoll(uint32_t now)
 {
     if (!tpageOn) return;
+    // ---- short of memory: wait. Each answer byte sent on to the browser takes memory until the browser has it, and
+    // a new browser takes some too; on a busy WiFi (the steering's packets, broadcasts held for the next beacon) the
+    // XIAO's free memory fell to 2 kB on a C3 while this page loaded (bench, 22 Nov 2026). Out of memory the XIAO
+    // restarts, and the bridge with it. The Teensy waits too: it never sends more than the window ahead.
+    const uint32_t heap = ESP.getFreeHeap();
+    if (heap < TPAGE_HEAP_LOW)
+    {
+        if (tpage.lowMs == 0)
+        {
+            tpage.lowMs = msStamp(now);
+            tpage.lowMem++;
+            if (tpage.lowToldMs == 0 || tpageAfter(now, tpage.lowToldMs, 60000))
+            {
+                tpage.lowToldMs = msStamp(now);
+                logEvent("Module page (port 8080): waits, the XIAO is short of memory (%lu bytes free)", (unsigned long)heap);
+            }
+        }
+        return;                                                      // (a browser kept waiting 15 s is given up as before)
+    }
+    tpage.lowMs = 0;
     // ---- new connections: a free place, or the oldest one that asked nothing gives way to it
     while (tpageServer.hasClient())
     {
@@ -1252,6 +1276,7 @@ static void apiState()
     j.u("req", tpage.req);
     j.u("refused", tpage.refused);
     j.u("broken", tpage.broken);
+    j.u("lowMem", tpage.lowMem);               // the times it waited for memory (TPAGE_HEAP_LOW)
     j.close();
 
     j.obj("link");
