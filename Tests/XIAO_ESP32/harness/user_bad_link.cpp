@@ -156,6 +156,81 @@ SCENARIO(User::BadLink, "link-update-phone-vanishes", "The phone walks out of re
     rules(w);
 }
 
+// (In the two that follow the program is inside one loop() pass for minutes, waiting for the phone: what the scenario
+// looks at in the middle of that wait is written down by w.later().)
+SCENARIO(User::BadLink, "link-upload-drips-while-steering", "While the tablet steers through the bridge, a phone's upload gets through a few bytes at a time, for two minutes", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.phones = 2;
+    w.start();
+    if (!beginSteer(w)) { rules(w); return; }
+    const std::vector<uint8_t> bin = repoFile(info(kit).bin);
+    Link drip;
+    drip.ipLast = 21;
+    drip.dripAt = 20000;                    // the first 20 kB go well, then 10 bytes every 2 s: no piece of the file is ever whole
+    drip.dripBytes = 10;
+    drip.dripEveryMs = 2000;
+    drip.patienceMs = 600000;
+    w.ask(UPLOAD("/update?pw=trator-2026", "update.bin", bin), drip);
+    // after two minutes the tablet stops steering (the upload still drips)
+    uint32_t gap = 0, offs = 0;
+    size_t restartsThen = 0;
+    w.later(120000, [&]() {
+        gap = w.rules.worstSteerGapMs; offs = w.teensy.steerOffs; restartsThen = w.xiao.restarts.size();
+        w.steerWatch_ = false;
+        w.tab.engaged = false;
+    });
+    const int boots = w.xiao.boots;
+    w.run(121000);                          // (comes back when that loop() pass ends)
+    must("no-restart", restartsThen == 0, "The XIAO does not restart while the tablet steers: its page is stuck on that phone, the bridge is not", fmt("%u restart(s)", (unsigned)restartsThen));
+    must("steer-gap", gap < 1000 && offs == 0, "Steering data kept reaching the Teensy for those two minutes",
+         fmt("longest time without it %u ms; the Teensy switched autosteer off %u time(s)", gap, offs));
+    note("Tablet to Teensy through the bridge, the page stuck on a phone", fmt("%u of %u packets passed, longest delay %u ms, longest gap in the steering data %u ms",
+                                                                              w.tab.nPassed, w.tab.nSent, w.tab.worstDelayMs, gap));
+    if (restartsThen || gap >= 1000) { note("Not checked further", "the rules at the end would say the same again"); return; }
+    // the steering is over and the page is still stuck on that phone: now the watchdog may clear it
+    w.watchdogExpected = 1;
+    const bool back = backAfterRestart(w, boots, 30000);
+    must("unstuck", back && w.xiao.restarts.size() == 1 && w.xiao.restarts[0] == ESP_RST_TASK_WDT,
+         "When the steering is over, the XIAO's watchdog restarts it (within 30 s), so its page is not stuck for ever",
+         w.xiao.restarts.empty() ? "no restart" : reasonText(w.xiao.restarts.back()));
+    w.run(4000);
+    const JsonDoc st = w.state();
+    must("page-back", st["ver"].str() == "4.5" && has(st["reset"].str(), "watchdog"), "... its page answers again and says why it restarted", st["reset"].str());
+    rules(w);
+}
+
+SCENARIO(User::BadLink, "link-upload-drips", "A phone's upload gets through a few bytes at a time and never ends (no tablet steering)", oneKit())
+{
+    World w(kit);
+    w.start();
+    const std::vector<uint8_t> bin = repoFile(info(kit).bin);
+    Link drip;
+    drip.dripAt = 20000;
+    drip.dripBytes = 10;
+    drip.dripEveryMs = 2000;
+    drip.patienceMs = 600000;
+    w.ask(UPLOAD("/update?pw=agopengps", "update.bin", bin), drip);
+    size_t restartsThen = 0;
+    const uint64_t t0 = fake::clockMs;
+    w.later(50000, [&]() { restartsThen = w.xiao.restarts.size(); });
+    const int boots = w.xiao.boots;
+    w.watchdogExpected = 1;
+    const bool back = backAfterRestart(w, boots, 100000);
+    const uint32_t backS = (uint32_t)((fake::clockMs - t0) / 1000);
+    std::string how;
+    must("link-kept", restartsThen == 0 && !linkLeftAlone(w, how), "For the first 50 s the XIAO waits for the phone with the link to the Teensy kept, and does not restart",
+         restartsThen ? std::string("it restarted: ") + reasonText(w.xiao.restarts[0]) : how);
+    must("unstuck", back && w.xiao.restarts.size() == 1 && w.xiao.restarts[0] == ESP_RST_TASK_WDT && backS < 90,
+         "After over a minute stuck on that phone, the XIAO's watchdog restarts it (the page served nobody else meanwhile)",
+         w.xiao.restarts.empty() ? "no restart in 100 s" : fmt("%s, running again %u s after the upload began", reasonText(w.xiao.restarts.back()), backS));
+    w.run(4000);
+    const JsonDoc st = w.state();
+    must("page-back", st["ver"].str() == "4.5" && has(st["reset"].str(), "watchdog") && w.dev.updInstalled == 0, "... its page answers again, says why it restarted, and the old program runs", st["reset"].str());
+    rules(w);
+}
+
 SCENARIO(User::BadLink, "link-update-tab-closed", "The browser tab is closed in the middle of an update (the XIAO's own, then the Teensy's)", oneKit())
 {
     World w(kit);

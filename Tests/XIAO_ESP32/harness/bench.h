@@ -208,6 +208,9 @@ struct Link
     size_t downPerMs = 2000;        // bytes it takes a millisecond
     size_t stallAt = SIZE_MAX;      // after this many bytes of the request: nothing for stallMs (a lost packet, a weak link)
     uint32_t stallMs = 0;
+    size_t dripAt = SIZE_MAX;       // after this many bytes of the request: only dripBytes get through every dripEveryMs
+    size_t dripBytes = 1;
+    uint32_t dripEveryMs = 1000;
     size_t vanishAt = SIZE_MAX;     // after this many bytes of the request the link is gone, without a word
     size_t closeAt = SIZE_MAX;      // after this many bytes of the request the browser closes (the tab was closed)
     size_t deafAt = SIZE_MAX;       // after this many bytes of the answer it takes nothing more (gone, without a word)
@@ -273,6 +276,7 @@ struct World
         uint32_t worstAnswerMs = 0;
     } rules;
     int restartsExpected = 0;       // restarts the user asked for (a save, an update, the restart button, a USB command)
+    int watchdogExpected = 0;       // restarts by the watchdog that the scenario is about (the page stuck for over a minute)
 
     explicit World(Kit k);
     ~World();
@@ -290,6 +294,9 @@ struct World
     void usb(const std::string& line);      // typed in the USB serial monitor
     bool said(const std::string& part) const;       // the XIAO wrote this in its events (Messages tab, USB)
     void noteUserRestart() { restartsExpected++; }
+    // Something to do ms from now. A scenario's own code does not run while the program is inside one long loop()
+    // pass (the web server waiting for a phone): what must happen in the middle of such a wait goes here.
+    void later(uint32_t ms, std::function<void()> fn) { later_.push_back({ fake::clockMs + ms, fn }); }
 
     int ask(const std::string& req, const Link& l = Link(), const std::string& what = "");
     Reply& reply(int id) { return exchanges_[id]->reply; }
@@ -316,6 +323,7 @@ private:
     void browsers();
     void finishReply(Exchange& e, bool closed);
     std::vector<std::unique_ptr<Exchange>> exchanges_;
+    std::vector<std::pair<uint64_t, std::function<void()>>> later_;
     int bootsSeen_ = -1;
     bool teensyWasOn_ = true, wireWasCut_ = false, toTeensyWasCut_ = false;
     double accOut_ = 0, accIn_ = 0;

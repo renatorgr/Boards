@@ -12,6 +12,9 @@
 // at it. Time is the harness clock (fake::clockMs): it moves only in fake::tick(), which delay() and yield() call,
 // and every millisecond the world around the XIAO takes one step (fake::onMs). So a wait inside the program is a
 // wait in pretend time too: the Teensy goes on sending, the tablet goes on sending, the watchdog goes on counting.
+// A second task of the program (FreeRTOS) gets its turn in fake::tick() too: at every millisecond the tasks whose
+// sleep is over run until they sleep again, while the loop stands still - as a task of a higher priority than
+// the loop's does on the chip.
 // The bodies are in fake_core.cpp, linked into the harness program; the XIAO program itself is built as a shared
 // library and loaded again at each restart, so its variables start fresh as on a board.
 #pragma once
@@ -166,6 +169,39 @@ esp_reset_reason_t esp_reset_reason();
 
 struct esp_task_wdt_config_t { uint32_t timeout_ms; uint32_t idle_core_mask; bool trigger_panic; };
 int esp_task_wdt_reconfigure(const esp_task_wdt_config_t* c);
+// an entry of the program's own in the task watchdog: only esp_task_wdt_reset_user() feeds it, from any task
+#define ESP_OK 0
+typedef struct esp_task_wdt_user_handle_s* esp_task_wdt_user_handle_t;
+int esp_task_wdt_add_user(const char* name, esp_task_wdt_user_handle_t* handle);
+int esp_task_wdt_reset_user(esp_task_wdt_user_handle_t handle);
+
+// ---------------------------------------------------------------- FreeRTOS: a second task and a lock (the parts the program uses)
+// A task here is a function of the shape  for (;;) { work; vTaskDelay(n); }  - vTaskDelay() ends its turn, and the
+// function is called again from its start when the sleep is over. Anything else that waits inside a task (delay(),
+// a full serial buffer) spends pretend time with the whole program standing still. A lock taken with a wait by a
+// task while the loop holds it cannot be played (the loop stands still): the harness stops with a message.
+namespace fake { struct Lock; }
+typedef int      BaseType_t;
+typedef unsigned UBaseType_t;
+typedef uint32_t TickType_t;
+typedef void (*TaskFunction_t)(void*);
+typedef void*    TaskHandle_t;
+typedef fake::Lock* SemaphoreHandle_t;
+#define pdTRUE  1
+#define pdFALSE 0
+#define pdPASS  1
+#define portMAX_DELAY 0xFFFFFFFFu
+#define pdMS_TO_TICKS(ms) ((TickType_t)(ms))        // CONFIG_FREERTOS_HZ is 1000 in the ESP32 Arduino core
+#ifdef XIAO_KIT_S3
+#define ARDUINO_RUNNING_CORE 1
+#else
+#define ARDUINO_RUNNING_CORE 0
+#endif
+SemaphoreHandle_t xSemaphoreCreateRecursiveMutex();
+BaseType_t xSemaphoreTakeRecursive(SemaphoreHandle_t lock, TickType_t wait);
+BaseType_t xSemaphoreGiveRecursive(SemaphoreHandle_t lock);
+BaseType_t xTaskCreateUniversal(TaskFunction_t fn, const char* name, uint32_t stack, void* arg, UBaseType_t priority, TaskHandle_t* handle, BaseType_t core);
+void       vTaskDelay(TickType_t ticks);
 
 // the header of a program file (.bin), as ESP-IDF's esp_app_format.h
 enum esp_chip_id_t : uint16_t { ESP_CHIP_ID_ESP32 = 0x0000, ESP_CHIP_ID_ESP32S2 = 0x0002, ESP_CHIP_ID_ESP32C3 = 0x0005,
@@ -281,6 +317,7 @@ class WebServer
 {
 public:
     typedef std::function<void()> Handler;
+    typedef Handler THandlerFunction;       // the core's name for it
     explicit WebServer(int port = 80);
     virtual ~WebServer();
     void        on(const char* uri, HTTPMethod method, Handler fn);
@@ -390,6 +427,22 @@ extern UpdateClass Update;
 namespace fake
 {
 struct Restart { esp_reset_reason_t reason; };      // ESP.restart() or the watchdog: caught by the harness, which loads the program again
+struct TaskSleep { uint32_t ticks; };               // vTaskDelay() in a task: its turn ends here (caught by fake::tick)
+
+// A task the program started
+struct Task
+{
+    TaskFunction_t fn = nullptr;
+    void*       arg = nullptr;
+    std::string name;
+    uint32_t    stack = 0;
+    unsigned    priority = 0;
+    int         core = 0;
+    uint64_t    wakeAt = 0;                 // its next turn
+    uint32_t    turns = 0;
+};
+// A lock (a recursive mutex): who holds it (-1 the loop, else a task's number) and how many times
+struct Lock { int owner = -1; uint32_t depth = 0; };
 
 struct Datagram
 {
@@ -461,11 +514,20 @@ struct Device
     esp_reset_reason_t resetReason = ESP_RST_POWERON;
     float    tempC = 41.5f;
 
-    // the task watchdog (the loop task is fed before each loop() and by feedLoopWDT())
+    // the task watchdog: the loop task's entry (fed by the core before each loop() and by feedLoopWDT()) and the
+    // program's own entry (esp_task_wdt_add_user: fed only by esp_task_wdt_reset_user()). Either one bites.
     bool     wdtOn = false;
     uint32_t wdtTimeoutMs = 5000;
     uint64_t wdtFedAt = 0;
+    bool     wdtUserOn = false;
+    uint64_t wdtUserFedAt = 0;
     uint32_t wdtLongestMs = 0;              // the longest time without a feed
+
+    // the program's other tasks and its locks (they go with the program at a restart)
+    std::vector<Task> tasks;
+    int      inTask = -1;                   // the task whose turn it is now (-1: the loop)
+    std::vector<std::unique_ptr<Lock>> locks;
+    uint32_t lockErrors = 0;                // a lock given back by who did not hold it
 
     // flash
     std::map<std::string, std::map<std::string, PrefValue>> prefs;

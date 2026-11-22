@@ -73,13 +73,37 @@ HardwareSerial&           TeensyPort = Serial1;
 TeensyLink<HardwareSerial> teensy(TeensyPort);
 static void linkPoll(uint32_t now);   // the link to the Teensy and the WiFi bridge (below): what loop() does all the time
 
+// ---------------------------------------------------------------- the link task: it stands in for loop() (22 Nov 2026)
+// The core's web server reads a whole request before it returns. When a phone on a weak WiFi sends half of one, or
+// an upload pauses, handleClient() waits for the rest (up to 5 s for each piece of a form, UPLOAD_WAIT_MS for each
+// piece of a file) and loop() waits with it: nobody said hello to the Teensy, read its data or carried the WiFi
+// bridge, and a tablet steering through the bridge lost the module (found by Tests/XIAO_ESP32).
+// So a second task runs linkPoll() while the loop is in there (linkTask, after the WiFi bridge below). One lock
+// says whose turn it is:
+//   - the loop holds it from setup() on and lets go of it only around the core's handleClient();
+//   - every handler the core calls takes it back for as long as it runs (LinkWebServer::on, LinkTurn), so the
+//     program's own code still runs one thing at a time, as before;
+//   - the link task tries it every LINK_TASK_MS and never waits for it: it gets it only while the core is busy
+//     with a browser, does one linkPoll() and gives it back. It must never wait for anything.
+static SemaphoreHandle_t linkLock = nullptr;
+static void stillHere();              // the loop's sign of life, for the watchdog (with the link task, below)
+
+// "The link is in my hands" for the loop and the page's handlers. The lock counts: who holds it may take it again.
+struct LinkTurn
+{
+    LinkTurn()  { if (linkLock) xSemaphoreTakeRecursive(linkLock, portMAX_DELAY); }
+    ~LinkTurn() { if (linkLock) xSemaphoreGiveRecursive(linkLock); }
+};
+
 // ---------------------------------------------------------------- web server that never holds up the Teensy link
 // 13 Nov 2026. The core's WebServer writes an answer in one go and returns only when the browser has taken all of
 // it. The page is 53 kB: on a weak WiFi link (Starlink, -72 dBm) that took about 10 s, and all that time loop()
 // was away from the Teensy - no hello ("XIAO silent for 10 s" in the Teensy log), its data piling up unread.
 // This one gives the connection what it takes now and, while the browser catches up, keeps the link to the
 // Teensy going (the hello, its data), as the uploads already do. The Teensy page sends its page in pieces too.
-#define SEND_WAIT_MS   20000         // a browser that takes nothing for this long is given up (= UPLOAD_WAIT_MS)
+// 22 Nov 2026. Reading a request is the core's too, and it waits there as well: the link task (above) takes over
+// for that time. handleClient() hands the link over, and every handler takes it back (on, onNotFound).
+#define SEND_WAIT_MS   20000         // a browser that takes nothing for this long is given up (as UPLOAD_WAIT_MS)
 #define SPARE_IDLE_MS  1000          // a connection that asked nothing for this long gives way to the next one
 class LinkWebServer : public WebServer
 {
@@ -93,7 +117,23 @@ public:
     {
         if (_currentStatus == HC_WAIT_READ && millis() - _statusChange > SPARE_IDLE_MS && !_currentClient.available() && _server.hasClient())
             _statusChange = millis() - HTTP_MAX_DATA_WAIT - 1;
+        if (linkLock) xSemaphoreGiveRecursive(linkLock);          // the core may wait for a browser in here: the link task's turn
         WebServer::handleClient();
+        if (linkLock) xSemaphoreTakeRecursive(linkLock, portMAX_DELAY);
+    }
+
+    // These hide the core's own: every handler runs with the link back in the loop's hands, and counts as its sign of life
+    void on(const char* uri, HTTPMethod method, THandlerFunction fn)
+    {
+        WebServer::on(uri, method, [fn]() { LinkTurn mine; stillHere(); fn(); });
+    }
+    void on(const char* uri, HTTPMethod method, THandlerFunction fn, THandlerFunction upload)
+    {
+        WebServer::on(uri, method, [fn]() { LinkTurn mine; stillHere(); fn(); }, [upload]() { LinkTurn mine; stillHere(); upload(); });
+    }
+    void onNotFound(THandlerFunction fn)
+    {
+        WebServer::onNotFound([fn]() { LinkTurn mine; stillHere(); fn(); });
     }
 
 protected:
@@ -103,6 +143,7 @@ protected:
 private:
     size_t writeKeepingLink(const char* b, size_t l)
     {
+        LinkTurn mine;                                                      // a handler's answer: it has the link already
         const int fd = _currentClient.fd();
         if (fd < 0) return 0;
         size_t done = 0;
@@ -114,7 +155,7 @@ private:
             if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) break;    // the browser has gone
             if (millis() - takenMs >= SEND_WAIT_MS) break;                  // it took nothing for 20 s: given up
             linkPoll(millis());                                             // meanwhile: the hello, the Teensy's data, the bridge
-            feedLoopWDT();
+            stillHere();
             delay(1);                                                       // and the WiFi gets the core
         }
         return done;
@@ -400,6 +441,43 @@ static void linkPoll(uint32_t now)
 {
     teensy.poll(now);
     bridgePoll(now);
+}
+
+// ---- the link task and the watchdog (the why is at the top, with the lock)
+// The watchdog (15 s) is an entry of the program's own, not the loop task's: the core's waits do not feed the loop
+// task's, so an upload that paused for 15 s restarted the XIAO. The loop answers it at every pass and in its own
+// waits (stillHere); while the core's web server waits for a browser the link task answers for it, for
+// CORE_WAIT_MAX_MS after the loop's last sign of life - a web server that never comes back still ends in a restart
+// (the page serves nobody else meanwhile). But not while a tablet steers through the bridge: the restart would take
+// the WiFi away from it, and the bridge works without the page; it comes when the steering is over.
+#define LINK_TASK_MS      2
+#define LINK_TASK_STACK   8192         // as the loop task's: it runs the same code
+#define CORE_WAIT_MAX_MS  60000
+
+static esp_task_wdt_user_handle_t wdtProgram = nullptr;    // null: the loop task's own watchdog is used (setup)
+static uint32_t                   loopSeenMs = 0;          // the loop's last sign of life (read and written with the lock held)
+
+// The loop's sign of life: at every pass, in every wait of its own, at every handler the core calls
+static void stillHere()
+{
+    loopSeenMs = millis();
+    if (wdtProgram) esp_task_wdt_reset_user(wdtProgram);
+    else feedLoopWDT();
+}
+
+static void linkTask(void*)
+{
+    for (;;)
+    {
+        if (xSemaphoreTakeRecursive(linkLock, 0) == pdTRUE)          // free: the loop is inside the core's web server
+        {
+            const uint32_t now = millis();
+            linkPoll(now);
+            if (wdtProgram && (now - loopSeenMs < CORE_WAIT_MAX_MS || bridgeSteering(now))) esp_task_wdt_reset_user(wdtProgram);   // waiting for a browser is not hanging
+            xSemaphoreGiveRecursive(linkLock);
+        }
+        vTaskDelay(pdMS_TO_TICKS(LINK_TASK_MS));
+    }
 }
 
 static void bridgeStart()
@@ -855,7 +933,6 @@ static size_t  updBytes = 0;            // size of the program received (Update.
 static void updateUpload()
 {
     HTTPUpload& up = server.upload();
-    feedLoopWDT();
     linkPoll(millis());                     // keep saying hello to the Teensy while the file comes in (and the WiFi bridge going)
     if (up.status == UPLOAD_FILE_START)
     {
@@ -956,7 +1033,7 @@ static int tfwWait(uint8_t cmd, uint16_t seq, uint32_t ms, const char* none)
     while (millis() - t0 < ms)
     {
         teensy.poll(millis());
-        feedLoopWDT();
+        stillHere();
         if (teensy.fwAck)
         {
             teensy.fwAck = false;
@@ -978,7 +1055,6 @@ static const char* TFW_NO_ANSWER = "no answer from the module: is the Teensy on,
 static void teensyUpdateUpload()
 {
     HTTPUpload& up = server.upload();
-    feedLoopWDT();
     if (up.status == UPLOAD_FILE_START)
     {
         tfwOk = false;
@@ -997,7 +1073,7 @@ static void teensyUpdateUpload()
     }
     else if (up.status == UPLOAD_FILE_WRITE)
     {
-        if (tfwErr.length()) return;                                // refused: the rest of the file is read and dropped
+        if (tfwErr.length()) { linkPoll(millis()); return; }        // refused: the rest of the file is read and dropped, the link and the bridge go on
         for (size_t off = 0; off < up.currentSize && tfwErr.length() == 0; off += LINK_FW_BLOCK)
         {
             const size_t left = up.currentSize - off;
@@ -1179,6 +1255,8 @@ static void usbCommands()
 // ---------------------------------------------------------------- setup / loop
 void setup()
 {
+    linkLock = xSemaphoreCreateRecursiveMutex();              // the loop's from here on (LinkWebServer::handleClient lets go of it)
+    if (linkLock) xSemaphoreTakeRecursive(linkLock, portMAX_DELAY);
     Serial.begin(115200);                                     // USB-C (bench / panel port)
     TeensyPort.setRxBufferSize(4096);                         // a busy web page must not lose the Teensy's data
     TeensyPort.setTxBufferSize(1024);                         // the WiFi bridge: a write never waits for the link (bridgePoll asks for room first)
@@ -1194,7 +1272,10 @@ void setup()
     webSetup();
     esp_task_wdt_config_t w = {15000, 0, true};               // restart if the program hangs for 15 s
     esp_task_wdt_reconfigure(&w);
-    enableLoopWDT();
+    if (esp_task_wdt_add_user("program", &wdtProgram) != ESP_OK) { wdtProgram = nullptr; enableLoopWDT(); }
+    stillHere();
+    if (!linkLock || xTaskCreateUniversal(linkTask, "link", LINK_TASK_STACK, nullptr, 2, nullptr, ARDUINO_RUNNING_CORE) != pdPASS)
+        logEvent("The link task did NOT start: a slow browser can hold up the link to the Teensy");
 }
 
 void loop()
@@ -1202,6 +1283,7 @@ void loop()
     static uint32_t infoMs = 0, watchMs = 0;
     const uint32_t now = millis();
 
+    stillHere();
     linkPoll(now);
     dns.processNextRequest();
     server.handleClient();

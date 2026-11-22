@@ -15,6 +15,9 @@ SCENARIO(User::Careful, "careful-first-start", "A new XIAO is switched on with t
     must("ap", w.dev.apOn && w.dev.apSsid == w.knownSsid && w.dev.apPass == "agopengps", "Its own network is up: XIAO-xxxx, password agopengps",
          w.dev.apSsid + " / " + w.dev.apPass);
     must("hello", w.teensy.detected && w.teensy.hellos >= 1, "The Teensy heard its hello", fmt("%u hellos", w.teensy.hellos));
+    must("link-task", w.dev.tasks.size() == 1 && w.dev.wdtUserOn && !w.said("link task did NOT start"),
+         "Its link task runs, and its watchdog is on (the link and the bridge go on while the page waits for a browser)",
+         fmt("%u task(s), the program's watchdog entry %s", (unsigned)w.dev.tasks.size(), w.dev.wdtUserOn ? "on" : "off"));
     bool ok = false;
     const JsonDoc inf = JsonDoc::parse(w.teensy.info, ok);
     must("info", ok && inf["v"].str() == "4.5" && inf["ap"].str() == w.knownSsid && inf["apIp"].str() == "192.168.4.1" && inf["br"].num() == 0,
