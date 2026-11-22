@@ -234,7 +234,7 @@ Http Module::http(HTTPMethod m, const std::string& uri, const std::map<std::stri
     dev.req.uri = uri;
     dev.req.args = args;
     dev.req.fromAp = fromAp;
-    dev.req.host = fromAp ? "192.168.4.1" : dev.tractorIp().toString().str();
+    dev.req.host = fromAp ? dev.apIp.toString().str() : dev.tractorIp().toString().str();
     if (file) { dev.req.file = *file; dev.req.fileName = fileName; }
     dev.reqPending = true;
     step();                                 // loop() -> server.handleClient()
@@ -387,6 +387,8 @@ SprayerRig& World::addRig(Module& m)
     return *rig;
 }
 
+static uint32_t key(IPAddress a) { return (uint32_t)a[0] << 24 | (uint32_t)a[1] << 16 | (uint32_t)a[2] << 8 | a[3]; }
+
 static bool reachesModule(const fake::Packet& p, const Module& m)
 {
     if (!m.on() || !m.dev.onTractorNet() || m.dev.udpPort != p.dstPort) return false;
@@ -424,8 +426,33 @@ void World::run(uint32_t ms)
             const fake::Packet p = aow.out.front();
             aow.out.pop_front();
             if (!aow.on) continue;
+            if (!xiao.on) { for (auto& m : mods) if (reachesModule(p, *m)) m->dev.rx.push_back(p); continue; }
+            // On the XIAO's network: its copy at once to every module it knows, from its own address (not the subnet,
+            // the scan, the steering's own) ...
+            const uint8_t number = p.data.size() > 3 ? p.data[3] : 0;
+            const bool forModules = number != 201 && number != 202 && number != 254 && number != 252 && number != 251;
+            if (xiao.bridge && p.dstPort == 8888 && forModules)
+                for (auto& m : mods)
+                {
+                    if (!m->on() || !m->dev.staUp() || !xiao.known.count(key(m->dev.tractorIp()))) continue;
+                    fake::Packet c = p;
+                    c.src = XiaoAp::ip();
+                    c.dst = m->dev.tractorIp();
+                    m->dev.rx.push_back(c);
+                    xiao.copies++;
+                }
+            // ... and the tablet's own broadcast later, when the access point lets it out (or never)
+            if (xiao.loseOneIn && ++xiao.lateCount % xiao.loseOneIn == 0) continue;
+            xiao.late.push_back({ fake::clockMs + xiao.lateMs, p });
+        }
+        while (!xiao.late.empty() && xiao.late.front().first <= fake::clockMs)
+        {
+            const fake::Packet p = xiao.late.front().second;
+            xiao.late.pop_front();
             for (auto& m : mods) if (reachesModule(p, *m)) m->dev.rx.push_back(p);
         }
+        for (auto it = xiao.known.begin(); it != xiao.known.end();)
+            it = fake::clockMs - it->second >= 3000 ? xiao.known.erase(it) : std::next(it);
         if (rig) rig->tick();
         for (auto& m : mods) m->step();
         // what the modules sent reaches the tablet (port 9999, broadcast of its subnet, everyone's, or its own IP)
@@ -433,16 +460,40 @@ void World::run(uint32_t ms)
         {
             for (auto& p : m->dev.tx)
             {
-                if (!aow.on || p.dstPort != 9999) continue;
-                const bool toUs = p.dst == IPAddress(255, 255, 255, 255) || p.dst == aow.ip ||
-                                  p.dst == IPAddress(aow.ip[0], aow.ip[1], aow.ip[2], 255);
-                if (toUs) aow.heard.push_back({ p.ms, p.src, p.data });
+                if (p.dstPort != 9999) continue;
+                const bool toAll = p.dst == IPAddress(255, 255, 255, 255) || p.dst == IPAddress(aow.ip[0], aow.ip[1], aow.ip[2], 255);
+                if (xiao.on)
+                {
+                    // On the XIAO's network: it hears what is sent to it and to everyone, notes the module, and passes
+                    // the message on to the tablet. What went to everyone would reach the tablet again later, straight
+                    // from the module: counted, not listened to.
+                    if (!m->dev.staUp()) continue;
+                    if (xiao.bridge && (toAll || p.dst == XiaoAp::ip()))
+                    {
+                        xiao.known[key(p.src)] = fake::clockMs;
+                        if (aow.on) { aow.heard.push_back({ p.ms, XiaoAp::ip(), p.data }); xiao.passedOn++; }
+                    }
+                    if (toAll) xiao.toEveryone++;
+                    else if (p.dst == aow.ip && aow.on) aow.heard.push_back({ p.ms, p.src, p.data });
+                    continue;
+                }
+                if (aow.on && (toAll || p.dst == aow.ip)) aow.heard.push_back({ p.ms, p.src, p.data });
             }
             m->dev.tx.clear();
         }
         for (auto& w : watchers) w();
         fake::clockMs++;
     }
+}
+
+void World::useXiao()
+{
+    xiao.on = true;
+    fake::net.ssid = "XIAO-3F2A";
+    fake::net.pass = "trator-2026";
+    fake::net.subnet[0] = 192; fake::net.subnet[1] = 168; fake::net.subnet[2] = 4;
+    fake::net.dhcp = true;
+    aow.ip = IPAddress(192, 168, 4, 2);
 }
 
 void joinTractorWifi(World& w, Module& m, const std::string& pass, const std::string& subnet, int ipLast)

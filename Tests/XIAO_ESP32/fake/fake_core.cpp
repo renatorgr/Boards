@@ -357,10 +357,11 @@ WiFiClass WiFi;
 bool WiFiClass::setHostname(const char* h) { cur->hostName = h ? h : ""; return true; }
 bool WiFiClass::mode(int m) { cur->wifiMode = m; if (!(m & WIFI_AP)) cur->apOn = false; return true; }
 bool WiFiClass::softAPConfig(IPAddress, IPAddress, IPAddress) { return true; }
-bool WiFiClass::softAP(const char* ssid, const char* pass)
+bool WiFiClass::softAP(const char* ssid, const char* pass, int, int, int maxStations)
 {
     if (!ssid || !*ssid || strlen(ssid) > 32) return false;
     if (pass && *pass && (strlen(pass) < 8 || strlen(pass) > 63)) return false;     // as the core: refused, no network
+    cur->apMaxStations = maxStations;
     cur->apSsid = ssid;
     cur->apPass = pass ? pass : "";
     cur->apOn = (cur->wifiMode & WIFI_AP) != 0;

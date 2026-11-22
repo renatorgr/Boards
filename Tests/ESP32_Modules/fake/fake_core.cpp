@@ -24,6 +24,13 @@ bool Device::staUp() const
 
 bool Device::onTractorNet() const { return staUp() || (ethOk && cableIn); }
 
+bool Device::sameNumbers() const
+{
+    if (!apOn || !staUp() || (ethOk && cableIn)) return false;
+    const IPAddress t = tractorIp();
+    return t[0] == apIp[0] && t[1] == apIp[1] && t[2] == apIp[2];
+}
+
 IPAddress Device::tractorIp() const
 {
     if (ethOk && cableIn) return ethIp;
@@ -111,7 +118,7 @@ void EspClass::restart()
 // ---------------------------------------------------------------- Wi-Fi
 WiFiClass WiFi;
 bool WiFiClass::mode(int m) { cur->wifiMode = m; return true; }
-bool WiFiClass::softAPConfig(IPAddress, IPAddress, IPAddress) { return true; }
+bool WiFiClass::softAPConfig(IPAddress ip, IPAddress, IPAddress) { cur->apIp = ip; return true; }
 bool WiFiClass::softAP(const char* ssid, const char* pass)
 {
     // the ESP32 refuses a password of 1-7 characters (and then has no own network at all)
@@ -123,7 +130,7 @@ bool WiFiClass::softAP(const char* ssid, const char* pass)
     cur->apOn = true;
     return true;
 }
-IPAddress WiFiClass::softAPIP() { return IPAddress(192, 168, 4, 1); }
+IPAddress WiFiClass::softAPIP() { return cur->apIp; }
 int WiFiClass::softAPgetStationNum() { return cur->apOn ? cur->apClients : 0; }
 bool WiFiClass::config(IPAddress ip, IPAddress gw, IPAddress mask, IPAddress)
 {
@@ -236,6 +243,7 @@ size_t WiFiUDP::write(const uint8_t* buf, size_t len)
 int WiFiUDP::endPacket()
 {
     if (!cur->onTractorNet()) return 0;     // no route: lwIP drops it
+    if (cur->sameNumbers()) return 1;       // two networks with the same numbers: it goes out on the own one, where nobody listens
     fake::Packet p;
     p.ms = fake::clockMs;
     p.src = cur->tractorIp();
@@ -247,7 +255,7 @@ int WiFiUDP::endPacket()
     return 1;
 }
 
-IPAddress WiFiClient::localIP() { return cur->req.fromAp ? IPAddress(192, 168, 4, 1) : cur->tractorIp(); }
+IPAddress WiFiClient::localIP() { return cur->req.fromAp ? cur->apIp : cur->tractorIp(); }
 
 // ---------------------------------------------------------------- the network cable
 ETHClass ETH;

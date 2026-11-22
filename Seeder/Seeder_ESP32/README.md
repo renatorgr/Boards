@@ -20,6 +20,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | **0.2.15**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge; its own network is then at 192.168.40.1 ([No router on the tractor](#no-router-on-the-tractor)). |
 | 21 Nov 2026 | **0.2.10-0.2.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); two harness fixes; Wi-Fi reason, name and program checked; outputs inverted said on screen ([Notes](#notes)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
 | 10 Nov 2026 | **0.2.7**: the tabs at the top of the page are 44 px high with 8 px corners, like the buttons of the page's question box: easier to hit on the cab's screen ([How it works](#how-it-works)). |
@@ -69,7 +70,8 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
   relay drops and every row closes.
 - No pressure or flow sensor: no PGN 160 (that is the sprayer's).
 - Its **own Wi-Fi network** is always on: join `Seeder-xxxx` (password `agopengps`) with
-  a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the tractor
+  a phone and the page opens by itself, or go to `http://192.168.4.1/` (`http://192.168.40.1/` with
+  the program subnet 192.168.4: [No router on the tractor](#no-router-on-the-tractor)). On the tractor
   network the same page is at `http://192.168.5.123/` or `http://seeder.local/` (the module
   announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list it by name
   in a second). It has four tabs, as the sprayer page: **Sowing** (the sections, big enough
@@ -169,6 +171,24 @@ other board in that box, as soon as it is chosen.
    stroke, so set *Tool → Timing → Look ahead on / off* to that time.
 5. **Page, Settings tab**: *Sections on the seed drill* = 19 (and *Relay 1 follows section* = 1),
    then *Save*: the Sowing tab shows the 19 sections even before AgOpenWeb has opened one.
+
+## No router on the tractor
+
+Since 0.2.15 the module also works on a tractor with no router, with the tablet on the Wi-Fi of the AiO board's XIAO (its WiFi bridge on: the XIAO program's README, *Section modules on the XIAO's WiFi*). **Not tried on a real module yet**: the harness (`Tests/ESP32_Modules`) plays it with a pretend XIAO, late and lost packets included. With no router there is no network cable to plug in: the module uses the Wi-Fi.
+
+1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*: join the **XIAO's network** (`XIAO-xxxx`) with its password, and set the *Program subnet* to **192.168.4**. *Save and restart the module*.
+2. The module's own network moves from 192.168.4.1 to **192.168.40.1**: the XIAO's network has the numbers 192.168.4.x, and two networks with the same numbers on one module leave neither working. The page shows the address in use (*Module* card, *Network settings*). With any other subnet it is at 192.168.4.1 again.
+3. Open AgOpenWeb on the tablet. The XIAO sends the module a copy of each packet of the program, to the module's own address, and passes the module's packets on to the tablet. The Module tab's *Program* row then says *talking · through the access point (192.168.4.1)*; the events say it too.
+
+While the XIAO's copies come:
+
+- the module sends to the XIAO only, not to everyone on the network;
+- the program's own packets "to everyone", which a Wi-Fi access point holds back and which arrive late beside the copies, are left alone: an old section state after a newer one would switch a relay back for a moment. The *Messages* row counts them (*late broadcasts left alone*);
+- when the copies stop (the XIAO restarts, its bridge is switched off), every section closes within 2 s, as with any lost link. A second later the module listens to everyone again.
+
+The same goes for a tablet whose **own hotspot** is the tractor network: the program is then at `<subnet>.1`, and the module answers that address only.
+
+From the tablet, on the XIAO's network, the page is at `http://192.168.4.123/` (the module's IP there).
 
 ## Wiring: Relay24_ESP32
 
@@ -297,6 +317,11 @@ messages with a right checksum from source `0x7F` (the program).
 
 ## Notes
 
+- 0.2.15: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)). With the
+  program subnet 192.168.4 the own network is at 192.168.40.1. Packets of the program that come over
+  the Wi-Fi from the network's own address (`<subnet>.1`: the XIAO's WiFi bridge, or a tablet's
+  hotspot) are answered to that address only, and the same packets arriving late "to everyone" are
+  left alone and counted.
 - 0.2.14: *relay active high* ticked in the program (every row sows with no section asked: the seed
   drill has no sensor that would notice) is said on the program's screen every 10 s, *Seed drill:
   outputs inverted, untick 'relay active high'*. Both boards close their relays one way only.

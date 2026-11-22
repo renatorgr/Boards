@@ -250,7 +250,7 @@ SCENARIO(User::Careful, "careful-bridge", "A tablet with no network cable: the W
     backAfterRestart(w, boots);
     w.knownPass = "trator-2026";
     w.run(3000);
-    must("on", w.said("WiFi bridge on") && w.dev.udpOpen() == 2, "After the restart the bridge is on (UDP 8888 and 2233 open)", "");
+    must("on", w.said("WiFi bridge on") && w.dev.udpOpen() == 3, "After the restart the bridge is on (UDP 8888, 2233 and 9999 open)", "");
     w.tab.rtcmEveryMs = 200;                // corrections: 1.3 kB a second
     if (beginSteer(w))
     {
@@ -307,6 +307,62 @@ SCENARIO(User::Careful, "careful-bridge-page-while-steering", "While the tablet 
         tell("served-meanwhile", okAnswers >= 80, "While the slow phone is being served, the other phone's page keeps updating",
              fmt("%d of 90 answers arrived (the XIAO serves one connection at a time)", okAnswers));
         endSteer(w);
+    }
+    rules(w);
+}
+
+SCENARIO(User::Careful, "careful-bridge-modules", "No router on the tractor: the sprayer and the seed drill modules join the XIAO's WiFi too, and AgOpenWeb works with them through the XIAO", bothKits())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    Machine& sprayer = w.mod[0];            // 192.168.4.123
+    Machine& drill = w.mod[1];              // 192.168.4.124
+    sprayer.on = drill.on = true;
+    w.run(2000);
+    JsonDoc st = w.state();
+    must("known", st["bridge"]["mods"].a.size() == 2 && w.said("a module at 192.168.4.123 is on this network") && w.said("a module at 192.168.4.124 is on this network"),
+         "With no program running yet the XIAO already knows both modules, from their own packets, and Messages say so", fmt("%u listed", (unsigned)st["bridge"]["mods"].a.size()));
+    must("room", w.dev.apMaxStations >= 6, "The XIAO's network lets in a tablet, two modules and phones (the core's own limit is 4 devices)", fmt("%d devices", w.dev.apMaxStations));
+    must("quiet", sprayer.got == 0 && drill.got == 0 && w.tab.got == 0, "... and sends them nothing while no program runs", fmt("%u and %u datagrams", sprayer.got, drill.got));
+    if (beginSteer(w))
+    {
+        w.run(1000);
+        const uint32_t a0 = sprayer.got239, b0 = drill.got239, m0 = w.tab.gotMachine, d0 = w.tab.gotMachineDirect, n0 = w.tab.nSent;
+        w.tab.lastMachineMs = fake::clockMs;
+        w.tab.machineWatch = true;
+        w.run(60000);
+        w.tab.machineWatch = false;
+        must("to-modules", sprayer.got239 - a0 >= 598 && drill.got239 - b0 >= 598 && sprayer.gotHello >= 60 && drill.gotHello >= 60 && sprayer.worstDelayMs <= 20 && drill.worstDelayMs <= 20,
+             "Each module got the program's machine data (10 a second) and its hellos, at most 20 ms after the tablet sent them",
+             fmt("sprayer %u of 600, %u hellos, longest delay %u ms; seed drill %u of 600, %u hellos, %u ms", sprayer.got239 - a0, sprayer.gotHello, sprayer.worstDelayMs, drill.got239 - b0, drill.gotHello, drill.worstDelayMs));
+        must("no-steering", sprayer.gotSteer == 0 && drill.gotSteer == 0, "The steering data (a hundred packets a second) is not sent to them: nothing in it is for a machine module",
+             fmt("%u and %u", sprayer.gotSteer, drill.gotSteer));
+        must("from-modules", w.tab.gotMachine - m0 >= 2 * (300 + 59) && w.tab.worstMachineGapMs <= 250,
+             "The tablet got both modules' packets through the XIAO (PGN 237 five times a second each, and the hello answers)",
+             fmt("%u packets in a minute, longest time without one %u ms", w.tab.gotMachine - m0, w.tab.worstMachineGapMs));
+        must("to-it-only", w.tab.gotMachineDirect == d0, "Once the program's packets come through the XIAO, the modules answer the XIAO only (nothing to everyone, which the WiFi would hold back)",
+             fmt("%u heard straight from a module", w.tab.gotMachineDirect - d0));
+        st = w.state();
+        const JsonDoc& ml = st["bridge"]["mods"];
+        must("page", ml.a.size() == 2 && ml.a[0]["ip"].str() == "192.168.4.123" && ml.a[1]["ip"].str() == "192.168.4.124" && ml.a[0]["to"].num() > 600 && ml.a[0]["from"].num() > 350 && st["bridge"]["lost"].num() == 0,
+             "The page lists both modules with what went to them and came from them, nothing lost", fmt("%u listed, lost %g", (unsigned)ml.a.size(), st["bridge"]["lost"].num()));
+        note("Through the XIAO to the modules", fmt("the tablet sent %u packets in the minute; %u went on to each module (machine data, hellos), longest delay %u ms", w.tab.nSent - n0, sprayer.got239 - a0 + 60, std::max(sprayer.worstDelayMs, drill.worstDelayMs)));
+
+        drill.on = false;                   // the seed drill module is switched off
+        const bool silent = w.runUntil([&]() { return w.said("the module at 192.168.4.124 is silent"); }, 5000);
+        must("gone", silent && w.state()["bridge"]["mods"].a.size() == 1, "The seed drill module is switched off: 3 s later the XIAO says it is silent and sends it nothing more", "");
+        const uint32_t b1 = drill.got239;
+        drill.on = true;                    // ... and on again
+        must("back", w.runUntil([&]() { return drill.got239 >= b1 + 5; }, 2000), "Switched on again, it gets the program's packets within a second", fmt("%u in 2 s", drill.got239 - b1));
+        endSteer(w);
+        must("steering-untouched", w.tab.nNotPassed == 0 && w.tab.nNotTaken == 0 && w.tab.worstDelayMs <= 20, "All the while every packet of the tablet reached the Teensy, at most 20 ms later",
+             fmt("%u not passed, %u not taken, longest delay %u ms", w.tab.nNotPassed, w.tab.nNotTaken, w.tab.worstDelayMs));
+        w.tab.on = false;                   // the program is closed
+        w.run(5000);
+        const uint32_t a2 = sprayer.got;
+        w.run(3000);
+        must("program-closed", sprayer.got == a2 && w.state()["bridge"]["mods"].a.size() == 2, "The program is closed: the modules get nothing more, and stay listed", fmt("%u more", sprayer.got - a2));
     }
     rules(w);
 }

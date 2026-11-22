@@ -190,6 +190,11 @@ struct Program
     uint32_t worstDelayMs = 0;      // from the tablet to the Teensy
     std::vector<uint8_t> rtcmSent;
     uint32_t got = 0, got253 = 0, gotNmea = 0, gotHello = 0, gotOther = 0;
+    uint32_t gotMachine = 0;        // from the other modules (sprayer, seed drill) through the XIAO: PGN 237, 123
+    uint32_t gotMachineDirect = 0;  // ... and heard straight from a module that sent to everyone
+    uint32_t worstMachineGapMs = 0; // the longest time without one through the XIAO, while machineWatch
+    bool machineWatch = false;
+    uint64_t lastMachineMs = 0;
     uint64_t lastGotMs = 0;
     uint16_t seq = 0;
 
@@ -197,6 +202,34 @@ struct Program
     void step();
     void receive(const fake::Datagram& d);
     void send(uint16_t port, const std::vector<uint8_t>& data, bool toAll);     // one datagram, now (8888: for the module, 2233: corrections)
+};
+
+// ---------------------------------------------------------------- a section-control module on the XIAO's network
+// A sprayer or seed drill module (Sprayer_ESP32, Seeder_ESP32) that joined the XIAO's network, in small: PGN 237
+// every 200 ms whether a program runs or not, PGN 123 for every hello, and the rule of the real one: while the
+// program's packets come from the XIAO's own address, what it sends goes to that address only (else to everyone).
+struct Machine
+{
+    // ---- what the scenario sets
+    bool on = false;
+    uint8_t ipLast = 123;           // 192.168.4.<ipLast>
+    uint32_t extraPerMs = 0;        // gone wrong: this many more datagrams every millisecond
+
+    // ---- what happened
+    uint32_t got = 0, got239 = 0, gotHello = 0, gotSubnetOrScan = 0, gotSteer = 0;  // the program's datagrams that reached it through the XIAO
+    uint32_t worstDelayMs = 0;      // from the tablet to this module
+    uint32_t sent = 0, heard = 0;   // its own datagrams, and those of them the XIAO's socket took
+    uint64_t lastGotMs = 0;         // the last one from the XIAO (0: none yet)
+    std::deque<std::vector<uint8_t>> sentLog;       // what the XIAO's socket took, in order (trimmed as it is matched)
+    size_t sentMatched = 0;
+    uint64_t logAt = 0;             // the next entry of the programs' log it may get (World::progLog)
+    uint16_t seq = 0;
+
+    IPAddress ip() const { return IPAddress(192, 168, 4, ipLast); }
+    bool throughXiao() const;       // it answers the XIAO's address only now
+    void step();
+    void receive(const fake::Datagram& d, uint32_t delayMs);
+    void send(const std::vector<uint8_t>& data);
 };
 
 // ---------------------------------------------------------------- a browser on the XIAO's page
@@ -254,6 +287,7 @@ struct World
     Xiao xiao;
     Teensy teensy;
     Program tab, tab2, far;         // a tablet on the XIAO's network, a second one, a program on the other network
+    std::array<Machine, 5> mod;     // section-control modules on the XIAO's network: 192.168.4.123 and up (all off at first)
     fake::Device& dev;
 
     // the WiFi name and password the user's devices have for the XIAO's network (they join only when both are right)
@@ -308,7 +342,10 @@ struct World
     JsonDoc state();                // GET /api/state
     std::string hostFor(const Link& l) const;
 
-    // ---- used by the Teensy and the programs
+    // ---- used by the Teensy, the programs and the modules
+    struct ProgSent { uint64_t ms; std::vector<uint8_t> data; };
+    std::deque<ProgSent> progLog;   // what the programs on the XIAO's network sent for the module and its socket took, in order
+    uint64_t progLogBase = 0;       // the number of its first entry (the log is trimmed)
     void step();
     void bridgeFrame(const uint8_t* d, uint8_t n);          // a PGN 146 arrived at the Teensy: is it allowed?
     void steerSeen() { steerLastMs_ = fake::clockMs; }

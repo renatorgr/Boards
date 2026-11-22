@@ -237,7 +237,7 @@ public:
     bool        setHostname(const char* h);
     bool        mode(int m);
     bool        softAPConfig(IPAddress ip, IPAddress gw, IPAddress mask);
-    bool        softAP(const char* ssid, const char* pass);
+    bool        softAP(const char* ssid, const char* pass, int channel = 1, int hidden = 0, int maxStations = 4);
     IPAddress   softAPIP();
     int         softAPgetStationNum();
     bool        setAutoReconnect(bool on);
@@ -539,6 +539,7 @@ struct Device
     std::string apSsid, apPass;
     bool        apOn = false;
     int         apStations = 0;             // devices on the XIAO's own network (set by the harness)
+    int         apMaxStations = 4;          // how many the program lets in (softAP)
     bool        staBegun = false, staAuto = true, staJoined = false;
     std::string staSsid, staPass;
     uint64_t    staTryAt = 0;               // when the search for the other network (re)started

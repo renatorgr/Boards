@@ -442,6 +442,7 @@ struct Device
     // Wi-Fi and the cable
     int         wifiMode = WIFI_OFF;
     std::string apSsid, apPass;
+    IPAddress   apIp { 192, 168, 4, 1 };    // the own network's address (softAPConfig; the ESP32's own is 192.168.4.1)
     bool        apOn = false;
     int         apClients = 1;              // the phone on the module's own network
     bool        staBegun = false;
@@ -492,6 +493,8 @@ struct Device
     void      tickWifi();                   // the Wi-Fi events the core would give the program (before each loop())
     bool      onTractorNet() const;         // Wi-Fi joined or cable up
     IPAddress tractorIp() const;            // its IP on the tractor network (0.0.0.0 when not there)
+    bool      sameNumbers() const;          // the own network and the tractor's Wi-Fi have the same first three numbers:
+                                            // the chip then sends what is for the tractor network out on its own one
 };
 extern Device* cur;
 }

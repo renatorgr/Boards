@@ -36,7 +36,8 @@
 //   - why the chip started (power on, a drop of the supply voltage, a crash, a watchdog) is in the events and on the
 //       Module tab; a start nobody asked for while the program was spraying is also said on the program's screen.
 //   - own Wi-Fi network "Sprayer-xxxx" (password "agopengps" until changed), always on: the page at
-//       http://192.168.4.1/. On the tractor network: http://<subnet>.123/ or http://sprayer.local/
+//       http://192.168.4.1/ (192.168.40.1 when the tractor network is 192.168.4.x, the WiFi of the AiO board's
+//       XIAO: the "xiao-network" notes below). On the tractor network: http://<subnet>.123/ or http://sprayer.local/
 //   - the page: Spraying tab with the L/ha (actual and target), the pressure (and what gives the target) and the
 //       sections; Settings tab with the target rate, nozzles, pressure limits, flow tolerance, the sensors fitted and
 //       their calibration; Module tab with the link to the program, the relays, the Wi-Fi settings and program subnet
@@ -61,7 +62,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.15"
+#define FW_VERSION          "0.10.16"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -268,6 +269,35 @@ uint8_t pgnChecksum(const uint8_t* msg, size_t length)
 bool staUp() { return cfg.staOn && WiFi.status() == WL_CONNECTED; }
 // ==== end shared "pgn-checksum"
 
+// ==== shared "xiao-network": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
+// A tractor with no router (22 Nov 2026): the tablet and this module join the WiFi of the AiO board's XIAO, with
+// its WiFi bridge on (tractor Wi-Fi = the XIAO's network, subnet 192.168.4).
+//   - The own network is at 192.168.4.1, as every ESP32 has it. The XIAO's network has those numbers too, and two
+//     networks with the same numbers on one module leave neither working: with the subnet 192.168.4 the own
+//     network moves to 192.168.40.1.
+//   - The XIAO sends this module its copy of each packet of the program, to its address only (a broadcast waits at
+//     a WiFi access point for the next beacon, and may be lost). Such a copy comes from the network's own address,
+//     <subnet>.1. While they come (viaGateway, GATEWAY_HOLD_MS after the last one) what this module sends goes to
+//     that address only, and the XIAO passes it on to the program; the program's own broadcasts, which may arrive
+//     late beside the copies, are left alone (an old section state after a newer one would switch a relay back for
+//     a moment). The hold is longer than a broadcast is late, and than NO_DATA_TIMEOUT_MS: when the copies stop,
+//     the sections close first, and only then do the broadcasts count again.
+//   - The same holds with the program itself at <subnet>.1 (a tablet whose own hotspot is the tractor network): the
+//     answers then go straight to it.
+#define GATEWAY_HOLD_MS 3000
+bool     viaGateway = false;
+uint32_t viaGatewayMs = 0;      // the last packet of the program from the network's own address
+uint32_t countBeside = 0;       // the program's own broadcasts left alone meanwhile
+
+IPAddress apIp()
+{
+    const bool same = cfg.subnet[0] == 192 && cfg.subnet[1] == 168 && cfg.subnet[2] == 4;
+    return IPAddress(192, 168, same ? 40 : 4, 1);
+}
+
+IPAddress gatewayIp() { return IPAddress(cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], 1); }
+// ==== end shared "xiao-network"
+
 // ==== shared "log-event": the same in Sprayer_ESP32 and Seeder_ESP32 (change both; check_shared_blocks.py compares them)
 void logEvent(const char* fmt, ...)
 {
@@ -303,7 +333,7 @@ static void ledTick()
 static void printStatus()
 {
     Serial.printf("%s v%s  up %lu s  heap %u\n", FW_NAME, FW_VERSION, (unsigned long)(millis() / 1000), (unsigned)ESP.getFreeHeap());
-    Serial.printf("Own network %s at 192.168.4.1, %d device(s)\n", cfg.apSsid.c_str(), WiFi.softAPgetStationNum());
+    Serial.printf("Own network %s at %s, %d device(s)\n", cfg.apSsid.c_str(), apIp().toString().c_str(), WiFi.softAPgetStationNum());
     if (cfg.staOn) Serial.printf("Tractor network %s: %s, IP %s\n", cfg.staSsid.c_str(), staUp() ? "joined" : "not joined", WiFi.localIP().toString().c_str());
     else Serial.println("Tractor network: not set (web page > Wi-Fi)");
     Serial.printf("Program: %s | sections asked %08lX%08lX open %08lX%08lX | %.1f bar | %.1f L/min | %.1f L | master %s\n",
@@ -389,7 +419,7 @@ void setup()
     wifiStart();
     udpStart();
     webStart();
-    logEvent("ready: module IP %u.%u.%u.%u on the tractor network, page at 192.168.4.1", cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], cfg.ipLast);
+    logEvent("ready: module IP %u.%u.%u.%u on the tractor network, page at %s", cfg.subnet[0], cfg.subnet[1], cfg.subnet[2], cfg.ipLast, apIp().toString().c_str());
 }
 
 void loop()

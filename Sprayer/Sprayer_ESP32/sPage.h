@@ -223,7 +223,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <p class="grp">Own Wi-Fi network</p>
 <div class="field"><span>Network name</span><input type="text" id="apSsid" maxlength="32"></div>
 <div class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" id="apPass" maxlength="63"></div>
-<p class="note">Always on, at 192.168.4.1. Its password is also the one for changing the settings and the firmware.</p>
+<p class="note">Always on, at <span id="apIp">192.168.4.1</span>. Its password is also the one for changing the settings and the firmware.</p>
 <p class="grp">Tractor Wi-Fi network</p>
 <label class="opt"><input type="checkbox" id="staOn"><span>Join the tractor network<small>The router the tablet uses. The page is then also at http://<b id="hostShow">sprayer</b>.local/ or at the module's IP on that network.</small></span></label>
 <div class="field"><span>Network name</span><input type="text" id="staSsid" maxlength="32"></div>
@@ -234,6 +234,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <p class="grp">Program network</p>
 <div class="field"><span>Program subnet: the first three numbers of the tablet's IP on the tractor network</span><input type="text" id="subnetIn" maxlength="11" placeholder="192.168.5" inputmode="decimal"></div>
 <div class="field"><span>Module IP, last number: 123 = the machine module; another number (124, 125…) for a second module. Not 126, the AiO steer module's</span><input type="number" id="ipLast" min="2" max="254" step="1"></div>
+<p class="note">No router on the tractor? Join the Wi-Fi of the AiO board's XIAO (with its WiFi bridge switched on) as the tractor network and set the subnet to 192.168.4. This module's own network then moves from 192.168.4.1 to 192.168.40.1.</p>
 <hr class="grp">
 <div class="field"><span>Current password of the own Wi-Fi network (to confirm)</span><input type="password" id="pwW" maxlength="63"></div>
 <div class="row"><button class="act" type="button" onclick="saveWifi()">Save and restart the module</button></div>
@@ -406,14 +407,14 @@ async function refresh(){
     if(nRelays!=d.out.fn.length){nRelays=d.out.fn.length;$('relays').innerHTML=cells('r',nRelays,0)}
     for(let i=0;i<nRelays;i++){const e=$('r'+i),f=d.out.fn[i];e.innerHTML='<small>'+(i+1)+'</small>'+fnName(f);e.className=d.out.bits>>>i&1?'on':''}
     $('relayNote').textContent=nRelays+' relays, '+nSec+' of them sections: what each relay does comes from the program (Tool → Machine → Pin config).';
-    $('link').innerHTML=d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>';
+    $('link').innerHTML=(d.aog.link?'<span class="ok">talking</span>':'<span class="bad">silent, sections closed</span>')+(d.aog.via?' · through the access point ('+d.aog.via+')':'');
     $('ago239').textContent=ago(d.aog.ago239);$('agoHello').textContent=ago(d.aog.agoHello);
     $('kmh').textContent=f1(d.aog.kmh)+' km/h';
     $('hyd').textContent=(d.aog.hydEn?'enabled, ':'disabled, ')+(d.aog.hyd==1?'lowering':d.aog.hyd==2?'raising':'idle')+' (raise '+d.aog.raise+' s, lower '+d.aog.lower+' s)';
     $('tram').textContent=(d.aog.tram&1?'right ':'')+(d.aog.tram&2?'left':'')||'off';
-    $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+(tool.n235||0)+' section widths, '+d.aog.crcErr+' bad checksums';
+    $('counts').textContent=d.aog.n239+' sections'+(d.aog.n229?' ('+d.aog.n229+' with 17-64)':'')+', '+d.aog.nHello+' hellos, '+(tool.n235||0)+' section widths, '+d.aog.crcErr+' bad checksums'+(d.aog.beside?', '+d.aog.beside+' late broadcasts left alone':'');
     $('invert').innerHTML=(d.aog.invert?'<span class="bad">inverted ("relay active high" ticked in the program)</span>':'<span class="ok">normal</span>')+', relay on = pin '+((d.out.onHigh!==false)!=!!d.aog.invert?'high':'low');
-    $('ap').textContent=d.wifi.ap+' · '+d.wifi.apCl+' device(s)';
+    $('ap').textContent=d.wifi.ap+' · '+(d.wifi.apIp||'192.168.4.1')+' · '+d.wifi.apCl+' device(s)';$('apIp').textContent=d.wifi.apIp||'192.168.4.1';
     if(!d.wifi.staOn)say($('sta'),'warn','not set');else say($('sta'),d.wifi.up?'ok':'bad',d.wifi.sta+(d.wifi.up?'':' (not joined'+(d.wifi.why?': '+d.wifi.why:'')+')'));
     $('ip').textContent=d.wifi.up?d.wifi.ip:'–';$('rssi').textContent=d.wifi.up?d.wifi.rssi+' dBm':'–';
     $('subnet').textContent=d.wifi.subnet+' → module '+d.wifi.subnet+'.'+(d.wifi.ipLast||123);

@@ -55,7 +55,7 @@ function state() {
   up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
   // the WiFi bridge: the pretend program is on the module's network cable, so the bridge (when switched on) stands by
-  bridge: {on: !!X.bridge, teensy: mod && mt > 5.2, state: mod && mt > 5.2 ? (prog ? 1 : 0) : -1, prog: "", steer: false, in: 0, out: 0, rtcmKB: 0, lost: 0, other: 0},
+  bridge: {on: !!X.bridge, teensy: mod && mt > 5.2, state: mod && mt > 5.2 ? (prog ? 1 : 0) : -1, prog: "", steer: false, in: 0, out: 0, rtcmKB: 0, lost: 0, other: 0, mods: []},
   link: {talking: mod && mt > 5.2, lastAgo: mod ? 0 : Math.floor((Date.now() - lostAt) / 1000), frames: Math.floor(mt * 12), crcErr: 0, cut: 0,
    rxKB: S.r2(mt * 1.9, 1), txKB: S.r2(mt * 0.05, 1), hellos: Math.floor(mt / 2), sets: Math.floor(mt), broken: 0},
   aog: {helloAgo: prog ? 0 : -1, rate254: prog ? 10 : 0, ago254: prog ? 0 : -1, kmh: prog ? S.r2(tr.kmh, 1) : 0, angle: eng ? S.r2(M.tractor(mt + 0.25).steer, 2) : 0,

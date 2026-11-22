@@ -49,7 +49,7 @@ static void sendPgn(uint8_t* msg, size_t length, IPAddress to)
 {
     if (!staUp()) return;                                   // nobody to talk to yet
     msg[length - 1] = pgnChecksum(msg, length);
-    udp.beginPacket(to, SEND_PORT);
+    udp.beginPacket(viaGateway ? gatewayIp() : to, SEND_PORT);     // through the XIAO: to it only ("xiao-network" in the main file)
     udp.write(msg, length);
     udp.endPacket();
 }
@@ -421,6 +421,11 @@ static void handlePgn(uint8_t pgn, const uint8_t* d, uint8_t dataLength, IPAddre
 
 void udpPoll()
 {
+    if (viaGateway && millis() - viaGatewayMs >= GATEWAY_HOLD_MS)
+    {
+        viaGateway = false;
+        logEvent("program packets no longer from %s: answering everyone again", gatewayIp().toString().c_str());
+    }
     for (int guard = 0; guard < 10 && udp.parsePacket() > 0; guard++)
     {
         const int len = udp.read(rx, sizeof(rx));
@@ -429,7 +434,18 @@ void udpPoll()
         const uint8_t pgn = rx[3], dataLength = rx[4];
         if (len < dataLength + 6) continue;                          // cut short
         if (pgnChecksum(rx, dataLength + 6) != rx[dataLength + 5]) { countCrcErr++; continue; }
-        handlePgn(pgn, rx, dataLength, udp.remoteIP());
+        const IPAddress from = udp.remoteIP();
+        if (staUp() && from == gatewayIp())                          // the XIAO's copy (the "xiao-network" notes in the main file)
+        {
+            viaGatewayMs = millis();
+            if (!viaGateway)
+            {
+                viaGateway = true;
+                logEvent("the program's packets come from %s (XIAO WiFi bridge): answering it only", from.toString().c_str());
+            }
+        }
+        else if (viaGateway) { countBeside++; continue; }            // the same packet again, late: the copy was here first
+        handlePgn(pgn, rx, dataLength, from);
     }
 }
     // ==== end shared "pgn-subnet-receive"

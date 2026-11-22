@@ -218,6 +218,11 @@ void Program::send(uint16_t port, const std::vector<uint8_t>& data, bool toAll)
     const bool taken = link && w.dev.udpIn(d);
     if (port == 8888)
     {
+        if (taken && !otherNet)
+        {
+            w.progLog.push_back({ fake::clockMs, data });
+            while (w.progLog.size() > 20000) { w.progLog.pop_front(); w.progLogBase++; }
+        }
         sent.push_back({ fake::clockMs, data, taken });
         nSent++;
         if (!taken) nNotTaken++;
@@ -257,16 +262,74 @@ void Program::step()
 
 void Program::receive(const fake::Datagram& d)
 {
+    if (d.src != IPAddress(192, 168, 4, 1).raw()) { gotMachineDirect++; return; }   // straight from a module that sent to everyone
     got++;
     lastGotMs = fake::clockMs;
     if (!d.data.empty() && d.data[0] == '$') gotNmea++;
     else if (d.data.size() >= 6 && d.data[0] == 0x80 && d.data[1] == 0x81)
     {
-        if (d.data[3] == 253) got253++;
+        if (d.data[2] == 0x7B && d.srcPort == 9999) { gotMachine++; lastMachineMs = fake::clockMs; }
+        else if (d.data[3] == 253) got253++;
         else if (d.data[3] == 126 || d.data[3] == 121) gotHello++;
         else gotOther++;
     }
     else gotOther++;
+}
+
+// ---------------------------------------------------------------- a section-control module on the XIAO's network
+bool Machine::throughXiao() const { return lastGotMs != 0 && fake::clockMs - lastGotMs < 3000; }
+
+void Machine::send(const std::vector<uint8_t>& data)
+{
+    World& w = *world();
+    const bool toAll = !throughXiao();
+    fake::Datagram d;
+    d.ms = fake::clockMs;
+    d.src = ip().raw();
+    d.srcPort = 8888;
+    d.dst = (toAll ? IPAddress(192, 168, 4, 255) : IPAddress(192, 168, 4, 1)).raw();
+    d.dstPort = 9999;
+    d.data = data;
+    sent++;
+    if (!w.xiao.on || !w.apUsable()) return;
+    if (w.dev.udpIn(d))
+    {
+        heard++;
+        sentLog.push_back(data);
+        while (sentMatched > 64) { sentLog.pop_front(); sentMatched--; }
+        while (sentLog.size() > 4000) { sentLog.pop_front(); if (sentMatched) sentMatched--; }
+    }
+    if (toAll) for (Program* p : { &w.tab, &w.tab2 }) if (p->on) p->receive(d);    // the access point passes it on to the other devices
+}
+
+// PGN 237 every 200 ms (a counter in it, so every one is different), program or not
+void Machine::step()
+{
+    if (!on) return;
+    for (uint32_t k = 0; k < extraPerMs; k++)
+    {
+        seq++;
+        send(packet(237, { (uint8_t)seq, (uint8_t)(seq >> 8), 0, 0, 0, 1, ipLast, 0 }, 0x7B));
+    }
+    if (fake::clockMs % 200 != (uint64_t)ipLast % 200) return;
+    seq++;
+    send(packet(237, { (uint8_t)seq, (uint8_t)(seq >> 8), 0, 0, 0, 1, ipLast, 0 }, 0x7B));
+}
+
+void Machine::receive(const fake::Datagram& d, uint32_t delayMs)
+{
+    got++;
+    lastGotMs = fake::clockMs;
+    if (delayMs > worstDelayMs) worstDelayMs = delayMs;
+    if (d.data.size() < 6) return;
+    if (d.data[3] == 239) got239++;
+    else if (d.data[3] == 201 || d.data[3] == 202) gotSubnetOrScan++;
+    else if (d.data[3] == 254 || d.data[3] == 252 || d.data[3] == 251) gotSteer++;
+    else if (d.data[3] == 200)
+    {
+        gotHello++;
+        send(packet(123, { (uint8_t)seq, (uint8_t)(seq >> 8), ipLast, 0, 0 }, 0x7B));
+    }
 }
 
 // ---------------------------------------------------------------- a browser's requests
@@ -312,6 +375,7 @@ World::World(Kit k) : dev(xiao.dev)
     knownSsid = fmt("XIAO-%02X%02X", (unsigned)((dev.mac >> 32) & 0xFF), (unsigned)((dev.mac >> 40) & 0xFF));
     tab.ipLast = 2;
     tab2.ipLast = 3;
+    for (size_t i = 0; i < mod.size(); i++) mod[i].ipLast = (uint8_t)(123 + i);
     far.ipLast = 77;
     far.otherNet = true;
     fake::cur = &dev;
@@ -434,8 +498,41 @@ void World::datagramsOut()
         const std::string where = fmt("%s:%u", to.toString().c_str(), d.dstPort);
         Program* p = nullptr;
         for (Program* q : { &tab, &tab2 }) if (q->ip() == to) p = q;
+        Machine* m = nullptr;
+        for (Machine& q : mod) if (q.ip() == to && (q.on || q.sent)) m = &q;
         if (to[3] == 255 || to[0] != 192 || to[1] != 168 || to[2] != 4) broke("a datagram went to " + where + " (to everyone, or off the XIAO's own network)");
+        else if (m && d.dstPort == 8888)
+        {
+            // for a section-control module: one of the program's own, each once and in order, never the subnet or the scan
+            if (m->logAt < progLogBase) m->logAt = progLogBase;
+            size_t k = (size_t)(m->logAt - progLogBase);
+            while (k < progLog.size() && progLog[k].data != d.data) k++;
+            if (k == progLog.size()) broke("a datagram went to the module at " + where + " that the program never sent (or it came again, or out of order)");
+            else
+            {
+                m->logAt = progLogBase + k + 1;
+                if (m->on && apUsable()) m->receive(d, (uint32_t)(fake::clockMs - progLog[k].ms));
+            }
+            continue;
+        }
         else if (!p || d.dstPort != 9999) broke("a datagram went to " + where + ", where no program is");
+        if (d.srcPort == 9999)
+        {
+            // from the socket of the other modules: something one of them sent, each once and in order
+            bool found = false;
+            for (Machine& q : mod)
+            {
+                size_t k = q.sentMatched;
+                while (k < q.sentLog.size() && q.sentLog[k] != d.data) k++;
+                if (k == q.sentLog.size()) continue;
+                q.sentMatched = k + 1;
+                found = true;
+                break;
+            }
+            if (!found) broke("a datagram went to " + where + " that no module sent (or it came again, or out of order)");
+            if (p && p->on && apUsable()) p->receive(d);
+            continue;
+        }
         size_t k = teensy.outMatched;
         while (k < teensy.outLog.size() && teensy.outLog[k] != d.data) k++;
         if (k == teensy.outLog.size()) broke("a datagram went to " + where + " that the Teensy never sent (or it came again, or out of order)");
@@ -630,12 +727,17 @@ void World::step()
     const bool up = xiao.on && dev.apOn && dev.apSsid == knownSsid && dev.apPass == knownPass;
     if (!up) apUpSince_ = 0;
     else if (!apUpSince_) apUpSince_ = now;
-    dev.apStations = apUsable() ? phones + (tab.on ? 1 : 0) + (tab2.on ? 1 : 0) : 0;
+    int machines = 0;
+    for (const Machine& m : mod) machines += m.on;
+    dev.apStations = apUsable() ? std::min(dev.apMaxStations, phones + (tab.on ? 1 : 0) + (tab2.on ? 1 : 0) + machines) : 0;
     wires();
     tab.step();
     tab2.step();
     far.step();
+    for (Machine& m : mod) m.step();
     datagramsOut();
+    for (Program* p : { &tab, &tab2 })
+        if (p->machineWatch && fake::clockMs - p->lastMachineMs > p->worstMachineGapMs) p->worstMachineGapMs = (uint32_t)(fake::clockMs - p->lastMachineMs);
     browsers();
     // R3: the hello (every 2 s) while both run and the wires are whole
     if (xiao.on && teensy.on && !wireCut && !cutToTeensy && teensy.gps2On)

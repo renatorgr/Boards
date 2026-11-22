@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO (off from new). [A slow browser](#a-slow-browser) no longer holds up the bridge or the link. `.bin` rebuilt. [What was tested](#what-was-tested). |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO (off from new), and [section modules on its WiFi](#section-modules-on-the-xiaos-wifi) too. [A slow browser](#a-slow-browser) no longer holds it up. `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -114,13 +114,45 @@ Why the XIAO's own network, and not the farm's or the tractor router's WiFi: on 
 **Limits**
 
 - The XIAO's network has **no internet**. The corrections (NTRIP) must come through the tablet's own mobile data while it is joined to this network. Not tested yet: it depends on the tablet keeping mobile data in use on a WiFi with no internet.
-- The program reaches **this module only** (GPS, IMU, steering, the Teensy's own machine outputs). A section-control module on the network cable (sprayer, seed drill) is not reached through the bridge.
+- The program reaches this module (GPS, IMU, steering, the Teensy's own machine outputs) and the [section modules on the XIAO's WiFi](#section-modules-on-the-xiaos-wifi). A section-control module on the **network cable** (sprayer, seed drill) is not reached through the bridge.
 - Datagrams of up to 251 bytes (every AgOpenGPS PGN is shorter); a longer one is dropped and counted.
 - The range is the XIAO's: in an aluminium box use the external antenna.
 
-**Where it shows:** Status → XIAO → **WiFi bridge**: off, on with no program, standing by (a program is on the cable), or the program's address with the packets to the module, to the program, and those lost. **Program → module** shows the program's data as before. The Teensy page has the same row in its XIAO card, and "on the XIAO's WiFi" beside the program's IP. Both write each change in Messages.
+**Where it shows:** Status → XIAO → **WiFi bridge**: off, on with no program, standing by (a program is on the cable), or the program's address with the packets to the module, to the program, and those lost; under it **Other modules on this network**. **Program → module** shows the program's data as before. The Teensy page has the same row in its XIAO card, and "on the XIAO's WiFi" beside the program's IP. Both write each change in Messages.
 
-**How it travels** (PGN 146-149 on the link, never on the network): the XIAO listens on UDP 8888 and 2233 of its own network, hands each datagram to the Teensy (PGN 146 with the sender's address, PGN 147 for the corrections) and sends what the Teensy has for the program (PGN 148) to that program's UDP 9999. The Teensy says once a second who has the module (PGN 149); without that, from an older Teensy firmware, the XIAO hands nothing over. The XIAO never waits for the link: with its transmit buffer full a datagram is dropped and counted.
+**How it travels** (PGN 146-149 on the link, never on the network): the XIAO listens on UDP 8888 and 2233 of its own network (and on 9999 for the [section modules](#section-modules-on-the-xiaos-wifi)), hands each datagram to the Teensy (PGN 146 with the sender's address, PGN 147 for the corrections) and sends what the Teensy has for the program (PGN 148) to that program's UDP 9999. The Teensy says once a second who has the module (PGN 149); without that, from an older Teensy firmware, the XIAO hands nothing over. The XIAO never waits for the link: with its transmit buffer full a datagram is dropped and counted.
+
+## Section modules on the XIAO's WiFi
+
+For a tractor with **no router**: the tablet is on the XIAO's network (the [WiFi bridge](#wifi-bridge)) and a sprayer or seed drill module joins that network too (`Sprayer_ESP32` 0.10.15, `Seeder_ESP32` 0.2.15, or later). Since 22 Nov 2026 the XIAO passes each packet of the program on to every such module, and each packet of a module on to the program.
+
+**Setting it up**
+
+1. Switch the WiFi bridge on, as above.
+2. On the module's own page, Module tab → *Network settings*: tick *Join the tractor network* and give it the XIAO's network name and password; set the *Program subnet* to **192.168.4**. Save and restart the module.
+3. The module's own network then moves from 192.168.4.1 to **192.168.40.1**: the XIAO's network has the numbers 192.168.4.x, and a module cannot have two networks with the same numbers. From the tablet, on the XIAO's network, the module's page is at its IP there (`http://192.168.4.123/` for the first one).
+
+**How it works**
+
+| What | Why |
+|---|---|
+| The XIAO knows a module from the packets it sends by itself (five a second to UDP 9999, program or not) and forgets it 3 s after the last | Nothing to set on the XIAO. Up to 4 modules; a fifth is named in Messages and not served. |
+| Every packet goes to **one address**: the program's to each module, a module's to the program | A packet "to everyone" waits at a WiFi access point for the next beacon and is not sent again when lost: sections would switch late. |
+| The module answers the XIAO only, and leaves alone the program's own packets "to everyone" that arrive beside the XIAO's copies | They are the same packets, later: an old section state after a newer one would switch a relay back for a moment. The module's page says "through the access point" and counts them. |
+| Not passed on to the modules: the subnet (PGN 201), the scan (PGN 202), the steering's own (PGN 254, 252, 251) | A subnet change would take the module off this network; the steering data, a hundred packets a second, is of no use to it. |
+| Of one module's packets, 60 a second at most go on to the program (ours send about 8) | A module gone wrong must not fill the WiFi that carries the steering. Messages says so once. |
+| The XIAO's network takes 8 devices (4 before) | The tablet, the modules, a phone or two on the pages. |
+
+**When it stops:** with the XIAO's copies gone (the XIAO restarts, or the Teensy stops answering the bridge) the module closes every section within 2 s, as with any lost link. A second later it listens to the program's own packets again and answers everyone, which works with delays until the XIAO passes on again.
+
+**Limits**
+
+- Nothing is passed on while the Teensy does not answer the bridge (an older Teensy firmware, or the Teensy silent): the XIAO takes no program then.
+- A program on the Teensy's **network cable** does not reach a module on the XIAO's WiFi, and the Teensy page's Machine tab does not show it (that tab listens on the cable).
+- The program's scan for modules does not list it; it answers the hello like any machine module, so the program shows it as connected.
+- **Not yet tried with real modules**: see [What was tested](#what-was-tested).
+
+**Where it shows:** Status → XIAO → **Other modules on this network**: each module's address with the packets sent to it and passed on from it. Messages says when a module comes, goes silent, or sends too much. On the module's page: Module tab, the *Program* row.
 
 ## A slow browser
 
@@ -271,6 +303,11 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
   - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,170,649 bytes (89 %), XIAO_ESP32S3 1,055,772 bytes (31 %);
   - in the harness (58 scenarios now): a Save that arrives 3 s late, an upload that pauses 18 s, a phone that walks away in the middle of one, a refused `.hex` of 600 kB, an upload that drips in for two minutes, all with a tablet steering through the bridge or the Teensy watching for the hello: nothing held up, no restart by the watchdog but the one after a minute stuck; and requests timed to wait in the very pass that looks at the WiFi, with the other network out of reach: no search for it;
   - the harness plays the second task one turn at a time: two tasks truly running at once, and the timing on the chip, are **not yet tried on a real XIAO**.
+- The [section modules on the XIAO's WiFi](#section-modules-on-the-xiaos-wifi) (22 Nov 2026):
+  - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,172,471 bytes (89 %), XIAO_ESP32S3 1,057,536 bytes (31 %);
+  - in the harness (64 scenarios now) with pretend modules: a sprayer and a seed drill module served while the tablet steers (each packet of the program to each of them once and in order, their packets to the program only, no gap in the steering data); five modules (four served, the fifth named in Messages); the bridge off; the program's scan and subnet, not passed on; a module that sends 3000 packets a second and then drops off the network (the steering goes on, 60 a second pass, Messages says so once);
+  - the two real module programs run in their own harness (`Tests/ESP32_Modules`) with a pretend XIAO: late and lost packets beside the XIAO's copies, the bridge stopping, a power cycle;
+  - **not yet tried with a real XIAO, tablet and modules**: that the modules join the XIAO's network and stay on it, the delays in the air, and the program showing the module are what the first bench test has to show.
 
 ## Credits and licence
 

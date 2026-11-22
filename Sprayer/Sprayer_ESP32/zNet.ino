@@ -6,7 +6,8 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-// Own network "Sprayer-xxxx" at 192.168.4.1, always on (a phone that joins it gets the page by itself).
+// Own network "Sprayer-xxxx" at 192.168.4.1 (apIp(): 192.168.40.1 when the tractor network is 192.168.4.x), always on
+// (a phone that joins it gets the page by itself).
 // Tractor network (the router AgOpenWeb's tablet uses): joined with a fixed IP <subnet>.123 (the last number
 // can be changed on the page, for a second module), which is where the program looks for the machine module.
 // Changes on the page need the own network's password.
@@ -63,7 +64,7 @@ void wifiStart()
     WiFi.setHostname(cfg.host.c_str());
     const bool sta = cfg.staOn && cfg.staSsid.length() > 0;
     WiFi.mode(sta ? WIFI_AP_STA : WIFI_AP);
-    WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+    WiFi.softAPConfig(apIp(), apIp(), IPAddress(255, 255, 255, 0));
     WiFi.softAP(cfg.apSsid.c_str(), cfg.apPass.c_str());
     if (sta)
     {
@@ -83,7 +84,7 @@ void wifiStart()
         MDNS.addServiceTxt("aowcard", "tcp", "v", "1");     //   TXT v=1 is required, path says where the page is
         MDNS.addServiceTxt("aowcard", "tcp", "path", "/");
     }
-    logEvent("own network '%s' at 192.168.4.1%s", cfg.apSsid.c_str(), sta ? ", joining the tractor network" : ", tractor network not set");
+    logEvent("own network '%s' at %s%s", cfg.apSsid.c_str(), apIp().toString().c_str(), sta ? ", joining the tractor network" : ", tractor network not set");
 }
 
 // Once a second: say when the tractor network comes and goes
@@ -193,8 +194,9 @@ static bool captiveRedirect()
     if (!(server.client().localIP() == WiFi.softAPIP())) return false;
     String h = server.hostHeader();
     h.toLowerCase();
-    if (h.length() == 0 || h == "192.168.4.1" || h == cfg.host + ".local") return false;
-    server.sendHeader("Location", "http://192.168.4.1/", true);
+    const String own = apIp().toString();
+    if (h.length() == 0 || h == own || h == cfg.host + ".local") return false;
+    server.sendHeader("Location", String("http://") + own + "/", true);
     server.send(302, "text/plain", "");
     return true;
 }
@@ -215,21 +217,21 @@ static void apiStatus()
     j += ",\"start\":" + jsonStr(startWhy) + ",\"startBad\":" + String(startUnexpected ? "true" : "false");
     j += ",\"name\":" + jsonStr(moduleName());
 
-    j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());
+    j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apIp\":" + jsonStr(apIp().toString()) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());
     j += ",\"staOn\":" + String(cfg.staOn ? "true" : "false") + ",\"sta\":" + jsonStr(cfg.staSsid);
     j += ",\"up\":" + String(staUp() ? "true" : "false");
     j += ",\"ip\":" + jsonStr(staUp() ? moduleIp().toString() : String("")) + ",\"ipLast\":" + String(cfg.ipLast);
     j += ",\"rssi\":" + String(staUp() ? WiFi.RSSI() : 0) + ",\"host\":" + jsonStr(cfg.host) + ",\"why\":" + jsonStr(staWhy());
     j += ",\"subnet\":\"" + String(cfg.subnet[0]) + "." + String(cfg.subnet[1]) + "." + String(cfg.subnet[2]) + "\"}";
 
-    j += ",\"aog\":{\"link\":" + String(linkOk ? "true" : "false");
+    j += ",\"aog\":{\"link\":" + String(linkOk ? "true" : "false") + ",\"via\":" + jsonStr(viaGateway ? gatewayIp().toString() : String(""));
     j += ",\"ago239\":" + String(have239 ? (long)((now - last239Ms) / 1000) : -1);
     j += ",\"agoHello\":" + String(haveHello ? (long)((now - lastHelloMs) / 1000) : -1);
     j += ",\"kmh\":" + String(gpsKmh, 1) + ",\"hyd\":" + String(hydLift) + ",\"tram\":" + String(tramline);
     j += ",\"geo\":" + String(geoStop) + ",\"uturn\":" + String(uTurn) + ",\"req\":" + jsonHex(sectionsReq);
     j += ",\"secTop\":" + String(secTop) + ",\"ago229\":" + String(have229 ? (long)((now - last229Ms) / 1000) : -1);
     j += ",\"n239\":" + String(count239) + ",\"n229\":" + String(count229);
-    j += ",\"nHello\":" + String(countHello) + ",\"crcErr\":" + String(countCrcErr);
+    j += ",\"nHello\":" + String(countHello) + ",\"crcErr\":" + String(countCrcErr) + ",\"beside\":" + String(countBeside);
     j += ",\"invert\":" + String(cfg.invertOutputs) + ",\"hydEn\":" + String(cfg.hydEnable);
     j += ",\"raise\":" + String(cfg.raiseTime) + ",\"lower\":" + String(cfg.lowerTime) + "}";
 

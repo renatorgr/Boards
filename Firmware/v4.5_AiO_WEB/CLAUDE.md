@@ -237,6 +237,9 @@ The WiFi bridge (22 Nov 2026, README "WiFi bridge"): 146 a datagram a program on
 from UDP 2233 (XIAO → Teensy, to the receiver), 148 a datagram for that program's UDP 9999 (Teensy → XIAO, which sends it
 to that address only), 149 the bridge's state (Teensy → XIAO, once a second and at each change: `[version 1][0 free /
 1 a program on the cable has the module / 2 the program on the WiFi has it][0]`; a XIAO that does not hear it sends no 146).
+The section modules on the XIAO's WiFi (sprayer, seed drill; XIAO README "Section modules on the XIAO's WiFi") never
+come onto the link: the XIAO itself passes the program's datagrams on to them and theirs on to the program, each to
+one address (`bridgeToModules()`, `bridgeFromModules()`), and the Teensy's Machine tab does not see them.
 
 ### Machine module (UDP 9999 in)
 123 the module's hello reply (sections on, 2 bytes; the official Machine_UDP_v5 leaves its checksum byte at 71, so it is taken without one), 237 the official module's periodic PGN (source 0x7F, a sign of life only) or, from 0x7B, the AiO v26 layout (sections 1-16 the module drives in bytes 5-6, lift, tramline, geo stop, status; Seeder_ESP32 adds sections 17-64 in bytes 13-18), 160 (0xA0) sprayer data from the Nano or ESP32 at .123; see `zMachine.ino` for the layouts. A module's sections come from its 237 when it sends one (the AiO v26 leaves them at 0 in its hello reply); up to 4 modules (IPs) are kept apart and their sections put together.
