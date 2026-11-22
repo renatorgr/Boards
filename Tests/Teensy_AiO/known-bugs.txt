@@ -1,8 +1,6 @@
 # Known bugs: the harness reports them but does not fail the run. One per line:
 #   <scenario>/<check key>[@<kit>]  why, and what fixes it
 # Take a line out when the fix is merged (the harness says "passes now" when one is fixed).
-update-while-steering/loop-not-held  zWeb.ino otaRefuse reads the whole refused file (otaDrain, up to 8 MB) before it answers 409: the steering loop stops for as long as the upload takes, outputs as they were. Answer at once and close, or drain from webLoop
-update-while-steering/steer-only-when-asked  the same: the outputs stay on while the refused file comes in
 short-settings-packet/ignored  Autosteer.ino ReceiveUdp takes PGN 252 (and 251) with any length over 4: the missing bytes come from the packet before. Check the length byte against the bytes read
 eeprom-damaged/steer-only-when-asked  Autosteer.ino autosteerSetup takes the stored steer settings / config without a check: a 0xFF byte turns every flag on (an IBT2 driven as a Cytron with the relay inverted: full lock, nobody asked). Check flags 0/1 and counts > 0, else the defaults
 eeprom-damaged/no-output-nan@f9p-ibt2  the same
