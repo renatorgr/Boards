@@ -9,7 +9,7 @@ what the XIAO really does: what reaches the Teensy, what goes out on the WiFi, w
 tells the user about the mistake.
 
 Each scenario runs on the XIAO ESP32C3, and on the ESP32S3 too where the chip matters (updates, start-up, the
-bridge). A full run takes about a minute and a half, most of it the build.
+bridge). A full run takes about two minutes, most of it the build.
 
 This is not a compile for the XIAO: the program is built for the PC, with a pretend ESP32 core.
 
@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | First version: 55 scenarios for five users on the two XIAOs (65 runs, about 730 checks), a report, and the "XIAO harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
+| 22 Nov 2026 | First version: 57 scenarios for five users on the two XIAOs (67 runs, about 860 checks), a report, the "XIAO harness" check on GitHub ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
 
 ## Running it
 
@@ -56,10 +56,16 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
     a write with no room waits, a receive buffer that is not read loses bytes;
   - **the updater** (`Update`): it writes when 4096 bytes are there, wants the first byte E9, and at the end
     checks the file's parts and checksum for this chip;
-  - **the loop watchdog** (15 s), fed once per pass of `loop()` and by `feedLoopWDT()`: when it runs out the
-    XIAO restarts with the reason "watchdog";
+  - **the task watchdog** (15 s): the program's own entry, fed only by `esp_task_wdt_reset_user()`, and the loop
+    task's (fed once per pass of `loop()` and by `feedLoopWDT()`) when the program switches that one on. When
+    one runs out the XIAO restarts with the reason "watchdog";
+  - **a second task and a lock** (FreeRTOS: `xTaskCreateUniversal`, a recursive mutex): the program's link task
+    gets its turn at every pretend millisecond in which its sleep is over, also in the middle of a wait of the
+    loop's, as a task of a higher priority does on the chip; the loop stands still for that turn;
   - WiFi (its own network, joining another, searching), UDP sockets, the flash (Preferences), mDNS, the USB port.
-- Pretend time moves a millisecond at a time and only inside the program's own waits. Every millisecond the bench
+- Pretend time moves a millisecond at a time and only inside the program's own waits (so a scenario's own code does
+  not run while the program waits for a phone inside one `loop()` pass: `w.later()` books what must happen in the
+  middle of such a wait). Every millisecond the bench
   (`harness/bench.*`, `harness/teensy.cpp`) moves the bytes on the serial link and lets everyone do their part:
   - **the pretend Teensy** follows `zXiao.ino` of the Teensy firmware: the hello it waits for, its status in
     pieces, its log, the info, subnet and firmware-update frames, the WiFi bridge (who has the module: the cable
@@ -79,7 +85,7 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
 | XIAO never set up | `new-bridge-needs-password`, `new-no-teensy`, `new-gps2-port-not-set`, `new-older-teensy`, `new-wrong-password` (every change with a wrong password), `new-phones-join` (the phones' "is there internet?" checks) |
 | Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later` |
 | Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering` |
-| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap` |
+| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap` |
 
 ## The checks
 
@@ -97,7 +103,9 @@ watches them every millisecond:
   the XIAO's own network, byte for byte as sent and in order, and only the hello while the cable has the module.
 - **The Teensy's data for the program goes to that program only**, never to everyone, exactly as the Teensy sent it.
 - **Every answer to a browser is well formed**: HTTP, its length, valid JSON.
-- **The XIAO restarts only when the user asked for it**, never by its watchdog.
+- **The XIAO restarts only when the user asked for it**, never by its watchdog (but for the two scenarios where
+  the page is stuck on one phone for over a minute: there the watchdog is what must clear it, once).
+- **The loop and the link task never give back a lock they do not hold.**
 - **Its hello to the Teensy is never late** (every 2 s; the Teensy calls it gone after 10 s).
 - **No data from the Teensy is lost** in the XIAO's receive buffer.
 
@@ -109,28 +117,31 @@ a full id, with the reason; the report says when a listed bug passes again, so i
 
 ## What it found
 
-The first run (22 Nov 2026) found four things in the program, listed in `known-bugs.txt` with the fix each needs.
-None of them was changed here: this folder only tests.
+The first run (22 Nov 2026) found four things in the program. The harness itself changes nothing in the program:
+a fix is a pull request of its own, which takes its lines out of `known-bugs.txt`.
 
-1. **The XIAO stands still while it waits for the rest of a request.** The core's web server waits inside
-   `handleClient()` for a late piece of a request (up to 5 s for each piece of a form or line, 20 s for the next
-   piece of an upload), and `loop()` does nothing else meanwhile: no WiFi bridge, no hello, the Teensy's data
-   unread. With a tablet steering through the bridge, a phone's Save whose form arrives 3 s late stops the steering
-   data for those 3 s (the Teensy switches autosteer off after 2.5 s). And the 20 s wait of an upload is longer
-   than the 15 s loop watchdog: an upload that stalls, or a phone that walks out of reach in the middle of one,
-   restarts the XIAO by its watchdog instead of "Program update STOPPED" (`link-request-in-two-pieces`,
-   `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`).
-2. **A refused file for the Teensy still holds the link.** `teensyUpdateUpload()` reads a refused `.hex` to its
-   end without `linkPoll()` (the XIAO's own update calls it for every piece): while the file comes in there is no
-   bridge and no hello. Sent while the tablet steers, the file is refused as it should be, and the steering data
-   stops all the same (`link-hex-while-steering`, `link-teensy-refuses-update`, `link-wrong-password-big-file`:
-   that one needs no password).
-3. **The bridge goes by the address a packet claims.** A datagram that arrives on the other network (the farm's
-   WiFi the XIAO joined) with a sender address of the XIAO's own network (192.168.4.x) is passed to the Teensy.
-   It takes someone on the farm's WiFi who forges packets on purpose (`conn-forged-address`).
-4. **The chip check of the XIAO's own update looks at more than the first piece.** A good `.bin` with the byte E9
-   exactly 1436 or 2872 bytes in is refused as "other chip". Today's `.bin` files have text there, so it does not
-   happen now (`update-header-byte-later`).
+1. **The XIAO stood still while it waited for the rest of a request. Fixed 22 Nov 2026.** The core's web server
+   waits inside `handleClient()` for a late piece of a request (up to 5 s for each piece of a form or line, 20 s
+   for the next piece of an upload), and `loop()` did nothing else meanwhile: no WiFi bridge, no hello, the
+   Teensy's data unread. With a tablet steering through the bridge, a phone's Save whose form arrived 3 s late
+   stopped the steering data for those 3 s (the Teensy switches autosteer off after 2.5 s). And the 20 s wait of
+   an upload was longer than the 15 s loop watchdog: an upload that stalled, or a phone that walked out of reach
+   in the middle of one, restarted the XIAO by its watchdog instead of "Program update STOPPED".
+   The fix: a second task (the link task) runs the link and the bridge while the loop is inside the core's web
+   server, and the watchdog is the program's own entry, answered by that task while the web server waits for a
+   browser (`link-request-in-two-pieces`, `link-request-never-finished`, `link-update-stalls`,
+   `link-update-phone-vanishes`; `link-upload-drips-while-steering` and `link-upload-drips` were added with it).
+2. **A refused file for the Teensy still held the link. Fixed 22 Nov 2026.** `teensyUpdateUpload()` read a
+   refused `.hex` to its end without `linkPoll()`: while the file came in there was no bridge and no hello. Sent
+   while the tablet steers, the file was refused as it should be, and the steering data stopped all the same
+   (`link-hex-while-steering`, `link-teensy-refuses-update`, `link-wrong-password-big-file`).
+3. **The bridge goes by the address a packet claims.** Not fixed, in `known-bugs.txt`. A datagram that arrives on
+   the other network (the farm's WiFi the XIAO joined) with a sender address of the XIAO's own network
+   (192.168.4.x) is passed to the Teensy. It takes someone on the farm's WiFi who forges packets on purpose
+   (`conn-forged-address`).
+4. **The chip check of the XIAO's own update looks at more than the first piece.** Not fixed, in
+   `known-bugs.txt`. A good `.bin` with the byte E9 exactly 1436 or 2872 bytes in is refused as "other chip".
+   Today's `.bin` files have text there, so it does not happen now (`update-header-byte-later`).
 
 It also lists what the XIAO keeps quiet about (**not told**, in the report): a wrong password for the other
 network (the page shows "connecting" for ever), a second program or one on the other network calling the module,
@@ -161,13 +172,16 @@ SCENARIO(User::BadLink, "my-scenario", "what happens, in one line", oneKit())
 `harness/bench.h` lists what a scenario can set and read: the XIAO (`w.xiao`, `w.dev`), the Teensy (`w.teensy`),
 the tablets (`w.tab`, `w.tab2`, `w.far` on the other network), browsers (`w.get`, `w.post`, `w.upload` with a
 `Link`), the serial wires (`w.noise`, `w.wireCut`), the router (`w.dev.router`), the USB monitor (`w.usb`,
-`w.said`). A change to what the program or the Teensy sends over the link needs the pretend Teensy to follow
+`w.said`), something to do at a time to come (`w.later`). A change to what the program or the Teensy sends over the link needs the pretend Teensy to follow
 (`harness/teensy.cpp`), as `Tests/Teensy_AiO` follows it with its pretend XIAO.
 
 ## What it does not test
 
 - The page's own JavaScript: what it checks before it sends (a chosen file's name, first byte and chip), what it
   shows. The simulator check opens the page; the harness talks to the XIAO as the page does.
+- Two tasks truly running at once. The link task gets its turn only where pretend time moves, and a task that
+  would have to wait for a lock is not played. That the loop and the link task are never in the program's own
+  code together is the lock's work on the chip; the harness shows what each does with its turn, not a race.
 - The radio and the real chip: WiFi range, the delay and loss in the air, a search taking the radio off its
   channel, two networks with the same numbers, real timing, heap, the flash wearing out. The pretend core does
   what the real one's code does, nothing more; the waits of the pretend browsers are chosen numbers.

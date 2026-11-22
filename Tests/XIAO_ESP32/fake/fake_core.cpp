@@ -7,6 +7,7 @@
    Licence: GNU General Public License v3 or later (file COPYING), WITHOUT ANY WARRANTY.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
+#include <stdexcept>
 #include "fake_core.h"
 #include "lwip/sockets.h"
 
@@ -16,8 +17,30 @@ Device* cur = nullptr;
 uint64_t clockMs = 100000;      // the bench was switched on a while ago
 std::function<void()> onMs;
 
-// Pretend time: the only place it moves. The world takes a step every millisecond; then the watchdog of the loop
-// task looks at its clock (the core feeds it before each loop() pass, the program with feedLoopWDT()).
+// The program's other tasks: each one whose sleep is over runs until it sleeps again (vTaskDelay throws TaskSleep).
+// The loop stands still meanwhile; a wait inside a task moves the clock but gives no other task a turn.
+static void runTasks(Device& d)
+{
+    for (size_t i = 0; i < d.tasks.size(); i++)
+    {
+        if (clockMs < d.tasks[i].wakeAt) continue;
+        d.inTask = (int)i;
+        d.tasks[i].turns++;
+        try
+        {
+            d.tasks[i].fn(d.tasks[i].arg);
+            d.inTask = -1;
+            throw Restart{ ESP_RST_PANIC };             // a task function that returns: the chip stops there
+        }
+        catch (TaskSleep& s) { d.tasks[i].wakeAt = clockMs + (s.ticks ? s.ticks : 1); }
+        catch (...) { d.inTask = -1; throw; }
+        d.inTask = -1;
+    }
+}
+
+// Pretend time: the only place it moves. The world takes a step every millisecond, the program's other tasks get
+// their turn, then the task watchdog looks at its clocks: the loop task's (the core feeds it before each loop()
+// pass, the program with feedLoopWDT()) and the program's own entry (esp_task_wdt_reset_user).
 void tick(uint32_t ms)
 {
     for (uint32_t i = 0; i < ms; i++)
@@ -25,11 +48,14 @@ void tick(uint32_t ms)
         clockMs++;
         if (onMs) onMs();
         Device* d = cur;
-        if (d && d->running && d->wdtOn)
+        if (d && d->inTask < 0 && !d->tasks.empty()) runTasks(*d);
+        if (d && d->running)
         {
-            const uint32_t gap = (uint32_t)(clockMs - d->wdtFedAt);
+            uint32_t gap = 0;
+            if (d->wdtOn) gap = (uint32_t)(clockMs - d->wdtFedAt);
+            if (d->wdtUserOn) gap = std::max(gap, (uint32_t)(clockMs - d->wdtUserFedAt));
             if (gap > d->wdtLongestMs) d->wdtLongestMs = gap;
-            if (gap >= d->wdtTimeoutMs) throw Restart{ ESP_RST_TASK_WDT };
+            if (gap >= d->wdtTimeoutMs && (d->wdtOn || d->wdtUserOn)) throw Restart{ ESP_RST_TASK_WDT };
         }
     }
 }
@@ -136,7 +162,10 @@ void Device::stopped(esp_reset_reason_t why)
 {
     resetReason = why;
     running = false;
-    wdtOn = false;
+    wdtOn = wdtUserOn = false;
+    tasks.clear();
+    locks.clear();
+    inTask = -1;
     wifiMode = WIFI_OFF;
     apOn = false;
     staBegun = staJoined = false;
@@ -169,6 +198,61 @@ float temperatureRead() { return cur->tempC; }
 void enableLoopWDT() { cur->wdtOn = true; cur->wdtFedAt = fake::clockMs; }
 void feedLoopWDT() { cur->wdtFedAt = fake::clockMs; }
 int esp_task_wdt_reconfigure(const esp_task_wdt_config_t* c) { cur->wdtTimeoutMs = c->timeout_ms; return 0; }
+int esp_task_wdt_add_user(const char*, esp_task_wdt_user_handle_t* handle)
+{
+    cur->wdtUserOn = true;
+    cur->wdtUserFedAt = fake::clockMs;
+    *handle = (esp_task_wdt_user_handle_t)cur;
+    return ESP_OK;
+}
+int esp_task_wdt_reset_user(esp_task_wdt_user_handle_t) { cur->wdtUserFedAt = fake::clockMs; return ESP_OK; }
+
+// ---------------------------------------------------------------- FreeRTOS: a second task and a lock
+SemaphoreHandle_t xSemaphoreCreateRecursiveMutex()
+{
+    cur->locks.emplace_back(new fake::Lock());
+    return cur->locks.back().get();
+}
+
+BaseType_t xSemaphoreTakeRecursive(SemaphoreHandle_t lock, TickType_t wait)
+{
+    const int me = cur->inTask;
+    for (TickType_t waited = 0;; waited++)
+    {
+        if (lock->depth == 0 || lock->owner == me)
+        {
+            lock->owner = me;
+            lock->depth++;
+            return pdTRUE;
+        }
+        if (wait == 0 || (wait != portMAX_DELAY && waited >= wait)) return pdFALSE;
+        if (me >= 0) throw std::logic_error("pretend core: a task waits for a lock the loop holds - not played here (a task takes a lock with no wait)");
+        fake::tick(1);                              // the loop waits: the tasks get their turns
+    }
+}
+
+BaseType_t xSemaphoreGiveRecursive(SemaphoreHandle_t lock)
+{
+    if (lock->depth == 0 || lock->owner != cur->inTask) { cur->lockErrors++; return pdFALSE; }
+    lock->depth--;
+    return pdTRUE;
+}
+
+BaseType_t xTaskCreateUniversal(TaskFunction_t fn, const char* name, uint32_t stack, void* arg, UBaseType_t priority, TaskHandle_t* handle, BaseType_t core)
+{
+    fake::Task t;
+    t.fn = fn; t.arg = arg; t.name = name ? name : ""; t.stack = stack; t.priority = priority; t.core = core;
+    t.wakeAt = fake::clockMs;
+    cur->tasks.push_back(t);
+    if (handle) *handle = (TaskHandle_t)(uintptr_t)cur->tasks.size();
+    return pdPASS;
+}
+
+void vTaskDelay(TickType_t ticks)
+{
+    if (cur->inTask >= 0) throw fake::TaskSleep{ ticks };
+    fake::tick(ticks);
+}
 esp_reset_reason_t esp_reset_reason() { return cur->resetReason; }
 
 // ---------------------------------------------------------------- ESP

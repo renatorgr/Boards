@@ -366,6 +366,12 @@ The addresses must not move: settings must survive a firmware update.
     `server.client().write()`; a handler that waits for something else calls `linkPoll()` itself (the module's
     firmware over the link keeps `teensy.poll()`: the bridge is down for it on both sides). The page has
     an ETag (build date, `Cache-Control: no-cache`, 304 when unchanged), as the Teensy page.
+    Reading a request is the core's own code and waits too (22 Nov 2026): `LinkWebServer::handleClient()` hands the
+    link to a second task (`linkTask`, the lock `linkLock`) for that time, and every handler takes it back
+    (`LinkWebServer::on` / `onNotFound` wrap it in a `LinkTurn`). So: register handlers only through `server.on` /
+    `server.onNotFound`; what the link task runs (`linkPoll()`: `teensy.poll`, `bridgePoll`) must never wait; and
+    the watchdog is the program's own entry, answered with `stillHere()` in every wait of the loop's (not
+    `feedLoopWDT()`), by the link task while the core waits for a browser.
 15. **A timer where 0 means "not running"** is started with `msStamp(now)` (`zSafety.ino`), never `millis() | 1`
     (17 Nov 2026): on an even millisecond `| 1` is one millisecond ahead, the unsigned `now - timer` of the same loop
     pass reads four billion and `>= delay` is true at once (the kickout delay and the WAS check's two times were

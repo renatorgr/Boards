@@ -2,17 +2,8 @@
 #   <scenario>/<check key>[@<kit>]  why, and what fixes it
 # Take a line out when the fix is merged (the harness says "passes now" when one is fixed).
 #
-# 1. The web server of the ESP32 core waits inside handleClient() for the rest of a request, and loop() does nothing else meanwhile.
-link-request-in-two-pieces/steer-gap  the core waits up to 5 s for each late piece of a request (a form, a line of its head) and loop() does nothing else: no WiFi bridge, no hello, the Teensy's data unread. Fix: the link and the bridge in a task of their own (or a web server that does not wait)
-link-request-never-finished/link-kept  the same wait, with nobody steering: 5 s without reading the Teensy (its receive buffer holds about 1 s). Same fix
-link-update-stalls/no-watchdog  the wait for the next piece of an upload is 20 s (UPLOAD_WAIT_MS), nothing feeds the 15 s loop watchdog in it: the XIAO restarts itself. Fix: a wait shorter than the watchdog, or the task above
-link-update-phone-vanishes/no-watchdog  the same 20 s wait against the 15 s watchdog, when the phone goes out of reach in an upload: "Program update STOPPED" is never said. Same fix
-# 2. A file for the Teensy that is refused is still read to its end, with the link left alone.
-link-hex-while-steering/steer-gap  teensyUpdateUpload() returns at once for every piece of a refused file without linkPoll() (updateUpload() calls it): the bridge stands still while the file comes in. Fix: linkPoll() there too
-link-teensy-refuses-update/link-kept  the same, when the Teensy refuses the file (autosteer engaged): its data is not read while the rest comes in. Same fix
-link-wrong-password-big-file/link-kept  the same with a wrong password: no hello for as long as the file takes (the Teensy calls the XIAO silent after 10 s). Same fix
-# 3. The WiFi bridge goes by the address a packet claims.
+# The WiFi bridge goes by the address a packet claims.
 conn-forged-address/not-passed  bridgeTakes() takes a datagram by its sender's address (192.168.4.x), whatever network it came in on: one sent on the other network with such an address passes. Fix: take them from the XIAO's own network interface only
-# 4. The chip check of the XIAO's own update looks at more than the first piece.
+# The chip check of the XIAO's own update looks at more than the first piece.
 update-header-byte-later/accepted-1436  updateUpload() checks the chip while Update.progress() is 0, and the updater writes nothing before it has 4096 bytes: the 2nd and 3rd pieces are checked as headers too. Today's .bin files have text there. Fix: check the first piece only
 update-header-byte-later/accepted-2872  the same, for the third piece

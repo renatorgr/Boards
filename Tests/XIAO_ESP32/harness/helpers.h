@@ -33,11 +33,12 @@ inline void rules(World& w, uint32_t helloMaxMs = 9000)
     must("rule-pass", w.rules.passed.empty(), "Nothing reached the Teensy through the WiFi bridge that should not", firstOf(w.rules.passed));
     must("rule-dest", w.rules.dest.empty(), "The Teensy's data for the program went to that program only, as the Teensy sent it", firstOf(w.rules.dest));
     must("rule-answers", w.rules.answers.empty(), "Every answer to a browser was well formed (HTTP, its length, valid JSON)", firstOf(w.rules.answers));
-    bool asked = (int)w.xiao.restarts.size() == w.restartsExpected;
+    int byUser = 0, byWatchdog = 0, other = 0;
     std::string why;
-    for (auto r : w.xiao.restarts) { if (r != ESP_RST_SW) asked = false; why += std::string(why.empty() ? "" : ", ") + reasonText(r); }
-    must("rule-restart", asked, "The XIAO restarted only when the user asked for it",
+    for (auto r : w.xiao.restarts) { (r == ESP_RST_SW ? byUser : r == ESP_RST_TASK_WDT ? byWatchdog : other)++; why += std::string(why.empty() ? "" : ", ") + reasonText(r); }
+    must("rule-restart", byUser == w.restartsExpected && byWatchdog == w.watchdogExpected && other == 0, "The XIAO restarted only when the user asked for it",
          fmt("%u restart(s), %d asked for%s%s", (unsigned)w.xiao.restarts.size(), w.restartsExpected, why.empty() ? "" : ": ", why.c_str()));
+    must("rule-lock", w.dev.lockErrors == 0, "The loop and the link task never gave back a lock they did not hold", fmt("%u time(s)", w.dev.lockErrors));
     must("rule-hello", w.rules.worstHelloGapMs <= helloMaxMs && w.teensy.silentEvents == 0, "The XIAO's hello to the Teensy was never late (the Teensy never called it gone)",
          fmt("longest time without a hello %u ms; the Teensy logged 'XIAO silent' %u time(s)", w.rules.worstHelloGapMs, w.teensy.silentEvents));
     must("rule-rx", w.dev.uartRxLost == 0, "No data from the Teensy was lost in the XIAO's receive buffer", fmt("%u bytes lost", w.dev.uartRxLost));

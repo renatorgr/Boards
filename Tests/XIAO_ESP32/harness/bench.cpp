@@ -185,10 +185,13 @@ void Xiao::pass()
     const uint64_t t0 = fake::clockMs;
     dev.wdtFedAt = t0;                      // the core feeds the loop's watchdog before each pass
     dev.running = true;
-    try { loop_(); }
+    try
+    {
+        loop_();
+        dev.running = false;
+        if (fake::clockMs == t0) fake::tick(1);     // (the program's other tasks may run in here too)
+    }
     catch (fake::Restart& r) { restarted(r.reason); return; }
-    dev.running = false;
-    if (fake::clockMs == t0) fake::tick(1);
     if (fake::clockMs - t0 > longestPassMs) longestPassMs = (uint32_t)(fake::clockMs - t0);
 }
 
@@ -578,7 +581,8 @@ void World::browsers()
             else if (now >= e.stallUntil)
             {
                 size_t n = std::min(e.link.upPerMs, e.req.size() - e.sent);
-                size_t stopAt = SIZE_MAX;
+                if (e.sent >= e.link.dripAt) n = (now - e.startMs) % e.link.dripEveryMs == 0 ? std::min(n, e.link.dripBytes) : 0;
+                size_t stopAt = e.sent < e.link.dripAt ? e.link.dripAt : SIZE_MAX;
                 if (!e.stalled) stopAt = std::min(stopAt, e.link.stallAt);
                 stopAt = std::min(stopAt, std::min(e.link.vanishAt, e.link.closeAt));
                 if (stopAt > e.sent) n = std::min(n, stopAt - e.sent);
@@ -620,6 +624,8 @@ void World::step()
         helloWatchFrom_ = now;
     }
     if (!xiao.on) helloWatchFrom_ = now;
+    for (size_t i = 0; i < later_.size(); i++)
+        if (later_[i].second && now >= later_[i].first) { auto fn = later_[i].second; later_[i].second = nullptr; fn(); }
     dev.step();
     const bool up = xiao.on && dev.apOn && dev.apSsid == knownSsid && dev.apPass == knownPass;
     if (!up) apUpSince_ = 0;
