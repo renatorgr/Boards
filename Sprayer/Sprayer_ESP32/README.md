@@ -13,6 +13,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 22 Nov 2026 | **0.10.15**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge; its own network is then at 192.168.40.1 ([No router on the tractor](#no-router-on-the-tractor)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
 | 13 Nov 2026 | **0.10.7**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.10.8**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
@@ -70,7 +71,8 @@ ESP32_Relay_X8 board ──► 8 relays ──► 8 solenoid valves (NC), one pe
 - The master switch cuts the 12 V to the relay COM terminals in the wiring, so it
   works even if the ESP32 or the tablet freezes.
 - Its **own Wi-Fi network** is always on: join `Sprayer-xxxx` (password `agopengps`)
-  with a phone and the page opens by itself, or go to `http://192.168.4.1/`. On the
+  with a phone and the page opens by itself, or go to `http://192.168.4.1/` (`http://192.168.40.1/`
+  with the program subnet 192.168.4: [No router on the tractor](#no-router-on-the-tractor)). On the
   tractor network the same page is at `http://192.168.5.123/` or `http://sprayer.local/`
   (the module announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list
   it by name in a second). It has four tabs:
@@ -233,6 +235,24 @@ build date, published in `firmware.json` with the simulator). So after a code ch
 export the binary again and put the new `.bin` files on GitHub with the code, or the page
 keeps offering the older program.
 
+## No router on the tractor
+
+Since 0.10.15 the module also works on a tractor with no router, with the tablet on the Wi-Fi of the AiO board's XIAO (its WiFi bridge on: the XIAO program's README, *Section modules on the XIAO's WiFi*). **Not tried on a real module yet**: the harness (`Tests/ESP32_Modules`) plays it with a pretend XIAO, late and lost packets included.
+
+1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*: join the **XIAO's network** (`XIAO-xxxx`) with its password, and set the *Program subnet* to **192.168.4**. *Save and restart the module*.
+2. The module's own network moves from 192.168.4.1 to **192.168.40.1**: the XIAO's network has the numbers 192.168.4.x, and two networks with the same numbers on one module leave neither working. The page shows the address in use (*Module* card, *Network settings*). With any other subnet it is at 192.168.4.1 again.
+3. Open AgOpenWeb on the tablet. The XIAO sends the module a copy of each packet of the program, to the module's own address, and passes the module's packets on to the tablet. The Module tab's *Program* row then says *talking · through the access point (192.168.4.1)*; the events say it too.
+
+While the XIAO's copies come:
+
+- the module sends to the XIAO only, not to everyone on the network;
+- the program's own packets "to everyone", which a Wi-Fi access point holds back and which arrive late beside the copies, are left alone: an old section state after a newer one would switch a relay back for a moment. The *Messages* row counts them (*late broadcasts left alone*);
+- when the copies stop (the XIAO restarts, its bridge is switched off), every section closes within 2 s, as with any lost link. A second later the module listens to everyone again.
+
+The same goes for a tablet whose **own hotspot** is the tractor network: the program is then at `<subnet>.1`, and the module answers that address only.
+
+From the tablet, on the XIAO's network, the page is at `http://192.168.4.123/` (the module's IP there).
+
 ## Bench test (before the tractor, no water)
 
 1. Only the board, valves disconnected. With the program closed the relay LEDs must be
@@ -331,6 +351,10 @@ level the module is using.
 
 ## Notes
 
+- 0.10.15: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)). With the
+  program subnet 192.168.4 the own network is at 192.168.40.1. Packets of the program that come from
+  the network's own address (`<subnet>.1`: the XIAO's WiFi bridge, or a tablet's hotspot) are answered
+  to that address only, and the same packets arriving late "to everyone" are left alone and counted.
 - 0.10.14: a pressure sensor ticked on the page that reads under 0.3 V for 3 s is not there (a
   0.5–4.5 V sensor gives 0.5 V at 0 bar): the page, the log and the program's screen say *pressure
   sensor unplugged?* instead of *low pressure 0.0 bar*, which read like a pump problem. On the

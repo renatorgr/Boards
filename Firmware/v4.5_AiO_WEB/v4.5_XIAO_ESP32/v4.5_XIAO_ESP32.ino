@@ -297,19 +297,45 @@ static uint32_t sketchSize = 0, sketchFree = 0;   // read once at start-up (getS
 //   - while the program has the module the XIAO does not search for the other network, and the page does not
 //     search for networks: a search takes the radio off our own channel, and the steering data with it.
 //   - with autosteer on over the bridge, the page does not restart the XIAO (settings, update, restart).
+// The other modules (22 Nov 2026): a section-control module (sprayer, seed drill) on a tractor with no router joins
+// the XIAO's network too. Every packet of the program also goes to each of them, and what they send goes to the
+// program - to their own addresses, as above, never to everyone. A module is known from its own packets (it sends
+// one every 200 ms, program or not, to UDP 9999) and forgotten BRIDGE_MOD_GONE_MS after the last. Not passed on to
+// them: the subnet (PGN 201), which would take a module off this network, the scan (PGN 202), and what is only for
+// the steering (PGN 254 a hundred times a second, 252, 251). Of a module's own packets BRIDGE_MOD_PER_S a second
+// go on at most: one gone wrong must not fill the WiFi that carries the steering.
 #define BRIDGE_PORT_IN       8888    // the program -> the module
 #define BRIDGE_PORT_RTCM     2233    // the program's corrections (NTRIP) -> the receiver
 #define BRIDGE_PORT_OUT      9999    // the module -> the program
 #define BRIDGE_PROG_GONE_MS  3000
+#define BRIDGE_MODULES       4       // other modules on our network, at most
+#define BRIDGE_MOD_GONE_MS   3000
+#define BRIDGE_MOD_PER_S     60      // (ours send about 8 a second)
+#define AP_STATIONS          8       // devices on our network at most (the core's own number is 4): tablet, modules, phones
 #define BRIDGE_PER_LOOP      16      // datagrams taken per loop pass at most
 #define BRIDGE_TX_SPARE      64      // room asked for in the link's transmit buffer beside the frame itself: the
                                      // serial driver keeps a few bytes of its own with every write, and a write
                                      // with too little room waits
 #define BRIDGE_STA_BACK_MS   10000   // the search for the other network starts again this long after the program left
 
+struct BridgeModule
+{
+    uint32_t ip = 0;                 // its address (first number in the low byte), 0 = this place is free
+    uint32_t ms = 0;                 // its last datagram
+    uint32_t toIt = 0, fromIt = 0;   // datagrams of the program sent to it / of its own passed to the program
+    uint32_t secMs = 0;              // the second being counted ...
+    uint16_t secN = 0;               // ... and how many of its datagrams came in it
+    bool     overTold = false;       // Messages said that it sends too many
+};
+
 struct Bridge
 {
     int      sIn = -1, sRtcm = -1;   // the sockets (-1: the bridge is off)
+    int      sMod = -1;              // ... and the one the other modules send to
+    BridgeModule mod[BRIDGE_MODULES];
+    uint32_t modDrop = 0;            // to or from a module: the WiFi did not take it
+    uint32_t modFull = 0;            // from one module more than there are places
+    uint32_t modOver = 0;            // from a module that sends more than BRIDGE_MOD_PER_S a second
     uint32_t progIp = 0;             // the program (as in the datagram: first number in the low byte), 0 = none
     uint32_t progMs = 0;             // its last datagram
     uint32_t steerMs = 0;            // its last PGN 254 with autosteer on (0 = never)
@@ -389,6 +415,105 @@ static bool bridgeTakes(uint32_t ip, uint32_t now)
     return true;
 }
 
+// ---- the other modules on our network
+static int bridgeModules()
+{
+    int n = 0;
+    for (const BridgeModule& m : bridge.mod) n += m.ip != 0;
+    return n;
+}
+
+// The module at this address: the one known, or a new one while there is a place
+static BridgeModule* bridgeModule(uint32_t ip, uint32_t now)
+{
+    BridgeModule* spare = nullptr;
+    for (BridgeModule& m : bridge.mod)
+    {
+        if (m.ip == ip) { m.ms = now; return &m; }
+        if (m.ip == 0 && !spare) spare = &m;
+    }
+    char t[20];
+    ipText(t, sizeof(t), ip);
+    if (!spare)
+    {
+        if (bridge.modFull++ == 0) logEvent("WiFi bridge: more than %d modules on this network - the one at %s is NOT served", BRIDGE_MODULES, t);
+        return nullptr;
+    }
+    *spare = BridgeModule();
+    spare->ip = ip;
+    spare->ms = now;
+    logEvent("WiFi bridge: a module at %s is on this network (the program's packets go to it too)", t);
+    return spare;
+}
+
+// One datagram of the program to every module known
+static void bridgeToModules(const uint8_t* d, int n)
+{
+    const uint8_t pgn = d[3];
+    if (pgn == 201 || pgn == 202) return;                             // the subnet and the scan are not for them here
+    if (pgn == 254 || pgn == 252 || pgn == 251) return;               // the steering's own: nothing in them for a machine module
+    struct sockaddr_in to;
+    memset(&to, 0, sizeof(to));
+    to.sin_family = AF_INET;
+    to.sin_port = htons(BRIDGE_PORT_IN);
+    for (BridgeModule& m : bridge.mod)
+    {
+        if (m.ip == 0) continue;
+        to.sin_addr.s_addr = m.ip;
+        if (lwip_sendto(bridge.sIn, d, n, MSG_DONTWAIT, (struct sockaddr*)&to, sizeof(to)) == n) m.toIt++;
+        else bridge.modDrop++;
+    }
+}
+
+// What the modules sent: the sender is noted, and with a program there the datagram goes on to it
+static void bridgeFromModules(uint32_t now)
+{
+    for (BridgeModule& m : bridge.mod)
+    {
+        if (m.ip == 0 || now - m.ms < BRIDGE_MOD_GONE_MS) continue;
+        char t[20];
+        ipText(t, sizeof(t), m.ip);
+        logEvent("WiFi bridge: the module at %s is silent (%lu packets to it, %lu from it)", t, (unsigned long)m.toIt, (unsigned long)m.fromIt);
+        m.ip = 0;
+    }
+    static uint8_t b[1472];
+    struct sockaddr_in from, to;
+    memset(&to, 0, sizeof(to));
+    to.sin_family = AF_INET;
+    to.sin_port = htons(BRIDGE_PORT_OUT);
+    for (int k = 0; k < BRIDGE_PER_LOOP; k++)
+    {
+        socklen_t fl = sizeof(from);
+        const int n = lwip_recvfrom(bridge.sMod, b, sizeof(b), MSG_DONTWAIT, (struct sockaddr*)&from, &fl);
+        if (n <= 0) break;
+        const uint32_t ip = from.sin_addr.s_addr;
+        const uint8_t* p = (const uint8_t*)&ip;
+        if (n < 6 || b[0] != 0x80 || b[1] != 0x81 || b[2] == 0x7F) continue;   // AgOpenGPS packets only, and none of a program's
+        if (p[0] != 192 || p[1] != 168 || p[2] != 4 || p[3] < 2 || p[3] > 254) continue;   // from our own network only, and not from us
+        if (ip == bridge.progIp) continue;                            // the program is no module
+        BridgeModule* m = bridgeModule(ip, now);
+        if (!m) continue;
+        if (now - m->secMs >= 1000) { m->secMs = now; m->secN = 0; }
+        if (m->secN >= BRIDGE_MOD_PER_S)
+        {
+            bridge.modOver++;
+            if (!m->overTold)
+            {
+                m->overTold = true;
+                char t[20];
+                ipText(t, sizeof(t), ip);
+                logEvent("WiFi bridge: the module at %s sends more than %d packets a second - the rest is NOT passed on", t, BRIDGE_MOD_PER_S);
+            }
+            continue;
+        }
+        m->secN++;
+        if (bridge.progIp == 0) continue;
+        to.sin_addr.s_addr = bridge.progIp;
+        if (lwip_sendto(bridge.sMod, b, n, MSG_DONTWAIT, (struct sockaddr*)&to, sizeof(to)) == n) m->fromIt++;
+        else bridge.modDrop++;
+    }
+}
+
 static void bridgePoll(uint32_t now)
 {
     if (bridge.sIn < 0) return;
@@ -400,6 +525,7 @@ static void bridgePoll(uint32_t now)
         bridge.progIp = 0;
     }
     if (bridgeBusy(now)) bridge.busyMs = msStamp(now);
+    bridgeFromModules(now);
 
     static uint8_t b[4 + 1472];                                       // [the sender's IP][one datagram]
     struct sockaddr_in from;
@@ -411,6 +537,7 @@ static void bridgePoll(uint32_t now)
         const uint32_t ip = from.sin_addr.s_addr;
         if (n < 6 || b[4] != 0x80 || b[5] != 0x81) continue;          // AgOpenGPS packets only
         if (!bridgeTakes(ip, now)) continue;
+        bridgeToModules(b + 4, n);                                    // the other modules on our network get it too
         if (n > LINK_NET_MAX) { bridge.dropBig++; continue; }
         if (b[4 + 3] == 254 && n >= 8 && (b[4 + 7] & 1)) bridge.steerMs = msStamp(now);
         if (teensy.bridgeState == LINK_BRIDGE_CABLE && b[4 + 3] != 200) continue;   // the cable has the module: only our hello
@@ -486,12 +613,14 @@ static void bridgeStart()
     if (!cfg.bridge) return;
     bridge.sIn = bridgeSocket(BRIDGE_PORT_IN);
     bridge.sRtcm = bridgeSocket(BRIDGE_PORT_RTCM);
-    if (bridge.sIn < 0 || bridge.sRtcm < 0)
+    bridge.sMod = bridgeSocket(BRIDGE_PORT_OUT);
+    if (bridge.sIn < 0 || bridge.sRtcm < 0 || bridge.sMod < 0)
     {
         if (bridge.sIn >= 0) lwip_close(bridge.sIn);
         if (bridge.sRtcm >= 0) lwip_close(bridge.sRtcm);
-        bridge.sIn = bridge.sRtcm = -1;
-        logEvent("WiFi bridge: could NOT open UDP %u / %u - the bridge is off", BRIDGE_PORT_IN, BRIDGE_PORT_RTCM);
+        if (bridge.sMod >= 0) lwip_close(bridge.sMod);
+        bridge.sIn = bridge.sRtcm = bridge.sMod = -1;
+        logEvent("WiFi bridge: could NOT open UDP %u / %u / %u - the bridge is off", BRIDGE_PORT_IN, BRIDGE_PORT_RTCM, BRIDGE_PORT_OUT);
         return;
     }
     logEvent("WiFi bridge on: a program on the XIAO's network (UDP %u) reaches the module through the XIAO", BRIDGE_PORT_IN);
@@ -556,7 +685,7 @@ static void wifiStart()
     const bool sta = cfg.staOn && cfg.staSsid.length() > 0;
     WiFi.mode(sta ? WIFI_AP_STA : WIFI_AP);
     WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
-    WiFi.softAP(cfg.apSsid.c_str(), cfg.apPass.c_str());
+    WiFi.softAP(cfg.apSsid.c_str(), cfg.apPass.c_str(), 1, 0, AP_STATIONS);      // (channel 1 and the name shown, as the core's own)
     if (sta)
     {
         WiFi.setAutoReconnect(true);
@@ -701,8 +830,21 @@ static void apiState()
     j.u("in", bridge.in);
     j.u("out", bridge.out);
     j.num("rtcmKB", bridge.rtcm / 1024.0, 1);
-    j.u("lost", bridge.dropLink + bridge.dropBig + bridge.dropOut);
+    j.u("lost", bridge.dropLink + bridge.dropBig + bridge.dropOut + bridge.modDrop + bridge.modOver);
     j.u("other", bridge.other);
+    j.arr("mods");                             // the other modules on this network (sprayer, seed drill)
+    for (const BridgeModule& m : bridge.mod)
+    {
+        if (m.ip == 0) continue;
+        char t[20];
+        ipText(t, sizeof(t), m.ip);
+        j.open();
+        j.str("ip", t);
+        j.u("to", m.toIt);
+        j.u("from", m.fromIt);
+        j.close();
+    }
+    j.closeArr();
     j.close();
 
     j.obj("link");
@@ -1222,10 +1364,10 @@ static void printState()
     {
         char t[20] = "none";
         if (bridge.progIp) ipText(t, sizeof(t), bridge.progIp);
-        Serial.printf("WiFi bridge: on, Teensy %s, program %s, %lu packets to the module, %lu to the program, %lu lost\n",
+        Serial.printf("WiFi bridge: on, Teensy %s, program %s, %lu packets to the module, %lu to the program, %lu lost, %d other module(s) on this network\n",
                       !teensy.bridgeKnown(millis()) ? "does NOT know it (older firmware?)" : teensy.bridgeState == LINK_BRIDGE_WIFI ? "gives it the module"
                       : teensy.bridgeState == LINK_BRIDGE_CABLE ? "has a program on its cable" : "free", t,
-                      (unsigned long)bridge.in, (unsigned long)bridge.out, (unsigned long)(bridge.dropLink + bridge.dropBig + bridge.dropOut));
+                      (unsigned long)bridge.in, (unsigned long)bridge.out, (unsigned long)(bridge.dropLink + bridge.dropBig + bridge.dropOut + bridge.modDrop + bridge.modOver), bridgeModules());
     }
     Serial.println("Commands: status | wifi-reset | restart");
 }

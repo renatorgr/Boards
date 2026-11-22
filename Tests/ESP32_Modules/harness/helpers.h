@@ -53,6 +53,27 @@ inline Module& readyModule(World& w, Board b, const std::string& label = "module
     return m;
 }
 
+// No router on the tractor: the tablet and the module are on the WiFi of the AiO board's XIAO, its WiFi bridge on.
+// The user does what the note on the module's page says: tractor Wi-Fi = the XIAO's network, subnet 192.168.4.
+// Then AgOpenWeb's start-up messages (and, on the seed drill, 'relay 1 = section 1').
+inline Module& onXiaoWifi(World& w, Board b, const std::string& subnet = "192.168.4")
+{
+    w.useXiao();
+    Module& m = w.add(b);
+    m.powerOn();
+    w.run(500);
+    joinTractorWifi(w, m, fake::net.pass, subnet);
+    w.aow.toolSections = info(b).sprayer ? 8 : 19;
+    if (info(b).sprayer) w.aow.startup(false, { 1, 2, 3, 4, 5, 6, 7, 8 });
+    else
+    {
+        w.aow.startup();
+        m.http(HTTP_POST, "/api/relays", { { "pw", "agopengps" }, { "first", "1" }, { "secs", "19" } });
+    }
+    w.run(1000);
+    return m;
+}
+
 // Drive with these sections for ms and check, every 10 ms after the first 150 ms, that the relays are what the
 // set-up says. Returns the number of samples that were wrong (and the first wrong one in firstBad).
 inline int driveAndCompare(World& w, Module& m, uint64_t sections, const std::vector<int>& relaySection, uint32_t ms,

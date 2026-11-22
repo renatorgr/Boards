@@ -20,7 +20,7 @@ text to paste into GitHub as a raw markdown code block.
 | `AiO_Micro45_XIAO_C3/`, `AiO_Std45_XIAO_C3/` | KiCad adapter boards XIAO → GPS2 socket, with JLCPCB files | their `README.md` |
 | `Tests/ESP32_Modules/` | harness: the real sprayer and seed drill programs on a pretend ESP32, five kinds of user, all four boards | its `README.md` |
 | `Tests/Teensy_AiO/` | harness: the real Teensy firmware on a pretend Teensy and tractor, five kinds of user, four kits | its `README.md` |
-| `Tests/XIAO_ESP32/` | harness: the real XIAO program on a pretend XIAO, with a pretend Teensy, phones on its page and a tablet on its WiFi bridge, five kinds of user | its `README.md` |
+| `Tests/XIAO_ESP32/` | harness: the real XIAO program on a pretend XIAO, with a pretend Teensy, phones on its page, a tablet on its WiFi bridge and section modules on its WiFi, five kinds of user | its `README.md` |
 
 ## Rules for every change
 
