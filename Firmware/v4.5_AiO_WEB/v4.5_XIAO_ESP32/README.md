@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO (off from new). [A slow browser](#a-slow-browser) no longer holds up the bridge or the link. `.bin` files rebuilt. A harness tests it ([What was tested](#what-was-tested)). |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO (off from new). [A slow browser](#a-slow-browser) no longer holds up the bridge or the link. `.bin` rebuilt. [What was tested](#what-was-tested). |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -132,6 +132,8 @@ Since 22 Nov 2026 a second task (the link task) keeps the link to the Teensy and
 - An upload may pause for up to 20 s. Before, the XIAO's 15 s watchdog restarted it in such a pause.
 - The page still answers one browser at a time: while it waits for one, the others wait too.
 - A page stuck on one browser for over a minute (bytes that keep coming and never make a whole piece of a file) ends in a restart by the watchdog, so the page answers the others again. **Not while a tablet steers through the bridge**: the restart would take the WiFi away from it, so it waits until autosteer is off.
+
+One mistake in the first version of it (found the same day, by reading the code): the loop went on with the time it had read before the wait, which is older than the link task's notes of "the program was here". In the one pass in some hundreds that also looks at the WiFi, the program then seemed long gone, and the XIAO searched for the other network for half a second with the tablet steering (only with an other network set and out of reach). The time is now read after the web server.
 
 Not yet tried on a real XIAO. In the harness the steering packets kept passing 10 ms apart while the page waited two minutes for an upload that came a few bytes at a time.
 
@@ -266,8 +268,8 @@ To set up or recover the XIAO without opening the box: a panel-mount USB-C socke
   - Five kinds of user (careful, never set up, wrong settings, wrong connections, a bad link), 55 scenarios on the ESP32C3 and the ESP32S3, with memory checks on.
   - What it found is in its README: four things in this program. The two that matter in the field are fixed ([A slow browser](#a-slow-browser)); the other two are in its `known-bugs.txt`.
 - The link task (22 Nov 2026, [A slow browser](#a-slow-browser)):
-  - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,170,671 bytes (89 %), XIAO_ESP32S3 1,055,768 bytes (31 %);
-  - in the harness (57 scenarios now): a Save that arrives 3 s late, an upload that pauses 18 s, a phone that walks away in the middle of one, a refused `.hex` of 600 kB, an upload that drips in for two minutes, all with a tablet steering through the bridge or the Teensy watching for the hello: nothing held up, no restart by the watchdog but the one after a minute stuck;
+  - it compiles with esp32 3.3.12 with no warnings in the program: XIAO_ESP32C3 1,170,649 bytes (89 %), XIAO_ESP32S3 1,055,772 bytes (31 %);
+  - in the harness (58 scenarios now): a Save that arrives 3 s late, an upload that pauses 18 s, a phone that walks away in the middle of one, a refused `.hex` of 600 kB, an upload that drips in for two minutes, all with a tablet steering through the bridge or the Teensy watching for the hello: nothing held up, no restart by the watchdog but the one after a minute stuck; and requests timed to wait in the very pass that looks at the WiFi, with the other network out of reach: no search for it;
   - the harness plays the second task one turn at a time: two tasks truly running at once, and the timing on the chip, are **not yet tried on a real XIAO**.
 
 ## Credits and licence

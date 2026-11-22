@@ -1281,14 +1281,18 @@ void setup()
 void loop()
 {
     static uint32_t infoMs = 0, watchMs = 0;
-    const uint32_t now = millis();
 
     stillHere();
-    linkPoll(now);
+    linkPoll(millis());
     dns.processNextRequest();
     server.handleClient();
     usbCommands();
 
+    // The time is read here, after the web server: while that waited for a browser the link task ran, and its time
+    // stamps (the Teensy's "who has the module", the program's last packet) are later than a time read before it.
+    // "earlier time - stamp" reads four billion milliseconds: for that pass the program looked long gone, and the
+    // search for the other network started again with the tablet steering.
+    const uint32_t now = millis();
     if (now - watchMs >= 500) { watchMs = now; wifiWatch(); bridgeStaWatch(now); }
     if (now - infoMs >= LINK_INFO_MS || infoMs == 0) { infoMs = msStamp(now); sendInfo(); }
     if (rebootAtMs && (int32_t)(now - rebootAtMs) >= 0) { delay(50); ESP.restart(); }
