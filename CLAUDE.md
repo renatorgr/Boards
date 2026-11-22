@@ -20,6 +20,7 @@ text to paste into GitHub as a raw markdown code block.
 | `AiO_Micro45_XIAO_C3/`, `AiO_Std45_XIAO_C3/` | KiCad adapter boards XIAO → GPS2 socket, with JLCPCB files | their `README.md` |
 | `Tests/ESP32_Modules/` | harness: the real sprayer and seed drill programs on a pretend ESP32, five kinds of user, all four boards | its `README.md` |
 | `Tests/Teensy_AiO/` | harness: the real Teensy firmware on a pretend Teensy and tractor, five kinds of user, four kits | its `README.md` |
+| `Tests/XIAO_ESP32/` | harness: the real XIAO program on a pretend XIAO, with a pretend Teensy, phones on its page and a tablet on its WiFi bridge, five kinds of user | its `README.md` |
 
 ## Rules for every change
 
@@ -41,6 +42,9 @@ text to paste into GitHub as a raw markdown code block.
 - A change to `Firmware/v4.5_AiO_WEB` runs `Tests/Teensy_AiO/run.sh` (the "Teensy harness" check; about a minute, needs
   `g++-multilib`): it builds the firmware for the PC, so it works in the cloud too, and is not a Teensy compile. Run
   it before the pull request; a fixed bug comes out of `Tests/Teensy_AiO/known-bugs.txt`.
+- A change to `Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32` runs `Tests/XIAO_ESP32/run.sh` (the "XIAO harness" check; about
+  two minutes, needs `g++-multilib`). Run it before the pull request. A change to the link between the two (`xLink.h`,
+  `zXiao.ino`) may need its pretend Teensy to follow; a fixed bug comes out of `Tests/XIAO_ESP32/known-bugs.txt`.
 - A change to `Sprayer/Sprayer_ESP32` or `Seeder/Seeder_ESP32` runs `Tests/ESP32_Modules/run.sh` (the "Module harness"
   check; about a minute, needs `g++-multilib`). Run it before the pull request. A change to what a program sends or saves
   may need the harness's bench to follow; a fixed bug comes out of `Tests/ESP32_Modules/known-bugs.txt`.

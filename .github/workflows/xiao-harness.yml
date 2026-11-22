@@ -1,0 +1,61 @@
+# XIAO harness check.
+# Builds the real XIAO program (Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32) for the PC, with a pretend ESP32 core, and
+# runs Tests/XIAO_ESP32: five kinds of user (careful, never set up, wrong settings, wrong connections, a bad link)
+# on the XIAO ESP32C3 and ESP32S3, with a pretend Teensy on the serial link, phones on its page and a tablet on its
+# WiFi bridge. A failing "must" check that known-bugs.txt does not list fails the run; the report goes in the run's
+# summary and as a download. Plain g++ with 32-bit support, no packages. (Not a compile for the XIAO.)
+# Licence: GNU General Public License v3 or later (Firmware/v4.5_AiO_WEB/COPYING).
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: XIAO harness
+
+on:
+  pull_request:
+    paths:
+      - 'Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/**'
+      - 'Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - 'Tests/XIAO_ESP32/**'
+      - '!Tests/**/*.md'
+      - '.github/workflows/xiao-harness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32/**'
+      - 'Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32_bin/**'
+      - '!Firmware/**/*.md'
+      - '!Firmware/**/*.png'
+      - 'Tests/XIAO_ESP32/**'
+      - '!Tests/**/*.md'
+      - '.github/workflows/xiao-harness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  users:
+    name: users
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the 32-bit compiler support
+        run: sudo apt-get update -q && sudo apt-get install -y -q g++-multilib
+
+      - name: Build the program for the PC and run the users
+        run: Tests/XIAO_ESP32/run.sh
+
+      - name: Report in the summary
+        if: always()
+        run: cat Tests/XIAO_ESP32/build/report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xiao-harness-report
+          path: Tests/XIAO_ESP32/build/report.md
+          if-no-files-found: ignore

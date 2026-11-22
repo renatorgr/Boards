@@ -46,6 +46,10 @@ Its `tools/prep.py` changes a few things in a copy (the `asm` interrupt entries,
 `FLASH_BASE_ADDR` in `FlashTxx.h`, `otaPutByte` in `zOTA.ino`): when one of them moves, prep.py stops with a message
 or the harness fails at once, so the harness follows the change in the same pull request.
 
+`Tests/XIAO_ESP32/run.sh` does the same for the XIAO program (`v4.5_XIAO_ESP32`; the "XIAO harness" check; its
+README), with a pretend Teensy that follows `zXiao.ino`: a change to the link (`zXiao.ino`, `zXiao.h`, `xLink.h`)
+goes into its `harness/teensy.cpp` in the same pull request.
+
 There is no PlatformIO build (`platformio.ini`) and no `src/` folder: the Arduino IDE builds every `.ino`,
 `.cpp` and `.c` in this folder, and ignores the XIAO subfolders.
 
