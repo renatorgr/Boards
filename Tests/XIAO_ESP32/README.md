@@ -1,8 +1,8 @@
 # XIAO harness
 
 Runs the real **XIAO program** (`Firmware/v4.5_AiO_WEB/v4.5_XIAO_ESP32`) on a PC, with no board: a pretend Teensy
-on its serial link, phones on its page, a tablet running AgOpenWeb on its WiFi (the WiFi bridge) and the farm's
-WiFi around. Five kinds of user play against it: one who sets everything up right, one who never set the XIAO (or
+on its serial link, phones on its page, a tablet running AgOpenWeb on its WiFi (the WiFi bridge), section modules
+on that WiFi and the farm's WiFi around. Five kinds of user play against it: one who sets everything up right, one who never set the XIAO (or
 the Teensy beside it) up, one who types wrong settings and chooses wrong files, one who connects things wrong, and
 a bad link (a weak WiFi, a noisy serial line, browsers that stall or vanish, too much at once). For each, it checks
 what the XIAO really does: what reaches the Teensy, what goes out on the WiFi, when it restarts, and whether it
@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | First version: 58 scenarios for five users on the two XIAOs (68 runs, about 870 checks), a report, the "XIAO harness" check on GitHub ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
+| 22 Nov 2026 | First version, then section modules on the XIAO's WiFi: 64 scenarios for five users on the two XIAOs (75 runs, about 970 checks) ([How it works](#how-it-works)). Two of the four things it found are fixed ([What it found](#what-it-found)). |
 
 ## Running it
 
@@ -72,6 +72,10 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
     first), its 2.5 s steering watchdog, and "XIAO silent" after 10 s without a hello;
   - **AgOpenWeb on a tablet**: its hello every second, PGN 254 a hundred times a second (each one different, so
     the bench knows which arrived), PGN 239 ten times a second, corrections 256 bytes at a time;
+  - **section modules on the XIAO's WiFi** (`w.mod`, up to five): each sends its PGN 237 every 200 ms and answers
+    the hello, to everyone until it has heard the XIAO and to the XIAO only from then on, as the real programs do
+    (`Sprayer_ESP32`, `Seeder_ESP32`: their own harness is `Tests/ESP32_Modules`); one can send far too much, or
+    drop off the network;
   - **browsers**: requests as Chrome on Android sends them, on a link with a speed each way, that may stall,
     close, or vanish without a word.
 - Each scenario runs in its own process: a crash, or a memory error the sanitizer catches in the program, is a
@@ -81,11 +85,11 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-first-start`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-page-while-steering`, `careful-usb-and-restart` |
+| Careful user | `careful-first-start`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-modules` (a sprayer and a seed drill module on the XIAO's WiFi), `careful-bridge-page-while-steering`, `careful-usb-and-restart` |
 | XIAO never set up | `new-bridge-needs-password`, `new-no-teensy`, `new-gps2-port-not-set`, `new-older-teensy`, `new-wrong-password` (every change with a wrong password), `new-phones-join` (the phones' "is there internet?" checks) |
 | Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later` |
-| Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering` |
-| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-page-wait-other-network-away`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap` |
+| Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering`, `conn-forged-module`, `conn-modules-bridge-off`, `conn-five-modules` (there are places for four), `conn-module-subnet-and-scan` |
+| Bad link | `link-phone-vanishes-mid-page`, `link-spare-connection`, `link-request-in-two-pieces`, `link-page-wait-other-network-away`, `link-request-never-finished`, `link-update-stalls`, `link-update-phone-vanishes`, `link-upload-drips-while-steering`, `link-upload-drips` (a page stuck on one phone for minutes), `link-update-tab-closed`, `link-serial-noise`, `link-teensy-update-lost-answer`, `link-teensy-refuses-update`, `link-hex-while-steering`, `link-wrong-password-big-file`, `link-own-update-while-steering`, `link-flood`, `link-wifi-takes-nothing`, `link-many-phones`, `link-odd-requests`, `link-sensor-and-clock` (the 49-day wrap), `link-restart-at-clock-wrap`, `link-module-goes-wrong` (3000 packets a second from one module while the tablet steers) |
 
 ## The checks
 
@@ -102,6 +106,8 @@ watches them every millisecond:
   password of one's own), only to a Teensy that says it knows the bridge, only AgOpenGPS packets from a program on
   the XIAO's own network, byte for byte as sent and in order, and only the hello while the cable has the module.
 - **The Teensy's data for the program goes to that program only**, never to everyone, exactly as the Teensy sent it.
+  The same for the section modules: what goes to one is a packet of the program, once and in order, to that
+  module's own address; what goes on from them is a packet one of them sent, to the program only.
 - **Every answer to a browser is well formed**: HTTP, its length, valid JSON.
 - **The XIAO restarts only when the user asked for it**, never by its watchdog (but for the two scenarios where
   the page is stuck on one phone for over a minute: there the watchdog is what must clear it, once).
@@ -143,7 +149,9 @@ a fix is a pull request of its own, which takes its lines out of `known-bugs.txt
 3. **The bridge goes by the address a packet claims.** Not fixed, in `known-bugs.txt`. A datagram that arrives on
    the other network (the farm's WiFi the XIAO joined) with a sender address of the XIAO's own network
    (192.168.4.x) is passed to the Teensy. It takes someone on the farm's WiFi who forges packets on purpose
-   (`conn-forged-address`).
+   (`conn-forged-address`). The port the section modules send to (added 22 Nov 2026) goes by the claimed address
+   the same way: such a sender is taken for a module and its packets go on to the program (`conn-forged-module`,
+   in `known-bugs.txt` with the same fix to come).
 4. **The chip check of the XIAO's own update looks at more than the first piece.** Not fixed, in
    `known-bugs.txt`. A good `.bin` with the byte E9 exactly 1436 or 2872 bytes in is refused as "other chip".
    Today's `.bin` files have text there, so it does not happen now (`update-header-byte-later`).
@@ -175,7 +183,7 @@ SCENARIO(User::BadLink, "my-scenario", "what happens, in one line", oneKit())
 ```
 
 `harness/bench.h` lists what a scenario can set and read: the XIAO (`w.xiao`, `w.dev`), the Teensy (`w.teensy`),
-the tablets (`w.tab`, `w.tab2`, `w.far` on the other network), browsers (`w.get`, `w.post`, `w.upload` with a
+the tablets (`w.tab`, `w.tab2`, `w.far` on the other network), the section modules (`w.mod`), browsers (`w.get`, `w.post`, `w.upload` with a
 `Link`), the serial wires (`w.noise`, `w.wireCut`), the router (`w.dev.router`), the USB monitor (`w.usb`,
 `w.said`), something to do at a time to come (`w.later`). A change to what the program or the Teensy sends over the link needs the pretend Teensy to follow
 (`harness/teensy.cpp`), as `Tests/Teensy_AiO` follows it with its pretend XIAO.
@@ -197,4 +205,8 @@ the tablets (`w.tab`, `w.tab2`, `w.far` on the other network), browsers (`w.get`
   starts with the bootloader, is not known here.
 - The Teensy's own work (its harness: `Tests/Teensy_AiO`): the Teensy here is a pretend one that follows the same
   rules. The two real programs are not run against each other.
+- The section modules' own programs (their harness: `Tests/ESP32_Modules`, with a pretend XIAO): the modules here
+  are pretend ones. What a WiFi access point does with a packet "to everyone" (held for the beacon, not sent
+  again when lost), which is why the XIAO sends to one address at a time, is not played here: on the pretend WiFi
+  every packet arrives.
 - A frame with the right header whose one-byte checksum matches by chance (once in 256): the link takes it as real.

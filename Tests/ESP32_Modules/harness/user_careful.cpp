@@ -146,3 +146,93 @@ SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sec
     must("no-false-no-relay", !contains(said, "no relay"), "no 'no relay' warning on a drill set up right", said);
     statusAlwaysJson(m);
 }
+
+SCENARIO(User::Careful, "careful-on-xiao-wifi", "no router on the tractor: joins the WiFi of the AiO board's XIAO and works through its WiFi bridge", allBoards())
+{
+    World w;
+    Module& m = onXiaoWifi(w, board);
+    const int nSec = m.bi.sprayer ? 8 : 19;
+    const std::vector<int> rs = inARow(m.bi.relays, 1, nSec);
+    std::string bad;
+
+    Json s = m.status();
+    must("joined", m.dev.staUp() && m.dev.tractorIp() == IPAddress(192, 168, 4, 123), "joins the XIAO's WiFi as 192.168.4.123", m.dev.tractorIp().toString().str());
+    must("own-network-moved", m.dev.apOn && m.dev.apIp == IPAddress(192, 168, 40, 1) && !m.dev.sameNumbers() && s["wifi"]["apIp"].str() == "192.168.40.1" && contains(pageLog(m), "at 192.168.40.1"),
+         "its own network moves to 192.168.40.1 (the XIAO's network has the numbers 192.168.4.x too), and the page and the log say so",
+         fmt("own network at %s, page says '%s'", m.dev.apIp.toString().c_str(), s["wifi"]["apIp"].str().c_str()));
+    must("page-there", m.http(HTTP_GET, "/").code == 200, "the page still opens on the own network, at the new address", "");
+
+    const uint64_t patterns[] = { first(nSec), 0x0F, 0xF0, 0xAA, 0x55, 0x01, 0x80, 0x00, first(nSec) };
+    int wrong = 0;
+    for (uint64_t p : patterns) wrong += driveAndCompare(w, m, p, rs, 3000, wrong ? nullptr : &bad);
+    must("relays-follow", wrong == 0, "the relays follow the sections, which reach the module through the XIAO", bad);
+    s = m.status();
+    must("said", s["aog"]["via"].str() == "192.168.4.1" && contains(pageLog(m), "come from 192.168.4.1"),
+         "the page and the log say that the program's packets come through the access point (the XIAO)", "via '" + s["aog"]["via"].str() + "'; log: " + pageLog(m));
+
+    // what the tablet hears comes through the XIAO, and nothing is sent to everyone
+    const uint64_t from = w.now();
+    const uint32_t all0 = w.xiao.toEveryone;
+    w.run(10000);
+    const size_t n237 = w.aow.heardPgn(237, from).size(), n123 = w.aow.heardPgn(123, from).size();
+    must("tablet-hears", n237 >= 48 && n237 <= 52 && n123 >= 9, "AgOpenWeb hears PGN 237 five times a second and an answer to every hello, through the XIAO",
+         fmt("%zu x 237, %zu hello answers in 10 s", n237, n123));
+    must("to-the-xiao-only", w.xiao.toEveryone == all0, "the module sends to the XIAO only (a message to everyone waits at the access point for its beacon)",
+         fmt("%u went to everyone in 10 s", w.xiao.toEveryone - all0));
+
+    // sections switching twice a second: the program's own broadcasts arrive 150 ms after the XIAO's copies
+    w.aow.sections = first(nSec);
+    w.run(1000);
+    uint32_t changes = 0, last = m.relays();
+    w.watchers.push_back([&]() { const uint32_t r = m.relays(); if (r != last) { changes++; last = r; } });
+    for (int k = 0; k < 20; k++) { w.aow.sections = k % 2 ? first(nSec) : 0; w.run(500); }
+    w.watchers.pop_back();
+    must("no-switch-back", changes == 20, "with the sections switched 20 times the relays change 20 times: the same packets arriving again, late, change nothing",
+         fmt("%u changes", changes));
+
+    w.aow.sections = first(nSec);
+    w.run(1000);
+    w.aow.on = false;
+    const int off = msUntilAllOff(w, m, 3000);
+    must("silent-all-off", off >= 0 && off <= 2100, "every section closes within 2 s when AgOpenWeb goes silent", off < 0 ? "still on after 3 s" : fmt("after %d ms", off));
+    w.run(5000);
+    must("silent-stays-off", m.relays() == 0, "and stays closed", hex(m.relays()));
+
+    m.powerOff();
+    w.run(1000);
+    m.powerOn();
+    w.aow.on = true;
+    w.run(3500);
+    const int n = driveAndCompare(w, m, first(nSec), rs, 3000, &bad);
+    must("after-power-cycle", n == 0 && m.dev.apIp == IPAddress(192, 168, 40, 1), "after a power cycle it is back on the XIAO's WiFi and the relays follow at once", bad);
+    statusAlwaysJson(m);
+}
+
+SCENARIO(User::Careful, "careful-tablet-hotspot", "no router: the tablet's own hotspot is the tractor network (the tablet is 192.168.43.1 on it)", sprayerBoards())
+{
+    World w;
+    fake::net.ssid = "Tablet";
+    fake::net.pass = "tablet123";
+    fake::net.subnet[2] = 43;
+    w.aow.ip = IPAddress(192, 168, 43, 1);
+    Module& m = w.add(board);
+    m.powerOn();
+    w.run(500);
+    joinTractorWifi(w, m, "tablet123", "192.168.43");
+    w.aow.toolSections = 8;
+    w.aow.startup(false, { 1, 2, 3, 4, 5, 6, 7, 8 });
+    w.run(1000);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    std::string bad;
+    const int n = driveAndCompare(w, m, first(8), rs, 5000, &bad);
+    must("relays-follow", n == 0 && m.dev.tractorIp() == IPAddress(192, 168, 43, 123), "joins as 192.168.43.123 and the relays follow the sections", bad);
+    must("own-network-stays", m.dev.apIp == IPAddress(192, 168, 4, 1), "its own network stays at 192.168.4.1", m.dev.apIp.toString().str());
+    const uint64_t from = w.now();
+    w.run(10000);
+    const size_t n237 = w.aow.heardPgn(237, from).size(), n123 = w.aow.heardPgn(123, from).size();
+    must("tablet-hears", n237 >= 48 && n237 <= 52 && n123 >= 9, "AgOpenWeb hears the module (its answers go straight to the tablet's address)", fmt("%zu x 237, %zu hello answers in 10 s", n237, n123));
+    w.aow.on = false;
+    const int off = msUntilAllOff(w, m, 3000);
+    must("silent-all-off", off >= 0 && off <= 2100, "every section closes within 2 s when AgOpenWeb goes silent", off < 0 ? "still on after 3 s" : fmt("after %d ms", off));
+    statusAlwaysJson(m);
+}

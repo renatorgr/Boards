@@ -229,3 +229,70 @@ SCENARIO(User::BadNetwork, "program-restarts", "AgOpenWeb is closed and opened a
     must("new-widths", s["tool"]["n"].num() == 12 && s["tool"]["cm"][0].num() == 200, "the new tool's widths are taken (12 sections of 2 m)",
          fmt("%g sections, first %g cm", s["tool"]["n"].num(), s["tool"]["cm"][0].num()));
 }
+
+SCENARIO(User::BadNetwork, "xiao-wifi-late-broadcasts", "on the XIAO's WiFi the program's own broadcasts reach the module 1.2 s late, one in three never", allBoards())
+{
+    World w;
+    w.xiao.lateMs = 1200;
+    w.xiao.loseOneIn = 3;
+    Module& m = onXiaoWifi(w, board);
+    const int nSec = m.bi.sprayer ? 8 : 19;
+    const std::vector<int> rs = inARow(m.bi.relays, 1, nSec);
+    std::string bad;
+    const uint64_t patterns[] = { first(nSec), 0x0F, 0xF0, 0x00, 0xAA, 0x55, first(nSec) };
+    int wrong = 0;
+    for (uint64_t p : patterns) wrong += driveAndCompare(w, m, p, rs, 2000, wrong ? nullptr : &bad);
+    must("relays-follow", wrong == 0, "the relays follow the XIAO's copies; the old packets arriving beside them change nothing", bad);
+    const double beside = m.status()["aog"]["beside"].num();
+    must("counted", beside > 50, "the Module tab counts the late broadcasts it left alone", fmt("%g", beside));
+
+    // sections off, then the program is closed: nothing may open again when its last broadcasts arrive
+    w.aow.sections = first(nSec);
+    w.run(2000);
+    w.aow.sections = 0;
+    w.run(300);
+    w.aow.on = false;
+    uint32_t opened = 0;
+    w.watchers.push_back([&]() { if (m.relays()) opened++; });
+    w.run(8000);
+    w.watchers.pop_back();
+    must("stays-closed", opened == 0, "sections switched off and the program closed: no relay closes again when the late broadcasts arrive", fmt("a relay was closed for %u ms", opened));
+
+    // sections on, then the tablet goes silent: closed within 2 s all the same
+    w.aow.on = true;
+    w.aow.sections = first(nSec);
+    w.run(3000);
+    w.aow.on = false;
+    const int off = msUntilAllOff(w, m, 4000);
+    must("silent-all-off", off >= 0 && off <= 2100, "every section closes within 2 s when AgOpenWeb goes silent (its late broadcasts do not hold them open)",
+         off < 0 ? "still on after 4 s" : fmt("after %d ms", off));
+    statusAlwaysJson(m);
+}
+
+SCENARIO(User::BadNetwork, "xiao-wifi-bridge-stops", "working through the XIAO, and it stops passing the program's packets on (its Teensy does not answer the bridge); later it starts again", allBoards())
+{
+    World w;
+    Module& m = onXiaoWifi(w, board);
+    const int nSec = m.bi.sprayer ? 8 : 19;
+    const std::vector<int> rs = inARow(m.bi.relays, 1, nSec);
+    std::string bad;
+    int n = driveAndCompare(w, m, first(nSec), rs, 3000, &bad);
+    must("works-first", n == 0, "the relays follow through the XIAO", bad);
+    w.xiao.bridge = false;                  // no more copies; the tablet's own broadcasts still arrive, 150 ms late
+    const int off = msUntilAllOff(w, m, 4000);
+    must("closes-first", off >= 0 && off <= 2100, "the copies stop: every section closes within 2 s (the broadcasts are still left alone for 3 s)",
+         off < 0 ? "still on after 4 s" : fmt("after %d ms", off));
+    w.run(2500);
+    n = driveAndCompare(w, m, first(nSec), rs, 3000, &bad);
+    must("follows-broadcasts", n == 0, "3 s after the last copy the module listens to the program's broadcasts again and the relays follow", bad);
+    Json s = m.status();
+    chk::tell("told", contains(pageLog(m), "no longer from 192.168.4.1") && s["aog"]["via"].str().empty(), "the log says that the packets no longer come through the XIAO", pageLog(m));
+    const uint32_t all0 = w.xiao.toEveryone;
+    w.run(2000);
+    must("answers-everyone", w.xiao.toEveryone > all0 + 8, "... and it sends to everyone again", fmt("%u messages to everyone in 2 s", w.xiao.toEveryone - all0));
+    w.xiao.bridge = true;                   // the XIAO passes on again
+    w.run(2000);
+    n = driveAndCompare(w, m, 0x0F, rs, 3000, &bad);
+    must("through-xiao-again", n == 0 && m.status()["aog"]["via"].str() == "192.168.4.1", "the XIAO passes on again: the module goes back to it", bad);
+    statusAlwaysJson(m);
+}

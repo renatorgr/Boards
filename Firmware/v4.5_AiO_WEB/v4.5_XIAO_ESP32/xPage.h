@@ -148,6 +148,7 @@ p.chk{text-align:right;margin:4px 0 0}
   <dl><dt>Up for</dt><dd id="xUp">–</dd><dt>Start-up reason</dt><dd id="xRst">–</dd>
    <dt>XIAO WiFi</dt><dd id="xAp">–</dd><dt>Devices connected</dt><dd id="xCl">–</dd><dt>Other network</dt><dd id="xSta">–</dd><dt>IP on the other network</dt><dd id="xIp">–</dd>
    <dt>WiFi bridge</dt><dd id="xBr">–</dd>
+   <dt>Other modules on this network</dt><dd id="xMods">–</dd>
    <dt>Link to the Teensy</dt><dd id="xLink">–</dd><dt>Received / sent</dt><dd id="xKB">–</dd><dt>Checksum errors</dt><dd id="xCrc">–</dd>
    <dt>Free memory</dt><dd id="xHeap">–</dd><dt>Temperature</dt><dd id="xTemp">–</dd></dl></div>
 </div>
@@ -330,6 +331,9 @@ function renderState(x){
   :br.state===2&&br.prog?"program at "+br.prog+" · "+br.in+" in / "+br.out+" out"+(br.lost?" · "+br.lost+" lost":"")
   :br.state===1?"standing by: a program is on the module's network cable":"on · no program on this network",
   !br||!br.on?"":!br.teensy||br.lost?"warn":br.state===2?"ok":"");
+ // ... and the other modules on this network (sprayer, seed drill): the program's packets go to them too
+ const mo=br&&br.mods||[];
+ set("xMods",!br||!br.on?"–":!mo.length?"none":mo.map(m=>m.ip+" ("+m.to+" to it / "+m.from+" from it)").join(" · "),mo.length?"ok":"");
  pill("xLink",(x.link.talking?"talking":"no data"),x.link.talking?"ok":"bad");
  set("xKB",x.link.rxKB.toFixed(1)+" / "+x.link.txKB.toFixed(1)+" kB");
  set("xCrc",String(x.link.crcErr),x.link.crcErr?"warn":"");

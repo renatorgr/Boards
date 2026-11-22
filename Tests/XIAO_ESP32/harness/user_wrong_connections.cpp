@@ -81,6 +81,86 @@ SCENARIO(User::WrongConnections, "conn-forged-address", "Something on the farm's
     rules(w);
 }
 
+SCENARIO(User::WrongConnections, "conn-forged-module", "Something on the farm's WiFi sends a section module's packets that claim to come from the XIAO's own network", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.flash("staOn", true);
+    w.flash("staSsid", "Farm");
+    w.flash("staPass", "farm12345");
+    w.start();
+    must("joined", w.runUntil([&]() { return w.dev.staJoined; }, 5000), "The XIAO is on the farm's WiFi", "");
+    w.far.forged = true;                    // "from 192.168.4.77", sent to the XIAO's address on the farm's network
+    for (int k = 0; k < 10; k++)
+    {
+        w.far.send(9999, packet(237, { (uint8_t)k, 0, 0, 0, 0, 1, 0, 0 }, 0x7B), false);
+        w.run(200);
+    }
+    must("not-taken", w.state()["bridge"]["mods"].a.empty() && !w.said("a module at 192.168.4.77"), "It is not taken for a module on the XIAO's network",
+         "the XIAO lists a module at 192.168.4.77: the program's packets would go to that address on its own network (where nobody is), and such packets would go on to the program");
+    w.run(4000);
+    rules(w);
+}
+
+SCENARIO(User::WrongConnections, "conn-modules-bridge-off", "The modules are set to join the XIAO's WiFi, but the WiFi bridge was never switched on", oneKit())
+{
+    World w(kit);
+    w.start();                              // a XIAO as it comes: the bridge is off
+    w.mod[0].on = w.mod[1].on = true;
+    w.tab.on = true;
+    w.run(10000);
+    must("nothing", w.mod[0].got == 0 && w.mod[1].got == 0 && w.tab.gotMachine == 0 && w.dev.udpOpen() == 0, "Nothing is passed on in either direction (the bridge is off: no UDP port is open)",
+         fmt("%u datagrams to the modules, %u to the tablet", w.mod[0].got + w.mod[1].got, w.tab.gotMachine));
+    const JsonDoc st = w.state();
+    tell("told", st["bridge"]["on"].num() == 0, "The page says where to look: 'WiFi bridge: off (WiFi tab)'", "");
+    note("With the bridge off", fmt("the tablet still hears what the modules send to everyone (%u packets in 10 s), as far as the WiFi lets a broadcast through; "
+                                    "the modules hear the program the same way. The XIAO cannot tell that modules are waiting", w.tab.gotMachineDirect));
+    rules(w);
+}
+
+SCENARIO(User::WrongConnections, "conn-five-modules", "Five section modules join the XIAO's WiFi (it has places for four)", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    for (Machine& m : w.mod) m.on = true;   // 192.168.4.123 to .127
+    if (beginSteer(w))
+    {
+        w.run(20000);
+        int served = 0;
+        for (Machine& m : w.mod) served += m.got239 >= 190;
+        must("four", served == 4, "Four of them get the program's packets, the fifth none", fmt("%d served", served));
+        tell("told", w.said("more than 4 modules on this network"), "Messages say that one module too many is on the network, and which", "nothing");
+        endSteer(w);
+        must("steering-untouched", w.tab.nNotPassed == 0 && w.tab.worstDelayMs <= 20, "The steering through the bridge is not disturbed", fmt("%u not passed, longest delay %u ms", w.tab.nNotPassed, w.tab.worstDelayMs));
+    }
+    rules(w);
+}
+
+SCENARIO(User::WrongConnections, "conn-module-subnet-and-scan", "With a module on the XIAO's WiFi, the program's network window scans for modules and sends a new subnet", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    Machine& sprayer = w.mod[0];
+    sprayer.on = true;
+    if (beginSteer(w))
+    {
+        w.run(2000);
+        endSteer(w);                        // (the subnet is for a tractor that stands still)
+        w.run(1000);
+        const uint32_t got = sprayer.got239;
+        w.tab.send(8888, packet(202, { 202, 202, 5 }), true);
+        w.run(500);
+        w.tab.send(8888, packet(201, { 201, 201, 192, 168, 5 }), true);
+        w.run(3000);
+        must("not-passed", sprayer.gotSubnetOrScan == 0, "Neither reaches the module: a new subnet would take it off the XIAO's network, where nothing could call it back",
+             fmt("%u reached it", sprayer.gotSubnetOrScan));
+        must("still-served", sprayer.got239 >= got + 30, "The module keeps getting the program's machine data", fmt("%u in 3.5 s", sprayer.got239 - got));
+    }
+    rules(w);
+}
+
 SCENARIO(User::WrongConnections, "conn-cable-and-wifi", "A program on the network cable and one on the XIAO's WiFi at the same time", oneKit())
 {
     World w(kit);

@@ -457,6 +457,36 @@ SCENARIO(User::BadLink, "link-own-update-while-steering", "While the tablet stee
     rules(w);
 }
 
+SCENARIO(User::BadLink, "link-module-goes-wrong", "A section module on the XIAO's WiFi goes wrong while the tablet steers: 3000 packets a second, then it drops off the network without a word", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    Machine& sprayer = w.mod[0];
+    Machine& drill = w.mod[1];
+    sprayer.on = drill.on = true;
+    if (beginSteer(w))
+    {
+        w.run(3000);
+        const uint32_t m0 = w.tab.gotMachine, b0 = drill.got239;
+        sprayer.extraPerMs = 3;             // 3000 a second
+        w.run(10000);
+        sprayer.extraPerMs = 0;
+        const uint32_t passed = w.tab.gotMachine - m0;
+        must("capped", passed <= 10 * (60 + 10) + 20, "Of that module's packets only 60 a second go on to the tablet: the WiFi stays free for the steering",
+             fmt("%u packets of the modules reached the tablet in 10 s", passed));
+        tell("told", w.said("sends more than 60 packets a second"), "Messages say which module sends too much", "nothing");
+        must("other-served", drill.got239 >= b0 + 98, "The other module still gets the program's machine data", fmt("%u of 100", drill.got239 - b0));
+        sprayer.on = false;                 // ... and it is gone, without a word
+        w.run(6000);
+        must("forgotten", w.said("the module at 192.168.4.123 is silent") && w.state()["bridge"]["mods"].a.size() == 1, "3 s after its last packet the XIAO stops sending to it", "");
+        endSteer(w);
+        must("steering-untouched", w.tab.nNotPassed == 0 && w.tab.nNotTaken == 0 && w.tab.worstDelayMs <= 20, "All the while every packet of the tablet reached the Teensy, at most 20 ms later",
+             fmt("%u not passed, %u not taken, longest delay %u ms", w.tab.nNotPassed, w.tab.nNotTaken, w.tab.worstDelayMs));
+    }
+    rules(w);
+}
+
 SCENARIO(User::BadLink, "link-flood", "Something floods the bridge's port with packets (5000 a second on top of the tablet's own)", oneKit())
 {
     World w(kit);

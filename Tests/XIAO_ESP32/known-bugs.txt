@@ -4,6 +4,7 @@
 #
 # The WiFi bridge goes by the address a packet claims.
 conn-forged-address/not-passed  bridgeTakes() takes a datagram by its sender's address (192.168.4.x), whatever network it came in on: one sent on the other network with such an address passes. Fix: take them from the XIAO's own network interface only
+conn-forged-module/not-taken  the same, at the port the section modules send to (UDP 9999, bridgeFromModules()): such a sender is listed as a module, and its packets go on to the program. The same fix
 # The chip check of the XIAO's own update looks at more than the first piece.
 update-header-byte-later/accepted-1436  updateUpload() checks the chip while Update.progress() is 0, and the updater writes nothing before it has 4096 bytes: the 2nd and 3rd pieces are checked as headers too. Today's .bin files have text there. Fix: check the first piece only
 update-header-byte-later/accepted-2872  the same, for the third piece

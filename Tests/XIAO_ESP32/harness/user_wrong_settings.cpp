@@ -147,7 +147,7 @@ SCENARIO(User::WrongSettings, "settings-what-is-kept", "Saving again: an empty p
     w.noteUserRestart();
     must("saved", r.code == 200 && backAfterRestart(w, boots), "Saved", r.error());
     w.run(5000);
-    must("kept", w.flashStr("apPass") == "trator-2026" && w.flashStr("staPass") == "farm12345" && w.flashBool("bridge") && w.dev.udpOpen() == 2 && w.dev.staJoined && w.flashStr("host") == "puma",
+    must("kept", w.flashStr("apPass") == "trator-2026" && w.flashStr("staPass") == "farm12345" && w.flashBool("bridge") && w.dev.udpOpen() == 3 && w.dev.staJoined && w.flashStr("host") == "puma",
          "Both passwords and the WiFi bridge are kept; only the name changed", fmt("bridge %d, joined %d", (int)w.flashBool("bridge"), (int)w.dev.staJoined));
     r = w.post("/api/settings", settings("trator-2026", w.knownSsid, "agopengps", true, "Farm", ""));
     must("default-pass", r.code == 400 && has(r.error(), "password of your own"), "Back to the password every XIAO starts with, the bridge still ticked: refused", fmt("code %d", r.code));

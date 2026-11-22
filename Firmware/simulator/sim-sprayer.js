@@ -37,6 +37,7 @@ const cut = () => NET === "ap" || (NET === "lost" && T() > LOST_AT);
 const staUp = () => X.staOn && !!X.sta && T() > 3.2 && !cut();
 const linkOk = () => staUp() && T() > 5.5;
 const ip = () => X.subnet + "." + X.ipLast;
+const apIp = () => X.subnet === "192.168.4" ? "192.168.40.1" : "192.168.4.1";   // apIp() of the program
 const reach = () => NET !== "ap" && X.staOn && !!X.sta;            // set up to be on the tractor network
 const talking = () => !reach() ? 0 : Math.max(0, Math.min(T(), NET === "lost" ? LOST_AT : Infinity) - 5.5);   // s the program has talked
 
@@ -48,8 +49,8 @@ function event(x, t) {
 }
 function events() {
  const sta = X.staOn && !!X.sta;
- const L = [[0.2, "own network '" + X.ap + "' at 192.168.4.1" + (sta ? ", joining the tractor network" : ", tractor network not set")],
-  [0.3, "ready: module IP " + ip() + " on the tractor network, page at 192.168.4.1"]];
+ const L = [[0.2, "own network '" + X.ap + "' at " + apIp() + (sta ? ", joining the tractor network" : ", tractor network not set")],
+  [0.3, "ready: module IP " + ip() + " on the tractor network, page at " + apIp()]];
  if (sta && NET !== "ap") {
   L.push([3.2, "joined '" + X.sta + "', IP " + ip() + ", -58 dBm"]);
   L.push([5.6, "machine config from the program: lift off, raise 2 s, lower 4 s, outputs normal"]);
@@ -130,12 +131,12 @@ function status() {
  fn.forEach((f, i) => { if (f >= 1 && f <= 31 && (sp.on >> (f - 1)) & 1) { bits += 2 ** i; on |= 1 << (f - 1); } });
  for (let k = 31; k > X.secTop; k--) if ((sp.req >> (k - 1)) & 1) { X.secTop = k; break; }
  return {fw: FW, ver: X.ver || VER, built: X.built || B.built || S.BUILD.built || "Oct 25 2026 09:00:00", board: "ESP32_Relay_X8", kind: "Sprayer", up: Math.floor(t), heap: 231000 + Math.round(S.wob(t, 1500, 0.2)), name: X.ap,
-  wifi: {ap: X.ap, apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
+  wifi: {ap: X.ap, apIp: apIp(), apCl: 1, staOn: X.staOn, sta: X.sta, up: up, ip: up ? ip() : "", ipLast: X.ipLast,
    rssi: up ? -58 + Math.round(S.wob(t, 3, 0.1)) : 0, host: X.host, subnet: X.subnet},
-  aog: {link: link, ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
+  aog: {link: link, via: "", ago239: link ? 0 : silent, agoHello: link ? 0 : silent, kmh: S.r2(sp.kmh, 1), hyd: link ? (tr.moving && !tr.straight ? 2 : 1) : 0,
    tram: 0, geo: 0, uturn: link && tr.moving && !tr.straight ? 1 : 0, req: hex(sp.req), secTop: X.secTop, ago229: !many ? -1 : link ? 0 : silent,
    n239: Math.floor(talking() * 10), n229: many ? Math.floor(talking() * 10) : 0, nHello: Math.floor(talking()),
-   crcErr: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
+   crcErr: 0, beside: 0, invert: 0, hydEn: 0, raise: 2, lower: 4},
   out: {bits: bits, on: hex(on), noRelay: hex(noRelay(fn)), onHigh: true, fn: fn},
   spr: {bar: S.r2(sp.bar, 2), lpm: S.r2(sp.lpm, 2), total: S.r2(sp.total, 1), master: true, volts: X.sensors & 1 ? S.r2(0.5 + sp.bar / X.pmax * 4, 2) : 0,
    pulses: Math.round(sp.total * X.ppl)},
