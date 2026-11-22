@@ -9,6 +9,7 @@
 */
 #include <stdexcept>
 #include "fake_core.h"
+#include <algorithm>
 #include "lwip/sockets.h"
 
 namespace fake
@@ -144,13 +145,17 @@ bool Device::udpIn(const Datagram& d)
     return false;
 }
 
-std::shared_ptr<Conn> Device::connect(bool fromAp, IPAddress peer)
+std::shared_ptr<Conn> Device::connect(bool fromAp, IPAddress peer, uint16_t port)
 {
-    if (!webListening || pending.size() >= TCP_BACKLOG) return nullptr;
+    const bool listening = port == 80 ? webListening : std::find(listenPorts.begin(), listenPorts.end(), port) != listenPorts.end();
+    size_t waiting = 0;
+    for (auto& p : pending) waiting += p->port == port;
+    if (!listening || waiting >= TCP_BACKLOG) return nullptr;
     if (fromAp ? !apOn : !staJoined) return nullptr;
     auto c = std::make_shared<Conn>();
     c->fd = nextFd++;
     c->fromAp = fromAp;
+    c->port = port;
     c->peer = peer;
     c->openedMs = clockMs;
     pending.push_back(c);
@@ -173,6 +178,7 @@ void Device::stopped(esp_reset_reason_t why)
     staAuto = true;
     scanState = -2;
     mdnsOn = dnsOn = webListening = false;
+    listenPorts.clear();
     mdnsServices.clear();
     uartBaud = 0;
     uartRxCap = 256;
@@ -682,6 +688,14 @@ int NetworkClient::read()
     return b;
 }
 int NetworkClient::peek() { fake::Conn* c = conn(); return c && !c->rx.empty() ? c->rx.front() : -1; }
+int NetworkClient::read(uint8_t* buf, size_t n)
+{
+    fake::Conn* c = conn();
+    if (!c || c->rx.empty()) return -1;
+    size_t k = 0;
+    while (k < n && !c->rx.empty()) { buf[k++] = c->rx.front(); c->rx.pop_front(); }
+    return (int)k;
+}
 size_t NetworkClient::readBytes(char* buf, size_t n)
 {
     size_t k = 0;
@@ -718,14 +732,27 @@ int NetworkClient::fd() const { fake::Conn* c = conn(); return c ? c->fd : -1; }
 IPAddress NetworkClient::localIP() { fake::Conn* c = conn(); return !c ? IPAddress() : c->fromAp ? cur->apIp : cur->staIp(); }
 IPAddress NetworkClient::remoteIP() { fake::Conn* c = conn(); return c ? c->peer : IPAddress(); }
 
-bool NetworkServer::hasClient() { return !cur->pending.empty(); }
+void NetworkServer::begin()
+{
+    if (port_ == 80) cur->webListening = true;
+    else if (std::find(cur->listenPorts.begin(), cur->listenPorts.end(), port_) == cur->listenPorts.end()) cur->listenPorts.push_back(port_);
+}
+bool NetworkServer::hasClient()
+{
+    for (auto& c : cur->pending) if (c->port == port_) return true;
+    return false;
+}
 NetworkClient NetworkServer::accept()
 {
-    if (cur->pending.empty()) return NetworkClient();
-    std::shared_ptr<fake::Conn> c = cur->pending.front();
-    cur->pending.pop_front();
-    c->accepted = true;
-    return NetworkClient(std::make_shared<fake::ConnHandle>(c));
+    for (auto it = cur->pending.begin(); it != cur->pending.end(); ++it)
+    {
+        if ((*it)->port != port_) continue;
+        std::shared_ptr<fake::Conn> c = *it;
+        cur->pending.erase(it);
+        c->accepted = true;
+        return NetworkClient(std::make_shared<fake::ConnHandle>(c));
+    }
+    return NetworkClient();
 }
 
 // ---------------------------------------------------------------- web server (as the core's WebServer.cpp / Parsing.cpp)

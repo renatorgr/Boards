@@ -15,10 +15,11 @@ namespace bench
 {
 static const char HELLO[] = "ESP32-hello";
 enum { SRC_TEENSY = 0x7E, PGN_STATUS = 141, PGN_LOG = 142, PGN_INFO = 143, PGN_CMD = 144, PGN_FW = 145, PGN_NET_IN = 146,
-       PGN_RTCM = 147, PGN_NET_OUT = 148, PGN_BRIDGE = 149 };
+       PGN_RTCM = 147, PGN_NET_OUT = 148, PGN_BRIDGE = 149, PGN_WEB_IN = 150, PGN_WEB_OUT = 151 };
 enum { HELLO_TIMEOUT_MS = 10000, GAP_MS = 50, FRAMES_PER_LOOP = 8, TEXT_MAX = 160, TEXT_PER_10S = 10, STATUS_MS = 1000,
        LOG_PER_LOOP = 4, TX_RESERVE = 256, TX_BUFFER = 2048, TX_IDLE_WIFI = 128, CABLE_MS = 3000, GONE_MS = 3000,
-       STATE_MS = 1000, FW_TIMEOUT_MS = 15000, LOG_LINES = 60, STEER_WATCHDOG_MS = 2500 };
+       STATE_MS = 1000, FW_TIMEOUT_MS = 15000, LOG_LINES = 60, STEER_WATCHDOG_MS = 2500,
+       WEB_PIECE = 240, WEB_STUCK_MS = 5000, WEB_RX_MAX = 4608, WEB_HEAD_WAIT_MS = 5000 };
 
 void Teensy::log(const std::string& text)
 {
@@ -49,6 +50,8 @@ void Teensy::restart(uint32_t offMs)
     helloPos_ = 0;
     xsBuf_.clear();
     brCableMs_ = brWifiMs_ = brIgnoreMs_ = 0;
+    web_ = Web();
+    rebootWhenSent_ = false;
 }
 void Teensy::boot()
 {
@@ -314,8 +317,10 @@ int Teensy::scan()
             else if (pgn == PGN_FW && knowsFw) takeFw(data.data(), len);
             else if (pgn == PGN_NET_IN && knowsBridge) { takeNet(data.data(), len); sent++; }
             else if (pgn == PGN_RTCM && knowsBridge) { if (len && brState == 2 && !fwActive_) rtcm.insert(rtcm.end(), data.begin(), data.end()); }
+            else if (pgn == PGN_WEB_IN && knowsBridge && knowsPage) takeWeb(data.data(), len);
             else
             {
+                if (pgn == PGN_WEB_IN) old150++;        // an older firmware: out on the network cable
                 // any other PGN goes out on the network cable to UDP 9999, as an older firmware does with all of them
                 toCable++;
                 if (pgn == PGN_NET_IN || pgn == PGN_RTCM)
@@ -372,7 +377,7 @@ void Teensy::bridgeTick()
     if (!here) { told = 255; return; }
     if ((brState != told || now - brStateMs_ >= STATE_MS) && room() >= 3 + 6)
     {
-        const uint8_t d[3] = { 1, brState, 0 };
+        const uint8_t d[3] = { (uint8_t)(knowsPage ? 2 : 1), brState, 0 };     // version 2: it shows its page through the XIAO
         writeFrame(PGN_BRIDGE, d, 3);
         if (brState != told) toldSince = now;
         told = brState;
@@ -428,6 +433,124 @@ void Teensy::txTick()
         xsBuf_.clear();
         statusSent++;
     }
+}
+
+// ---------------------------------------------------------------- its page through the XIAO (zXiao.ino, zWeb.ino)
+// PGN 150 from the XIAO: a browser's request, opened, in pieces, gone, and what the browser took of the answer
+void Teensy::takeWeb(const uint8_t* d, uint8_t n)
+{
+    if (n < 2) return;
+    Web& w = web_;
+    const uint8_t cmd = d[0], sid = d[1];
+    const uint64_t now = fake::clockMs;
+    if (cmd == 1 && n >= 4)                         // a new request: the one before is over (the XIAO says so)
+    {
+        w = Web();
+        w.open = true;
+        w.sid = sid;
+        w.window = std::max<uint16_t>(WEB_PIECE, (uint16_t)(d[2] | d[3] << 8));
+        w.openMs = w.moveMs = now;
+        webOpens++;
+        return;
+    }
+    if (!w.open || sid != w.sid) return;
+    if (cmd == 2 && n >= 4)
+    {
+        const uint16_t off = (uint16_t)(d[2] | d[3] << 8);
+        if (off != (uint16_t)w.rxGot) { if (!w.gone) webBroken++; w.gone = true; return; }
+        const size_t k = n - 4;
+        w.rxGot += (uint32_t)k;
+        w.rx.append((const char*)d + 4, std::min(k, WEB_RX_MAX - std::min<size_t>(WEB_RX_MAX, w.rx.size())));
+    }
+    else if (cmd == 3) { if (!w.gone) webGone++; w.gone = true; }
+    else if (cmd == 4 && n >= 4)
+    {
+        const uint16_t v = (uint16_t)(d[2] | d[3] << 8);
+        const uint32_t taken = w.txTaken + (uint16_t)(v - (uint16_t)w.txTaken);
+        if (taken <= w.txSent && taken != w.txTaken) { w.txTaken = taken; w.moveMs = now; }
+    }
+}
+
+// webLoop(): one request at a time, answered when it is whole (408 when it is not, 5 s on)
+void Teensy::webServe()
+{
+    Web& w = web_;
+    if (!w.open) return;
+    if (w.gone) { w.open = false; return; }
+    if (w.answered) return;
+    const uint64_t now = fake::clockMs;
+    if (webPage.size() != pageBytes)
+    {
+        webPage = "<!DOCTYPE html><html><head><title>AiO module</title></head><body>";
+        while (webPage.size() + 14 < pageBytes) webPage += (char)('A' + webPage.size() % 23);
+        webPage += "</body></html>";
+    }
+    auto answer = [&](int code, const char* type, const std::string& body) {
+        w.tx = fmt("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %u\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+                   code, code == 200 ? "OK" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : "Request Time-out", type, (unsigned)body.size()) + body;
+        w.answered = w.ending = true;
+        w.moveMs = now;
+    };
+    const size_t he = w.rx.find("\r\n\r\n");
+    size_t want = 0;
+    if (he != std::string::npos)
+    {
+        const size_t cl = w.rx.find("Content-Length: ");
+        if (cl != std::string::npos && cl < he) want = strtoul(w.rx.c_str() + cl + 16, nullptr, 10);
+    }
+    if (he == std::string::npos || w.rx.size() < he + 4 + want)
+    {
+        if (now - w.openMs > WEB_HEAD_WAIT_MS) answer(408, "application/json", "{\"ok\":false,\"error\":\"request timeout\"}");
+        return;
+    }
+    const std::string line = w.rx.substr(0, w.rx.find("\r\n"));
+    const std::string body = w.rx.substr(he + 4, want);
+    webAsked.push_back(line);
+    auto is = [&](const char* m) { return line.compare(0, strlen(m), m) == 0; };
+    if (is("GET / ")) answer(200, "text/html", webPage);
+    else if (is("GET /api/status")) answer(200, "application/json", fmt("{\"ok\":true,\"fw\":\"v4.5_AiO_WEB 4.5\",\"ip\":\"%u.%u.%u.126\",\"up\":%lu}", net[0], net[1], net[2], (unsigned long)(ms() / 1000)));
+    else if (is("POST /api/settings")) { webBodies.push_back(body); answer(200, "application/json", "{\"ok\":true}"); }
+    else if (is("POST /api/reboot")) { w.rebootAfter = true; answer(200, "application/json", "{\"ok\":true}"); }
+    else if (is("POST /api/ota") || is("POST /api/revert"))
+        answer(403, "application/json", "{\"ok\":false,\"error\":\"through the XIAO: install the firmware, or go back to the previous one, on the XIAO page (Firmware tab, AiO module)\"}");
+    else answer(404, "application/json", "{\"ok\":false,\"error\":\"not found\"}");
+}
+
+// xiaoWebPump(): the answer to the XIAO as the link has room for the Teensy's own frames and the XIAO's window allows,
+// then its end
+void Teensy::webPump()
+{
+    Web& w = web_;
+    if (!w.open) return;
+    const uint64_t now = fake::clockMs;
+    if (!detected || !gps2On) w.gone = true;
+    if (w.gone) { if (w.ending) w.open = false; return; }
+    for (int i = 0; i < 4 && w.answered && w.txSent < w.tx.size(); i++)
+    {
+        const uint32_t ahead = w.txSent - w.txTaken;
+        if (ahead >= w.window) break;
+        const size_t k = std::min<size_t>({ (size_t)WEB_PIECE, w.tx.size() - w.txSent, (size_t)(w.window - ahead) });
+        uint8_t d[4 + WEB_PIECE];
+        d[0] = 2; d[1] = w.sid; d[2] = (uint8_t)w.txSent; d[3] = (uint8_t)(w.txSent >> 8);
+        memcpy(d + 4, w.tx.data() + w.txSent, k);
+        if (!sendOwn(PGN_WEB_OUT, d, (uint8_t)(4 + k))) return;
+        w.txSent += (uint32_t)k;
+        w.moveMs = now;
+        webMostAhead = std::max(webMostAhead, w.txSent - w.txTaken);
+        if (w.txSent - w.txTaken > w.window) webOverWindow++;
+    }
+    if (w.ending && w.txSent == w.tx.size())
+    {
+        const uint8_t d[2] = { 3, w.sid };
+        if (sendOwn(PGN_WEB_OUT, d, 2))
+        {
+            w.open = false;
+            webEnds++;
+            if (w.rebootAfter) { log("[web] restart asked on the page"); rebootWhenSent_ = true; }   // (xiaoWebFlush: its answer out first)
+            return;
+        }
+    }
+    if (w.ending && now - w.moveMs > WEB_STUCK_MS) { w.open = false; webBroken++; }
 }
 
 // One pass of the Teensy's loop (it runs far faster than once a millisecond; nothing here depends on that)
@@ -496,6 +619,8 @@ void Teensy::step()
     }
     if (knowsBridge) bridgeTick();
     txTick();
+    if (knowsBridge && knowsPage) { webPump(); webServe(); }
+    if (rebootWhenSent_ && tx.empty()) { rebootWhenSent_ = false; restart(); }
     if (gnss && brState == 2 && now - gnssMs_ >= 100)       // four sentences for the program, ten times a second
     {
         gnssMs_ = now;

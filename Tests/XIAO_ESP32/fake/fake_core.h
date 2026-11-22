@@ -270,6 +270,7 @@ public:
     int       available();
     int       read();
     int       peek();
+    int       read(uint8_t* buf, size_t n);         // what is there now, at most n bytes (-1: nothing)
     size_t    readBytes(char* buf, size_t n);       // as Stream: waits up to the timeout for each byte
     size_t    write(const uint8_t* b, size_t n);    // waits until the connection has taken it (10 s at most)
     size_t    print(const char* s) { return write((const uint8_t*)s, strlen(s)); }
@@ -288,8 +289,12 @@ private:
 class NetworkServer
 {
 public:
+    explicit NetworkServer(uint16_t port = 80) : port_(port) {}
+    void          begin();                  // listens (the WebServer's own one: port 80, WebServer::begin)
     bool          hasClient();
     NetworkClient accept();
+private:
+    uint16_t port_;
 };
 
 // ---------------------------------------------------------------- web server (as the core's WebServer, the parts the program uses)
@@ -473,6 +478,7 @@ struct Conn
     int       fd = -1;
     bool      accepted = false;             // the program took it from the listening port
     bool      fromAp = true;                // on the XIAO's own network (else the other network it joined)
+    uint16_t  port = 80;                    // the XIAO's port it was opened to
     IPAddress peer;
     std::deque<uint8_t> rx;                 // from the browser, readable now
     std::string tx;                         // everything the program sent
@@ -549,6 +555,7 @@ struct Device
     uint64_t    scanAt = 0;
     uint32_t    scans = 0;
     bool        webListening = false;       // port 80 is open
+    std::vector<uint16_t> listenPorts;      // other ports the program listens on (NetworkServer::begin)
     bool        mdnsOn = false;
     std::string mdnsHost, mdnsInstance;
     std::vector<std::string> mdnsServices;
@@ -604,7 +611,7 @@ struct Device
     size_t    uartWire(uint8_t* out, size_t max);       // bytes that left for the Teensy on the wire now (at most max)
     void      uartFeed(const uint8_t* b, size_t n);     // bytes from the Teensy arriving on the wire
     bool      udpIn(const Datagram& d);     // a datagram arrives from the WiFi: false = no socket took it (not open, or its queue full)
-    std::shared_ptr<Conn> connect(bool fromAp, IPAddress peer);    // a browser opens a connection to port 80 (null: not taken)
+    std::shared_ptr<Conn> connect(bool fromAp, IPAddress peer, uint16_t port = 80);    // a browser opens a connection (null: not taken)
     void      stopped(esp_reset_reason_t why);          // the program stopped (a restart, or the power went): RAM and radio state go
 };
 extern Device* cur;

@@ -279,6 +279,26 @@ struct Xiao
     uint32_t rtcmToModule = 0;          // bytes of corrections handed to the module (PGN 147)
     uint32_t dropped = 0;               // not sent: its transmit buffer (1024 bytes) was full
     std::map<uint8_t, uint32_t> pgns;   // frames from the module, by PGN
+    uint8_t  version = 0;               // the bridge's version the module says (PGN 149): 2 = it serves its page through the XIAO
+    // The module's page through the XIAO (port 8080 of its WiFi, PGN 150 / 151), as the XIAO program: one browser at a
+    // time; it tells the module how much of the answer it holds (the window) and how much the browser took
+    struct Web
+    {
+        bool        on = false;         // a request open
+        uint8_t     sid = 0;
+        std::string req;                // the browser's request
+        size_t      reqSent = 0;        // ... handed to the module
+        bool        opened = false;     // "open" sent
+        size_t      window = 6144;      // answer bytes the XIAO holds for the browser
+        std::string held;               // ... held now, not taken by the browser yet
+        std::string got;                // what the browser has
+        uint32_t    taken = 0, ackedAt = 0;     // answer bytes the browser took; the count last sent to the module
+        bool        ended = false;      // the module said the end
+        uint32_t    takePerMs = 4000;   // the browser's speed (0: it takes nothing)
+        uint32_t    overWindow = 0, badOffset = 0;
+        int         dropPieceAt = -1;   // a request piece lost on the link: the one that starts at this offset
+    } web;
+    uint32_t webSessions = 0;
     void frame(uint8_t pgn, const uint8_t* data, size_t n);
 };
 
@@ -343,6 +363,11 @@ public:
     Http     http(const std::string& method, const std::string& path, const std::string& body = "",
                   const std::vector<std::string>& headers = {}, uint32_t timeoutMs = 6000);
     Http     httpRaw(const std::string& request, uint32_t timeoutMs = 6000);
+    // the same through the XIAO (a phone on its WiFi, http://<the XIAO>:8080/); at the timeout the phone goes (the XIAO
+    // tells the module so, unless sayGone is false: a XIAO that just stops)
+    Http     httpXiao(const std::string& method, const std::string& path, const std::string& body = "",
+                      const std::vector<std::string>& headers = {}, uint32_t timeoutMs = 15000);
+    Http     httpXiaoRaw(const std::string& request, uint32_t timeoutMs = 15000, bool sayGone = true);
     Json     status();                  // GET /api/status
     int      badStatus = 0;
     std::string lastBadStatus;

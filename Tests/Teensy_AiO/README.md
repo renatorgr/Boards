@@ -19,7 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 5 scenarios for the WiFi bridge ([The users](#the-users)). Now 59 scenarios, 128 runs, about 940 checks. |
+| 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 8 scenarios for the WiFi bridge and this page through it ([The users](#the-users)). Now 62 scenarios, 133 runs, about 1005 checks. |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
 
 ## Running it
@@ -96,11 +96,11 @@ puts the report in the run's summary and as a download.
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering), `careful-wifi-bridge` (no network cable: the tablet on the XIAO's WiFi steers 40 s through the XIAO, GPS at 10 Hz, corrections to the receiver), `careful-wifi-bridge-cable-first` (a second tablet on the WiFi while the cable's steers: not answered, even through a XIAO that keeps no rules; it gets the module 3 s after the cable's goes silent) |
+| Careful user | `careful-day` (engage, follow the line 40 s within 10 cm, disengage), `careful-silent-program` (the tablet freezes), `careful-restart-page`, `careful-pages` (every page while steering), `careful-wifi-bridge` (no network cable: the tablet on the XIAO's WiFi steers 40 s through the XIAO, GPS at 10 Hz, corrections to the receiver), `careful-wifi-bridge-cable-first` (a second tablet on the WiFi while the cable's steers: not answered, even through a XIAO that keeps no rules; it gets the module 3 s after the cable's goes silent), `careful-page-through-xiao` (the page through the XIAO while the tablet steers) |
 | Never set up | `new-board-no-program`, `no-steer-settings` (AgOpenWeb never sent 252), `no-ads1115` (GPS only, .120), `nothing-plugged`, `cable-late`, `eeprom-damaged`, `eeprom-subnet-damaged` |
-| Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps`, `wifi-bridge-subnet` (a subnet and a scan sent over the XIAO's WiFi: not done, said in Messages) |
+| Wrong settings | `was-not-inverted`, `motor-direction`, `ibt2-set-as-cytron`, `danfoss-not-set`, `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`, `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps`, `wifi-bridge-subnet` (a subnet and a scan sent over the XIAO's WiFi: not done, said in Messages), `page-through-xiao-firmware` (update and going back refused there, a restart) |
 | Wrong wiring | `gps-on-gps2-port`, `gps-wrong-baud`, `imu-other-baud`, `was-not-connected`, `was-signal-to-ground`, `was-3wire-differential`, `keya-can-unplugged`, `keya-powered-late`, `tablet-other-subnet` |
-| Failures in the field | `was-unplugged-steering`, `was-wire-cut`, `keya-lost`, `keya-fault`, `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `too-fast`, `packet-loss`, `short-settings-packet`, `udp-garbage`, `gps-lost`, `rtk-lost`, `imu-frozen`, `web-hammer`, `bad-requests`, `ntrip-flood`, `millis-wrap`, `update-while-steering`, `update-bad-files`, `update-and-back`, `wifi-bridge-xiao-stops` (the XIAO stops while it carries the steering, then comes back), `wifi-bridge-tablet-leaves` (100 steering packets a second, nothing on the cable meanwhile, then the tablet out of range) |
+| Failures in the field | `was-unplugged-steering`, `was-wire-cut`, `keya-lost`, `keya-fault`, `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `too-fast`, `packet-loss`, `short-settings-packet`, `udp-garbage`, `gps-lost`, `rtk-lost`, `imu-frozen`, `web-hammer`, `bad-requests`, `ntrip-flood`, `millis-wrap`, `update-while-steering`, `update-bad-files`, `update-and-back`, `wifi-bridge-xiao-stops` (the XIAO stops while it carries the steering, then comes back), `wifi-bridge-tablet-leaves` (100 steering packets a second, nothing on the cable meanwhile, then the tablet out of range), `page-through-xiao-phone-leaves` |
 
 ## The checks
 

@@ -23,7 +23,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi). [A slow browser](#a-slow-browser) no longer holds it up. `.bin` rebuilt. |
+| 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
 | 11 Nov 2026 | The page checks that it is the page of the program running: after an update an old page a browser kept (old buttons, new data) fetches the new one by itself ([What it does](#what-it-does)). |
@@ -129,6 +129,16 @@ With the bridge on, the XIAO's own network takes the module's numbers: **192.168
 - The program keeps the subnet it has on the network cable, and a [sprayer or seed drill module](#section-modules-on-the-xiaos-wifi) joins this network with its own unchanged: its page is at its usual address (http://192.168.5.123/).
 - The XIAO reads the module's numbers in the Teensy's status and keeps them. When they change (WiFi tab, **Module network**, or the module's own page) the XIAO restarts and its network follows; Messages says so. Devices on it join again.
 - An **other network** with the same numbers (a tractor's router at 192.168.5.1) is left as soon as the XIAO gets its address there, and not joined again while the bridge is on: with two networks of the same numbers the XIAO could send the program's packets out on the wrong one. Status says "left: it has this network's numbers".
+
+## The module's page through the XIAO
+
+The module's (Teensy's) own page is on its network cable. A phone or a tablet on the XIAO's own WiFi opens it at **http://192.168.5.1:8080/** with the bridge on (http://192.168.4.1:8080/ without it): the XIAO's address, port **8080**. It is the module's own page, every tab, as on the cable; the Status tab's module card has the link. The XIAO passes each request to the Teensy over the link (PGN 150) and the answer back (PGN 151). The page takes about 4 s the first time (136 kB at the link's 46 kB/s), then the browser keeps it.
+
+- Only from the XIAO's own WiFi, and only once that network has a **password of one's own** (as the bridge): whoever opens the module's page can change how the tractor steers. Otherwise the browser gets a short page that says why.
+- The module's firmware update and going back to its previous firmware are **not** done there: use this page's Firmware tab, [The module's firmware from this page](#the-modules-firmware-from-this-page).
+- It needs a Teensy firmware that knows it (22 Nov 2026, "the page through the XIAO"): with an older one the browser is told to install the newer firmware first. Nothing is sent to an older Teensy.
+- One request at a time, as the module serves them; the steering through the bridge comes first on the link, both ways. A phone that leaves half way is given up after 15 s at most, and the next one is served.
+- The section modules' pages (sprayer, seed drill) need none of this: they open at their own address on the XIAO's WiFi (http://192.168.5.123/).
 
 ## Section modules on the XIAO's WiFi
 

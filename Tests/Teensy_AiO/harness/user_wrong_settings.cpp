@@ -269,3 +269,30 @@ SCENARIO(User::WrongSettings, "wifi-bridge-subnet", "On the XIAO's WiFi (no netw
     tell("says-why", w.aio.logHas("PGN 201) not done", mark), "Says the subnet from the XIAO's WiFi was not done, and where to change it", logSince(w, mark, 300));
     reportRules(w);
 }
+
+// The firmware never goes through the XIAO's port 8080 (the XIAO page has its own way, over the link): the module says so
+SCENARIO(User::WrongSettings, "page-through-xiao-firmware", "On the module's page through the XIAO: tries a firmware update and going back, then a restart", { Kit::PumaCytron })
+{
+    World w(kit);
+    w.cableIn = false;
+    wifiTablet(w);
+    w.startUp();
+    std::string hex(3000, 'x');
+    const Http ota = w.httpXiao("POST", "/api/ota", hex);
+    must("ota-refused", ota.code == 403, "A firmware upload through the XIAO is refused", fmt("HTTP %d %s", ota.code, ota.body.substr(0, 160).c_str()));
+    tell("ota-says-where", ota.body.find("XIAO page") != std::string::npos, "... and says to use the XIAO page", ota.body.substr(0, 200));
+    const Http rev = w.httpXiao("POST", "/api/revert");
+    must("revert-refused", rev.code == 403, "Going back to the previous firmware through the XIAO is refused", fmt("HTTP %d %s", rev.code, rev.body.substr(0, 160).c_str()));
+    must("no-restart", w.aio.boots == 1, "No restart from those", fmt("%u starts", w.aio.boots));
+    const Http st = w.httpXiao("GET", "/api/status");
+    must("still-serves", st.code == 200 && st.jsonOk, "The page still answers through the XIAO after them", fmt("HTTP %d", st.code));
+    const Http rb = w.httpXiao("POST", "/api/reboot");
+    must("restart-answer", rb.code == 200 && rb.jsonOk && rb.json["ok"].num() == 1, "A restart through the XIAO: its answer reaches the phone first",
+         fmt("HTTP %d %s", rb.code, rb.body.substr(0, 100).c_str()));
+    w.run(5000);
+    must("restarted", w.aio.boots == 2, "... and the module restarts", fmt("%u starts", w.aio.boots));
+    w.run(4000);
+    const Http after = w.httpXiao("GET", "/api/status");
+    must("serves-after", after.code == 200, "The page answers through the XIAO after the restart", fmt("HTTP %d", after.code));
+    reportRules(w);
+}

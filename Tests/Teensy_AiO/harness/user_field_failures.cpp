@@ -529,3 +529,45 @@ SCENARIO(User::FieldFailures, "wifi-bridge-tablet-leaves", "Steering through the
     must("gps-on-cable", w.netTo9999 - net1 >= 25, "GPS goes out on the network cable again", fmt("%u datagrams in 3 s", w.netTo9999 - net1));
     reportRules(w);
 }
+
+// The module's page through the XIAO when the phone or the link fails, a tablet steering through the bridge all along
+SCENARIO(User::FieldFailures, "page-through-xiao-phone-leaves", "The module's page through the XIAO: the phone walks away mid-page, a XIAO that stops taking, a piece lost on the link", { Kit::PumaCytron, Kit::F9pIbt2 })
+{
+    World w(kit);
+    w.cableIn = false;
+    wifiTablet(w);
+    w.startUp();
+    w.tractor.kmh = 8;
+    w.tractor.x = -0.5f;
+    w.run(2000);
+    engageWifi(w, true);
+    w.run(8000);
+
+    // a slow phone (2 kB/s) that leaves after 1.5 s: the XIAO says so, the next request is answered at once
+    w.xiao.web.takePerMs = 2;
+    const Http left = w.httpXiaoRaw("GET / HTTP/1.1\r\nHost: 192.168.5.1:8080\r\n\r\n", 1500);
+    w.xiao.web.takePerMs = 4000;
+    w.run(300);
+    const Http next = w.httpXiao("GET", "/api/status", "", {}, 3000);
+    must("after-leave", next.code == 200 && next.jsonOk, "After a phone left mid-page, the next request is answered", fmt("HTTP %d after %u ms", next.code, next.ms));
+    note("left", fmt("the phone had %zu bytes of the page when it left", left.body.size()));
+
+    // a XIAO that stops taking the answer and says nothing (its own trouble): the module gives up, the next one works
+    w.xiao.web.takePerMs = 0;
+    w.httpXiaoRaw("GET / HTTP/1.1\r\nHost: 192.168.5.1:8080\r\n\r\n", 2000, false);
+    w.xiao.web.takePerMs = 4000;
+    w.run(8000);
+    const Http diag = w.httpXiao("GET", "/api/diag", "", {}, 3000);
+    must("given-up", diag.jsonOk && diag.json["web"]["viaXiaoBroken"].num() >= 1, "An answer the XIAO stopped taking is given up (counted in the report)", diag.body.substr(0, 300));
+
+    // a piece of a request lost on the link: no half request is served, the next one is
+    const std::string text(400, 'n');
+    w.xiao.web.dropPieceAt = 240;
+    const Http lost = w.httpXiao("POST", "/api/note", text, {}, 2500);
+    w.xiao.web.dropPieceAt = -1;
+    must("lost-not-served", lost.code == 0, "A request with a piece lost on the link is not served", fmt("HTTP %d", lost.code));
+    const Http note2 = w.httpXiao("GET", "/api/note", "", {}, 3000);
+    must("lost-not-saved", note2.jsonOk && note2.json["note"].s != text, "... and its half is not saved", note2.body.substr(0, 120));
+    must("still-steering", w.engaged() && fabsf(w.tractor.x) < 0.15f, "Steers on through all of it", fmt("%s, %.2f m off the line", w.engaged() ? "steering" : "not steering", w.tractor.x));
+    reportRules(w);
+}

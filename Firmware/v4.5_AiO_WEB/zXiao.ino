@@ -63,8 +63,15 @@
 //   Teensy -> XIAO  PGN 148: a datagram for the program's UDP 9999 (a GPS sentence, a PGN): data = [the datagram].
 //                   The XIAO sends it to that program only, never to everyone.
 //   Teensy -> XIAO  PGN 149: the bridge's state, once a second and when it changes:
-//                   data = [version 1][0 free / 1 a program on the cable has the module / 2 the program on the WiFi has it]
+//                   data = [version][0 free / 1 a program on the cable has the module / 2 the program on the WiFi has it]
 //                   A XIAO that does not hear it sends no PGN 146 (an older Teensy would send them on to UDP 9999).
+//                   Version 2 (Nov 2026): this firmware also serves its page through the XIAO (PGN 150 / 151).
+// The module's page through the XIAO (Nov 2026; "the page through the XIAO" below), for a phone on the XIAO's WiFi:
+//   XIAO -> Teensy  PGN 150: [1 open][session][window, 2 bytes LE] a browser's new request (window: answer bytes the
+//                   XIAO holds for it); [2][session][offset, 2 bytes LE][bytes] the request; [3][session] the browser
+//                   went; [4][session][count, 2 bytes LE] answer bytes the XIAO has passed on to the browser so far
+//   Teensy -> XIAO  PGN 151: [2][session][offset, 2 bytes LE][bytes] the answer; [3][session] its end. Never more than
+//                   the window ahead of the count; offsets and counts are the low 16 bits of the bytes so far.
 //
 // The XIAO is powered from the board's 3.3 V: never plug its USB-C (with 5 V) while it is on the board.
 // The Teensy cannot program the XIAO (its BOOT / RESET pins are not wired): program it over USB-C
@@ -95,7 +102,11 @@
 #define XIAO_PGN_RTCM           147     // XIAO -> Teensy: corrections from the program on the XIAO's WiFi (not sent to UDP)
 #define XIAO_PGN_NET_OUT        148     // Teensy -> XIAO: a datagram for the program on the XIAO's WiFi
 #define XIAO_PGN_BRIDGE         149     // Teensy -> XIAO: the bridge's state
-#define BRIDGE_VERSION          1
+#define XIAO_PGN_WEB_IN         150     // XIAO -> Teensy: the page through the XIAO, a browser's request (not sent to UDP)
+#define XIAO_PGN_WEB_OUT        151     // Teensy -> XIAO: the answer
+#define BRIDGE_VERSION          2       // 2: the page through the XIAO too (PGN 150 / 151)
+#define XWEB_PIECE              240     // answer bytes per PGN 151
+#define XWEB_STUCK_MS           5000    // an answer that cannot move for this long (the XIAO takes nothing): given up
 #define BRIDGE_CABLE_MS         3000    // a program packet on the cable in this time: the cable has the module
 #define BRIDGE_GONE_MS          3000    // nothing from the program on the WiFi for this long: the module is free again
 #define BRIDGE_STATE_MS         1000    // the state to the XIAO this often
@@ -111,7 +122,7 @@ static const char XIAO_HELLO[] = "ESP32-hello";
 uint8_t XIAOrxbuffer[1024];
 uint8_t XIAOtxbuffer[2048];            // 2 kB (status JSON pieces + log lines + AgOpenGPS packets)
 
-XiaoStats xiao = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0};
+XiaoStats xiao = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 char     xiaoInfo[XIAO_INFO_MAX + 1] = "";
 uint32_t xiaoInfoMs = 0;
@@ -597,6 +608,157 @@ static void xiaoTxTick(uint32_t now)
     if (xsLen > 0 && xsPart >= xsParts) { xsLen = 0; xiao.statusSent++; }
 }
 
+// ---------------------------------------------------------------- the page through the XIAO
+// A phone on the XIAO's own WiFi cannot reach the module's network. The XIAO listens on port 8080 of its own network,
+// passes what a browser sends there on to us (PGN 150) and our answer back to it (PGN 151). webLoop() (zWeb.ino) takes
+// it as one more connection, through xiaoWeb, so every page and every answer is the one the cable gets. The answer goes
+// out as the link has room for the Teensy's own frames (xiaoSendOwn): while a tablet steers through the bridge its
+// datagrams come first, and a piece of the page makes one of them wait no more than about 5 ms (246 bytes at 460800).
+// The XIAO says at "open" how much of the answer it can hold, and then how much it has passed on to the browser:
+// never more than that is on the way, so nothing is lost when the phone's WiFi is slow.
+XiaoWebClient xiaoWeb;
+DMAMEM static uint8_t xwRx[XWEB_RX_MAX];      // in RAM2: RAM1 is the code's and the stack's (firmware CLAUDE.md, gotcha 13)
+DMAMEM static uint8_t xwTx[XWEB_TX_MAX];
+
+FLASHMEM size_t XiaoWebClient::write(const uint8_t* buf, size_t size)
+{
+    if (!open || gone || ending) return 0;
+    size_t n = 0;
+    while (n < size && txLen < XWEB_TX_MAX)
+    {
+        const uint16_t at = (uint16_t)((txHead + txLen) % XWEB_TX_MAX);
+        size_t k = XWEB_TX_MAX - at;                            // up to the ring's end
+        if (k > (size_t)(XWEB_TX_MAX - txLen)) k = XWEB_TX_MAX - txLen;
+        if (k > size - n) k = size - n;
+        memcpy(xwTx + at, buf + n, k);
+        txLen += (uint16_t)k;
+        n += k;
+    }
+    return n;
+}
+FLASHMEM int XiaoWebClient::availableForWrite() { return open && !gone && !ending ? XWEB_TX_MAX - txLen : 0; }
+FLASHMEM int XiaoWebClient::available()         { return open ? rxLen - rxPos : 0; }
+FLASHMEM int XiaoWebClient::read()              { return available() > 0 ? xwRx[rxPos++] : -1; }
+FLASHMEM int XiaoWebClient::peek()              { return available() > 0 ? xwRx[rxPos] : -1; }
+FLASHMEM int XiaoWebClient::read(uint8_t* buf, size_t size)
+{
+    int n = available();
+    if (n <= 0) return -1;
+    if ((size_t)n > size) n = (int)size;
+    memcpy(buf, xwRx + rxPos, n);
+    rxPos += (uint16_t)n;
+    return n;
+}
+// as a socket: still "connected" while what the browser sent is not all read
+FLASHMEM uint8_t XiaoWebClient::connected()     { return open && (!gone || rxPos < rxLen) ? 1 : 0; }
+FLASHMEM void XiaoWebClient::stop()
+{
+    rxLen = rxPos = 0;
+    waiting = false;
+    if (!open) return;
+    if (gone) { open = false; txLen = 0; return; }             // the browser went: nobody to send the rest to
+    ending = true;                                              // the rest goes out, then the end (xiaoWebPump)
+    moveMs = msStamp(millis());
+}
+
+// PGN 150 from the XIAO
+FLASHMEM static void xiaoTakeWeb(const uint8_t* d, uint8_t n)
+{
+    if (n < 2) return;
+    XiaoWebClient& w = xiaoWeb;
+    const uint8_t cmd = d[0], sid = d[1];
+    if (cmd == 1 && n >= 4)                                     // a browser's new request
+    {
+        if (w.open) webXiaoDropped();                           // the XIAO is done with the one before (it said so)
+        w.open = true;
+        w.waiting = true;
+        w.gone = w.ending = false;
+        w.sid = sid;
+        w.window = (uint16_t)(d[2] | d[3] << 8);
+        if (w.window < XWEB_PIECE) w.window = XWEB_PIECE;
+        w.rxLen = w.rxPos = 0;
+        w.rxGot = 0;
+        w.txHead = w.txLen = 0;
+        w.txSent = w.txTaken = 0;
+        w.moveMs = msStamp(millis());
+        xiao.webReq++;
+        return;
+    }
+    if (!w.open || sid != w.sid) return;                        // an older request's: done with
+    if (cmd == 2 && n >= 4)                                     // the request's bytes
+    {
+        const uint16_t off = (uint16_t)(d[2] | d[3] << 8);
+        if (off != (uint16_t)w.rxGot) { if (!w.gone) xiao.webBroken++; w.gone = true; return; }   // a piece lost on the link
+        const uint16_t k = n - 4;
+        w.rxGot += k;
+        const uint16_t room = XWEB_RX_MAX - w.rxLen;
+        const uint16_t take = k < room ? k : room;              // more than a request can be is dropped (413 in webLoop)
+        memcpy(xwRx + w.rxLen, d + 4, take);
+        w.rxLen += take;
+    }
+    else if (cmd == 3) w.gone = true;                           // the browser went
+    else if (cmd == 4 && n >= 4)                                // answer bytes the XIAO has passed on to the browser
+    {
+        const uint16_t v = (uint16_t)(d[2] | d[3] << 8);
+        const uint32_t taken = w.txTaken + (uint16_t)(v - (uint16_t)w.txTaken);
+        if (taken <= w.txSent && taken != w.txTaken) { w.txTaken = taken; w.moveMs = msStamp(millis()); }
+    }
+}
+
+// The answer's next pieces to the XIAO, as the link and the XIAO's window allow, then its end. Called from xiaoProcess().
+FLASHMEM static void xiaoWebPump()
+{
+    XiaoWebClient& w = xiaoWeb;
+    if (!w.open) return;
+    const uint32_t now = millis();
+    if (!xiaoDetected || !xiaoOn()) w.gone = true;              // the XIAO went: nobody to send it to
+    if (w.gone) { if (w.ending) { w.open = false; w.txLen = 0; } return; }
+    for (uint8_t i = 0; i < 4 && w.txLen > 0; i++)
+    {
+        const uint32_t ahead = w.txSent - w.txTaken;
+        if (ahead >= w.window) break;                           // the XIAO holds all it can: wait for its count
+        uint16_t k = w.txLen;
+        if (k > XWEB_PIECE) k = XWEB_PIECE;
+        if (k > XWEB_TX_MAX - w.txHead) k = XWEB_TX_MAX - w.txHead;   // up to the ring's end
+        if (k > w.window - ahead) k = (uint16_t)(w.window - ahead);
+        uint8_t d[4 + XWEB_PIECE];
+        d[0] = 2;
+        d[1] = w.sid;
+        d[2] = (uint8_t)w.txSent;
+        d[3] = (uint8_t)(w.txSent >> 8);
+        memcpy(d + 4, xwTx + w.txHead, k);
+        if (!xiaoSendOwn(XIAO_PGN_WEB_OUT, d, (uint8_t)(4 + k))) return;   // no room on the link now: next pass
+        w.txHead = (uint16_t)((w.txHead + k) % XWEB_TX_MAX);
+        w.txLen -= k;
+        w.txSent += k;
+        w.moveMs = msStamp(now);
+    }
+    if (w.ending && w.txLen == 0)
+    {
+        const uint8_t d[2] = { 3, w.sid };
+        if (xiaoSendOwn(XIAO_PGN_WEB_OUT, d, 2)) { w.open = false; return; }
+    }
+    if (w.ending && now - w.moveMs > XWEB_STUCK_MS)             // the XIAO takes nothing more (its browser stopped): given up
+    {
+        w.open = false;
+        w.txLen = 0;
+        xiao.webBroken++;
+    }
+}
+
+// Before a restart asked through the XIAO (/api/reboot): its short answer and the end go out first
+FLASHMEM void xiaoWebFlush()
+{
+    const uint32_t t0 = millis();
+    while (xiaoWeb.open && millis() - t0 < 500)
+    {
+        xiaoWebPump();
+        wdtFeed();
+        delay(1);
+    }
+    SerialXIAO.flush();
+}
+
 // Drop the first n bytes of xf and anything up to the next 0x80 (a possible frame start)
 static void xfShift(uint16_t n)
 {
@@ -628,6 +790,7 @@ static uint8_t xfScan()
             else if (xf[3] == XIAO_PGN_FW)     xiaoTakeFw(xf + 5, xf[4]);     // a firmware update for the Teensy (not sent to UDP)
             else if (xf[3] == XIAO_PGN_NET_IN) { xiaoTakeNet(xf + 5, xf[4]); sent++; }   // the WiFi bridge: a program packet (counted: one of this loop's frames)
             else if (xf[3] == XIAO_PGN_RTCM)   xiaoTakeRtcm(xf + 5, xf[4]);   // the WiFi bridge: corrections for the receiver
+            else if (xf[3] == XIAO_PGN_WEB_IN) xiaoTakeWeb(xf + 5, xf[4]);    // the page through the XIAO: a browser's request
             else                               { xiaoSendFrame(xf, need); sent++; }
             xfShift(need);
         }
@@ -718,6 +881,7 @@ void xiaoProcess()
 
     xiaoBridgeTick();                          // the WiFi bridge: free again after a silence, its state to the XIAO
     xiaoTxTick(now);                           // status and log lines to the XIAO
+    xiaoWebPump();                             // the page through the XIAO: the answer, after those
 }
 
 // Called from ReceiveUdp() (Autosteer.ino) with every packet that arrives on UDP 8888.

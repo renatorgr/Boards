@@ -607,7 +607,7 @@ void World::finishReply(Exchange& e, bool closed)
         {
             r.failed = true;
             r.why = fmt("the answer was cut short: %u of %u bytes", (unsigned)r.body.size(), (unsigned)want);
-            if (!e.gone && closed && !e.conn->resetByServer) bad(r.why);
+            if (!e.gone && closed && !e.conn->resetByServer && !e.link.cutOk) bad(r.why);
             return;
         }
         if (r.body.size() > want) bad(fmt("%u bytes more than its Content-Length says", (unsigned)(r.body.size() - want)));
@@ -642,7 +642,7 @@ void World::browsers()
             if (now < e.nextTryMs) continue;
             const bool reach = xiao.on && (e.link.fromAp ? apUsable() : dev.staJoined);
             const IPAddress me = e.link.fromAp ? apAt(e.link.ipLast) : IPAddress(dev.router.subnet[0], dev.router.subnet[1], dev.router.subnet[2], e.link.ipLast);
-            if (reach) e.conn = dev.connect(e.link.fromAp, me);
+            if (reach) e.conn = dev.connect(e.link.fromAp, me, e.link.port);
             if (!e.conn) { e.nextTryMs = now + 1000; continue; }     // tries again, as a browser does
         }
         fake::Conn& c = *e.conn;
