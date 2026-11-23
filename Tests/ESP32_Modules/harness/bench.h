@@ -64,6 +64,8 @@ public:
     void resetBy(esp_reset_reason_t why);   // the chip resets by itself (a brownout, a crash, the watchdog) and starts again
     bool on() const { return so_ != nullptr; }
     void step();                // loop() once; a restart the program asks for loads it again
+    bool loopStuck = false;     // loop() no longer runs (core 1 held); a start clears it
+    bool core0Stuck = false;    // core 0 has no idle moment (the Wi-Fi side held); a start clears it
     uint32_t relays() const;    // relays whose coil is on, relay 1 = bit 0
 
     Http http(HTTPMethod m, const std::string& uri, const std::map<std::string, std::string>& args = {},

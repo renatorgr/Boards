@@ -230,6 +230,122 @@ SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog res
     statusAlwaysJson(m);
 }
 
+// 0.10.20: when it restarted, how long before the relays had changed and whether core 0 was still idling; and the crash
+// record the chip keeps in flash. On 23 Nov 2026 the sprayer restarted by "watchdog (other)" with its relays just off,
+// which the task watchdog's names (0.10.19) do not cover.
+SCENARIO(User::Careful, "sprayer-crash-record", "sprays; the chip resets as the sections go off, with the Wi-Fi side held and with its loop held; "
+         "then the crash records of a crash, of an older program and a damaged one", sprayerBoards())
+{
+    World w;
+    Module& m = carefulSprayer(w, board);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    driveAndCompare(w, m, first(8), rs, 5000);
+    Json s = m.status();
+    must("crash-none", s["crash"].type == Json::Null, "a chip with no crash record says none (crash is null)", s["crash"].str());
+
+    // the sections go off and the chip resets 30 ms after the relays let go (the supply dips as the coils let go)
+    w.aow.sections = 0;
+    const int offAfter = msUntilAllOff(w, m, 1000);
+    w.run(30);
+    m.resetBy(ESP_RST_WDT);
+    w.run(3000);
+    s = m.status();
+    Json b = s["before"];
+    must("before-relays-just-off", offAfter >= 0 && b["relays"].num() == 0 && b["relaysMs"].num() >= 25 && b["relaysMs"].num() <= 35,
+         "the module says the relays went off about 30 ms before its last pass (relays 0, kept at the change, not once a second)",
+         fmt("relays %g, last change %g ms before the last pass", b["relays"].num(), b["relaysMs"].num()));
+    must("before-core0-with-loop", b["core0Ms"].type == Json::Number && std::fabs(b["core0Ms"].num()) <= 2,
+         "core 0 was idling up to the loop's last pass: the whole chip stopped at once", fmt("core 0 idle %+g ms", b["core0Ms"].num()));
+    must("log-relays-core0", contains(pageLog(m), "before: last relay change 3") && contains(pageLog(m), "core 0 idle +0 ms"),
+         "the events say it too", pageLog(m));
+
+    // the Wi-Fi side has no idle moment for 5 s: the task watchdog fires; core 0 was last idle 5 s before the last pass
+    driveAndCompare(w, m, first(8), rs, 3000);
+    m.core0Stuck = true;
+    w.run(5000);
+    snprintf(m.dev.coreTask[0], sizeof(m.dev.coreTask[0]), "tiT");
+    m.resetBy(ESP_RST_TASK_WDT);
+    m.dev.coreTask[0][0] = 0;
+    w.run(3000);
+    b = m.status()["before"];
+    must("before-core0-held", b["core0Ms"].num() <= -4900 && b["core0Ms"].num() >= -5100 && b["task0"].str() == "tiT",
+         "core 0 was last idle 5 s before the loop's last pass, and the watchdog names its task",
+         fmt("core 0 idle %+g ms, task '%s'", b["core0Ms"].num(), b["task0"].str().c_str()));
+    must("before-relays-on", b["relays"].num() != 0 && b["relaysMs"].num() >= 4900,
+         "the relays were on and had not changed for over 5 s", fmt("relays %g, last change %g ms before", b["relays"].num(), b["relaysMs"].num()));
+
+    // the loop stands still for 2 s while core 0 goes on idling, then the chip resets
+    driveAndCompare(w, m, first(8), rs, 3000);
+    m.loopStuck = true;
+    w.run(2000);
+    m.resetBy(ESP_RST_WDT);
+    w.run(3000);
+    b = m.status()["before"];
+    must("before-loop-held", b["core0Ms"].num() >= 1900 && b["core0Ms"].num() <= 2100,
+         "core 0 was idling 2 s after the loop's last pass: the loop alone stood still", fmt("core 0 idle %+g ms", b["core0Ms"].num()));
+
+    // a crash by this program (the task watchdog's panic): the chip writes its record in flash
+    driveAndCompare(w, m, first(8), rs, 2000);
+    m.dev.crash.state = 1;
+    m.dev.crash.task = "async_udp";
+    m.dev.crash.reason = "Task watchdog got triggered.\nThe following tasks did not reset the watchdog in time:\n - IDLE0 (CPU 0)";
+    m.dev.crash.prog = m.dev.appSha;
+    m.dev.crash.pc = 0x400d1234;
+    m.dev.crash.bt = { 0x400d1234, 0x400d5678, 0x400e9abc, 0x40081234, 0x4008aaaa, 0x4008bbbb };
+    m.resetBy(ESP_RST_TASK_WDT);
+    w.run(3000);
+    s = m.status();
+    Json c = s["crash"];
+    must("crash-kept", c.type == Json::Object && c["new"].num() == 1 && c["damaged"].num() == 0 && c["task"].str() == "async_udp"
+         && c["same"].num() == 1 && c["pc"].str() == "0x400d1234" && c["bt"].str().rfind("0x400d1234 0x400d5678 0x400e9abc", 0) == 0
+         && c["prog"].str() == m.dev.appSha,
+         "the report has the crash record: new, this program, the task, where and the calls that led there",
+         fmt("new %g, task '%s', same %g, pc %s, bt %s", c["new"].num(), c["task"].str().c_str(), c["same"].num(),
+             c["pc"].str().c_str(), c["bt"].str().c_str()));
+    must("crash-why-one-line", c["why"].str().rfind("Task watchdog got triggered. The following tasks did not reset", 0) == 0
+         && c["why"].str().find('\n') == std::string::npos,
+         "the chip's reason is one line", c["why"].str());
+    must("log-crash", contains(pageLog(m), "crash record, new: task 'async_udp' (this program), Task watchdog")
+         && contains(pageLog(m), "crash record: at 0x400d1234, from 0x400d5678 0x400e9abc 0x40081234 0x4008aaaa"),
+         "the events say the new record, and where", pageLog(m));
+    must("page-crash-row", contains(m.http(HTTP_GET, "/").body, "id=\"crash\""), "the Firmware tab has a Crash record row", "");
+
+    // a restart asked for: the record is still there, no longer new, and the events do not say it again
+    m.http(HTTP_POST, "/api/restart", { { "pw", "agopengps" } });
+    w.run(3000);
+    c = m.status()["crash"];
+    must("crash-seen", c.type == Json::Object && c["new"].num() == 0 && c["task"].str() == "async_udp" && !contains(pageLog(m), "crash record"),
+         "after another start the same record is kept, not new, and not in the events", fmt("new %g", c["new"].num()) + "\n" + pageLog(m));
+
+    // a record an older program wrote, with no words: the exception's number
+    m.dev.crash.prog = "0123abcde";
+    m.dev.crash.task = "loopTask";
+    m.dev.crash.reason.clear();
+    m.resetBy(ESP_RST_PANIC);
+    w.run(3000);
+    c = m.status()["crash"];
+    must("crash-older-program", c["new"].num() == 1 && c["same"].num() == 0 && c["prog"].str() == "0123abcde"
+         && c["why"].str() == "exception 28 at address 0x00000000" && contains(pageLog(m), "(older program)"),
+         "a record of another program says so, and the exception when it has no words",
+         fmt("same %g, prog %s, why '%s'", c["same"].num(), c["prog"].str().c_str(), c["why"].str().c_str()));
+
+    // the chip stopped while writing its record: damaged; a power cut keeps it (flash), not new then
+    m.dev.crash.state = 2;
+    m.resetBy(ESP_RST_WDT);
+    w.run(3000);
+    c = m.status()["crash"];
+    must("crash-damaged", c["new"].num() == 1 && c["damaged"].num() == 1 && contains(pageLog(m), "crash record, new: damaged"),
+         "a record whose check fails is told as damaged", fmt("new %g, damaged %g", c["new"].num(), c["damaged"].num()));
+    m.powerOff();
+    w.run(500);
+    m.powerOn();
+    w.run(3000);
+    s = m.status();
+    must("crash-after-power-on", s["crash"]["damaged"].num() == 1 && s["crash"]["new"].num() == 0 && s["before"].type == Json::Null,
+         "a power cut keeps the crash record (flash), not new; the RTC record went with the power", s["crash"].str());
+    statusAlwaysJson(m);
+}
+
 SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sections, cable) and sows a field", seederBoards())
 {
     World w;

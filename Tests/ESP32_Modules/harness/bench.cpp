@@ -167,6 +167,8 @@ void Module::unload()
     fake::cur = &dev;
     rtcOut();
     dev.wifiEvents.clear();                 // the callbacks are the program's code: gone with it
+    dev.idleHook = nullptr;
+    loopStuck = core0Stuck = false;
     dlclose(so_);
     fake::cur = before;
     so_ = nullptr;
@@ -226,6 +228,8 @@ void Module::step()
     fake::Device* before = fake::cur;
     fake::cur = &dev;
     dev.tickWifi();
+    if (!core0Stuck && dev.idleHook) dev.idleHook();   // core 0 idles between the Wi-Fi's work
+    if (loopStuck) { fake::cur = before; return; }
     try { loop_(); }
     catch (fake::Restart&)
     {

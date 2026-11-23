@@ -223,9 +223,35 @@ static void apiStatus()
         j += ",\"flowPerS\":" + String(b.pulsesLastS) + ",\"flowAfter\":" + String(b.isr - b.isrAtPass);
         j += ",\"heapMin\":" + String(b.heapMin) + ",\"rssi\":" + String(b.rssi) + ",\"apCl\":" + String(b.apClients);
         j += ",\"relays\":" + String(b.relays) + ",\"alarms\":" + String(b.alarms);
-        j += ",\"task0\":" + jsonStr(b.task0) + ",\"task1\":" + jsonStr(b.task1) + "}";   // the task watchdog's, "" none
+        j += ",\"task0\":" + jsonStr(b.task0) + ",\"task1\":" + jsonStr(b.task1);   // the task watchdog's, "" none
+        // ms from the last relay change to the loop's last pass, and from that pass to core 0's last idle moment
+        j += ",\"relaysMs\":" + (b.relayMs ? String(relaysBeforePass(b)) : String("null"));
+        j += ",\"core0Ms\":" + (b.core0Ms ? String(core0FromPass(b)) : String("null")) + "}";
     }
     else j += ",\"before\":null";
+    // the crash record the chip keeps in flash (crashRead), null when there is none
+    if (crash.state == CRASH_NONE) j += ",\"crash\":null";
+    else
+    {
+        j += ",\"crash\":{\"new\":" + String(crash.isNew ? "true" : "false");
+        if (crash.state == CRASH_DAMAGED) j += ",\"damaged\":true}";
+        else
+        {
+            char pc[12];
+            snprintf(pc, sizeof(pc), "0x%08lx", (unsigned long)crash.pc);
+            String bt;
+            for (uint8_t i = 0; i < crash.depth; i++)
+            {
+                char a[12];
+                snprintf(a, sizeof(a), "0x%08lx", (unsigned long)crash.bt[i]);
+                if (i) bt += ' ';
+                bt += a;
+            }
+            j += ",\"damaged\":false,\"task\":" + jsonStr(crash.task) + ",\"why\":" + jsonStr(crash.why);
+            j += ",\"pc\":\"" + String(pc) + "\",\"bt\":\"" + bt + "\",\"prog\":" + jsonStr(crash.prog);
+            j += ",\"same\":" + String(crash.same ? "true" : "false") + "}";
+        }
+    }
     j += ",\"name\":" + jsonStr(moduleName());
 
     j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apIp\":" + jsonStr(apIp().toString()) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());
