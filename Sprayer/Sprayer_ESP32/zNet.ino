@@ -215,6 +215,16 @@ static void apiStatus()
     j += ",\"kind\":\"Sprayer\"";                     // which implement the module drives (the seed drill's says "Seeder")
     j += ",\"up\":" + String(now / 1000) + ",\"heap\":" + String(ESP.getFreeHeap());
     j += ",\"start\":" + jsonStr(startWhy) + ",\"startBad\":" + String(startUnexpected ? "true" : "false");
+    // what the module was doing before a start nobody asked for (lastRunRead), null when there is nothing to say
+    if (beforeKept)
+    {
+        const LastRun& b = lastRunBefore;
+        j += ",\"before\":{\"up\":" + String(b.upS) + ",\"at\":" + jsonStr(STEP_NAME[b.step]);
+        j += ",\"flowPerS\":" + String(b.pulsesLastS) + ",\"flowAfter\":" + String(b.isr - b.isrAtPass);
+        j += ",\"heapMin\":" + String(b.heapMin) + ",\"rssi\":" + String(b.rssi) + ",\"apCl\":" + String(b.apClients);
+        j += ",\"relays\":" + String(b.relays) + ",\"alarms\":" + String(b.alarms) + "}";
+    }
+    else j += ",\"before\":null";
     j += ",\"name\":" + jsonStr(moduleName());
 
     j += ",\"wifi\":{\"ap\":" + jsonStr(cfg.apSsid) + ",\"apIp\":" + jsonStr(apIp().toString()) + ",\"apCl\":" + String(WiFi.softAPgetStationNum());

@@ -7,6 +7,7 @@
 */
 #include "bench.h"
 #include <dlfcn.h>
+#include <link.h>
 #include <unistd.h>
 #include <fstream>
 #include <stdexcept>
@@ -113,6 +114,7 @@ void Module::load()
     dev.bootAt = fake::clockMs;
     so_ = dlopen(soPath_.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!so_) throw std::runtime_error(std::string("dlopen: ") + dlerror());
+    rtcIn();
     setup_ = (void (*)())dlsym(so_, "_Z5setupv");
     loop_ = (void (*)())dlsym(so_, "_Z4loopv");
     if (!setup_ || !loop_) throw std::runtime_error("setup/loop not found in the firmware library");
@@ -127,12 +129,43 @@ void Module::callSetup()
     catch (fake::Restart&) { unload(); load(); }
 }
 
+// RTC memory (RTC_NOINIT_ATTR): a reset by itself or ESP.restart() leaves it as it was, a power on fills it with rubbish.
+// The program's variable lastRun, if it has one, is copied out when the program goes and back when it comes.
+static void* rtcVar(void* so, size_t& size)
+{
+    void* p = dlsym(so, "lastRun");
+    size = 0;
+    if (!p) return nullptr;
+    Dl_info info;
+    const ElfW(Sym)* sym = nullptr;
+    if (dladdr1(p, &info, (void**)&sym, RTLD_DL_SYMENT) && sym) size = sym->st_size;
+    return size ? p : nullptr;
+}
+
+void Module::rtcIn()
+{
+    size_t size;
+    void* p = rtcVar(so_, size);
+    if (!p) return;
+    if (dev.rtc.size() == size) memcpy(p, dev.rtc.data(), size);
+    else memset(p, 0xA5, size);             // a power on: rubbish
+}
+
+void Module::rtcOut()
+{
+    size_t size;
+    void* p = rtcVar(so_, size);
+    if (!p) return;
+    dev.rtc.assign((uint8_t*)p, (uint8_t*)p + size);
+}
+
 // Power gone (or the restart): the program and everything in RAM go, the pins float, the chips' outputs drop
 void Module::unload()
 {
     if (!so_) return;
     fake::Device* before = fake::cur;
     fake::cur = &dev;
+    rtcOut();
     dev.wifiEvents.clear();                 // the callbacks are the program's code: gone with it
     dlclose(so_);
     fake::cur = before;
@@ -174,6 +207,7 @@ void Module::resetBy(esp_reset_reason_t why)
 void Module::powerOff()
 {
     unload();
+    dev.rtc.clear();                        // RTC memory goes with the power
     if (board == Board::SeederKC868) for (uint8_t a : KC_CHIPS) dev.i2c[a] = 0xFF;
     srShift_ = srOut_ = 0x5A5A5A;
 }

@@ -15,7 +15,7 @@
 
 static volatile uint32_t flowPulses = 0;
 
-static void IRAM_ATTR flowIsr() { flowPulses++; }
+static void IRAM_ATTR flowIsr() { flowPulses++; lastRun.isr++; }   // lastRun: kept through a reset (Sprayer_ESP32.ino)
 
 void sensorsInit()
 {
@@ -75,6 +75,7 @@ void updateFlow()
     interrupts();
     if (!(cfg.sensors & SENSOR_FLOW)) n = 0;
 
+    lastRun.pulsesLastS = n;                                // kept through a reset (what it was doing)
     const float litres = n / cfg.pulsesPerLitre;            // litres in this second
     flowLpm = litres * 60.0f;
     totalLitres += litres;

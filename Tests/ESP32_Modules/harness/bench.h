@@ -79,6 +79,8 @@ private:
     void load();
     void unload();
     void callSetup();
+    void rtcIn();                           // RTC memory (RTC_NOINIT_ATTR lastRun) back into the program at a start
+    void rtcOut();                          // and out of it when it goes
     void* so_ = nullptr;
     void (*setup_)() = nullptr;
     void (*loop_)() = nullptr;
