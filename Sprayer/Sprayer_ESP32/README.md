@@ -7,7 +7,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m:
 - it also measures boom pressure and flow
 - it has its own web page
 
-Version 0.10.19, the successor of [Sprayer_Nano](../Sprayer_Nano) v0.3. Tested on the bench; first used on the sprayer on 22 Nov 2026.
+Version 0.10.21, the successor of [Sprayer_Nano](../Sprayer_Nano) v0.3. Tested on the bench; first used on the sprayer on 22 Nov 2026.
 
 ## Changelog
 
@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 23 Nov 2026 | **0.10.18-20**: after a start nobody asked for, the module says which watchdog, what it was doing before, the Wi-Fi core's task, the last relay change; and the crash record kept in flash ([Why the module started](#why-the-module-started)). |
+| 23 Nov 2026 | **0.10.18-20**: after a restart nobody asked for, the module says which watchdog, what it was doing, the last relay change, the crash record ([Why the module started](#why-the-module-started)). **0.10.21**: [dot at the top](#the-dot-at-the-top) orange when the program is silent. |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
@@ -197,6 +197,16 @@ It has four tabs:
 
 Without the board, the page can be tried in the [simulator](https://renatorgr.github.io/Boards/sprayer/), rebuilt from this code on every change.
 
+#### The dot at the top
+
+The dot left of the title is checked every second:
+
+- **green**: the module answers the page, and the program talks to it: a PGN 239 in the last 2 s (*program talking*)
+- **orange**: the module answers, but the program is silent, so the sections stay closed (*program silent*)
+- **red**: no answer from the module (*no answer from the module*)
+
+The same three colours as the Teensy, XIAO and seed drill pages since 0.10.21. Before, red stood for both a silent program and no answer.
+
 ### The Firmware tab
 
 One card with:
@@ -299,7 +309,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.19` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.21` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -505,6 +515,7 @@ If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or
 
 ## Notes
 
+- **0.10.21**: only the page. Its [dot at the top](#the-dot-at-the-top) is orange when the module answers but the program is silent (it was red, as with no answer), as on the Teensy, XIAO and seed drill pages.
 - **0.10.19**: on 23 Nov 2026 at 15:17, 16:22 and 16:28 the module restarted with *watchdog: a task stuck*.
   - At 16:28 it was *at the web page* with *flow 262/s +1*: the loop was running, so the half of the chip that runs the Wi-Fi was the one stuck for 5 s.
   - Now the watchdog keeps the task each half was running (`task0`, `task1` in *What it was doing before*), so the next restart names the part of the Wi-Fi that held it.

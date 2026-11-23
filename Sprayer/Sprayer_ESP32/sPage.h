@@ -30,6 +30,9 @@ header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+/* light theme: a brighter orange than its text orange (#b45309), which a small dot shows almost as the red */
+@media (prefers-color-scheme:light){.dot.warn{background:#d97706}}
 nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
@@ -121,7 +124,7 @@ p.chk{text-align:right;margin:4px 0 0}
 </head>
 <body>
 <div id="top">
-<header><div class="dot" id="dot"></div><h1>Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
+<header><div class="dot" id="dot" title="No answer from the module"></div><h1>Sprayer module</h1><div class="sub" id="sub">connecting…</div></header>
 <nav id="nav"><button data-t="work" class="on">Spraying</button><button data-t="settings">Settings</button><button data-t="module">Module</button><button data-t="firmware">Firmware</button></nav>
 </div>
 <main>
@@ -356,12 +359,17 @@ function toolText(t){
   if(w.length&&w.every(x=>x===w[0]))return t.n+' section'+(t.n>1?'s':'')+' of '+w[0]+' m';
   return t.n+' sections: '+w.join(' · ')+' m';
 }
+const DOT_TITLE={on:'The module answers and the program talks to it',warn:'The module answers, but the program is silent',
+ '':'No answer from the module'};
+function setDot(c){const e=$('dot');e.className='dot'+(c?' '+c:'');e.title=DOT_TITLE[c];}
 let settingsLoaded=false;
 async function refresh(){
   if(busy&&!waitBoot)return;   // sending a program: the module has no time for anything else
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const d=await r.json();
-    $('dot').className='dot'+(d.aog.link?' on':'');
+    // the dot: green = the module answers and the program talks to it (a PGN 239 in the last 2 s, as the sections need);
+    // orange = it answers, but the program is silent; red (below) = no answer. The same three colours on the Teensy and XIAO pages
+    setDot(d.aog.link?'on':'warn');
     $('sub').textContent=(d.wifi.up?'on '+d.wifi.sta+' as '+d.wifi.ip:'not on the tractor network')+(d.aog.link?' · program talking':' · program silent');
     const sn=d.cal.sensors===undefined?3:d.cal.sensors;$('sprCard').hidden=!sn;fitted('r',sn);
     // Spraying tab: rate against the target, pressure and what gives the target, alarms, sections
@@ -425,7 +433,7 @@ async function refresh(){
     $('up').textContent=Math.floor(d.up/60)+' min';say($('start'),d.startBad?'bad':'',(d.start||'–')+(d.before?' (before: up '+d.before.up+' s, at '+d.before.at+(d.before.task0?', Wi-Fi core on '+d.before.task0:'')+')':''));const c=d.crash;$('crash').textContent=!c?'none':(c.new?'new, ':'')+(c.damaged?'damaged (the chip stopped while writing it)':'task '+c.task+', '+c.why+' ('+(c.same?'this program':'an older program')+')');$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
-  }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot';if(waitBoot)progMsg('The module is restarting…','warn')}
+  }catch(e){$('sub').textContent='no answer from the module';setDot('');if(waitBoot)progMsg('The module is restarting…','warn')}
 }
 async function loadSettings(){
   const d=await (await fetch('/api/settings',{cache:'no-store'})).json();

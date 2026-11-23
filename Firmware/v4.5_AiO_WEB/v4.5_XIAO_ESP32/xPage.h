@@ -35,6 +35,10 @@ header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+/* light theme: a brighter orange than its text orange (#b45309), which a small dot shows almost as the red */
+:root[data-theme=light] .dot.warn{background:#d97706}
+@media (prefers-color-scheme:light){:root:not([data-theme]) .dot.warn{background:#d97706}}
 nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
@@ -119,7 +123,7 @@ p.chk{text-align:right;margin:4px 0 0}
 </head>
 <body>
 <div id="top">
-<header><span class="dot" id="dot" title="link to the XIAO"></span><h1>XIAO · module</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
+<header><span class="dot" id="dot" title="No answer from the XIAO"></span><h1>XIAO · module</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
 <nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="wifi">WiFi</button><button data-t="prog">Firmware</button></nav>
 </div>
 <main>
@@ -357,7 +361,12 @@ function renderState(x){
  renderVer();
  set("pFw",x.fw+", built "+(builtText(x.built)||x.built));set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");
 }
-function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
+// The dot: red = no answer from the XIAO; orange = it answers, but no message of the program (AgOpenWeb / AgOpenGPS) reaches
+// it; green = both. The program's messages come from the module's cable through the Teensy, or on this WiFi (the bridge):
+// a hello, PGN 254 or 239 in the last 5 s, as the Teensy's own «talking». The same three colours on the Teensy, sprayer and seed drill pages
+function progTalks(a){const r=v=>v>=0&&v<5;return !!a&&(r(a.helloAgo)||r(a.ago254)||r(a.ago239));}
+function setOnline(v,prog){online=v;const d=$("dot");d.className="dot"+(v?(prog?" on":" warn"):"");
+ d.title=v?(prog?"The XIAO answers and the program's messages reach it":"The XIAO answers, but no message of the program reaches it"):"No answer from the XIAO";}
 // ---- the report for an analysis: every answer of the XIAO in one .json file, downloaded by this browser
 $("dumpBtn").addEventListener("click",async()=>{
  const b=$("dumpBtn"),m=$("dumpMsg");b.disabled=true;m.className="note";m.textContent="Gathering…";
@@ -403,7 +412,7 @@ async function pollState(){
   if(lastState&&(x.up+3<lastState.up||x.built!==lastState.built)){reloadAfterRestart(waitBoot?"Updated. Running: "+x.fw+", built "+x.built+".":"",x.built);return;}
   if(pageStale(x.built))return;
   if(waitBoot&&restarted(x.up)){waitBoot=false;busy=false;$("prog").classList.add("hidden");fwMsg(("Updated. Running: "+x.fw+", built "+x.built+"."),"ok");}
-  setOnline(true);renderState(x);
+  setOnline(true,progTalks(x.aog));renderState(x);
   if(tab==="status"||tab==="prog"||tWait){const t=await getJ("/api/teensy");renderModule(t);tWaitCheck(t);}
  }catch(e){setOnline(false);}
 }

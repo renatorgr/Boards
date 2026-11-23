@@ -135,7 +135,7 @@ async function teensy(browser, port, q, name) {
  await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
  await expect(pg, what, "#hdr", /_AiO_WEB · 192\.168\.5\.126/);
  await expect(pg, what, "#simBar", /SIMULATOR/);
- if (!(await pg.locator("#dot.on").count())) fail.push(what + ": the page is not connected to the pretend module");
+ if (!(await pg.locator("#dot.on, #dot.warn").count())) fail.push(what + ": the page is not connected to the pretend module");   // orange: no program talking yet
  await shot(pg, name + "-status");
  for (const t of ["log", "settings", "gps", "imu", "machine", "firmware", "status"]) {
   const b = pg.locator('nav button[data-t="' + t + '"]');
