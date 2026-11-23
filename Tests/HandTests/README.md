@@ -25,7 +25,8 @@ What each script leaves to you:
 - **42:** step d) (Save refused while AutoSteer is on), with test 41.
 - **44:** run water or blow into the flow meter, switch sections on and off, cut the power.
 - **46:** step b) (change a setting, Save, reload): it needs the module's password.
-- **48:** step c) (a new phone still gets the page by itself).
+- **48:** step c) (a new phone still gets the page by itself). With Windows' Location off, step b) (leave the Wi-Fi and join it
+  again) is yours too: Windows then hides the Wi-Fi's name from the script.
 
 ## The result
 
@@ -47,3 +48,4 @@ For another one, add it after the test in a command window, for example:
 
 `selftest\run-selftest.ps1` runs every test against a pretend board (`selftest\fake-boards.js`, needs Node.js).
 It only shows that the scripts run on Windows. The harnesses in `Tests\` check the boards' programs.
+It talks to `localhost` only: nothing goes out on the network, and the Wi-Fi is not touched.

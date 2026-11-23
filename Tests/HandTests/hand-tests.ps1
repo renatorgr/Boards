@@ -490,13 +490,23 @@ function Test46 {
 # ================================================================= 48: the XIAO's sign-in notice
 function WifiNow {
     # the Wi-Fi this computer is on: @{ ifName; ssid; profile; state }
-    $o = @{ ifName = ''; ssid = ''; profile = ''; state = '' }
-    $txt = (netsh wlan show interfaces) 2>$null
+    $o = @{ ifName = ''; ssid = ''; profile = ''; state = ''; why = '' }
+    $txt = @((netsh wlan show interfaces) 2>$null)
     foreach ($l in $txt) {
         if ($l -match '^\s*(Name|Nome)\s*:\s*(.+)$' -and $o.ifName -eq '') { $o.ifName = $matches[2].Trim() }
         elseif ($l -match '^\s*SSID\s*:\s*(.+)$' -and $o.ssid -eq '') { $o.ssid = $matches[1].Trim() }
         elseif ($l -match '^\s*(Profile|Perfil)\s*:\s*(.+)$') { $o.profile = $matches[2].Trim() }
         elseif ($l -match '^\s*(State|Estado)\s*:\s*(.+)$') { $o.state = $matches[2].Trim() }
+    }
+    if ($o.ssid -eq '') {
+        # newer Windows answers netsh wlan with the Wi-Fi's name only when Location is on; Windows' own list still has it
+        if (($txt -join ' ') -match 'ocation|ocaliza') { $o.why = 'Windows names the Wi-Fi for netsh only with Location on (Settings > Privacy & security > Location)' }
+        try {
+            [void][Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType = WindowsRuntime]
+            foreach ($p in [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()) {
+                if ($p.IsWlanConnectionProfile -and [string]$p.GetNetworkConnectivityLevel() -ne 'None') { $o.ssid = $p.ProfileName; break }
+            }
+        } catch { }
     }
     return $o
 }
@@ -512,6 +522,13 @@ function Connectivity([string]$ssid) {
 }
 function SignInAsked([string]$dnsServer) {
     # what Windows' check (www.msftconnecttest.com) gets from the XIAO: 'page' = sent to the sign-in page, 'none' = no such name
+    if ($BaseUrl -ne '') {
+        # self-test: the pretend board says what its DNS would answer, so no DNS question leaves this computer
+        $j = GetJson ($BaseUrl + '/selftest/dns')
+        if ($null -eq $j) { return 'error: no answer from the pretend board' }
+        if ($j.a) { return 'page ' + $j.a }
+        return 'none'
+    }
     try {
         $r = Resolve-DnsName -Name 'www.msftconnecttest.com' -Server $dnsServer -Type A -DnsOnly -QuickTimeout -ErrorAction Stop
         $ip = @($r | Where-Object { $_.Type -eq 'A' } | ForEach-Object { $_.IPAddress })
@@ -523,6 +540,7 @@ function Test48 {
     Step 'Test 48 a): "Done on this device" on this Windows computer'
     $w = WifiNow
     Info ('Wi-Fi: ' + $w.ssid + ' (' + $w.state + ') on "' + $w.ifName + '"')
+    if ($w.why -ne '') { Info $w.why }
     $x = FindXiao
     if ($null -eq $x) { Problem 'no XIAO at 192.168.5.1 or 192.168.4.1: is this computer on the XIAO''s Wi-Fi?'; return }
     $a = $x.addr; $s = $x.state
@@ -544,7 +562,8 @@ function Test48 {
     }
     $secs = [int]((Get-Date) - $t0).TotalSeconds
     if ($dns -eq 'none') { Ok 'the XIAO now tells Windows'' check "no such name" (no sign-in page for this computer)' } else { Problem ('the XIAO still answers Windows'' check with ' + $dns) }
-    if ($lvl -eq 'LocalAccess') { Ok ('Windows says "No internet" (LocalAccess) after ' + $secs + ' s, no sign-in') }
+    if ($BaseUrl -ne '') { Info ('self-test: Windows'' own verdict (' + $lvl + ') is about this computer''s network, not the pretend board') }
+    elseif ($lvl -eq 'LocalAccess') { Ok ('Windows says "No internet" (LocalAccess) after ' + $secs + ' s, no sign-in') }
     elseif ($lvl -eq 'ConstrainedInternetAccess') { Problem 'Windows still says "sign in" (ConstrainedInternetAccess) after 75 s' }
     else { Check ('Windows says ' + $lvl + ' (LocalAccess expected)') }
 

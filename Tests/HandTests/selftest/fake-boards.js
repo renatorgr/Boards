@@ -13,7 +13,7 @@ let upBase = 500, upT = t0;                 // "up" restarts from 0 after a pret
 const up = () => Math.floor(upBase + (Date.now() - upT) / 1000);
 const xev = [{ s: 1, t: 10, x: 'Program started (power on)' }];
 const tlog = [{ s: 1, t: 10, x: '[status] GPS receiver: temperature 31 C (UM982 HWSTATUSA, first field 31234, read as thousandths of a degree)' }];
-let captiveDone = false, total = 12.3, start = 'power on', startBad = false, offUntil = 0, n239 = 0, lastN = Date.now();
+let captiveDone = false, total = 12.3, start = 'power on', startBad = false, offUntil = 0, n239 = 0, lastN = Date.now(), cuts = 0;
 
 function sprayer() {
   const s = sec();
@@ -59,8 +59,11 @@ const srv = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   const p = u.pathname;
   if (mode === '44' && Date.now() < offUntil) { req.socket.destroy(); return; }
-  if (mode === '44' && p === '/api/status' && sec() % 30 > 24 && sec() % 30 < 25) {    // a pretend power cut, once every 30 s
+  // a pretend power cut: the first (test 44 b) while the sections are off (6-7 s of 30), the next (c) while spraying (24-25 s)
+  const k = sec() % 30, cutNow = cuts === 0 ? k > 6 && k < 7 : k > 24 && k < 25;
+  if (mode === '44' && p === '/api/status' && cutNow) {
     const sprayingAtCut = sprayer().out.on !== '0';
+    cuts++;
     offUntil = Date.now() + 3000; upBase = 0; upT = offUntil;
     start = sprayingAtCut ? 'power on while spraying (power cut?)' : 'power on'; startBad = sprayingAtCut;
     req.socket.destroy(); return;
@@ -84,6 +87,7 @@ const srv = http.createServer((req, res) => {
     if (p === '/api/gps') return send(res, 200, { ok: true, kind: 'um982', model: 'UM982', temp: Math.round(31 + sec() / 2), tempSt: 'ok' });
     if (p === '/api/settings') return send(res, 200, { settings: {} });
     if (p === '/api/captive' && req.method === 'POST') { captiveDone = true; return send(res, 200, { ok: true }); }
+    if (p === '/selftest/dns') return send(res, 200, { a: captiveDone ? null : '192.168.5.1' });   // what the XIAO's DNS tells Windows' check
     if (p === '/api/ota' || p === '/api/revert') return send(res, 403, { error: 'not through the XIAO: use the XIAO page, Firmware tab' });
     if (p === '/api/total' && req.method === 'POST') { total = 0; return send(res, 200, { ok: true }); }
     if (p === '/api/restart' && req.method === 'POST') { offUntil = Date.now() + 2000; upBase = 0; upT = offUntil; start = 'restart asked'; startBad = false; return send(res, 200, { ok: true, restart: true }); }
