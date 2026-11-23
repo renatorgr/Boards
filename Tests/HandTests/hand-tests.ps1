@@ -72,7 +72,7 @@ function Url([string]$addr, [string]$path) {
     return 'http://' + $addr + $path
 }
 # One request. Answers @{ code; text; ms } (code 0 = no answer). 4xx and 5xx answers are read too: a refusal is a result.
-function Http([string]$method, [string]$url, [string]$body = $null, [int]$timeoutMs = 4000, [string]$type = 'application/x-www-form-urlencoded') {
+function Http([string]$method, [string]$url, [string]$body = '', [int]$timeoutMs = 4000, [string]$type = 'application/x-www-form-urlencoded') {
     $watch = [Diagnostics.Stopwatch]::StartNew()
     try {
         $rq = [System.Net.HttpWebRequest]::Create($url)
@@ -81,11 +81,14 @@ function Http([string]$method, [string]$url, [string]$body = $null, [int]$timeou
         $rq.ReadWriteTimeout = $timeoutMs
         $rq.KeepAlive = $false
         $rq.AllowAutoRedirect = $false
-        if ($null -ne $body) {
+        # PowerShell makes a [string] parameter given $null an empty string: a GET must never open a request body
+        if (-not [string]::IsNullOrEmpty($body)) {
             $bytes = $utf8.GetBytes($body)
             $rq.ContentType = $type
             $rq.ContentLength = $bytes.Length
             $st = $rq.GetRequestStream(); $st.Write($bytes, 0, $bytes.Length); $st.Close()
+        } elseif ($method -ne 'GET') {
+            $rq.ContentLength = 0   # a POST with nothing in it
         }
         $rs = $rq.GetResponse()
     } catch [System.Net.WebException] {
