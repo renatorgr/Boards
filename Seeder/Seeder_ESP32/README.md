@@ -1,18 +1,13 @@
 # Seeder_ESP32
 
-Section control for the **19-section no-till seed drill**, driven by **AgOpenWeb** or
-**AgOpenGPS** over the tractor's network. Each section is one linear actuator, switched
-by a 12 V DPDT relay. Two boards:
+Section control for the **19-section no-till seed drill**, driven by **AgOpenWeb** or **AgOpenGPS** over the tractor's network.
 
-- the **[Relay24_ESP32](../../Relay24_ESP32)** board of this repository (the default): an
-  ESP32 DevKitC on a board with 24 DPDT relays and a network socket, the actuators wired
-  straight to it;
-- a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an
-  external DPDT relay.
+Each section is one linear actuator, switched by a 12 V DPDT relay. Two boards:
 
-Version 0.2.9, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill
-got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has
-not run on either board yet.
+- the **[Relay24_ESP32](../../Relay24_ESP32)** board of this repository (the default): an ESP32 DevKitC on a board with 24 DPDT relays and a network socket, the actuators wired straight to it
+- a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an external DPDT relay
+
+Version 0.2.16, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has not run on either board yet.
 
 ## Changelog
 
@@ -39,58 +34,82 @@ Relay24_ESP32 (192.168.5.123) ──► DPDT relays 1–19 ──► 19 actuator
    └── own Wi-Fi network "Seeder-xxxx" + web page (phone)
 ```
 
-- The board is the standard AgOpenGPS **machine module**, IP `<subnet>.123`
-  (192.168.5.123 until the program, or the page, says otherwise), on the **network
-  cable**. No Wi-Fi to set up; the page can switch it to the tractor's Wi-Fi instead
-  (with *Search for networks*, as on the XIAO page). The page shows network names and the
-  module's answers as text, never as markup: a network name may hold `<` and `>`.
-- It speaks the same messages as the official `Machine_UDP_v5` module: sections
-  (PGN 239 for 1–16, PGN 229 for 1–64), machine config (238), pin functions (236),
-  subnet (201), hello (200 → 123) and scan (202 → 203). Everything the program sends is
-  kept in flash, so it survives a power cut.
-- **Relay 1 = section 1, relay 2 = section 2** and so on, up to relay 24 (32 on the
-  KC868-A32). The page's *Relay 1 follows section* setting can start the row at another
-  section; 0 there gives the relays back to the program's pin config, which only knows
-  sections 1–16.
-- **Sections on the seed drill** (Settings tab, 19 for this one): the Sowing tab draws that
-  many sections from the start, before the program has asked for any (it used to draw 16 until
-  section 19 was asked for), and a relay past the last section does nothing. 0 = as many as
-  the program asks for.
-- **Sections with no relay.** A section that no relay
-  follows never sows, while the program paints it as sown. The module says so: the Sowing
-  tab shows the sections in red with red dashes around them, the log has a line, and the
-  program's screen shows *Seed drill: sections 17-19 have no relay* (PGN 221), when it
-  starts, when it changes, and every 60 s while the program asks for one of them. With
-  *Relay 1 follows section* at 0 (the pin config) the module drives the whole drill, so
-  every section of the drill or asked for counts (the pin config only knows 1–16). With the
-  relays in a row a second module may drive the other sections, so only a section asked for
-  past *Sections on the seed drill* counts. *Relay 1 follows section* past the drill's last
-  section is refused.
-- No message from the program for **2 seconds** (cable pulled, tablet frozen): every
-  relay drops and every row closes.
+### On the network
+
+- The board is the standard AgOpenGPS **machine module**, IP `<subnet>.123`, on the **network cable**. That is 192.168.5.123 until the program, or the page, says otherwise.
+- No Wi-Fi to set up. The page can switch it to the tractor's Wi-Fi instead (with *Search for networks*, as on the XIAO page).
+- The page shows network names and the module's answers as text, never as markup: a network name may hold `<` and `>`.
+- It speaks the same messages as the official `Machine_UDP_v5` module:
+  - sections (PGN 239 for 1–16, PGN 229 for 1–64)
+  - machine config (238), pin functions (236), subnet (201)
+  - hello (200 → 123) and scan (202 → 203)
+- Everything the program sends is kept in flash, so it survives a power cut.
+
+### Relays and sections
+
+- **Relay 1 = section 1, relay 2 = section 2** and so on, up to relay 24 (32 on the KC868-A32).
+- The page's *Relay 1 follows section* setting can start the row at another section.
+- 0 there gives the relays back to the program's pin config, which only knows sections 1–16.
+
+**Sections on the seed drill** (Settings tab, 19 for this one):
+
+- The Sowing tab draws that many sections from the start, before the program has asked for any. (It used to draw 16 until section 19 was asked for.)
+- A relay past the last section does nothing.
+- 0 = as many as the program asks for.
+
+### Sections with no relay
+
+**Sections with no relay.** A section that no relay follows never sows, while the program paints it as sown.
+
+The module says so:
+
+- the Sowing tab shows the sections in red, with red dashes around them
+- the log has a line
+- the program's screen shows *Seed drill: sections 17-19 have no relay* (PGN 221): when it starts, when it changes, and every 60 s while the program asks for one of them
+
+Which sections count:
+
+- With *Relay 1 follows section* at 0 (the pin config), the module drives the whole drill. So every section of the drill, or asked for, counts (the pin config only knows 1–16).
+- With the relays in a row, a second module may drive the other sections. So only a section asked for past *Sections on the seed drill* counts.
+- *Relay 1 follows section* past the drill's last section is refused.
+
+### Safety
+
+- No message from the program for **2 seconds** (cable pulled, tablet frozen): every relay drops and every row closes.
 - No pressure or flow sensor: no PGN 160 (that is the sprayer's).
-- Its **own Wi-Fi network** is always on: join `Seeder-xxxx` (password `agopengps`) with
-  a phone and the page opens by itself, or go to `http://192.168.4.1/` (`http://192.168.40.1/` with
-  the program subnet 192.168.4: [No router on the tractor](#no-router-on-the-tractor)). On the tractor
-  network the same page is at `http://192.168.5.123/` or `http://seeder.local/` (the module
-  announces it by mDNS, so AgOpenWeb's web cards, ⚙ › **Search the network**, list it by name
-  in a second). It has four tabs, as the sprayer page: **Sowing** (the sections, big enough
-  for the cab), **Settings** (which section each relay follows), **Module** (AgOpenWeb, the
-  network and its settings, the events) and **Firmware** (one card with the program installed,
-  the version on GitHub tagged *newer*, *installed* or *older*, *Install from GitHub*,
-  *Install from a file…* and *Restart module*; then *Download the report*, a `.json` file to
-  send when something goes wrong). Each install and the restart are confirmed in one box: what
-  the file holds against what runs now, and the own network's password (offered again while
-  the page stays open). Without the board, the page can be tried
-  in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on
-  every change. Every question the page asks (save and restart, install a program, the
-  password) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web
-  card the browser's pop-ups show nothing, so those buttons did nothing there. Enter is its OK,
-  but not in an empty password field, and a held Enter answers nothing (the key that pressed a
-  button cannot also confirm it). Enter in the password at the end of *Network settings* saves,
-  as its button does. The tabs at the
-  top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits
-  on the cab's screen.
+
+### The web page
+
+Its **own Wi-Fi network** is always on:
+
+- Join `Seeder-xxxx` (password `agopengps`) with a phone and the page opens by itself.
+- Or go to `http://192.168.4.1/`. With the program subnet 192.168.4 it is `http://192.168.40.1/` ([No router on the tractor](#no-router-on-the-tractor)).
+
+On the tractor network the same page is at `http://192.168.5.123/` or `http://seeder.local/`. The module announces it by mDNS, so AgOpenWeb's web cards (⚙ › **Search the network**) list it by name in a second.
+
+It has four tabs, as the sprayer page:
+
+- **Sowing**: the sections, big enough for the cab
+- **Settings**: which section each relay follows
+- **Module**: AgOpenWeb, the network and its settings, the events
+- **Firmware**:
+  - one card with the program installed, the version on GitHub tagged *newer*, *installed* or *older*, *Install from GitHub*, *Install from a file…* and *Restart module*
+  - then *Download the report*, a `.json` file to send when something goes wrong
+
+Each install and the restart are confirmed in one box:
+
+- what the file holds against what runs now
+- the own network's password (offered again while the page stays open)
+
+Every question the page asks (save and restart, install a program, the password) opens in a box of the page itself, not a browser pop-up. Inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
+
+- Enter is its OK, but not in an empty password field.
+- A held Enter answers nothing: the key that pressed a button cannot also confirm it.
+- Enter in the password at the end of *Network settings* saves, as its button does.
+
+The tabs at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+
+Without the board, the page can be tried in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on every change.
 
 ## Choosing the board
 
@@ -114,14 +133,17 @@ The page shows the board on the *Module* tab (*Module* card), with the module's 
 
 How the program drives it (pins in `Seeder_ESP32.ino`, more in the board's README):
 
-- **Relays:** three 74HC595 chips in a chain (data GPIO 13, clock GPIO 16, latch GPIO 32):
-  the program shifts 24 bits in, relay 24 first, then latches them. A high output closes
-  the relay (`RELAY_ON_HIGH 1`). The outputs stay off (pull-up on GPIO 4) until the
-  program has cleared the chips at start-up, so no relay clicks while the ESP32 boots.
-- **Network:** RTL8201F, address 0, MDC GPIO 23, MDIO GPIO 18, reset GPIO 33. The chip
-  sends the 50 MHz network clock into **GPIO 0**, so once the cable is in use the
-  DevKitC's **BOOT** button is not read by the program, and it should not be pressed
-  (the network stops while it is held). The chip is held in reset before every restart.
+**Relays**: three 74HC595 chips in a chain (data GPIO 13, clock GPIO 16, latch GPIO 32).
+
+- The program shifts 24 bits in, relay 24 first, then latches them.
+- A high output closes the relay (`RELAY_ON_HIGH 1`).
+- The outputs stay off (pull-up on GPIO 4) until the program has cleared the chips at start-up. So no relay clicks while the ESP32 boots.
+
+**Network**: RTL8201F, address 0, MDC GPIO 23, MDIO GPIO 18, reset GPIO 33.
+
+- The chip sends the 50 MHz network clock into **GPIO 0**.
+- So once the cable is in use, the DevKitC's **BOOT** button is not read by the program, and it should not be pressed (the network stops while it is held).
+- The chip is held in reset before every restart.
 
 ## Hardware: KC868-A32
 
@@ -140,54 +162,61 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
    `https://espressif.github.io/arduino-esp32/package_esp32_index.json`.
    *Tools → Board → Boards Manager*: install **esp32 by Espressif Systems**.
 2. Board **ESP32 Dev Module**, default partition scheme. No libraries to install.
-3. Open `Seeder_ESP32.ino` (this folder: the Arduino IDE needs the folder and the `.ino`
-   to have the same name). Check the `BOARD` line.
-4. Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be
-   powered or not). KC868-A32: power it with 12 V and plug its USB socket in, as in
-   KinCony's guide. *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.9` and `ready`.
+3. Open `Seeder_ESP32.ino` (this folder: the Arduino IDE needs the folder and the `.ino` to have the same name). Check the `BOARD` line.
+4. Plug it in:
+   - Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be powered or not).
+   - KC868-A32: power it with 12 V and plug its USB socket in, as in KinCony's guide.
+   - *Tools → Port*: its COM port. Click *Upload*.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.16` and `ready`.
 
-Later program updates: *Sketch → Export compiled binary* in the Arduino IDE, then on the
-page's *Firmware* tab **Install from a file…** (`Seeder_ESP32.ino.bin` from this folder, not
-the `.merged.bin`) and *Install* in the box that says what the file holds. Or **Install from GitHub**: the phone fetches
-`Seeder_ESP32.ino.bin` from this folder on `main` (once it is committed there: the simulator's
-`build.py` then lists its version, board and build date in `firmware.json`, as it does for the
-sprayer) and sends it to the module. The page refuses a `.bin` of another program or for the
-other board in that box, as soon as it is chosen.
+### Later program updates
+
+Two ways, on the page's *Firmware* tab:
+
+- *Sketch → Export compiled binary* in the Arduino IDE. Then **Install from a file…** (`Seeder_ESP32.ino.bin` from this folder, not the `.merged.bin`) and *Install* in the box that says what the file holds.
+- **Install from GitHub**: the phone fetches `Seeder_ESP32.ino.bin` from this folder on `main` and sends it to the module. That works once the file is committed there: the simulator's `build.py` then lists its version, board and build date in `firmware.json`, as it does for the sprayer.
+
+The page refuses a `.bin` of another program, or for the other board, in that box as soon as it is chosen.
 
 ## Setup
 
-1. Plug the network cable into the RUT901's `LAN2` and the board. The page's *Network* card shows
-   *Network cable: connected*.
-2. **Program subnet**: the module and the tablet must be on the same subnet (the first
-   three numbers of the tablet's IP). If it is not 192.168.5, set it under *Program network* in the
-   *Network settings* card on the page (then *Save and restart the module*), or let AgOpenWeb send it (PGN 201).
-3. Open AgOpenWeb: the page's dot turns green (*program talking*). Leave
-   **"relay active high" unticked** in its machine settings: the page shows
-   *Output polarity: normal*.
-4. **AgOpenWeb**: *Tool Configuration → Tool → Sections*: 19 individual sections with
-   their widths. With more than 16 sections AgOpenWeb sends PGN 229 by itself, and the
-   page shows *Sections 17-64 (PGN 229): now*. The actuators take a few seconds for their
-   stroke, so set *Tool → Timing → Look ahead on / off* to that time.
-5. **Page, Settings tab**: *Sections on the seed drill* = 19 (and *Relay 1 follows section* = 1),
-   then *Save*: the Sowing tab shows the 19 sections even before AgOpenWeb has opened one.
+1. **Network cable.** Plug the network cable into the RUT901's `LAN2` and the board. The page's *Network* card shows *Network cable: connected*.
+2. **Program subnet.** The module and the tablet must be on the same subnet (the first three numbers of the tablet's IP). If it is not 192.168.5:
+   - set it under *Program network* in the *Network settings* card on the page, then *Save and restart the module*
+   - or let AgOpenWeb send it (PGN 201)
+3. **Open AgOpenWeb.** The page's dot turns green (*program talking*). Leave **"relay active high" unticked** in its machine settings: the page shows *Output polarity: normal*.
+4. **AgOpenWeb**: *Tool Configuration → Tool → Sections*: 19 individual sections with their widths.
+   - With more than 16 sections AgOpenWeb sends PGN 229 by itself, and the page shows *Sections 17-64 (PGN 229): now*.
+   - The actuators take a few seconds for their stroke, so set *Tool → Timing → Look ahead on / off* to that time.
+5. **Page, Settings tab**: *Sections on the seed drill* = 19 (and *Relay 1 follows section* = 1), then *Save*. The Sowing tab shows the 19 sections even before AgOpenWeb has opened one.
 
 ## No router on the tractor
 
-Since 0.2.15 the module also works on a tractor with no router, with the tablet on the Wi-Fi of the AiO board's XIAO (its WiFi bridge on: the XIAO program's README, *Section modules on the XIAO's WiFi*). **Not tried on a real module yet**: the harness (`Tests/ESP32_Modules`) plays it with a pretend XIAO, late and lost packets included. With no router there is no network cable to plug in: the module uses the Wi-Fi.
+Since 0.2.15 the module also works on a tractor with no router. The tablet is then on the Wi-Fi of the AiO board's XIAO, with its WiFi bridge on (the XIAO program's README, *Section modules on the XIAO's WiFi*).
 
-1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*: join the **XIAO's network** (`XIAO-xxxx`) with its password. Keep the *Program subnet* as it is (**192.168.5**): with its bridge on the XIAO's network has the AiO module's numbers (the XIAO program's README, *The XIAO's network numbers*). *Save and restart the module*.
-2. Open AgOpenWeb on the tablet. The XIAO sends the module a copy of each packet of the program, to the module's own address, and passes the module's packets on to the tablet. The Module tab's *Program* row then says *talking · through the access point (192.168.5.1)*; the events say it too.
+- **Not tried on a real module yet.** The harness (`Tests/ESP32_Modules`) plays it with a pretend XIAO, late and lost packets included.
+- With no router there is no network cable to plug in: the module uses the Wi-Fi.
 
-The first XIAO program with the bridge (22 Nov 2026, 16:03 UTC) had its network at 192.168.4.x, and the module was set to the subnet 192.168.4: set it back to 192.168.5. With the subnet 192.168.4 the module's own network moves from 192.168.4.1 to 192.168.40.1 (two networks with the same numbers on one module leave neither working); the page shows the address in use (*Module* card, *Network settings*).
+1. On the module's page, *Network settings*, under *Tractor Wi-Fi network*:
+   - Join the **XIAO's network** (`XIAO-xxxx`) with its password.
+   - Keep the *Program subnet* as it is (**192.168.5**). With its bridge on, the XIAO's network has the AiO module's numbers (the XIAO program's README, *The XIAO's network numbers*).
+   - *Save and restart the module*.
+2. Open AgOpenWeb on the tablet.
+   - The XIAO sends the module a copy of each packet of the program, to the module's own address.
+   - It passes the module's packets on to the tablet.
+   - The Module tab's *Program* row then says *talking · through the access point (192.168.5.1)*. The events say it too.
+
+The first XIAO program with the bridge (22 Nov 2026, 16:03 UTC) had its network at 192.168.4.x, and the module was set to the subnet 192.168.4. Set it back to 192.168.5.
+
+With the subnet 192.168.4, the module's own network moves from 192.168.4.1 to 192.168.40.1: two networks with the same numbers on one module leave neither working. The page shows the address in use (*Module* card, *Network settings*).
 
 While the XIAO's copies come:
 
-- the module sends to the XIAO only, not to everyone on the network;
-- the program's own packets "to everyone", which a Wi-Fi access point holds back and which arrive late beside the copies, are left alone: an old section state after a newer one would switch a relay back for a moment. The *Messages* row counts them (*late broadcasts left alone*);
-- when the copies stop (the XIAO restarts, its bridge is switched off), every section closes within 2 s, as with any lost link. A second later the module listens to everyone again.
+- The module sends to the XIAO only, not to everyone on the network.
+- The program's own packets "to everyone" are left alone. A Wi-Fi access point holds those back, and they arrive late beside the copies: an old section state after a newer one would switch a relay back for a moment. The *Messages* row counts them (*late broadcasts left alone*).
+- When the copies stop (the XIAO restarts, its bridge is switched off), every section closes within 2 s, as with any lost link. A second later the module listens to everyone again.
 
-The same goes for a tablet whose **own hotspot** is the tractor network: the program is then at `<subnet>.1`, and the module answers that address only.
+The same goes for a tablet whose **own hotspot** is the tractor network. The program is then at `<subnet>.1`, and the module answers that address only.
 
 From the tablet, on the XIAO's network, the page is at its usual address, `http://192.168.5.123/`.
 
@@ -201,10 +230,10 @@ From the tablet, on the XIAO's network, the page is at its usual address, `http:
 | `J1` … `J24`, pin 1 / pin 2 | actuator *n* red / black (`J1` = section 1) |
 | RJ45 | network cable to the RUT901's `LAN2` |
 
-Relay off = black at +12 V, red at GND = the actuator pulls in = section **closed**.
-Relay on = red at +12 V, black at GND = the actuator pushes out = section **open**. So a
-module that loses power, or hears nothing from the program for 2 s, closes every row.
-An actuator that moves the wrong way: swap its two wires.
+- Relay off = black at +12 V, red at GND = the actuator pulls in = section **closed**.
+- Relay on = red at +12 V, black at GND = the actuator pushes out = section **open**.
+- So a module that loses power, or hears nothing from the program for 2 s, closes every row.
+- An actuator that moves the wrong way: swap its two wires.
 
 ## Wiring: KC868-A32, one section
 
@@ -220,33 +249,32 @@ Repeat for sections 1–19 on relays 1–19.
 | DPDT relay *n* `NC1` and `NO2` | GND |
 | KC868 network socket | network cable to the RUT901's `LAN2` |
 
-KC868 relay off = DPDT relay off = black at +12 V, red at GND = the actuator pulls in =
-section **closed**. Relay on = red at +12 V, black at GND = the actuator pushes out =
-section **open**, as on the Relay24_ESP32.
+- KC868 relay off = DPDT relay off = black at +12 V, red at GND = the actuator pulls in = section **closed**.
+- Relay on = red at +12 V, black at GND = the actuator pushes out = section **open**, as on the Relay24_ESP32.
 
-The actuators need their own fused 12 V feed: 19 actuators moving at once draw about
-12 A (check the label: some draw 2–3 A each while moving).
+The actuators need their own fused 12 V feed: 19 actuators moving at once draw about 12 A (check the label: some draw 2–3 A each while moving).
 
 ## Stopping the actuator at each end
 
-The DPDT relay keeps 12 V on the actuator all the time, in one direction or the other.
-Something must cut it at each end of the stroke:
+The DPDT relay keeps 12 V on the actuator all the time, in one direction or the other. Something must cut it at each end of the stroke.
 
-- **Actuators with end switches inside** (most 12 V linear actuators): they stop by
-  themselves at each end. Nothing else to wire. The stroke has to suit the seed drill's
-  mechanism, or be matched to it with the lever: fix the actuator to the lever at the
-  point where its whole stroke gives the movement needed (further from the pivot for a
-  longer stroke).
-- **External end switches**, for an actuator with a longer stroke than needed (say 100 mm
-  instead of 60 mm), or one without switches inside: two roller-lever microswitches per
-  actuator, fixed on the frame and pressed by the moving part at each end. Use their
-  **NC** contacts (closed until pressed), rated for direct current above the actuator's
-  current (look for a 30 V DC rating, 5 A or more).
+**Actuators with end switches inside** (most 12 V linear actuators):
 
-Both switches go **in series in the red wire**, between the relay (the Relay24_ESP32's
-terminal pin 1, or the DPDT relay's `COM1`) and the actuator, each with a **1N5408 diode
-across it** (3 A; a 6A10 for actuators over 3 A).
-The diodes face opposite ways:
+- They stop by themselves at each end. Nothing else to wire.
+- The stroke has to suit the seed drill's mechanism, or be matched to it with the lever.
+- Fix the actuator to the lever at the point where its whole stroke gives the movement needed (further from the pivot for a longer stroke).
+
+**External end switches**, for an actuator with a longer stroke than needed (say 100 mm instead of 60 mm), or one without switches inside:
+
+- Two roller-lever microswitches per actuator, fixed on the frame and pressed by the moving part at each end.
+- Use their **NC** contacts (closed until pressed).
+- Rated for direct current above the actuator's current: look for a 30 V DC rating, 5 A or more.
+
+### Wiring the external switches
+
+Both switches go **in series in the red wire**, between the relay (the Relay24_ESP32's terminal pin 1, or the DPDT relay's `COM1`) and the actuator.
+
+Each has a **1N5408 diode across it** (3 A; a 6A10 for actuators over 3 A). The diodes face opposite ways:
 
 ```
 relay red ──┬── switch OUT (NC) ──┬──┬── switch IN (NC) ──┬── actuator red
@@ -259,16 +287,21 @@ relay red ──┬── switch OUT (NC) ──┬──┬── switch IN (NC
 | OUT | the actuator is fully out (section open) | lets the current through only to pull back in | the relay |
 | IN | the actuator is fully in (section closed) | lets the current through only to push out | the actuator |
 
-How it works: pushing out, the current flows in the red wire from the relay to the
-actuator. At the far end switch OUT opens, and its diode blocks that direction: the
-actuator stops. When the relay drops, the current turns round, flows through the diode
-of switch OUT, and the actuator pulls back; a few millimetres later switch OUT closes
-again. Pulling in, it is the same with switch IN and its diode. The program, the board
-and the relays do not change.
+How it works:
 
-Check each actuator on the bench before the field: section on from AgOpenWeb, it must
-push out and stop at switch OUT; section off, it must pull in and stop at switch IN. If it
-does not move away from an end, that diode is the wrong way round.
+1. Pushing out, the current flows in the red wire from the relay to the actuator.
+2. At the far end switch OUT opens, and its diode blocks that direction: the actuator stops.
+3. When the relay drops, the current turns round and flows through the diode of switch OUT: the actuator pulls back.
+4. A few millimetres later switch OUT closes again.
+5. Pulling in, it is the same with switch IN and its diode.
+
+The program, the board and the relays do not change.
+
+Check each actuator on the bench before the field:
+
+- section on from AgOpenWeb: it must push out and stop at switch OUT
+- section off: it must pull in and stop at switch IN
+- If it does not move away from an end, that diode is the wrong way round.
 
 ## Bench test (before the tractor)
 
@@ -283,20 +316,26 @@ does not move away from an end, that diode is the wrong way round.
 
 ## What the AiO module page shows
 
-The AiO v4.5 page's *Machine* tab shows every section the program asks for (PGN 254 for
-1–16, PGN 229 above) and every section the machine modules report open (their PGN 237,
-below, as any module in the AiO v26 layout sends it; several modules together), so here the
-19 of the seed drill. The XIAO page reads PGN 254 only, so it shows sections 1–16.
+The AiO v4.5 page's *Machine* tab shows:
+
+- every section the program asks for (PGN 254 for 1–16, PGN 229 above)
+- every section the machine modules report open: their PGN 237 (below), as any module in the AiO v26 layout sends it; several modules together
+
+So here it shows the 19 of the seed drill.
+
+The XIAO page reads PGN 254 only, so it shows sections 1–16.
 
 ## Forgotten Wi-Fi password
 
-From the Serial Monitor (USB cable, 115200): type `wifi-reset`. The Wi-Fi settings go
-back to the defaults (`Seeder-xxxx`, `agopengps`, network cable) and the board restarts.
-The program's config stays.
+From the Serial Monitor (USB cable, 115200): type `wifi-reset`.
 
-The same with the **IO0 / BOOT** button held for 5 seconds while the board runs: on the
-KC868-A32 always; on the Relay24_ESP32 only while it uses the tractor's Wi-Fi, because
-with the network cable in use GPIO 0 carries the network clock.
+- The Wi-Fi settings go back to the defaults (`Seeder-xxxx`, `agopengps`, network cable) and the board restarts.
+- The program's config stays.
+
+The same with the **IO0 / BOOT** button held for 5 seconds while the board runs:
+
+- on the KC868-A32: always
+- on the Relay24_ESP32: only while it uses the tractor's Wi-Fi, because with the network cable in use GPIO 0 carries the network clock
 
 ## Messages
 
@@ -309,41 +348,63 @@ with the network cable in use GPIO 0 carries the network clock.
 | 201 | program → module | subnet; the module restarts as `<subnet>.123` (or the last number set on the page). Saved |
 | 200 → 123 | hello / reply | reply carries the sections 1–16 really open (bytes 5–6) |
 | 202 → 203 | scan / reply | the module's IP |
-| 221 | module → program | when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)): the text message the program shows on its screen, as the AiO Teensy sends it (byte 5 seconds to show, byte 6 colour: 0 warning, 1 normal; text from byte 7, 60 bytes at most) |
-| 237 | module → network | every 200 ms, 14 data bytes: the layout of the AgOpenGPS AiO v26 firmware, sections 1–16 open (5–6), lift (7: 0 off, 1 down, 2 up), tramline (8), geo stop (9), status (10: bit 0 = the program's PGN 239 still arrives), 0, 0, then sections 17–64 open (13–18). The official Machine_UDP_v5 sends 8 bytes of fixed content here; the AiO Teensy reads the sections from it |
+| 221 | module → program | the text message the program shows on its screen, as the AiO Teensy sends it: [below](#pgn-221-the-text-message) |
+| 237 | module → network | every 200 ms, 14 data bytes in the layout of the AgOpenGPS AiO v26 firmware: [below](#pgn-237-the-sections-open) |
 
-All messages: header `0x80 0x81`, source `0x7B` from the module, checksum = sum of the
-bytes from the source byte to the one before the checksum. The module only accepts
-messages with a right checksum from source `0x7F` (the program).
+
+### PGN 221, the text message
+
+The module sends it when a section has no relay (*Sections with no relay* in [How it works](#how-it-works)).
+
+Byte 5 is the seconds to show, byte 6 the colour (0 warning, 1 normal), the text from byte 7 (60 bytes at most).
+
+### PGN 237, the sections open
+
+Every 200 ms, 14 data bytes, in the layout of the AgOpenGPS AiO v26 firmware:
+
+- sections 1–16 open (5–6)
+- lift (7: 0 off, 1 down, 2 up)
+- tramline (8)
+- geo stop (9)
+- status (10: bit 0 = the program's PGN 239 still arrives)
+- 0, 0
+- then sections 17–64 open (13–18)
+
+The official Machine_UDP_v5 sends 8 bytes of fixed content here. The AiO Teensy reads the sections from it.
+
+### All messages
+
+All messages:
+
+- header `0x80 0x81`
+- source `0x7B` from the module
+- checksum = sum of the bytes from the source byte to the one before the checksum
+
+The module only accepts messages with a right checksum from source `0x7F` (the program).
 
 ## Notes
 
-- 0.2.16: only words on the page: on the XIAO's WiFi the subnet stays as it is (192.168.5), since the XIAO's
-  network takes the AiO module's numbers with its bridge on.
-- 0.2.15: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)). With the
-  program subnet 192.168.4 the own network is at 192.168.40.1. Packets of the program that come over
-  the Wi-Fi from the network's own address (`<subnet>.1`: the XIAO's WiFi bridge, or a tablet's
-  hotspot) are answered to that address only, and the same packets arriving late "to everyone" are
-  left alone and counted.
-- 0.2.14: *relay active high* ticked in the program (every row sows with no section asked: the seed
-  drill has no sensor that would notice) is said on the program's screen every 10 s, *Seed drill:
-  outputs inverted, untick 'relay active high'*. Both boards close their relays one way only.
-- 0.2.13: on the tractor's Wi-Fi (instead of the cable) the page says why it was not joined (*the
-  password looks wrong*, *no network of that name in range*, *the signal was lost*), and the log says
-  it once. The module's name takes only letters, digits and `-`. A program update that holds the
-  other module's program is refused by the module itself, not only by the page.
-- Fixed in 0.2.12, found by the module harness (`Tests/ESP32_Modules`): a raise or lower time over
-  51 s ran short (60 s gave 8.6 s; now up to the 255 s AgOpenWeb allows); an "outputs inverted" byte
-  in flash other than 0 or 1 reads as normal (7 used to close every relay).
-- The page is announced over mDNS as `_http._tcp` (the AgOpenWeb fork's **Search the network**)
-  and as `_aowcard._tcp` with TXT `v=1` and `path=/`, the official AgOpenWeb add-on card
-  announcement (`Docs/ADD_ON_CARDS.md`), both under the module's own Wi-Fi name
-  (`Seeder-xxxx`, "Name on the network" on the page), unique to each module. The earlier
-  `_aow-ui._tcp` and `GET /aow/status` (0.1 to 0.2.1) are gone.
-- This program grew out of the sprayer module (`Sprayer/Sprayer_ESP32`): the Wi-Fi, the web helpers, the
-  network settings, the PGN handling and the relay driving are the same code in both, marked in the sources
-  as `// ==== shared "name"` … `// ==== end shared "name"`. A change to one of those blocks goes in both
-  programs: the "Shared code" check (`.github/scripts/check_shared_blocks.py`) compares them on every pull
-  request. The network cable, the sections above 16 and the relays setting are this program's own.
-- Licence: GNU General Public License v3 or later (`Firmware/v4.5_AiO_WEB/COPYING`).
-  Written 2026 by Claude (Anthropic) for renatorgr.
+- **0.2.16**: only words on the page. On the XIAO's WiFi the subnet stays as it is (192.168.5), since the XIAO's network takes the AiO module's numbers with its bridge on.
+- **0.2.15**: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)).
+  - With the program subnet 192.168.4 the own network is at 192.168.40.1.
+  - Packets of the program that come over the Wi-Fi from the network's own address (`<subnet>.1`: the XIAO's WiFi bridge, or a tablet's hotspot) are answered to that address only.
+  - The same packets arriving late "to everyone" are left alone and counted.
+- **0.2.14**: *relay active high* ticked in the program is said on the program's screen every 10 s: *Seed drill: outputs inverted, untick 'relay active high'*.
+  - With it ticked, every row sows with no section asked, and the seed drill has no sensor that would notice.
+  - Both boards close their relays one way only.
+- **0.2.13**:
+  - On the tractor's Wi-Fi (instead of the cable) the page says why it was not joined (*the password looks wrong*, *no network of that name in range*, *the signal was lost*), and the log says it once.
+  - The module's name takes only letters, digits and `-`.
+  - A program update that holds the other module's program is refused by the module itself, not only by the page.
+- **Fixed in 0.2.12**, found by the module harness (`Tests/ESP32_Modules`):
+  - A raise or lower time over 51 s ran short (60 s gave 8.6 s; now up to the 255 s AgOpenWeb allows).
+  - An "outputs inverted" byte in flash other than 0 or 1 reads as normal (7 used to close every relay).
+- The page is announced over mDNS in two ways, both under the module's own Wi-Fi name (`Seeder-xxxx`, "Name on the network" on the page), unique to each module:
+  - as `_http._tcp`, for the AgOpenWeb fork's **Search the network**
+  - as `_aowcard._tcp` with TXT `v=1` and `path=/`, the official AgOpenWeb add-on card announcement (`Docs/ADD_ON_CARDS.md`)
+  - The earlier `_aow-ui._tcp` and `GET /aow/status` (0.1 to 0.2.1) are gone.
+- This program grew out of the sprayer module (`Sprayer/Sprayer_ESP32`).
+  - The Wi-Fi, the web helpers, the network settings, the PGN handling and the relay driving are the same code in both. They are marked in the sources as `// ==== shared "name"` … `// ==== end shared "name"`.
+  - A change to one of those blocks goes in both programs. The "Shared code" check (`.github/scripts/check_shared_blocks.py`) compares them on every pull request.
+  - The network cable, the sections above 16 and the relays setting are this program's own.
+- Licence: GNU General Public License v3 or later (`Firmware/v4.5_AiO_WEB/COPYING`). Written 2026 by Claude (Anthropic) for renatorgr.
