@@ -21,6 +21,7 @@ text to paste into GitHub as a raw markdown code block.
 | `Tests/ESP32_Modules/` | harness: the real sprayer and seed drill programs on a pretend ESP32, five kinds of user, all four boards | its `README.md` |
 | `Tests/Teensy_AiO/` | harness: the real Teensy firmware on a pretend Teensy and tractor, five kinds of user, four kits | its `README.md` |
 | `Tests/XIAO_ESP32/` | harness: the real XIAO program on a pretend XIAO, with a pretend Teensy, phones on its page, a tablet on its WiFi bridge and section modules on its WiFi, five kinds of user | its `README.md` |
+| `Tests/HandTests/` | Renato's hand tests, the computer's part: PowerShell 5.1 scripts for the tablet or a PC on the tractor network (7, 17, 42, 44, 46, 48), with a self-test on a pretend board | its `README.md` |
 
 ## Rules for every change
 
