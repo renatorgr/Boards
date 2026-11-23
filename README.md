@@ -31,15 +31,27 @@ Each folder has its own README with the details.
 - **Teensy firmware v4.5:** runs on the bench with a UM982, F9P or X20P and a TM171 or BNO085. The dual F9P, the Keya motor and steering with a BNO085 have not been tried on a tractor yet.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards and Relay24_ESP32:** designed and checked in KiCad, but not built or tested yet.
-- **Sprayer ESP32 v0.9:** runs on the bench (page, Wi-Fi), not tested on the sprayer yet. Also builds for a plain ESP32 with relay modules (up to 16 relays). Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit. The sensors fitted are ticked on its page: with none it sends no PGN 160. The Nano version (v0.3) is kept as it was.
-- **Seeder ESP32 v0.2:** the seed drill part of Sprayer ESP32 v0.8 in its own folder: 19 sections over the network cable, relay 1 = section 1 and so on, on the Relay24_ESP32 board (default) or a KC868-A32. Written from the board design and KinCony's pin list, not yet run on a board.
+- **Sprayer ESP32 v0.10:**
+  - Runs on the bench (page, Wi-Fi), not tested on the sprayer yet.
+  - Also builds for a plain ESP32 with relay modules (up to 16 relays).
+  - Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit.
+  - The sensors fitted are ticked on its page. With none, it sends no PGN 160.
+  - The Nano version (v0.3) is kept as it was.
+- **Seeder ESP32 v0.2:**
+  - The seed drill part of Sprayer ESP32 v0.8, in its own folder.
+  - 19 sections over the network cable, relay 1 = section 1 and so on.
+  - On the Relay24_ESP32 board (default) or a KC868-A32.
+  - Written from the board design and KinCony's pin list, not yet run on a board.
 
 ## Getting started
 
 ### Teensy firmware
 
 1. **First install:** connect the Teensy over USB, open the `.hex` file from [`Firmware/v4.5_AiO_WEB`](Firmware/v4.5_AiO_WEB) in Teensy Loader, then press the button on the Teensy.
-2. **Web page:** open `http://192.168.5.126/` (or `http://aio.local/`) in a browser on the same network. The third number follows the subnet set in AgOpenWeb; it can also be changed from the XIAO's WiFi page (WiFi tab → Module network). To see the page before you have a module: the [simulator](https://renatorgr.github.io/Boards/).
+2. **Web page:** open `http://192.168.5.126/` (or `http://aio.local/`) in a browser on the same network.
+   - The third number follows the subnet set in AgOpenWeb.
+   - It can also be changed from the XIAO's WiFi page (WiFi tab → Module network).
+   - To see the page before you have a module: the [simulator](https://renatorgr.github.io/Boards/).
 3. **Updates:** on the web page, go to **Firmware** and choose a new `.hex` file, or click **Install from GitHub**. The page checks this repository for new versions.
 
 ### XIAO
@@ -50,11 +62,21 @@ Each folder has its own README with the details.
 
 ### Seed drill
 
-Choosing the board, wiring (actuators, end switches), the first upload, the setup and a bench test are in the [`Seeder_ESP32` README](Seeder/Seeder_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/seeder/).
+The [`Seeder_ESP32` README](Seeder/Seeder_ESP32) has:
+
+- choosing the board
+- wiring (actuators, end switches)
+- the first upload, the setup and a bench test
+
+Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/seeder/).
 
 ### Sprayer
 
-Wiring, the first upload, the Wi-Fi setup and a bench test are in the [`Sprayer_ESP32` README](Sprayer/Sprayer_ESP32). Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/sprayer/). The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb). The older Nano version is in [`Sprayer_Nano`](Sprayer/Sprayer_Nano).
+The [`Sprayer_ESP32` README](Sprayer/Sprayer_ESP32) has the wiring, the first upload, the Wi-Fi setup and a bench test.
+
+- Its web page can be tried without the board in the [simulator](https://renatorgr.github.io/Boards/sprayer/).
+- The pressure, flow and alarms show in the [AgOpenWeb fork with the sprayer readout](https://github.com/renatorgr/AgOpenWeb).
+- The older Nano version is in [`Sprayer_Nano`](Sprayer/Sprayer_Nano).
 
 ## Building from source
 

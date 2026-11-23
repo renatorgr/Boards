@@ -2,7 +2,23 @@
 
 Try the module's web pages without a module: **https://renatorgr.github.io/Boards/**
 
-These are the real pages of the firmware, the Teensy page (`zWebPage.h`), the XIAO Wi-Fi page (`xPage.h`), the seed drill module's page (`Seeder/Seeder_ESP32/dPage.h`) and the sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`), with pretend modules behind them instead of the boards. A tractor drives up and down a field with autosteer on; the GPS gets its RTK fix, the IMU aligns, the machine module opens the 19 sections of the no-till seed drill (or, with the sprayer chosen, its 8 sections, measuring the boom's pressure and flow and working out the L/ha). Nothing is real, but what the pages show and how they behave is what you see on the tractor.
+These are the real pages of the firmware. Pretend modules answer them instead of the boards:
+
+- the Teensy page (`zWebPage.h`)
+- the XIAO Wi-Fi page (`xPage.h`)
+- the seed drill module's page (`Seeder/Seeder_ESP32/dPage.h`)
+- the sprayer module's page (`Sprayer/Sprayer_ESP32/sPage.h`)
+
+What you see:
+
+- A tractor drives up and down a field with autosteer on.
+- The GPS gets its RTK fix and the IMU aligns.
+- The machine module opens the 19 sections of the no-till seed drill.
+- With the sprayer chosen, it opens its 8 sections, measures the boom's pressure and flow, and works out the L/ha.
+
+Nothing is real, but the pages show and behave as they do on the tractor.
+
+### Choosing the set-up
 
 A strip at the top of each page chooses the set-up:
 
@@ -12,16 +28,68 @@ A strip at the top of each page chooses the set-up:
 | IMU | TM171, BNO085 on I2C, BNO085 in RVC mode, none |
 | Steering | Cytron, IBT2, Danfoss, Keya motor |
 | Program | AgOpenWeb, AgOpenGPS |
-| XIAO | on the GPS2 port or not (a dual F9P takes that port, so no XIAO then) |
-| Machine module | our module program for the implement: Seeder_ESP32 on the seed drill (hello reply and PGN 237 with every open section) or Sprayer_ESP32 on the sprayer (hello reply, PGN 237 and PGN 160 with the readings); the Machine tab then links to its page. Or two of our modules (.123 with sections 1-16, .124 with the rest: the Machine tab shows them together and lists both IPs), the machine part of the AgOpenGPS AiO v26 firmware (PGN 237 with sections 1-16, its hello reply with none), the official AgOpenGPS Machine_UDP_v5 (hello reply only, sections 1-16), or none |
-| Implement | Teensy page only: the no-till seed drill with 19 sections, about 3.4 m (the Relay24_ESP32 board on the network cable, 24 relays, relay 1 = section 1 and so on, no pressure or flow sensor, so no Sprayer card on the Teensy page; the Machine tab shows all 19 sections, from the program's PGN 229 and the module's PGN 237), or the 8 m sprayer with 8 sections of 1 m on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres). The seed drill page is always the seed drill, the sprayer page the sprayer |
+| XIAO | on the GPS2 port, or not (a dual F9P takes that port, so no XIAO then) |
+| Machine module | see the list below |
+| Implement | Teensy page only: the seed drill or the sprayer, see below |
 | Tractor | driving with autosteer on, or parked |
 | XIAO chip | ESP32-C3 or ESP32-S3 (XIAO page only) |
-| Wi-Fi | module pages only: on the tractor network, the tractor network lost (every section closed, the program's request outlined), or not set yet. On the seed drill's Relay24_ESP32 this is the network cable: plugged in, unplugged, or never plugged in |
+| Wi-Fi | module pages only, see below |
 
-With the tractor **parked** you can try what the module refuses while autosteer is on: the firmware update (choose any `.hex` from this repository, or any file to see it refused) and, after it, **Go back to the previous firmware** the module keeps, the TM171 calibrations, writing the receiver settings, the restart. On the XIAO page the **Module (Teensy) firmware** card sends a `.hex` to the pretend module over the link and puts its previous firmware back, as on the tractor. The pretend module goes away for a few seconds and the page reloads itself, as on the tractor. On the XIAO page and the module pages the password is the default, `agopengps`; the seed drill page's network settings, relay setting, restart and program update, and the sprayer page's calibration, Wi-Fi settings, total reset, restart and program update (any `.bin`, or another file to see it refused) all work.
+**Machine module**:
 
-The choices are in the page address (`teensy/?gps=f9p&imu=bno&motor=keya&prog=aog`), so a link opens a given set-up. The state of the pretend module lives in the browser tab and is forgotten when the tab closes.
+- Seeder_ESP32 on the seed drill: our module program. It sends the hello reply and PGN 237 with every open section.
+- Sprayer_ESP32 on the sprayer: the hello reply, PGN 237 and PGN 160 with the readings.
+- With either of these two, the Machine tab links to the module's page.
+- Two of our modules: .123 with sections 1-16, .124 with the rest. The Machine tab shows them together and lists both IPs.
+- The machine part of the AgOpenGPS AiO v26 firmware: PGN 237 with sections 1-16, its hello reply with none.
+- The official AgOpenGPS Machine_UDP_v5: hello reply only, sections 1-16.
+- None.
+
+**Implement** (Teensy page only):
+
+- The no-till seed drill: 19 sections, about 3.4 m.
+  - It runs on the Relay24_ESP32 board, on the network cable: 24 relays, relay 1 = section 1 and so on.
+  - It has no pressure or flow sensor, so the Teensy page shows no Sprayer card.
+  - The Machine tab shows all 19 sections, from the program's PGN 229 and the module's PGN 237.
+- The 8 m sprayer: 8 sections of 1 m on the ESP32_Relay_X8 board (8 relays, pressure, flow and litres).
+
+The seed drill page is always the seed drill, and the sprayer page the sprayer.
+
+**Wi-Fi** (module pages only):
+
+- on the tractor network
+- the tractor network lost: every section closed, the program's request outlined
+- not set yet
+
+On the seed drill's Relay24_ESP32 this choice is the network cable: plugged in, unplugged, or never plugged in.
+
+### With the tractor parked
+
+The module refuses some things while autosteer is on. With the tractor **parked** you can try them:
+
+- the firmware update: choose any `.hex` from this repository, or any other file to see it refused
+- after the update, **Go back to the previous firmware** the module keeps
+- the TM171 calibrations
+- writing the receiver settings
+- the restart
+
+On the XIAO page, the **Module (Teensy) firmware** card sends a `.hex` to the pretend module over the link. It also puts the previous firmware back, as on the tractor.
+
+The pretend module goes away for a few seconds and the page reloads itself, as on the tractor.
+
+### The module pages
+
+On the XIAO page and the module pages the password is the default, `agopengps`.
+
+Everything on the module pages works:
+
+- the seed drill page: network settings, relay setting, restart and program update
+- the sprayer page: calibration, Wi-Fi settings, total reset, restart and program update (any `.bin`, or another file to see it refused)
+
+### Links
+
+- The choices are in the page address, for example `teensy/?gps=f9p&imu=bno&motor=keya&prog=aog`. So a link opens a given set-up.
+- The pretend module's state lives in the browser tab. It is forgotten when the tab closes.
 
 ## Changelog
 
@@ -49,9 +117,42 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 ## How it is built
 
-`build.py` cuts the pages out of the newest `Firmware/vX.Y_AiO_WEB` folder, `Seeder/Seeder_ESP32` and `Sprayer/Sprayer_ESP32` exactly as the firmware serves them and puts the simulator scripts in their `<head>` (a module page also gets its implement, `window.SIM_IMPL`). The scripts answer the page's `/api/...` requests (and the firmware upload) instead of the module, so the page's own JavaScript is not changed: what you see is the page as it is in the firmware. The GitHub Action `.github/workflows/simulator.yml` runs on every change under `Firmware/`, `Seeder/Seeder_ESP32/` or `Sprayer/Sprayer_ESP32/`, opens every tab in a browser as a check (`smoke-test.js`), and publishes the result on GitHub Pages when the change reaches `main`. A pull request only builds and checks: the simulator shows the merged firmware. Since 9 Nov 2026 it uses the versions of GitHub's own actions that run on Node 24 (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `upload-pages-artifact@v5`, `deploy-pages@v5`): the runners now run every action on Node 24 and warn about one built for Node 20. Since 12 Nov 2026 every job of the repository's Actions names its runner, `ubuntu-26.04`, instead of `ubuntu-latest`, which GitHub moved to Ubuntu 26.04 that autumn with a notice on every run.
+`build.py` makes the site:
 
-`build.py` also writes `firmware.json` at the top of the site: the Teensy `.hex` and the two XIAO `.bin` files of the newest version folder, each with the date and time it was compiled, read from the file itself (the `__DATE__ __TIME__` text every program carries). The Teensy page and the XIAO page fetch it from `https://renatorgr.github.io/Boards/firmware.json` for **Install from GitHub**, so a new build of the same version shows as new once its file is on `main` and the site is published again. The pretend Teensy and XIAO run those same builds. It also has the sprayer module's `Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin` (`"sprayer"`): its version, board and build date, read from the text its `/api/status` answer starts with, for the sprayer page's **Firmware** tab; the pretend sprayer module runs that build. The same for the seed drill module's `Seeder/Seeder_ESP32/Seeder_ESP32.ino.bin` (`"seeder"`), once that file is on `main`.
+1. It cuts the pages out of the newest `Firmware/vX.Y_AiO_WEB` folder, `Seeder/Seeder_ESP32` and `Sprayer/Sprayer_ESP32`, exactly as the firmware serves them.
+2. It puts the simulator scripts in each page's `<head>`. A module page also gets its implement (`window.SIM_IMPL`).
+3. The scripts answer the page's `/api/...` requests (and the firmware upload) instead of the module.
+
+The page's own JavaScript is not changed: what you see is the page as it is in the firmware.
+
+### The GitHub Action
+
+The Action `.github/workflows/simulator.yml`:
+
+- runs on every change under `Firmware/`, `Seeder/Seeder_ESP32/` or `Sprayer/Sprayer_ESP32/`
+- opens every tab in a browser as a check (`smoke-test.js`)
+- publishes the result on GitHub Pages when the change reaches `main`
+
+A pull request only builds and checks. The simulator shows the merged firmware.
+
+Its versions:
+
+- Since 9 Nov 2026 it uses the versions of GitHub's own actions that run on Node 24: `checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `upload-pages-artifact@v5`, `deploy-pages@v5`. The runners now run every action on Node 24 and warn about one built for Node 20.
+- Since 12 Nov 2026 every job of the repository's Actions names its runner, `ubuntu-26.04`, instead of `ubuntu-latest`. GitHub moved `ubuntu-latest` to Ubuntu 26.04 that autumn, with a notice on every run.
+
+### firmware.json
+
+`build.py` also writes `firmware.json` at the top of the site. It lists:
+
+- The Teensy `.hex` and the two XIAO `.bin` files of the newest version folder, each with the date and time it was compiled. The date is read from the file itself (the `__DATE__ __TIME__` text every program carries).
+- The sprayer module's `Sprayer/Sprayer_ESP32/Sprayer_ESP32.ino.bin` (`"sprayer"`): its version, board and build date, read from the text its `/api/status` answer starts with. It is for the sprayer page's **Firmware** tab.
+- The seed drill module's `Seeder/Seeder_ESP32/Seeder_ESP32.ino.bin` (`"seeder"`), the same way, once that file is on `main`.
+
+The Teensy page and the XIAO page fetch it from `https://renatorgr.github.io/Boards/firmware.json` for **Install from GitHub**. So a new build of the same version shows as new once its file is on `main` and the site is published again.
+
+The pretend Teensy, XIAO and sprayer module run those same builds.
+
+### The files
 
 | File | What it does |
 |---|---|
@@ -62,25 +163,170 @@ One row per day, in short; the details are in the sections of this file (the lin
 | `sim-xiao.js` | the XIAO page's requests (v4.5_XIAO_ESP32.ino) answered by a pretend XIAO, with the module behind it |
 | `sim-seeder.js` | the seed drill module page's requests (Seeder_ESP32 zNet.ino) answered by a pretend Relay24_ESP32, sowing what the tractor sows |
 | `sim-sprayer.js` | the sprayer module page's requests (Sprayer_ESP32 zNet.ino) answered by a pretend ESP32, spraying what the tractor sprays |
-| `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package). It also opens the sprayer and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card (`/Boards/_card`, served by the check only), where the browser's own pop-ups show nothing: the pages' own question box must open, fit 480 × 320 and answer; a browser pop-up on any page fails the check |
+| `smoke-test.js` | the check: `node Firmware/simulator/smoke-test.js _site [screenshots]` (needs the `playwright` package) |
 
-To run it on your own computer: `python3 Firmware/simulator/build.py` and open `_site/index.html` in a browser (a `file://` page works). The check needs Node and `npm install playwright && npx playwright install chromium`.
+`smoke-test.js` also opens the sprayer and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card (`/Boards/_card`, served by the check only). There the browser's own pop-ups show nothing, so:
+
+- the pages' own question box must open, fit 480 × 320 and answer
+- a browser pop-up on any page fails the check
+
+### Running it on your own computer
+
+1. Run `python3 Firmware/simulator/build.py`.
+2. Open `_site/index.html` in a browser (a `file://` page works).
+
+The check needs Node and `npm install playwright && npx playwright install chromium`.
 
 ## Set up AgOpenWeb from your measures
 
-**https://renatorgr.github.io/Boards/aow-settings/** is not a module page: a calculator. Choose the machine (a tractor, an articulated one that bends at its joint, a harvester steered from the back, each with its own turning geometry), type its wheelbase, the angle on the stop and the overhang, and the implement as AgOpenWeb's Tool page has it (front fixed, rear fixed, trailing or TBT, the sections and their width, the overlap, the tool offset, the hitch, trailing hitch and pivot distances, the implement length), and it suggests what to put in AgOpenWeb's Vehicle & Tool page, each value with its reason, and draws the turn from above: the hitch to working point of a front implement, then the U-Turn tab top to bottom (turn style and the rows to skip, extension, radius, distance from boundary, Going around obstacles), the tramline passes and the headland width, in AgOpenWeb's order so they can be typed in from top to bottom. Three tractor buttons, by power, fill in Renato's Case IH Farmall 115C (2.3 m, about 45°, 540/65 R34 tyres, its drawbar pin 0.74 m behind the rear axle), his Maxxum 135 (2.7 m, 42°) and his Puma 180 CVX (2.88 m and 33° from its manual's turning circle, 2 m track, 650/65 R42 tyres, its pin 0.9 m back, its front quick hitch 1.1 m ahead of the front axle); an implement on the drawbar moves to the chosen tractor's pin. It opens on the Maxxum with his 8 m sprayer on the front linkage, the boom 2.1 m ahead of the front axle; a second button fills in his semi-mounted 3 m no-till drill (its pivot behind the lower links, its wheels behind the discs). Renato's manure spreader has one axle 4.2 m behind the drawbar pin and its body ends 1.5 m past the axle. His 3.2 m centre-pivot mower conditioner, on the lower links with its swivel 1.55 m behind the Farmall's rear axle (0.5 m behind the balls) mowing 25° to one side, just outside the rear tyre, the other side every pass, presses the Farmall it works with; the tractor drives on the strip it has just mown, so it is drawn with a Keyhole onto the next pass, no skipped rows, and the tool offset stays 0. Lifted as the pass ends and put straight away on the other side, outside the turn, it is followed through the turn instead of round a steady circle: its tongue stays off the tyres even at 4 m, where held in line it would touch one. Two more buttons have typical measures: a trailed disc harrow and a 4-furrow reversible plough on the 3-point linkage, drawn with a K-turn since a plough skips no rows. A long implement's rear corner (its length) is followed through the turn too: a K-turn backs it towards the edge first. A trailed implement's drawbar must stay off the rear tyres: from the hitch pin, the drawbar's width, the rear track and the tyres' width and height, the page finds the angle where the drawbar touches a tyre and keeps the turn 5° under it; the tyre counts at the drawbar's height (a field, 0.5 m by default), where it is shorter than at its axle, so the drawbar touches it later than the whole wheel would say. A drawbar pin inside the tyres' back edge touches them long before 90° and then sets the radius; a semi-mounted implement's pivot, further back, does not, but its own stop may: a field takes the most the drawbar may turn to each side, from its stop or from what the farmer knows. Two more buttons hold Renato's quick disc harrow on the 3-point linkage and his semi-mounted roller (120° of swing in all), their measures guessed until he takes them. A rigid implement is measured with a tape from the axle nearest to it (a front sprayer from the front axle); AgOpenWeb measures it from the pivot, so for a front implement on a tractor the page adds the wheelbase and shows the hitch length to type in.
+**https://renatorgr.github.io/Boards/aow-settings/** is not a module page: it is a calculator.
 
-The rules are AgOpenWeb's own (its `SagittaTurnGeometry`, `YouTurnCreationService` and `VehicleToolLimits`): the turn is drawn by the tractor's pivot, which must stay inside the field edge pulled in by the distance from boundary; a pass closer than twice the radius needs a loop (Sagitta or Keyhole), skipped rows or a K-turn (AgOpenWeb drives a 126° arc and a straight tail; as soon as the tractor reverses the turn is over for AgOpenWeb and its guidance is on the next pass, backing up too, so the tractor backs up until it is on that pass and straight; a trailed implement that would jackknife backing up gets no K-turn), a pass at twice the radius or more gets a plain semicircle. The radius is 1.2 × the tightest the machine can do (wheelbase ÷ tan of the steering angle; an articulated machine (wheelbase ÷ 2) ÷ tan of half the articulation angle), never under 4 m; the distance from boundary keeps what sweeps the widest in the turn, the outer corner of the tractor's nose (half the machine's width, from its rear track and tyres, out from the centre line) or the implement's outer end, a safety margin inside the edge (1 m by default, a field of the page: more where the edge is irregular); with a hard field edge (a fence, a wall, a ditch, marked hard in AgOpenWeb) AgOpenWeb itself moves the turn in until the implement is the distance from boundary away, so the page suggests the margin alone, plus how much further the tractor's nose reaches, which AgOpenWeb does not check; each turn is followed step by step every 10 cm, with the implement (a trailed one following its hitch without side slip) and the machine's far end, and the headland is the turn's depth plus that distance plus how far back into the field anything not yet straight on a pass reaches (the implement finishing its pass, a front implement or a trailed one until it is straight on the next pass, a K-turn's tail), in whole passes. The drawing shows the pivot's path, both ends of the implement and the outer corner of the machine's far end. What is not geometry (the section timing, the steering gains, the antenna position) is not suggested.
+### What you type
+
+1. The machine. Each kind has its own turning geometry:
+   - a tractor
+   - an articulated machine, which bends at its joint
+   - a harvester, steered from the back
+2. Its wheelbase, the steering angle on the stop and the overhang.
+3. The implement, as AgOpenWeb's Tool page has it:
+   - front fixed, rear fixed, trailing or TBT
+   - the sections and their width, the overlap, the tool offset
+   - the hitch, trailing hitch and pivot distances
+   - the implement length
+
+### What you get
+
+- What to put in AgOpenWeb's Vehicle & Tool page, each value with its reason.
+- A drawing of the turn from above.
+
+The values come in AgOpenWeb's order, so you can type them in from top to bottom:
+
+1. the hitch to working point of a front implement
+2. the U-Turn tab, top to bottom: turn style and the rows to skip, extension, radius, distance from boundary, Going around obstacles
+3. the tramline passes
+4. the headland width
+
+### Renato's machines
+
+Three tractor buttons, by power:
+
+| Tractor | Wheelbase | Steering angle | Other measures |
+|---|---|---|---|
+| Case IH Farmall 115C | 2.3 m | about 45° | 540/65 R34 tyres; the drawbar pin 0.74 m behind the rear axle |
+| Maxxum 135 | 2.7 m | 42° | |
+| Puma 180 CVX | 2.88 m | 33° (from its manual's turning circle) | 2 m track; 650/65 R42 tyres; the pin 0.9 m back; the front quick hitch 1.1 m ahead of the front axle |
+
+An implement on the drawbar moves to the chosen tractor's pin.
+
+Implement buttons:
+
+- **8 m sprayer** on the front linkage, the boom 2.1 m ahead of the front axle. The page opens with it on the Maxxum.
+- **3 m no-till drill**, semi-mounted: its pivot behind the lower links, its wheels behind the discs.
+- **Manure spreader**: one axle 4.2 m behind the drawbar pin. Its body ends 1.5 m past the axle.
+- **3.2 m centre-pivot mower conditioner** ([below](#the-mower-conditioner)).
+- **Quick disc harrow** on the 3-point linkage and **semi-mounted roller** (120° of swing in all). Their measures are guessed until Renato takes them.
+
+Two more buttons have typical measures:
+
+- a trailed disc harrow
+- a 4-furrow reversible plough on the 3-point linkage, drawn with a K-turn, since a plough skips no rows
+
+### The mower conditioner
+
+- It is on the lower links, its swivel 1.55 m behind the Farmall's rear axle (0.5 m behind the balls).
+- It mows 25° to one side, just outside the rear tyre, and the other side every pass.
+- Its button also presses the Farmall it works with.
+- The tractor drives on the strip it has just mown. So the turn is drawn as a Keyhole onto the next pass, no skipped rows, and the tool offset stays 0.
+- As the pass ends it is lifted and put straight away on the other side, outside the turn. So the page follows it through the turn instead of round a steady circle.
+- Its tongue stays off the tyres even at 4 m. Held in line, it would touch one.
+
+### Long implements and drawbars
+
+A long implement's rear corner (its length) is followed through the turn too. A K-turn backs it towards the edge first.
+
+A trailed implement's drawbar must stay off the rear tyres:
+
+- From the hitch pin, the drawbar's width, the rear track and the tyres' width and height, the page finds the angle where the drawbar touches a tyre.
+- It keeps the turn 5° under that angle.
+- The tyre counts at the drawbar's height (a field of the page, 0.5 m by default). There the tyre is shorter than at its axle, so the drawbar touches it later than the whole wheel would say.
+- A drawbar pin inside the tyres' back edge touches them long before 90°. Then the drawbar sets the radius.
+- A semi-mounted implement's pivot is further back and does not touch them. But its own stop may: a field takes the most the drawbar may turn to each side, from its stop or from what the farmer knows.
+
+### Measuring a rigid implement
+
+- Measure it with a tape from the axle nearest to it (a front sprayer from the front axle).
+- AgOpenWeb measures it from the pivot. So for a front implement on a tractor, the page adds the wheelbase and shows the hitch length to type in.
+
+### The rules
+
+The rules are AgOpenWeb's own (its `SagittaTurnGeometry`, `YouTurnCreationService` and `VehicleToolLimits`).
+
+**The turn**
+
+- The turn is drawn by the tractor's pivot. The pivot must stay inside the field edge, pulled in by the distance from boundary.
+- A pass at twice the radius or more gets a plain semicircle.
+- A pass closer than twice the radius needs a loop (Sagitta or Keyhole), skipped rows or a K-turn.
+
+**The K-turn**
+
+- AgOpenWeb drives a 126° arc and a straight tail.
+- As soon as the tractor reverses, the turn is over for AgOpenWeb. Its guidance is then on the next pass, backing up too.
+- So the tractor backs up until it is on that pass and straight.
+- A trailed implement that would jackknife backing up gets no K-turn.
+
+**The radius**
+
+- It is 1.2 × the tightest the machine can do, never under 4 m.
+- The tightest is the wheelbase ÷ tan of the steering angle.
+- For an articulated machine it is (wheelbase ÷ 2) ÷ tan of half the articulation angle.
+
+**The distance from boundary**
+
+- It keeps whatever sweeps the widest in the turn a safety margin inside the edge. That is either:
+  - the outer corner of the tractor's nose (half the machine's width, from its rear track and tyres, out from the centre line), or
+  - the implement's outer end.
+- The safety margin is a field of the page, 1 m by default. Give more where the edge is irregular.
+- A hard field edge is a fence, a wall or a ditch, marked hard in AgOpenWeb. There AgOpenWeb itself moves the turn in until the implement is the distance from boundary away. So the page suggests the margin alone, plus how much further the tractor's nose reaches, which AgOpenWeb does not check.
+
+**The headland**
+
+- Each turn is followed step by step every 10 cm, with the implement and the machine's far end. A trailed implement follows its hitch without side slip.
+- The headland is, in whole passes:
+  - the turn's depth,
+  - plus the distance from boundary,
+  - plus how far back into the field anything not yet straight on a pass reaches: the implement finishing its pass, a front or trailed implement until it is straight on the next pass, a K-turn's tail.
+
+**The drawing** shows the pivot's path, both ends of the implement and the outer corner of the machine's far end.
+
+**Not suggested**: what is not geometry (the section timing, the steering gains, the antenna position).
+
+### Its files
 
 | File | What it does |
 |---|---|
 | `aow-settings/settings.js` | the arithmetic, with no page: runs in the browser and in Node, and is the model for a C# version on AgOpenWeb's Vehicle & Tool page |
-| `aow-settings/index.html` | the form, the table of suggestions, the list of turns, the drawing and its legend; the version under the title is `VERSION` at the top of `settings.js`, raised with every change together with the `settings.js?v=` address in the page, so a browser fetches the new file with the new page (`test.js` checks the two agree) |
+| `aow-settings/index.html` | the form, the table of suggestions, the list of turns, the drawing and its legend |
 | `aow-settings/test.js` | the check of the arithmetic with known machines: `node Firmware/simulator/aow-settings/test.js`, a step of the Action |
+
+The version under the page's title is `VERSION` at the top of `settings.js`:
+
+- Raise it with every change, together with the `settings.js?v=` address in the page.
+- Then a browser fetches the new file with the new page.
+- `test.js` checks the two agree.
 
 ## When the firmware changes
 
-The pages are always current: they come from the firmware's own files. The pretend module is not: when a change in the firmware adds or changes a field in the JSON of `/api/status`, `/api/gps`, `/api/settings`, `/api/log`, `/api/diag` or `/api/um982`, in the XIAO's `/api/state`, `/api/teensy` or `/api/log`, or in the seed drill or sprayer module's `/api/status` or `/api/settings`, the same field has to be added in `sim-common.js` (or `sim-xiao.js`, `sim-seeder.js`, `sim-sprayer.js`), or the page shows a dash there. The check in the Action catches a page that breaks, not a value that is missing.
+The pages are always current: they come from the firmware's own files.
+
+The pretend module is not. A firmware change may add or change a field in the JSON of:
+
+- `/api/status`, `/api/gps`, `/api/settings`, `/api/log`, `/api/diag` or `/api/um982`
+- the XIAO's `/api/state`, `/api/teensy` or `/api/log`
+- the seed drill or sprayer module's `/api/status` or `/api/settings`
+
+Then add the same field in `sim-common.js` (or `sim-xiao.js`, `sim-seeder.js`, `sim-sprayer.js`). Otherwise the page shows a dash there.
+
+The check in the Action catches a page that breaks, not a value that is missing.
 
 ## Licence
 
