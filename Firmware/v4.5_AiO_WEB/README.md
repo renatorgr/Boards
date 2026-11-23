@@ -1,6 +1,8 @@
 # v4.5_AiO_WEB
 
-Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire the Teensy the same way), for AgOpenWeb and AgOpenGPS. It is the official AgOpenGPS AiO v4 Teensy firmware (`AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025`) with the additions below.
+Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire the Teensy the same way), for AgOpenWeb and AgOpenGPS.
+
+It is the official AgOpenGPS AiO v4 Teensy firmware (`AIO_v4_Firmware_Keya_CANBUS_HPR_Dual_27.04.2025`) with the additions below.
 
 > **Not tried on a tractor yet:** the dual F9P, the Keya motor, steering with a BNO085. Check them on the bench first.
 
@@ -23,7 +25,12 @@ Teensy 4.1 firmware for the **AiO v4.5 boards** (Micro and Standard; both wire t
 | **LEDs** | link, heading source | the AiO 26 meanings: program talking, fix quality with an RTCM flick, steering state and faults. The in-between state alternates red and green, readable through a panel window. |
 | **Machine module** | none | a Machine tab that shows the machine module on UDP 9999: the official Machine_UDP_v5, the AiO v26's machine part, the sprayer module or the seed drill module (several at once), their sections, and the sprayer's pressure, flow, rate and alarms (PGN 160 and 161). |
 
-The board accepts: **GPS** UM982 (dual antenna), u-blox F9P / X20P (single antenna) or a second F9P on the GPS2 port; **IMU** TM171 or BNO085; **steering** hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN; **optional** a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time).
+The board accepts:
+
+- **GPS**: UM982 (dual antenna), u-blox F9P / X20P (single antenna), or a second F9P on the GPS2 port
+- **IMU**: TM171 or BNO085
+- **steering**: hydraulic valve or motor through a Cytron or IBT2 driver, Danfoss valve, or Keya motor on CAN
+- **optional**: a Seeed XIAO ESP32C3 / ESP32S3 on the GPS2 port (the port takes the XIAO or the second F9P, one at a time)
 
 ## Changelog
 
@@ -62,12 +69,20 @@ One row per day, in short; the details are in the sections of this file (the lin
   - 1.57 also builds (older compiler).
   - 1.59 to 1.61 use the same compiler as 1.58 (1.59 and 1.60 checked: they build), but have not been tried on a tractor.
   - 1.62 brings a new compiler (gcc 15) and has not been checked.
-- Board: Teensy 4.1, USB type Serial, **CPU 450 MHz**, Optimize "Faster". 450 MHz since 4 Nov 2026: below 600 MHz the chip runs at a lower core voltage and stays cooler in a closed box, and the loop has time to spare (see Main loop); 600 MHz works too. The Firmware tab shows the clock the running build uses.
+- Board: Teensy 4.1, USB type Serial, **CPU 450 MHz**, Optimize "Faster".
+  - 450 MHz since 4 Nov 2026: below 600 MHz the chip runs at a lower core voltage and stays cooler in a closed box, and the loop has time to spare (see Main loop).
+  - 600 MHz works too.
+  - The Firmware tab shows the clock the running build uses.
 - Nothing else to install: the BNO085 library and the flash routines (`FlashTxx.c` / `.h`) are in the sketch folder, and FlexCAN_T4 comes with Teensyduino.
-- Warnings do not stop the build (the ones in NativeEthernet, FNET and mbedtls come with Teensyduino and are normal); only an "error" does.
+- Warnings do not stop the build; only an "error" does. The ones in NativeEthernet, FNET and mbedtls come with Teensyduino and are normal.
 - `arm-none-eabi-g++ ... not found`: that Teensyduino's compiler did not install. Remove Teensy in the Boards Manager and install it again.
 
-**Compiled on GitHub too:** every pull request and every change on `main` that touches the firmware is compiled by GitHub (Actions, "Teensy firmware") with Teensyduino 1.58 and the same board settings. A green tick on the pull request means it compiles; a red cross shows the error. The `.hex` (named `v4.5_AiO_WEB.hex`) is under **Artifacts** on the run's page, for 30 days. It is a check, not a test: the bench test is still needed.
+**Compiled on GitHub too:**
+
+- Every pull request and every change on `main` that touches the firmware is compiled by GitHub (Actions, "Teensy firmware"), with Teensyduino 1.58 and the same board settings.
+- A green tick on the pull request means it compiles; a red cross shows the error.
+- The `.hex` (named `v4.5_AiO_WEB.hex`) is under **Artifacts** on the run's page, for 30 days.
+- It is a check, not a test: the bench test is still needed.
 
 **Already compiled:** `v4.5_AiO_WEB.ino.hex` (Teensyduino 1.58, the name the Arduino IDE gives). The IDE ignores it and the XIAO folders.
 
@@ -76,124 +91,366 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 ## Web page
 
-Open `http://<module IP>/`, normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb), or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards), which works on Windows, Mac, iPhone and Linux (on many Android phones use the IP). In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second under the module's name on the network, **AiO** and four digits of the Teensy's own id (e.g. `AiO-3F2A`, shown on the Connections card), next to the XIAO's, the sprayer's and the seed drill's. There is no password: anyone on the module's network can open it.
+Open `http://<module IP>/`:
 
-**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM. AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts). Since 22 Nov 2026 the module refuses, with a line in the messages, a subnet starting with 0, 127 or 224 and up (it would answer nobody), the subnet it is on already (a restart for nothing) and any change while autosteer is engaged (a restart in the field), as the XIAO page's change does. It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network), which is on WiFi whatever the module's IP is and shows the module's IP; type the first three numbers and the module restarts at the new IP. The module's own page only shows its IP (in the header): if you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
+- normally `http://192.168.5.126/` (the third number follows the subnet set in AgOpenWeb)
+- or **`http://aio.local/`**: the module announces its name and its page by mDNS (DNS-SD `_http._tcp`, and `_aowcard._tcp` for the official AgOpenWeb's add-on cards). That works on Windows, Mac, iPhone and Linux; on many Android phones use the IP.
+
+In AgOpenWeb's web cards, ⚙ › **Search the network** lists the page within a second, next to the XIAO's, the sprayer's and the seed drill's. It is listed under the module's name on the network: **AiO** and four digits of the Teensy's own id (e.g. `AiO-3F2A`, shown on the Connections card).
+
+There is no password: anyone on the module's network can open it.
+
+### Another network
+
+**Another network** (not 192.168.5.x): the module keeps its subnet in the EEPROM.
+
+- AgOpenWeb / AgOpenGPS change it when their subnet is set (PGN 201, the module restarts).
+- Since 22 Nov 2026 the module refuses, with a line in the messages (as the XIAO page's change does):
+  - a subnet starting with 0, 127 or 224 and up (it would answer nobody)
+  - the subnet it is on already (a restart for nothing)
+  - any change while autosteer is engaged (a restart in the field)
+- It can also be changed by hand on the **XIAO's WiFi page** (WiFi tab → Module network). That page is on WiFi whatever the module's IP is, and shows the module's IP. Type the first three numbers and the module restarts at the new IP.
+- The module's own page only shows its IP (in the header). If you can open it you are on the right network already, and a wrong subnet typed there would leave the page unreachable.
+
+### Look and buttons
 
 Dark or light: the ☀ / ☾ button at the top (remembered by the browser), otherwise the device's setting.
 
-Every question the page asks (write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…) opens in a box of the page itself, not a browser pop-up: inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`). Enter is its OK, but a held Enter answers nothing: the key that pressed a button cannot also confirm it. The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+Every question the page asks opens in a box of the page itself, not a browser pop-up: write to the TM171, load the receiver's settings, switch the WAS check off, install firmware, restart…
 
-The page carries the date its own firmware was compiled, and compares it with the one the module reports every second. When they differ, the page on the screen is an old one (seen on 11 Nov 2026 in Firefox after an update: the cards showed the new firmware's data, the top bar was still the old one until a refresh). It then fetches the page again at an address the browser has never seen (`/?b=<build date>`), so no kept copy can answer. If the page that comes is still old, a notice at the top says to reload it by hand (Ctrl+F5). After an update or *Go back* asked from the page, the page takes the module as restarted when its time on went back or is behind where it would be had it kept running: a *Go back* a few seconds after start-up used to leave the page waiting for ever.
+- Inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`).
+- Enter is its OK, but a held Enter answers nothing: the key that pressed a button cannot also confirm it.
+- The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+
+### An old page in the browser
+
+The page carries the date its own firmware was compiled, and compares it with the one the module reports every second.
+
+- When they differ, the page on the screen is an old one. This was seen on 11 Nov 2026 in Firefox after an update: the cards showed the new firmware's data, the top bar was still the old one until a refresh.
+- The page then fetches itself again at an address the browser has never seen (`/?b=<build date>`), so no kept copy can answer.
+- If the page that comes is still old, a notice at the top says to reload it by hand (Ctrl+F5).
+
+After an update or *Go back* asked from the page, the page takes the module as restarted when its time on went back, or is behind where it would be had it kept running. A *Go back* a few seconds after start-up used to leave the page waiting for ever.
 
 **Without a module:** the [simulator](https://renatorgr.github.io/Boards/) shows this page and the XIAO's with a pretend module behind them (any GPS, IMU, steering and program; tractor driving or parked), rebuilt from the code on every change. See [`Firmware/simulator`](../simulator).
 
-| Tab | |
-|---|---|
-| **Status** | Warnings at the top (WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen, Teensy hot). GNSS, steering (with the distance to the guidance line the program sends and, folded under it, the steering settings received from the program: its maximum wheel angle and minimum steering speed are shown only, the firmware keeps its own limits), dual heading (not with one antenna), IMU, connections (network, the sentences sent to the program, what the receiver sends), corrections, the XIAO. The temperatures the parts report, each on its card: the u-blox receivers, the TM171, the XIAO (the Teensy's is on the Firmware tab). |
-| **Messages** | The last 60 `[status]` lines. |
-| **Settings** | The settings below, and **Notes about this installation**: a free-text box (wiring, calibration values, what was changed and when) saved in the Teensy, kept through firmware updates and put in the diagnostic report. |
-| **IMU** | The IMU found; with a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire). |
-| **GPS** | The receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first). |
-| **Machine** | Only once a machine module (IP .123: the official Machine_UDP_v5, the sprayer module, the seed drill module, or anything that talks like them) has been heard on UDP 9999. Its IP, last packet, checksum errors, hello replies, and one square per section (up to 64) in the AgOpenWeb section colours: green open, red closed, orange asked on by the program (PGN 254, and PGN 229 above 16) but still closed on the module, cyan asked off but still open. The modules' side comes from their PGN 237 (the AiO v26 layout; our seed drill module adds sections 17-64), else the sprayer PGN 160 or the hello reply (1-16 only); with several machine modules on the network (each its own IP, up to 4), their sections are shown together and the IP row lists them. The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed. The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives. Only to look at. |
-| **Firmware** | **Teensy firmware**: installed (name and build date), on GitHub, the previous one kept, **Install from GitHub**, **Install from a file…**, **Go back to the previous firmware** ([update](#firmware-update-over-the-network)). **This Teensy**: the board, the processor's clock and temperature (and the highest since start-up), why the Teensy last started, the watchdog, **Restart Teensy**. **Diagnostic report**: one `.json` file with everything the module can tell (status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors); send it when something goes wrong. |
+### The tabs
 
-While autosteer is on, the buttons that change the receiver or the TM171, and the firmware install, are greyed out; the TM171 calibrations and the firmware install also while the tractor is moving (not on a bench: simulator mode on, or no WAS).
+**Status**
 
-The page refreshes once a second. When the Teensy restarts, the page reloads itself on the same tab. The module never waits for a browser for more than 3 s, so steering and GNSS keep running. Opening the page does not hold the steering either (since 3 Nov 2026; before, a page load held the loop for about 0.1 s): the browser keeps the page of each build and only asks whether it changed, and when it has to be sent the module sends it in small pieces between steering loops.
+- Warnings at the top: WAS blocking autosteer, WAS check off, simulator mode on, no ADS1115, restarted after a fault, receiver at the wrong baud rate, IMU frozen, Teensy hot.
+- GNSS.
+- Steering, with the distance to the guidance line the program sends. Folded under it, the steering settings received from the program: its maximum wheel angle and minimum steering speed are shown only, the firmware keeps its own limits.
+- Dual heading (not with one antenna), IMU.
+- Connections: network, the sentences sent to the program, what the receiver sends.
+- Corrections, the XIAO.
+- The temperatures the parts report, each on its card: the u-blox receivers, the TM171, the XIAO (the Teensy's is on the Firmware tab).
+
+**Messages**: the last 60 `[status]` lines.
+
+**Settings**: the settings below, and **Notes about this installation**: a free-text box (wiring, calibration values, what was changed and when). It is saved in the Teensy, kept through firmware updates and put in the diagnostic report.
+
+**IMU**: the IMU found. With a TM171: gyro calibration, new install calibration, set-up check with "Fix TM171 setup", and the TM171 settings (requires the TX5 wire).
+
+**GPS**: the receiver (model, firmware), the receiver check, the u-blox or UM982 settings, and a UM982 console (a command and its replies for 5 s; `FRESET`, `UNLOG` and baud rate changes ask first).
+
+**Machine**: shown only once a machine module (IP .123) has been heard on UDP 9999: the official Machine_UDP_v5, the sprayer module, the seed drill module, or anything that talks like them.
+
+- Its IP, last packet, checksum errors, hello replies.
+- One square per section (up to 64) in the AgOpenWeb section colours:
+  - green: open
+  - red: closed
+  - orange: asked on by the program (PGN 254, and PGN 229 above 16) but still closed on the module
+  - cyan: asked off but still open
+- The modules' side comes from their PGN 237 (the AiO v26 layout; our seed drill module adds sections 17-64), else the sprayer PGN 160 or the hello reply (1-16 only).
+- With several machine modules on the network (each its own IP, up to 4), their sections are shown together and the IP row lists them.
+- The official module reports its output levels, so with "Invert relay" on in the program its squares read reversed.
+- The Sprayer card (pressure, flow, total litres, main switch) appears once PGN 160 arrives.
+- Only to look at.
+
+**Firmware**:
+
+- **Teensy firmware**: installed (name and build date), on GitHub, the previous one kept, **Install from GitHub**, **Install from a file…**, **Go back to the previous firmware** ([update](#firmware-update-over-the-network)).
+- **This Teensy**: the board, the processor's clock and temperature (and the highest since start-up), why the Teensy last started, the watchdog, **Restart Teensy**.
+- **Diagnostic report**: one `.json` file with everything the module can tell. Send it when something goes wrong. It holds the status, messages, settings, the installation notes, GPS, UM982 console, build, free RAM, longest loop time, loops per second and the time each part of the loop takes, web errors.
+
+### While autosteer is on
+
+- The buttons that change the receiver or the TM171, and the firmware install, are greyed out.
+- The TM171 calibrations and the firmware install are also greyed out while the tractor is moving (not on a bench: simulator mode on, or no WAS).
+
+### Refreshing
+
+- The page refreshes once a second.
+- When the Teensy restarts, the page reloads itself on the same tab.
+- The module never waits for a browser for more than 3 s, so steering and GNSS keep running.
+- Opening the page does not hold the steering either (since 3 Nov 2026; before, a page load held the loop for about 0.1 s). The browser keeps the page of each build and only asks whether it changed. When it has to be sent, the module sends it in small pieces between steering loops.
 
 ### Settings
 
-Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer settings), applied at once, kept through firmware updates. The notes box at the bottom of the tab has its own place in the EEPROM (address 1024, up to 1200 bytes: an accented letter takes 2) and its own Save button. The defaults are the `#define`s at the top of `zHandlers.ino` (the Steering card's: at the top of `Autosteer.ino`).
+Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer settings), applied at once, kept through firmware updates.
+
+- The notes box at the bottom of the tab has its own place in the EEPROM (address 1024, up to 1200 bytes: an accented letter takes 2) and its own Save button.
+- The defaults are the `#define`s at the top of `zHandlers.ino` (the Steering card's: at the top of `Autosteer.ino`).
 
 | Setting | Default | |
 |---|---|---|
-| Operating mode | automatic | **Automatic**: the standard set while AgOpenWeb sends its hello, classic otherwise. **AgOpenWeb**: always the standard set. **AgOpenGPS**: always classic (`$PAOGI` / `$PANDA`). |
-| Simulator (Operating mode card) | off | **For the program's simulator only**: GPS data is not sent to the program (AgOpenWeb greys its simulator out while it gets GPS sentences). Steering still works. Switch it off before going to the field. Asks first. |
+| Operating mode | automatic | see [below](#operating-mode-and-simulator) |
+| Simulator (Operating mode card) | off | **For the program's simulator only**; see [below](#operating-mode-and-simulator) |
 | Accept a float heading (HPR QF 5) | yes | No = only QF 4 (fixed). UM982 only; the dual F9P always needs RTK fixed. |
 | Maximum wait for the VTG and heading after the GGA | 60 ms | 20-100 ms. |
 | Swap roll and pitch (IMU) | no | IMU turned 90° on the board. |
 | Yaw direction (IMU) | automatic | Learned in turns, or set to +1 / −1. Once you know it, set it: the IMU heading is then usable from start-up. |
-| GPS2 port | automatic | automatic or off; 460800 baud. Automatic: a XIAO ESP32 (its hello) or a second F9P (its UBX or NMEA data) is found at every start, only with autosteer off; Settings shows what was found. A "second F9P" saved by an earlier build loads as automatic. |
+| GPS2 port | automatic | automatic or off; 460800 baud; see [below](#gps2-port) |
 | Check the WAS sensor | on | Off only on a bench without a WAS (see "WAS check"). Asks first. |
 | Watchdog | on | Off from the next start. |
 | UM982 antennas | two | Set on the GPS tab. One: no dual heading card, `ConfigUM982S.txt`; two: `ConfigUM982D.txt`. |
 | Minimum speed (Steering) | 0.2 km/h | 0.1-3 km/h. Below it (the program's speed) the wheels are not turned. |
 | Maximum speed (Steering) | 25 km/h | 10-40 km/h. Above it autosteer is cut. |
-| Soft start (Steering) | off | 0.2-1 s. When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM); on a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware. Try 0.5 s. |
-| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s. Pressure or current sensor, a [Keya's own current](#keya-kickout) too (not its slip): the reading must stay above the program's limit this long before autosteer is cut. The pressure sensor since 3 Nov 2026 (before, it cut at once). Until 17 Nov 2026 the delay did not count when the reading first passed the limit on an even millisecond (about every second time): autosteer was cut at once. A sensor switched off and on again in the program starts its delay from the beginning. |
-| Steering loop (Steering) | 40 Hz | 40 or 100 Hz: how often the wheel angle is read and the valve / motor output updated (every 25 or 10 ms). 100 Hz is what the AiO 26 firmware runs and AgOpenWeb's steering packets come at; the WAS (ADS1115) is then read at 250 samples a second (4 ms each, 128 at 40 Hz). The program's gains are per degree, not per loop, so they stay the same; a Keya gets its command 100 times a second (untested). Try it once the tractor steers well at 40 Hz. Applied at once; the [boot] / [web] Steering lines and the Steering card say the rate. |
+| Soft start (Steering) | off | 0.2-1 s; see [below](#soft-start) |
+| Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s; see [below](#kickout-delay) |
+| Steering loop (Steering) | 40 Hz | 40 or 100 Hz; see [below](#steering-loop) |
+
+#### Operating mode and simulator
+
+**Operating mode**:
+
+- **Automatic**: the standard set while AgOpenWeb sends its hello, classic otherwise.
+- **AgOpenWeb**: always the standard set.
+- **AgOpenGPS**: always classic (`$PAOGI` / `$PANDA`).
+
+**Simulator**, for the program's simulator only:
+
+- GPS data is not sent to the program (AgOpenWeb greys its simulator out while it gets GPS sentences).
+- Steering still works.
+- Switch it off before going to the field. Asks first.
+
+#### GPS2 port
+
+Automatic: a XIAO ESP32 (its hello) or a second F9P (its UBX or NMEA data) is found at every start, only with autosteer off.
+
+- Settings shows what was found.
+- A "second F9P" saved by an earlier build loads as automatic.
+
+#### Soft start
+
+When autosteer engages, the valve / motor output rises from 0 over this time (never below the program's minimum PWM).
+
+- On a big step or a change of direction it rises again over half of it, as in the AiO 26 firmware.
+- Try 0.5 s.
+
+#### Kickout delay
+
+For a pressure or current sensor, and a [Keya's own current](#keya-kickout) too (not its slip): the reading must stay above the program's limit this long before autosteer is cut.
+
+- The pressure sensor since 3 Nov 2026 (before, it cut at once).
+- Until 17 Nov 2026 the delay did not count when the reading first passed the limit on an even millisecond (about every second time): autosteer was cut at once.
+- A sensor switched off and on again in the program starts its delay from the beginning.
+
+#### Steering loop
+
+How often the wheel angle is read and the valve / motor output updated: every 25 or 10 ms.
+
+- 100 Hz is what the AiO 26 firmware runs, and what AgOpenWeb's steering packets come at.
+- At 100 Hz the WAS (ADS1115) is read at 250 samples a second (4 ms each, 128 at 40 Hz).
+- The program's gains are per degree, not per loop, so they stay the same.
+- A Keya gets its command 100 times a second (untested).
+- Try it once the tractor steers well at 40 Hz.
+- Applied at once. The [boot] / [web] Steering lines and the Steering card say the rate.
 
 ### Firmware update over the network
 
 Web page → Firmware → **Install from a file…** → choose the `.hex` → **Install** in the box.
 
-- The **Teensy firmware** card has the rows **Installed**, **On GitHub** (tagged *newer*, *installed* or *older*) and **Previous**, the two ways to install (**Install from GitHub**, **Install from a file…**), the progress bar and the messages, and **Go back to the previous firmware** at the bottom.
-- Once chosen, the page reads the file in the browser and opens one box: the file, what is inside (the version and the build date and time, from the `[boot] … built …` line the firmware prints at start-up), what runs now, and whether it is newer, the same or older. Nothing is sent until **Install**. A file that is not a `.hex` or not a Teensy 4.1 firmware is refused in that box with the reason. **Install from GitHub** and **Go back** are confirmed in the same box.
-- Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h). On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
-- A refused update (autosteer engaged after **Install** was pressed, the tractor moving, a file that fails a check) is answered once the browser has sent the whole file, so the page can say why. Steering, GPS and the page go on meanwhile: the rest of the file is read and dropped a piece at a time. Until 22 Nov 2026 the module read it in one go and the steering loop stopped for the whole upload, with the outputs as they were.
-- The module receives the whole file into free flash and checks it (checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`), reading back every sector. Since 3 Nov 2026 the image carries only that name: a module still on a firmware from before 22 Oct 2026 (which looks for `AOG-UM982-TM171-WEB-OTA-1`) takes a build from 22 Oct to 2 Nov 2026 first, or this one over USB. **If anything fails, the running firmware stays** and the page says why.
-- Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts. **Do not cut the power during that copy**: the Teensy would need reprogramming over USB (it is not damaged, and the 15 s button restore also works).
-- A `.hex` without AiO_WEB build data or without the family marker (another firmware) is shown in the box with a warning, and **Install** waits for **Install it anyway** to be ticked; the next update is then over USB.
+**The Teensy firmware card** has:
+
+- the rows **Installed**, **On GitHub** (tagged *newer*, *installed* or *older*) and **Previous**
+- the two ways to install: **Install from GitHub**, **Install from a file…**
+- the progress bar and the messages
+- **Go back to the previous firmware** at the bottom
+
+**The box.** Once a file is chosen, the page reads it in the browser and opens one box:
+
+- the file, and what is inside: the version and the build date and time, from the `[boot] … built …` line the firmware prints at start-up
+- what runs now, and whether the file is newer, the same or older
+- Nothing is sent until **Install**.
+- A file that is not a `.hex`, or not a Teensy 4.1 firmware, is refused in that box with the reason.
+- **Install from GitHub** and **Go back** are confirmed in the same box.
+
+**When.** Only with **autosteer off and the tractor stopped** (program's speed, and the receiver's with RTK, below 1 km/h).
+
+- On the bench the speed is not checked: simulator mode on, or a wheel angle a tractor does not give (no WAS, or beyond ±50°).
+
+**A refused update** (autosteer engaged after **Install** was pressed, the tractor moving, a file that fails a check) is answered once the browser has sent the whole file, so the page can say why.
+
+- Steering, GPS and the page go on meanwhile: the rest of the file is read and dropped a piece at a time.
+- Until 22 Nov 2026 the module read it in one go, and the steering loop stopped for the whole upload, with the outputs as they were.
+
+**The checks.** The module receives the whole file into free flash and checks it: checksums, size, Teensy 4.1, this firmware family `AiO-WEB-OTA-1`, reading back every sector.
+
+- Since 3 Nov 2026 the image carries only that name. A module still on a firmware from before 22 Oct 2026 (which looks for `AOG-UM982-TM171-WEB-OTA-1`) takes a build from 22 Oct to 2 Nov 2026 first, or this one over USB.
+- **If anything fails, the running firmware stays** and the page says why.
+
+**The copy.** Then the new firmware is copied over the old one (a few seconds) and the Teensy restarts.
+
+- **Do not cut the power during that copy**: the Teensy would need reprogramming over USB. It is not damaged, and the 15 s button restore also works.
+
+**Another firmware.** A `.hex` without AiO_WEB build data, or without the family marker, is shown in the box with a warning.
+
+- **Install** waits for **Install it anyway** to be ticked.
+- The next update is then over USB.
 
 ### Going back to the previous firmware
 
 Web page → Firmware → **Go back to the previous firmware** (also on the XIAO page's Firmware tab).
 
-- At each update, before the new firmware is copied over the old one, the module copies the firmware it is running into free flash (from 2 MB to 4 MB, with its name, build date and a checksum). The Firmware tab shows it in the **Previous firmware** row; the Status JSON carries it as `prev`.
-- The button puts that copy back (a few seconds, then a restart), with the same conditions as an update: autosteer off, tractor stopped. The settings in the EEPROM are kept. No file, no computer and no internet are needed: it is for a new build that misbehaves in the field.
-- Going back uses the copy up: after it there is no previous firmware until the next update. The copy exists only after the first update made with a firmware of 2 Nov 2026 or later (the first install of that firmware is by USB or from the page, as any other); a copy whose checksum no longer matches is not offered.
+- **The copy.** At each update, before the new firmware is copied over the old one, the module copies the firmware it is running into free flash (from 2 MB to 4 MB, with its name, build date and a checksum).
+  - The Firmware tab shows it in the **Previous firmware** row.
+  - The Status JSON carries it as `prev`.
+- **The button** puts that copy back (a few seconds, then a restart).
+  - Same conditions as an update: autosteer off, tractor stopped.
+  - The settings in the EEPROM are kept.
+  - No file, no computer and no internet are needed: it is for a new build that misbehaves in the field.
+- **Once only.** Going back uses the copy up: after it there is no previous firmware until the next update.
+  - The copy exists only after the first update made with a firmware of 2 Nov 2026 or later. (The first install of that firmware is by USB or from the page, as any other.)
+  - A copy whose checksum no longer matches is not offered.
 - Firmware installed with **Install it anyway** is copied too, so such an update still has a way back to this firmware.
 
 ### Update from the XIAO page
 
-For a module whose own page cannot be reached (its network cable or network, a fault in the page, the box closed) while the XIAO on the GPS2 port still answers on WiFi.
+For a module whose own page cannot be reached, while the XIAO on the GPS2 port still answers on WiFi. (Its network cable or network, a fault in the page, the box closed.)
 
-- XIAO page → Firmware → **Module (Teensy) firmware**: the firmware the module runs, the one on GitHub, the previous one kept; **Install from GitHub**, **Install from a file…** and **Go back to the previous firmware**, each confirmed in one box that says what the file holds and asks the XIAO's network password.
-- The `.hex` goes to the XIAO as its own update does, and on to the Teensy over the serial link in pieces of 252 bytes, each confirmed by the Teensy before the next one is sent (about a minute for the 2 MB file). The Teensy checks the file exactly as one from its own page (checksums, Teensy 4.1, the family marker unless **Install it anyway** was ticked), refuses it with autosteer on or the tractor moving, and keeps autosteer off while it receives. The web page and UDP keep being served meanwhile. **If anything fails, the running firmware stays** and the XIAO page says why; without an answer from the Teensy for 15 s both sides give up.
-- The XIAO page then watches the module come back (its time on starts again, or another build runs) and says which firmware it runs.
-- It needs a Teensy firmware of 2 Nov 2026 or later (the first one with PGN 145) and the XIAO program compiled from the same date or later: an older Teensy does not answer, and the page says so.
+**The card.** XIAO page → Firmware → **Module (Teensy) firmware**:
+
+- the firmware the module runs, the one on GitHub, the previous one kept
+- **Install from GitHub**, **Install from a file…** and **Go back to the previous firmware**
+- each confirmed in one box that says what the file holds and asks the XIAO's network password
+
+**How it travels.** The `.hex` goes to the XIAO as its own update does, and on to the Teensy over the serial link.
+
+- In pieces of 252 bytes, each confirmed by the Teensy before the next one is sent (about a minute for the 2 MB file).
+- The Teensy checks the file exactly as one from its own page: checksums, Teensy 4.1, the family marker unless **Install it anyway** was ticked.
+- It refuses it with autosteer on or the tractor moving, and keeps autosteer off while it receives.
+- The web page and UDP keep being served meanwhile.
+- **If anything fails, the running firmware stays** and the XIAO page says why.
+- Without an answer from the Teensy for 15 s, both sides give up.
+
+**After it.** The XIAO page watches the module come back (its time on starts again, or another build runs) and says which firmware it runs.
+
+**Needs** a Teensy firmware of 2 Nov 2026 or later (the first one with PGN 145), and the XIAO program compiled from the same date or later. An older Teensy does not answer, and the page says so.
 
 ### New versions from GitHub
 
 The page looks in the `Firmware` folder of **github.com/renatorgr/Boards** when it opens, every 6 hours, and with **Check now**.
 
-- Each version is a folder `vX.Y_AiO_WEB` with the Teensy `.hex` in it (`vX.Y_AiO_WEB.ino.hex` as the Arduino IDE names it, or `vX.Y_AiO_WEB.hex`) and the XIAO folders. Other folders there are ignored.
-- **A new build of the same version counts as new.** The page compares when the `.hex` on GitHub was compiled with the running firmware's **Built** (Firmware tab). That date is read from the file itself each time a file reaches `main`, and published with the simulator at `https://renatorgr.github.io/Boards/firmware.json` a few minutes later. Nothing needs renaming or numbering by hand.
-- If that file cannot be reached, the page compares the folder names alone (the version number only).
-- A newer one shows on Status and on the Firmware tab. **Install from GitHub** downloads it in the browser and installs it like a chosen file.
+- **Each version is a folder** `vX.Y_AiO_WEB`, with the Teensy `.hex` in it (`vX.Y_AiO_WEB.ino.hex` as the Arduino IDE names it, or `vX.Y_AiO_WEB.hex`) and the XIAO folders. Other folders there are ignored.
+- **A new build of the same version counts as new.**
+  - The page compares when the `.hex` on GitHub was compiled with the running firmware's **Built** (Firmware tab).
+  - That date is read from the file itself each time a file reaches `main`, and published with the simulator at `https://renatorgr.github.io/Boards/firmware.json` a few minutes later.
+  - Nothing needs renaming or numbering by hand.
+  - If that file cannot be reached, the page compares the folder names alone (the version number only).
+- **A newer one** shows on Status and on the Firmware tab. **Install from GitHub** downloads it in the browser and installs it like a chosen file.
 - The device the page is open on needs internet; the Teensy never goes to the internet.
-- To publish a new build: compile, and upload the `.hex` into the version folder over the old one. A new version number (v4.6) is a new folder `vX.Y_AiO_WEB` in `Firmware/`.
+- **To publish a new build**: compile, and upload the `.hex` into the version folder over the old one.
+- A new version number (v4.6) is a new folder `vX.Y_AiO_WEB` in `Firmware/`.
 
 ## GPS receiver
 
 ### Identification
 
-After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM982) or `UBX-MON-VER` (u-blox). It asks again after 10 s of silence and with **Ask again**. The queries go between RTCM messages, never in the middle of one. The result shows on Status, on the GPS tab and in Messages (`GPS receiver: u-blox ZED-F9P, firmware HPG 1.32 (protocol 27.31)`).
+After the receiver's first second, the Teensy asks it what it is: `VERSIONA` (UM982) or `UBX-MON-VER` (u-blox).
+
+- It asks again after 10 s of silence, and with **Ask again**.
+- The queries go between RTCM messages, never in the middle of one.
+- The result shows on Status, on the GPS tab and in Messages (`GPS receiver: u-blox ZED-F9P, firmware HPG 1.32 (protocol 27.31)`).
 
 What goes to the program does not depend on this: a receiver that sends HPR is treated as dual antenna.
 
-**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s and shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check). A firmware without that message never answers (after three tries), and a receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer). In these cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026. A temperature that does arrive is always shown.
+#### Temperature of a u-blox receiver
 
-A **UM982** is asked `HWSTATUSA` (its hardware status) at the same pace, since 10 Nov 2026. The answer, as Renato's receiver (R4.10Build13495) gave it: `#HWSTATUSA,…;59493,0.914,1.025,1.805,1,-0.822,0.0,0x84,1,0x0377,0,0*6e81c92f`. After the `;` come one number, then the 0.9 V, 1.0 V and 1.8 V supplies, the clock and the hardware flags. The firmware shows that first number, divided by 1000, as the temperature in °C (59 °C here, in the closed box after 40 minutes). What could be read of Unicore's manual does not name that field, so this is a deduction, not a documented fact: the manual's own example has 66807 there, and a number that starts lower on a cold morning and climbs as the box warms confirms it. The first answer after start-up goes to Messages with the number as it came (`GPS receiver: temperature 59 C (UM982 HWSTATUSA, first field 59493, …)`), to compare a cold start with a warm one. A line with a wrong CRC is dropped, and a value outside -40 to 125 °C reads *not reported*. The poll waits while the page reads or writes the UM982's settings, and its answer stays out of the UM982 console.
+**Temperature** (since 4 Nov 2026): once a u-blox receiver is identified, the Teensy asks it for `UBX-MON-SYS` every 10 s.
 
-Seen on the bench on 4 Nov 2026: the ZED-X20P (HPG 2.11) answers with 0, the ZED-F9P on HPG 1.13 does not answer. So of the receivers here only the UM982 shows a temperature; a newer u-blox firmware may.
+- It shows its temperature in the GNSS card (a row under the receiver) and on the GPS tab (the second F9P: in the dual-antenna card and in its check).
+- A firmware without that message never answers (after three tries).
+- A receiver that answers 0 every time does not fill the field (Messages has the bytes of its first answer).
+- In these cases the row reads just *not reported*, like the XIAO row when its program is older than 4 Nov 2026.
+- A temperature that does arrive is always shown.
+
+#### Temperature of a UM982
+
+A **UM982** is asked `HWSTATUSA` (its hardware status) at the same pace, since 10 Nov 2026.
+
+The answer, as Renato's receiver (R4.10Build13495) gave it:
+
+`#HWSTATUSA,…;59493,0.914,1.025,1.805,1,-0.822,0.0,0x84,1,0x0377,0,0*6e81c92f`
+
+- After the `;` come one number, then the 0.9 V, 1.0 V and 1.8 V supplies, the clock and the hardware flags.
+- The firmware shows that first number, divided by 1000, as the temperature in °C (59 °C here, in the closed box after 40 minutes).
+- What could be read of Unicore's manual does not name that field, so this is a deduction, not a documented fact. The manual's own example has 66807 there. A number that starts lower on a cold morning and climbs as the box warms confirms it.
+- The first answer after start-up goes to Messages with the number as it came (`GPS receiver: temperature 59 C (UM982 HWSTATUSA, first field 59493, …)`), to compare a cold start with a warm one.
+- A line with a wrong CRC is dropped, and a value outside -40 to 125 °C reads *not reported*.
+- The poll waits while the page reads or writes the UM982's settings, and its answer stays out of the UM982 console.
+
+Seen on the bench on 4 Nov 2026:
+
+- the ZED-X20P (HPG 2.11) answers with 0
+- the ZED-F9P on HPG 1.13 does not answer
+- So of the receivers here only the UM982 shows a temperature; a newer u-blox firmware may.
 
 ### Receiver check (GPS tab)
 
-- **Data at 460800 baud**: valid, wrong baud rate (bytes but nothing valid; also a warning on Status), or nothing arriving. The GGA, VTG and HPR rates as they arrive (the Teensy wants 10 Hz).
-- **At start-up**, with no valid data at 460800 within 5 s (15 s for a silent receiver), the Teensy looks for the receiver's baud rate. Found at another one, **the port stays at that speed**: the receiver is identified and checked there, and the AgOpenGPS settings (which include 460800 baud) are loaded in one go; the port switches to 460800 as the baud rate message goes out. Only a receiver with nothing to load (an unknown one) gets just its baud rate changed and saved (u-blox: `CFG-UART1-BAUDRATE` in all layers; UM982: `CONFIG COM1/2/3 460800` and `SAVECONFIG`). The **Set to 460800 and save** button does that by hand at any time.
-- **Set up automatically**: a receiver that lacks what the Teensy needs after its check (a new module, for example) gets the AgOpenGPS settings loaded by the Teensy itself (F9P: `Single.txt` or `DualPosition.txt`, second F9P: `DualRelPos.txt`; X20P: `X20P.txt`; UM982: `ConfigUM982D.txt`, or `ConfigUM982S.txt` with "one antenna" in Settings), then is checked again. Once each per start-up, only with autosteer off and while nothing else has the receiver. Status shows it in the **Setup** row of the GNSS and dual-antenna cards and in a warning at the top ("the Teensy is loading the AgOpenGPS settings…"), and `[status]` records it.
-- **What the Teensy needs**: u-blox keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`, `X20P.txt`); UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800. The wrong values first, in orange; the right ones in a collapsed list.
-- **Compare with AOGConfigOMatic** (F9P, X20P: every key of the file; UM982: which commands it already has) and **Load the AgOpenGPS settings** (F9P, X20P: each line as one `UBX-CFG-VALSET` to RAM, BBR and flash; UM982: one command at a time, then `SAVECONFIG`).
-- **Firmware**: the AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**). `X20P.txt` was read from an X20P with HPG 2.11; another version shows in orange.
-- **X20P**: AOGConfigOMatic has no file for it, so `X20P.txt` (in the sketch folder, and in `zRxConfig.h`) was read on 24 Oct 2026 from Renato's working ZED-X20P with **Read all settings**: the 25 settings that differ from the factory defaults (UART1 at 460800, 10 Hz, high-precision NMEA, RMC / GLL / GSA / GSV off, I2C off), plus the keys the Teensy needs that stay at their factory values (UBX and RTCM3 in, UBX and NMEA out, GGA and VTG every fix). One antenna only: an X20P with a second F9P has no file yet.
-- **Read all settings** (u-blox; the button was taken off the page on 24 Oct 2026 now that `X20P.txt` exists, the Teensy side (`GET /api/rxdump`) stays; the page code is in the git history before 7 Nov 2026): every setting of the receiver, read from its RAM layer with `UBX-CFG-VALGET` (the all-items key, 64 items per answer) and compared with its Default layer; the ones that differ from the factory defaults are kept (up to 512; `CFG-SEC-*` left out) and downloaded as a u-center configuration file named after the model (`X20P.txt`): a comment line, then `CFG-VALGET - 06 8B …` lines of up to 64 key + value pairs, the form of the AOGConfigOMatic files that `zRxConfig.h` is made from. The way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for. Reading does not change the receiver and is allowed with autosteer on.
-- One operation at a time, only with autosteer off. AgIO's GPS tool (`!AOGR1`) stops it.
+**Data at 460800 baud**: valid, wrong baud rate (bytes but nothing valid; also a warning on Status), or nothing arriving. The GGA, VTG and HPR rates as they arrive (the Teensy wants 10 Hz).
+
+**At start-up**, with no valid data at 460800 within 5 s (15 s for a silent receiver), the Teensy looks for the receiver's baud rate.
+
+- Found at another one, **the port stays at that speed**: the receiver is identified and checked there.
+- The AgOpenGPS settings (which include 460800 baud) are loaded in one go. The port switches to 460800 as the baud rate message goes out.
+- Only a receiver with nothing to load (an unknown one) gets just its baud rate changed and saved (u-blox: `CFG-UART1-BAUDRATE` in all layers; UM982: `CONFIG COM1/2/3 460800` and `SAVECONFIG`).
+- The **Set to 460800 and save** button does that by hand at any time.
+
+**Set up automatically**: a receiver that lacks what the Teensy needs after its check (a new module, for example) gets the AgOpenGPS settings loaded by the Teensy itself, then is checked again.
+
+- F9P: `Single.txt` or `DualPosition.txt`; second F9P: `DualRelPos.txt`; X20P: `X20P.txt`; UM982: `ConfigUM982D.txt`, or `ConfigUM982S.txt` with "one antenna" in Settings.
+- Once each per start-up, only with autosteer off and while nothing else has the receiver.
+- Status shows it in the **Setup** row of the GNSS and dual-antenna cards, and in a warning at the top ("the Teensy is loading the AgOpenGPS settings…"). `[status]` records it.
+
+**What the Teensy needs**:
+
+- u-blox: keys read with `UBX-CFG-VALGET` against the AgOpenGPS files (`Single.txt`, `DualPosition.txt`, `DualRelPos.txt`, `X20P.txt`)
+- UM982: GGA, VTG and HPR at 10 Hz on its Teensy port at 460800
+- The wrong values first, in orange; the right ones in a collapsed list.
+
+**Compare with AOGConfigOMatic** and **Load the AgOpenGPS settings**:
+
+- F9P, X20P: compare every key of the file; load each line as one `UBX-CFG-VALSET` to RAM, BBR and flash.
+- UM982: compare which commands it already has; load one command at a time, then `SAVECONFIG`.
+
+**Firmware**:
+
+- The AgOpenGPS F9P settings are for HPG 1.13. Another version shows in red, with links to `UBX113.bin` and AOGConfigOMatic (**Flash firmware**).
+- `X20P.txt` was read from an X20P with HPG 2.11; another version shows in orange.
+
+**X20P**: AOGConfigOMatic has no file for it. So `X20P.txt` (in the sketch folder, and in `zRxConfig.h`) was read on 24 Oct 2026 from Renato's working ZED-X20P with **Read all settings**:
+
+- the 25 settings that differ from the factory defaults: UART1 at 460800, 10 Hz, high-precision NMEA, RMC / GLL / GSA / GSV off, I2C off
+- plus the keys the Teensy needs that stay at their factory values: UBX and RTCM3 in, UBX and NMEA out, GGA and VTG every fix
+- One antenna only: an X20P with a second F9P has no file yet.
+
+**Read all settings** (u-blox) is the way to make an AgOpenGPS file for a receiver AOGConfigOMatic has none for.
+
+- The button was taken off the page on 24 Oct 2026, now that `X20P.txt` exists. The Teensy side (`GET /api/rxdump`) stays; the page code is in the git history before 7 Nov 2026.
+- It reads every setting of the receiver from its RAM layer with `UBX-CFG-VALGET` (the all-items key, 64 items per answer), and compares it with its Default layer.
+- The ones that differ from the factory defaults are kept (up to 512; `CFG-SEC-*` left out).
+- They are downloaded as a u-center configuration file named after the model (`X20P.txt`): a comment line, then `CFG-VALGET - 06 8B …` lines of up to 64 key + value pairs. That is the form of the AOGConfigOMatic files that `zRxConfig.h` is made from.
+- Reading does not change the receiver, and is allowed with autosteer on.
+
+One operation at a time, only with autosteer off. AgIO's GPS tool (`!AOGR1`) stops it.
 
 ### u-blox settings (GPS tab)
 
-Read from the receiver when the tab opens; **Write to the receiver** sends only what changed, in one `UBX-CFG-VALSET` to RAM, BBR and flash (RAM and BBR only if flash is refused). Only with autosteer off.
+- Read from the receiver when the tab opens.
+- **Write to the receiver** sends only what changed, in one `UBX-CFG-VALSET` to RAM, BBR and flash (RAM and BBR only if flash is refused).
+- Only with autosteer off.
 
 | Setting | |
 |---|---|
@@ -203,11 +460,16 @@ Read from the receiver when the tab opens; **Write to the receiver** sends only 
 | UART1 | GGA and VTG (always on), RTCM3 in (off = no RTK) |
 | Constellations | GPS, GLONASS, Galileo, BeiDou, QZSS, SBAS (changing them loses RTK for a few seconds) |
 
-The UART1 baud rate and a factory reset are not on the form: the Teensy would lose the receiver. Other NMEA sentences the receiver sends are named under the card.
+- The UART1 baud rate and a factory reset are not on the form: the Teensy would lose the receiver.
+- Other NMEA sentences the receiver sends are named under the card.
 
 ### UM982 settings (GPS tab)
 
-Read with `CONFIG`, `MASK`, `UNILOGLIST` and `MODE`; **Write to the receiver** sends only what changed, one command at a time, then `SAVECONFIG`. A refused command is shown with the UM982's reason; the others are still written. Only with autosteer off. The commands act on the UM982 port wired to the Teensy.
+- Read with `CONFIG`, `MASK`, `UNILOGLIST` and `MODE`.
+- **Write to the receiver** sends only what changed, one command at a time, then `SAVECONFIG`.
+- A refused command is shown with the UM982's reason; the others are still written.
+- Only with autosteer off.
+- The commands act on the UM982 port wired to the Teensy.
 
 | Setting | Command |
 |---|---|
@@ -221,117 +483,173 @@ Read with `CONFIG`, `MASK`, `UNILOGLIST` and `MODE`; **Write to the receiver** s
 | KSXT | `KSXT 0.1` (10 Hz) or off |
 | Constellations | `MASK` / `UNMASK` GPS, GLONASS, Galileo, BeiDou, QZSS |
 
-The NMEA version shows in the receiver card. Other sentences the UM982 sends are named under the card; switch one off in the console (`UNLOG GPGSV`, then `SAVECONFIG`).
+- The NMEA version shows in the receiver card.
+- Other sentences the UM982 sends are named under the card. Switch one off in the console (`UNLOG GPGSV`, then `SAVECONFIG`).
 
 ## IMU: TM171 or BNO085
 
 At start-up the firmware looks for:
 
 1. **Serial5** at 115200 for 1.5 s: a **TM171** or a **BNO085 in RVC mode** (jumper SJ1).
-2. Then a **BNO085 on I2C** (pins 18 / 19), at 0x4A or 0x4B; up to 3 tries. When something answers there but not as a BNO085 (a BNO085 that kept running while the Teensy restarted by software), 3 more tries from the loop, 10 s apart, with autosteer off (since 3 Nov 2026).
+2. Then a **BNO085 on I2C** (pins 18 / 19), at 0x4A or 0x4B; up to 3 tries.
+   - When something answers there but not as a BNO085 (a BNO085 that kept running while the Teensy restarted by software): 3 more tries from the loop, 10 s apart, with autosteer off (since 3 Nov 2026).
 3. Nothing: `[boot] IMU NOT detected`. Serial5 is still listened to, so an IMU that starts later is picked up then.
 
-- All give the same roll, pitch and yaw, with the AiO firmware's conventions. "Use Y axis" in the program, or "Swap roll and pitch" on the page, swaps roll and pitch; "Roll invert" / "Roll zero" in the program.
+**Axes**
+
+- All give the same roll, pitch and yaw, with the AiO firmware's conventions.
+- "Use Y axis" in the program, or "Swap roll and pitch" on the page, swaps roll and pitch. "Roll invert" / "Roll zero" in the program.
 - RVC or I2C is chosen on the BNO085 module (its PS0 / PS1 pins).
-- A BNO085 on I2C silent for 3 s is started again (only with autosteer off). Counted from its own start since 3 Nov 2026: before, it was started again once at every boot for nothing ("silent for 3 s" right after being found), which held the loop for up to 1.5 s.
-- An IMU whose roll and heading stay **exactly the same for 3 s while the tractor drives above 2 km/h** is reported as **frozen** (since 3 Nov 2026): a hung sensor that still sends packets, which the "no data" checks cannot see. A message on the program's screen every 8 s, a warning at the top of the Status tab, `FROZEN` on the IMU card and a `[status]` line; "IMU OK again" when the values move. Nothing is cut: the program decides what it does with the roll. On a bench with the program's simulator driving and the IMU lying still the warning appears: that is the way to test it (move the IMU and it clears).
 - The yaw direction is learned in turns (or set on the page); yaw jumps over 25° are compensated.
-- A TM171 sends its temperature in its Status Output: the IMU card shows it (since 4 Nov 2026). The BNO085 has none to show.
+
+**A silent BNO085** on I2C (3 s) is started again, only with autosteer off.
+
+- Counted from its own start since 3 Nov 2026.
+- Before, it was started again once at every boot for nothing ("silent for 3 s" right after being found), which held the loop for up to 1.5 s.
+
+**A frozen IMU** (since 3 Nov 2026): roll and heading stay **exactly the same for 3 s while the tractor drives above 2 km/h**. That is a hung sensor that still sends packets, which the "no data" checks cannot see.
+
+- A message on the program's screen every 8 s, a warning at the top of the Status tab, `FROZEN` on the IMU card and a `[status]` line.
+- "IMU OK again" when the values move.
+- Nothing is cut: the program decides what it does with the roll.
+- To test it: on a bench, with the program's simulator driving and the IMU lying still, the warning appears. Move the IMU and it clears.
+
+**Temperature**: a TM171 sends its temperature in its Status Output, and the IMU card shows it (since 4 Nov 2026). The BNO085 has none to show.
 
 ### TM171 gyro calibration from the page
 
-A TM171's yaw drifts while the tractor sits with the engine running. SYD Dynamics' remedy is a gyro
-calibration taken with the vehicle parked ("run-time static calibration"; application note AN002 says the
-engine can stay running). The **IMU tab** of the web page has a **Calibrate gyro** button for it (the IMU card on the Status page shows the result and links there):
+A TM171's yaw drifts while the tractor sits with the engine running. SYD Dynamics' remedy is a gyro calibration taken with the vehicle parked ("run-time static calibration"; application note AN002 says the engine can stay running).
 
-- Park the tractor and switch autosteer off (the page refuses otherwise). The TM171 collects data for 20 s
-  while the page counts down, then reports **OK** or **failed** (the tractor moved, or there was too much
-  vibration; the previous values are kept). Engaging autosteer or driving off stops the calibration.
-- Per SYD's user guide the result is held in the TM171's RAM, so it lasts **until the TM171 is powered
-  off**. Run it after starting the tractor whenever the yaw drifts.
-- **Wiring**: the board connects TM171 TX to Teensy RX5 (jumper SJ1) but nothing to TM171 RX. The button
-  needs a wire from **Teensy pin 20 (TX5) to the TM171 RX pin**. Without it the page reports "no reply from
-  the TM171" after 3 s.
-- `[status]` lines: started, done, failed, stopped, no reply. Constants in `TM171.ino`: `TM171_CALIB_S`
-  (20 s), `TM171_CALIB_LIMIT` (accepted gyro error, 0.5 °/s), `TM171_CALIB_CONF`.
+The **IMU tab** of the web page has a **Calibrate gyro** button for it. The IMU card on the Status page shows the result and links there.
 
-A second button, **New install calibration**, is the "CalibB" of SYD's ImuAssistant: the TM171 collects
-about 20 s of data with the module still and stores the result in its **flash memory**. Run it once after
-installing the TM171, or after a large temperature change, with the tractor parked and autosteer off. It
-cannot be stopped once started, and **power must not be cut while it runs** (SYD warns a power loss during
-those 20 s can damage the TM171). The page shows the TM171's reply (saved / failed / no result after 60 s);
-**switch the whole module off and on afterwards**, as SYD requires (the TM171 has no power switch of its
-own on the AiO board).
+- **How**: park the tractor and switch autosteer off (the page refuses otherwise).
+  - The TM171 collects data for 20 s while the page counts down.
+  - Then it reports **OK** or **failed** (the tractor moved, or there was too much vibration; the previous values are kept).
+  - Engaging autosteer or driving off stops the calibration.
+- **How long it lasts**: per SYD's user guide the result is held in the TM171's RAM, so it lasts **until the TM171 is powered off**. Run it after starting the tractor whenever the yaw drifts.
+- **Wiring**: the board connects TM171 TX to Teensy RX5 (jumper SJ1), but nothing to TM171 RX.
+  - The button needs a wire from **Teensy pin 20 (TX5) to the TM171 RX pin**.
+  - Without it the page reports "no reply from the TM171" after 3 s.
+- `[status]` lines: started, done, failed, stopped, no reply.
+- Constants in `TM171.ino`: `TM171_CALIB_S` (20 s), `TM171_CALIB_LIMIT` (accepted gyro error, 0.5 °/s), `TM171_CALIB_CONF`.
+
+#### New install calibration
+
+A second button, **New install calibration**, is the "CalibB" of SYD's ImuAssistant. The TM171 collects about 20 s of data with the module still, and stores the result in its **flash memory**.
+
+- Run it once after installing the TM171, or after a large temperature change, with the tractor parked and autosteer off.
+- It cannot be stopped once started.
+- **Power must not be cut while it runs**: SYD warns a power loss during those 20 s can damage the TM171.
+- The page shows the TM171's reply: saved / failed / no result after 60 s.
+- **Switch the whole module off and on afterwards**, as SYD requires (the TM171 has no power switch of its own on the AiO board).
 
 The magnetometer is never calibrated: the firmware aligns the IMU yaw to the GPS heading, so it is unused.
 
 ### TM171 settings from the page
 
-On the IMU tab, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested
-its settings at start-up (Setting object 21): magnetometer on/off, GyroErrFilter with the accelerometer gain
-(the dial next to it in ImuAssistant), Self-Adapt filter with the magnetometer gain, status output, boot
-mode and output data rate (a list: 25, 50 or 100 Hz; the TM171's inhibit time, the shortest gap between two
-packets, is shown and left as read). 25 Hz is the AgOpenGPS forum set-up and 100 Hz what the AiO v6 firmware
-uses; this firmware takes the newest TM171 sample at each GPS fix, so a higher rate only makes that sample
-fresher (at most 10 ms old instead of 40 ms). The set-up check accepts the three; a rate read that is not in
-the list is shown "as read". **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum (magnetometer
-off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, Auto boot). **Write to TM171**
-sends the form, saved to flash unless you untick it, waits for the TM171's acknowledgement and reads the
-settings back. The measured output rate is shown next to the rate field.
+On the IMU tab, a **TM171 settings** fold-out shows what the TM171 reported when the firmware requested its settings at start-up (Setting object 21):
 
-Deliberately out of reach: the gyro, the accelerometer, the roll-pitch-yaw output and the UART output are
-always left on, and the UART baud rate is never changed (the Teensy would lose contact with the TM171; use
-ImuAssistant over the TM171's USB-C port for that). SYD's guide does not number the bits of the settings
-word, so before writing anything the firmware checks the reserved bits of the word it read and the baud rate
-word; if they do not match, the page reports "layout not recognised" with the raw bytes and refuses to write.
-The layout was confirmed on a real TM171 on 24 Oct 2026 (the first guess took the rate for an inhibit time and
-showed a "silent time" that does not exist; the words the firmware does not know are left as read). All of
-this needs the TX5 wire.
+- magnetometer on/off
+- GyroErrFilter with the accelerometer gain (the dial next to it in ImuAssistant)
+- Self-Adapt filter with the magnetometer gain
+- status output, boot mode
+- output data rate: a list of 25, 50 or 100 Hz. The TM171's inhibit time (the shortest gap between two packets) is shown and left as read.
 
-Commands are addressed to the TM171's own node ID, taken from the frames it sends (the `[status]` line
-"settings read from ID N"). A real TM171 answered requests sent "to everyone" (ID 0) but ignored every
-settings write sent that way (24 Oct 2026). To see what happens on the wire, the log gets the write frame
-byte by byte ("frame sent"), every acknowledge the TM171 sends, and the first frame of each type the firmware
-does not handle.
+About the rate:
+
+- 25 Hz is the AgOpenGPS forum set-up, and 100 Hz what the AiO v6 firmware uses.
+- This firmware takes the newest TM171 sample at each GPS fix, so a higher rate only makes that sample fresher (at most 10 ms old instead of 40 ms).
+- The set-up check accepts the three. A rate read that is not in the list is shown "as read".
+- The measured output rate is shown next to the rate field.
+
+The buttons:
+
+- **AgOpenGPS defaults** loads the values recommended on the AgOpenGPS forum: magnetometer off, GyroErrFilter 3.50, Self-Adapt 1.00, RPY + Status, UART 115200, 25 Hz, Auto boot.
+- **Write to TM171** sends the form, saved to flash unless you untick it. It waits for the TM171's acknowledgement and reads the settings back.
+
+**Deliberately out of reach**:
+
+- The gyro, the accelerometer, the roll-pitch-yaw output and the UART output are always left on.
+- The UART baud rate is never changed: the Teensy would lose contact with the TM171. Use ImuAssistant over the TM171's USB-C port for that.
+
+**Safety checks**: SYD's guide does not number the bits of the settings word.
+
+- So before writing anything, the firmware checks the reserved bits of the word it read, and the baud rate word.
+- If they do not match, the page reports "layout not recognised" with the raw bytes and refuses to write.
+- The layout was confirmed on a real TM171 on 24 Oct 2026. The first guess took the rate for an inhibit time, and showed a "silent time" that does not exist. The words the firmware does not know are left as read.
+- All of this needs the TX5 wire.
+
+**Addressing**: commands are addressed to the TM171's own node ID, taken from the frames it sends (the `[status]` line "settings read from ID N").
+
+- A real TM171 answered requests sent "to everyone" (ID 0), but ignored every settings write sent that way (24 Oct 2026).
+- To see what happens on the wire, the log gets the write frame byte by byte ("frame sent"), every acknowledge the TM171 sends, and the first frame of each type the firmware does not handle.
 
 ### TM171 set-up check
 
-If nothing answers at 115200 at start-up, the firmware looks for the TM171 at its other baud rates
-(460800, 230400, 921600, 57600, 38400, 9600). Found, Serial5 stays at that rate and the TM171 works as
-usual. A baud rate other than 115200, or settings that differ from the AgOpenGPS set-up above, give a
-warning at the top of the Status page and in the IMU card (and tab), a `[status]` line, and a message on the
-AgOpenWeb / AgOpenGPS screen once a minute ("TM171 not set up for AgOpenGPS: module page, IMU tab, Fix TM171
-setup"). **Fix TM171 setup** writes 115200 baud and the AgOpenGPS set-up to the TM171's flash in one go,
-switches Serial5 to 115200 and reads the settings back; the tab then asks for a **New install
-calibration**. Nothing is written without that click. The settings must have been read first, so the TX5
-wire is needed; without it the page can only warn.
+If nothing answers at 115200 at start-up, the firmware looks for the TM171 at its other baud rates (460800, 230400, 921600, 57600, 38400, 9600). Found, Serial5 stays at that rate and the TM171 works as usual.
+
+A baud rate other than 115200, or settings that differ from the AgOpenGPS set-up above, give:
+
+- a warning at the top of the Status page and in the IMU card (and tab)
+- a `[status]` line
+- a message on the AgOpenWeb / AgOpenGPS screen once a minute ("TM171 not set up for AgOpenGPS: module page, IMU tab, Fix TM171 setup")
+
+**Fix TM171 setup**:
+
+- writes 115200 baud and the AgOpenGPS set-up to the TM171's flash in one go
+- switches Serial5 to 115200 and reads the settings back
+- the tab then asks for a **New install calibration**
+- Nothing is written without that click.
+- The settings must have been read first, so the TX5 wire is needed. Without it the page can only warn.
 
 
 ## Dual F9P: second F9P on the GPS2 port
 
+**The two receivers**
+
 - **First F9P** (GPS1, Serial7, 460800): GGA + VTG at 10 Hz, and its corrections to the second F9P over UART2.
 - **Second F9P** (GPS2, Serial2, pins 7 / 8, 460800): **UBX-NAV-RELPOSNED** every epoch.
-- The heading is used only with an RTK fixed carrier solution and the flags `gnssFixOK`, `diffSoln`, `relPosValid` and `relPosHeadingValid` set. When there is no heading, the dual-antenna card and `[status]` say why: no corrections from the first F9P (`refPosMiss` / `refObsMiss`: the RTCM over UART2, see both receiver checks on the GPS tab), or a heading the F9P flags as not valid (antennas too close).
-- The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
-- Web page: Settings → **GPS2 port: automatic** (the default). The second F9P is found by itself at every start: its valid UBX or NMEA data, or, when only bytes with nothing valid arrive at 460800 and no XIAO says hello, a search for its baud rate at start-up (a new F9P sends at 38400); no u-blox receiver found there, the port goes back to listening. A XIAO's hello gives the port back to the XIAO. The port only changes hands with autosteer off.
-- **Status tab**, dual-antenna heading card: the second F9P's model and firmware, its data at 460800 (valid,
-  wrong baud rate, nothing arriving) and its **Setup** (all good, or what the Teensy needs and it lacks),
-  with a link to the GPS tab. A warning at the top of Status when nothing arrives from it, when it is at the
-  wrong baud rate, or when it lacks settings. The GPS tab, **Second F9P check**, has the details and the
-  buttons: **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
-- Its temperature (`UBX-MON-SYS`, since 4 Nov 2026) in the dual-antenna card and in its check on the GPS tab, as for the first receiver.
-- A fresh F9P sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies
-  it and checks it; the cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
-- **Set up automatically**, like the first receiver (see the receiver check): found at another baud rate the
-  port stays there and `DualRelPos.txt` is loaded in one go (it sets 460800); lacking what the Teensy needs
-  it gets `DualRelPos.txt` loaded, then is checked again.
-- A GNSS receiver on the GPS2 port while the port is off (valid NMEA or UBX arriving): Status says to set
-  **GPS2 port** to automatic. While autosteer is on, Status says it becomes the second F9P once autosteer is off.
 
-The heading is `relPosHeading` **+ 90°** (antennas left and right, as in the AiO firmware), used only with RTK fixed between the antennas. The roll of the antennas goes into `$PAOGI` when there is no IMU. From there everything is as with the UM982.
+**The heading** is used only with an RTK fixed carrier solution and the flags `gnssFixOK`, `diffSoln`, `relPosValid` and `relPosHeadingValid` set. When there is no heading, the dual-antenna card and `[status]` say why:
+
+- no corrections from the first F9P (`refPosMiss` / `refObsMiss`: the RTCM over UART2, see both receiver checks on the GPS tab)
+- or a heading the F9P flags as not valid (antennas too close)
+
+The receiver check can load `DualPosition.txt` and `DualRelPos.txt` into them.
+
+**Finding the second F9P.** Web page: Settings → **GPS2 port: automatic** (the default). The second F9P is found by itself at every start:
+
+- by its valid UBX or NMEA data
+- or, when only bytes with nothing valid arrive at 460800 and no XIAO says hello, by a search for its baud rate at start-up (a new F9P sends at 38400)
+- No u-blox receiver found there: the port goes back to listening.
+- A XIAO's hello gives the port back to the XIAO.
+- The port only changes hands with autosteer off.
+
+**Status tab**, dual-antenna heading card:
+
+- the second F9P's model and firmware, its data at 460800 (valid, wrong baud rate, nothing arriving)
+- its **Setup** (all good, or what the Teensy needs and it lacks), with a link to the GPS tab
+- its temperature (`UBX-MON-SYS`, since 4 Nov 2026), also in its check on the GPS tab, as for the first receiver
+- A warning at the top of Status when nothing arrives from it, when it is at the wrong baud rate, or when it lacks settings.
+
+**GPS tab**, **Second F9P check**: the details and the buttons **Set to 460800 and save**, **Compare with AOGConfigOMatic**, **Load the AgOpenGPS settings**.
+
+**A fresh F9P** sends NMEA, not the RELPOSNED. Its sentences count as valid data, so the Teensy identifies it and checks it. The cards say "NMEA 10 Hz, no RELPOSNED" meanwhile.
+
+**Set up automatically**, like the first receiver (see the receiver check):
+
+- found at another baud rate, the port stays there and `DualRelPos.txt` is loaded in one go (it sets 460800)
+- lacking what the Teensy needs, it gets `DualRelPos.txt` loaded, then is checked again
+
+**A GNSS receiver on the GPS2 port while the port is off** (valid NMEA or UBX arriving): Status says to set **GPS2 port** to automatic. While autosteer is on, Status says it becomes the second F9P once autosteer is off.
+
+**The heading sent**:
+
+- `relPosHeading` **+ 90°** (antennas left and right, as in the AiO firmware), used only with RTK fixed between the antennas.
+- The roll of the antennas goes into `$PAOGI` when there is no IMU.
+- From there everything is as with the UM982.
 
 In AgOpenWeb: **"Dual GPS" on**. In AgOpenGPS: heading source **"Dual"**.
-
 ## Steering
 
 The output follows the program's steer settings ("Motor driver" and the rest):
@@ -345,39 +663,77 @@ The output follows the program's steer settings ("Motor driver" and the rest):
 
 **Keya** (the AiO firmware's code):
 
-- Kickout: with **Current Turn** on in the program, the motor's own current is compared with the program's limit, and a wheel turned by hand against the motor cuts at once ([Keya kickout](#keya-kickout)).
-- A motor fault (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
-- No heartbeat for 0.5 s (cable, plug, power) turns autosteer off and blocks it until the heartbeat is back, as in the AiO 26 firmware.
-- **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives. The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts); until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m). The Steering settings card shows which one is in use.
+- **Kickout**: with **Current Turn** on in the program, the motor's own current is compared with the program's limit, and a wheel turned by hand against the motor cuts at once ([Keya kickout](#keya-kickout)).
+- **A motor fault** (over voltage, stall, hall failure, ...) turns autosteer off and is named in the messages.
+- **No heartbeat for 0.5 s** (cable, plug, power) turns autosteer off and blocks it until the heartbeat is back, as in the AiO 26 firmware.
+- **Without a WAS** (WAS set to "differential" in the program): the wheel angle comes from the Keya's position, corrected slowly above 1.2 km/h with the angle the GPS heading gives.
+  - The wheelbase comes from AgOpenWeb's vehicle settings (PGN 247, sent when the program starts, when the vehicle changes and when the Teensy restarts).
+  - Until it arrives, and with AgOpenGPS, the firmware uses `WHEELBASE_M` (main .ino, 3.20 m).
+  - The Steering settings card shows which one is in use.
 
-**For every driver, as in the AiO firmware:** autosteer is cut beyond **±50°** of wheel angle or above **25 km/h**; below **0.2 km/h** the wheels are not turned (both speeds can be changed on the web page, Settings > Steering); a **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
+**For every driver, as in the AiO firmware:**
 
-**Steer switch mode** (the program's None, Switch or Button): a change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages. A steer switch left closed when the mode changes to Switch must be opened and closed again. Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
+- Autosteer is cut beyond **±50°** of wheel angle, or above **25 km/h**.
+- Below **0.2 km/h** the wheels are not turned.
+- Both speeds can be changed on the web page, Settings > Steering.
+- A **WAS map** (`inputWAS` / `outputWAS` in `Autosteer.ino`) can straighten a non-linear WAS (as delivered it changes nothing).
 
-**Min To Move and the Max Limit:** the PWM never goes above the Max Limit. With Min To Move set above it, the PWM is kept at the Max Limit and the Messages say so once. Until 22 Nov 2026 the PWM then went up to Min To Move x 1.2 (215 with a Max Limit of 100).
+**Steer switch mode** (the program's None, Switch or Button):
 
-**Stored settings:** the steer settings, the steer config and the subnet are kept in the EEPROM and checked at start-up. A value the program cannot send (an erased or damaged EEPROM reads 0xFF: every setting on, counts per degree not a number, subnet 255.255.255) gives that part a new board's defaults, saved, with a line in the Messages; the program's next settings put its own back. Until 22 Nov 2026 they were used as read: an IBT2 was then driven as a Cytron with the relay inverted, full lock, nobody asked.
+- A change while the module runs turns autosteer off and leaves it ready, as at power-on, with a line in Messages.
+- A steer switch left closed when the mode changes to Switch must be opened and closed again.
+- Until 17 Nov 2026 a change from Button to None left it off for good, Free Drive too, until the module restarted.
 
-AgOpenWeb also sends its own limits: the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251). The Steering card shows them (under «Settings received from the program») next to the firmware's; the firmware does not cut on them, its own limits above stay (chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor).
+**Min To Move and the Max Limit**:
+
+- The PWM never goes above the Max Limit.
+- With Min To Move set above it, the PWM is kept at the Max Limit and the Messages say so once.
+- Until 22 Nov 2026 the PWM then went up to Min To Move x 1.2 (215 with a Max Limit of 100).
+
+**Stored settings**: the steer settings, the steer config and the subnet are kept in the EEPROM and checked at start-up.
+
+- A value the program cannot send gives that part a new board's defaults, saved, with a line in the Messages. (An erased or damaged EEPROM reads 0xFF: every setting on, counts per degree not a number, subnet 255.255.255.)
+- The program's next settings put its own back.
+- Until 22 Nov 2026 they were used as read: an IBT2 was then driven as a Cytron with the relay inverted, full lock, nobody asked.
+
+**The program's own limits**: AgOpenWeb also sends the vehicle's maximum wheel angle (PGN 247, with the wheelbase) and the minimum speed for AutoSteer (PGN 251).
+
+- The Steering card shows them (under «Settings received from the program») next to the firmware's.
+- The firmware does not cut on them: its own limits above stay. This was chosen on 3 Nov 2026, so that a limit typed in the program never surprises on the tractor.
 
 ### Keya kickout
 
-A Keya needs no kickout sensor: it reports its own current and speed in every heartbeat. With **Current Turn** on in the program (AutoSteer settings, Turn Sensors) the firmware uses both:
+A Keya needs no kickout sensor: it reports its own current and speed in every heartbeat. With **Current Turn** on in the program (AutoSteer settings, Turn Sensors) the firmware uses both.
 
-- **Current** (since 11 Nov 2026). A driver who holds the wheel stalls the motor, and its current rises to the most it can draw. The Keya reports whole amps; the firmware smooths them (about 0.2 s) and puts them on the program's 0-255 scale as amps × 32, the scale of the AiO 26 firmware: 100 % is 8 A, 1 % is 0.08 A. When the value stays at or above the program's limit for the [kickout delay](#settings) (0.5 s by default), autosteer goes off: `Autosteer off: Keya current kickout (5.2 A, limit 4.5 A)`.
-- **Slip**. The wheel turned against the motor (by more than 10 rpm), or much faster than the motor was told, for 9 heartbeats in a row: autosteer goes off at once, whatever the limit: `Autosteer off: Keya kickout: wheel turned by hand (26 rpm)`. Until 11 Nov 2026 the slip was the only kickout and it was compared with the program's limit; a wheel held still never counted as slip, so the motor went on fighting the driver's hand.
+**Current** (since 11 Nov 2026). A driver who holds the wheel stalls the motor, and its current rises to the most it can draw.
 
-**Choosing the limit.** The Status tab's Steering card shows the current next to the limit, in amps (row *Keya current*), and the program shows the same value in %. Watch it while autosteer steers normally, then hold the wheel and watch it again, and put the limit between the two. The Keya reports whole amps (the smoothed value moves between them), so a limit half-way between two whole amps is the clear choice:
+- The Keya reports whole amps. The firmware smooths them (about 0.2 s).
+- It puts them on the program's 0-255 scale as amps × 32, the scale of the AiO 26 firmware: 100 % is 8 A, 1 % is 0.08 A.
+- When the value stays at or above the program's limit for the [kickout delay](#settings) (0.5 s by default), autosteer goes off: `Autosteer off: Keya current kickout (5.2 A, limit 4.5 A)`.
+
+**Slip**. The wheel turned against the motor (by more than 10 rpm), or much faster than the motor was told, for 9 heartbeats in a row.
+
+- Autosteer goes off at once, whatever the limit: `Autosteer off: Keya kickout: wheel turned by hand (26 rpm)`.
+- Until 11 Nov 2026 the slip was the only kickout, and it was compared with the program's limit. A wheel held still never counted as slip, so the motor went on fighting the driver's hand.
+
+**Choosing the limit.** The Status tab's Steering card shows the current next to the limit, in amps (row *Keya current*). The program shows the same value in %.
+
+1. Watch it while autosteer steers normally.
+2. Hold the wheel and watch it again.
+3. Put the limit between the two.
+
+The Keya reports whole amps (the smoothed value moves between them), so a limit half-way between two whole amps is the clear choice:
 
 | Limit in the program | 31 % | 44 % | 56 % | 69 % | 81 % |
 |---|---|---|---|---|---|
 | In amps | 2.5 A | 3.5 A | 4.5 A | 5.5 A | 6.5 A |
 | Cuts when the Keya reports | 3 A or more | 4 A or more | 5 A or more | 6 A or more | 7 A or more |
 
-- AgOpenWeb reads the same value (PGN 250) and also switches its AutoSteer off by itself the moment the value reaches its limit, so with AgOpenWeb the kickout delay rarely gets to count. AgOpenGPS only shows the value.
-- With Current Turn off there is no Keya kickout at all. At 0 % AgOpenWeb sends "no limit": the current then cuts only at 8 A (the slip still cuts).
+- AgOpenWeb reads the same value (PGN 250), and also switches its AutoSteer off by itself the moment the value reaches its limit. So with AgOpenWeb the kickout delay rarely gets to count. AgOpenGPS only shows the value.
+- With Current Turn off there is no Keya kickout at all.
+- At 0 % AgOpenWeb sends "no limit": the current then cuts only at 8 A (the slip still cuts).
 - Keep **Pressure Turn** off with a Keya: with both on, AgOpenWeb sends the pressure's limit, not the current's.
-- Coming from gunicsba's Keya firmware (`AOG-Keya-CANBUS_lazykickoff95`): it reads the same current from the Keya, but puts it on the scale as amps × 20 and smooths it longer instead of waiting for the delay. The same current is a lower % there: 5 A is 39 % there and 63 % here.
+- Coming from gunicsba's Keya firmware (`AOG-Keya-CANBUS_lazykickoff95`): it reads the same current from the Keya, but puts it on the scale as amps × 20, and smooths it longer instead of waiting for the delay. The same current is a lower % there: 5 A is 39 % there and 63 % here.
 
 At the top of `Autosteer.ino`:
 
@@ -392,20 +748,72 @@ Everything here acts only on the module's own outputs (valve, Danfoss, Keya), li
 
 The WAS voltage (single input) must stay between **0.2 and 4.8 V**. A broken wire, a loose plug or a dead sensor gives a reading at one end, which would drive the valve hard.
 
-- Out of range for 75 ms (4 readings in a row at 40 Hz, 8 at 100 Hz): autosteer off at once and blocked (`WAS: 0.05 V, out of the 0.2-4.8 V range ... - autosteer blocked`, and on the program's screen). Shorter glitches are ignored.
-- Back in range for 1 s: the block ends, and autosteer must be engaged again by hand.
+- **Out of range for 75 ms** (4 readings in a row at 40 Hz, 8 at 100 Hz): autosteer off at once and blocked (`WAS: 0.05 V, out of the 0.2-4.8 V range ... - autosteer blocked`, and on the program's screen). Shorter glitches are ignored.
+- **Back in range for 1 s**: the block ends, and autosteer must be engaged again by hand.
 - Until 17 Nov 2026 both times were skipped when they started on an even millisecond (about every second time): one reading out of range blocked autosteer, and one reading back in range ended the fault.
-- Differential input (A/D converter "Differential" in the program): −0.5 to 4.8 V. A negative reading means WAS_H is under WAS_L: nothing is wired to WAS_L (AmpSeal pin 3), the usual case of a 3-wire sensor (signal on pin 2, ground on pin 4) with the program set to Differential. The reading would be a large angle to one side (−98° for −3.67 V). The message, the Status page and the program's screen say to choose Single (AutoSteer, Hardware, A/D converter) or to wire the sensor's ground to pin 3 too. A wire that floats mid-range is not seen by the voltage: see the next point.
-- **Plug out or broken wire inside the range** (since 19 Nov 2026): an open input floats and can settle anywhere inside 0.2-4.8 V (a Puma: 3.93 V with the WAS plug out, read as 29°, and no fault). Two checks of the angle catch it:
-  - **Jump**: the angle changes 20° or more within 0.15 s (133°/s; wheels turn 25-40°/s under autosteer, about 80°/s with a fast hand on a quick steering) and stays changed for 50 ms. Autosteer is blocked at once, also standing still with autosteer off: `WAS: the angle jumped 29.4 deg, more than 20 in 0.15 s (2.47 V to 3.93 V): faster than wheels turn - WAS plug, wire or sensor? - autosteer blocked`, on the program's screen `WAS jumped 29 deg: plug or wire? Autosteer blocked`, and the STEER LED red. One bad reading that comes back is not a jump. The block ends 3 s after the last jump (with a steer switch, once it is off); the plug going back in is a jump too. A reading that drifts slowly is not seen: the Status line *WAS sensor* shows the fastest change within 0.15 s of the last 10-20 s, so a test shows how fast the reading moved.
-  - **Wheels that do not follow**: autosteer pushes at 90 % of the Max Limit or more for 0.5 s (0.8 s from the start of a push: a valve or motor takes up to 0.3 s to react) and the angle moves less than 1° towards the set point, or moves away: autosteer off, `Autosteer off: wheels did not follow (PWM 99): WAS plug?`, with a `[status]` line that gives the PWM and the angles. A hand that holds the steering wheel against autosteer, or wheels against a stop, turn it off the same way. Not judged: a set point past the program's maximum wheel angle plus 2° (35° when the program does not send it: AgOpenGPS), because the steer wizard's Maximum Steering Angle step drives the wheels to the stops on purpose; a Max Limit less than 10 above Min To Move; below the minimum steering speed (no push then). With a steer switch, autosteer stays off until the switch is turned off.
-  - Both are off with the WAS check (bench) and with a Keya as the WAS. Not caught: a sensor arm that slips (the angle moves with the wheels, but wrong), or a floating reading that sits near the set point while autosteer drives gently: the line error then grows until the module pushes at its Max Limit.
-- **Bench without a WAS**: switch the check off on the page. While off: a warning on Status, a `[boot]` line, a note on the program's screen, and an out-of-range angle goes to the program as 0°. Switch it back on before using the tractor.
-- The fault is told on the program's screen when it starts and again each time the program's AutoSteer button goes on while it blocks (at most every 3 s; since 12 Nov 2026). A bench board with no WAS reads about 4.9 V from power-on, before the program runs: until then, pressing AutoSteer only showed the button red, with no reason. The same for a Keya that does not answer. Since 17 Nov 2026, when the fault is over and only a steer switch left on still blocks, it says so (`WAS in range again: steer switch off and on`); with a WAS fault and a silent Keya together, Messages gets a line for each (the program's screen shows the WAS).
+
+**Differential input** (A/D converter "Differential" in the program): −0.5 to 4.8 V.
+
+- A negative reading means WAS_H is under WAS_L: nothing is wired to WAS_L (AmpSeal pin 3).
+- That is the usual case of a 3-wire sensor (signal on pin 2, ground on pin 4) with the program set to Differential.
+- The reading would be a large angle to one side (−98° for −3.67 V).
+- The message, the Status page and the program's screen say to choose Single (AutoSteer, Hardware, A/D converter), or to wire the sensor's ground to pin 3 too.
+- A wire that floats mid-range is not seen by the voltage: see the next point.
+
+#### Plug out or broken wire inside the range
+
+**Plug out or broken wire inside the range** (since 19 Nov 2026): an open input floats and can settle anywhere inside 0.2-4.8 V. A Puma read 3.93 V with the WAS plug out, as 29°, and no fault. Two checks of the angle catch it.
+
+**Jump**: the angle changes 20° or more within 0.15 s (133°/s), and stays changed for 50 ms. Wheels turn 25-40°/s under autosteer, about 80°/s with a fast hand on a quick steering.
+
+- Autosteer is blocked at once, also standing still with autosteer off:
+  - `WAS: the angle jumped 29.4 deg, more than 20 in 0.15 s (2.47 V to 3.93 V): faster than wheels turn - WAS plug, wire or sensor? - autosteer blocked`
+  - on the program's screen `WAS jumped 29 deg: plug or wire? Autosteer blocked`
+  - and the STEER LED red
+- One bad reading that comes back is not a jump.
+- The block ends 3 s after the last jump (with a steer switch, once it is off). The plug going back in is a jump too.
+- A reading that drifts slowly is not seen. The Status line *WAS sensor* shows the fastest change within 0.15 s of the last 10-20 s, so a test shows how fast the reading moved.
+
+**Wheels that do not follow**: autosteer pushes at 90 % of the Max Limit or more for 0.5 s, and the angle moves less than 1° towards the set point, or moves away. (0.8 s from the start of a push: a valve or motor takes up to 0.3 s to react.)
+
+- Autosteer off: `Autosteer off: wheels did not follow (PWM 99): WAS plug?`, with a `[status]` line that gives the PWM and the angles.
+- A hand that holds the steering wheel against autosteer, or wheels against a stop, turn it off the same way.
+- With a steer switch, autosteer stays off until the switch is turned off.
+- Not judged:
+  - a set point past the program's maximum wheel angle plus 2° (35° when the program does not send it: AgOpenGPS), because the steer wizard's Maximum Steering Angle step drives the wheels to the stops on purpose
+  - a Max Limit less than 10 above Min To Move
+  - below the minimum steering speed (no push then)
+
+Both checks are off with the WAS check (bench) and with a Keya as the WAS.
+
+Not caught:
+
+- a sensor arm that slips (the angle moves with the wheels, but wrong)
+- a floating reading that sits near the set point while autosteer drives gently: the line error then grows until the module pushes at its Max Limit
+
+#### Bench and messages
+
+**Bench without a WAS**: switch the check off on the page. While off:
+
+- a warning on Status, a `[boot]` line, a note on the program's screen
+- an out-of-range angle goes to the program as 0°
+- Switch it back on before using the tractor.
+
+**The fault is told on the program's screen** when it starts, and again each time the program's AutoSteer button goes on while it blocks (at most every 3 s; since 12 Nov 2026).
+
+- A bench board with no WAS reads about 4.9 V from power-on, before the program runs. Until then, pressing AutoSteer only showed the button red, with no reason.
+- The same for a Keya that does not answer.
+- Since 17 Nov 2026, when the fault is over and only a steer switch left on still blocks, it says so (`WAS in range again: steer switch off and on`).
+- With a WAS fault and a silent Keya together, Messages gets a line for each (the program's screen shows the WAS).
 
 ### Why autosteer went off
 
-Autosteer stops at the next steering loop (25 ms; 10 ms with the loop at 100 Hz). The reason goes to Messages, to the web page and to the program's screen (AgOpenWeb: "AiO Board Msgs", on by default; AgOpenGPS: "Hardware Messages", off by default):
+Autosteer stops at the next steering loop (25 ms; 10 ms with the loop at 100 Hz).
+
+The reason goes to Messages, to the web page and to the program's screen:
+
+- AgOpenWeb: "AiO Board Msgs", on by default
+- AgOpenGPS: "Hardware Messages", off by default
 
 | Cause | Program's screen |
 |---|---|
@@ -420,7 +828,11 @@ Autosteer stops at the next steering loop (25 ms; 10 ms with the loop at 100 Hz)
 | wheels did not follow at the Max Limit for 0.5 s | `Autosteer off: wheels did not follow (PWM 99): WAS plug?` |
 | no steering data for 2.5 s | `Autosteer off: no steering data from the program for 2.5 s` |
 
-When the program itself turns autosteer off (its button, the tractor outside the field boundary, its speed limits, RTK lost, the steer wizard), the module only sees the program's bit go to zero: Messages and the web page say `by the program (its screen says why)`, nothing goes to the program's screen (it knows), and with Button as the steer switch the physical button alone reads `steer button` (until 27 Oct 2026 the program's button read `steer button` too).
+**When the program itself turns autosteer off** (its button, the tractor outside the field boundary, its speed limits, RTK lost, the steer wizard), the module only sees the program's bit go to zero:
+
+- Messages and the web page say `by the program (its screen says why)`.
+- Nothing goes to the program's screen (it knows).
+- With Button as the steer switch, the physical button alone reads `steer button`. (Until 27 Oct 2026 the program's button read `steer button` too.)
 
 ### Watchdog and crash
 
@@ -429,7 +841,12 @@ When the program itself turns autosteer off (its button, the tractor outside the
 
 ### Why the Teensy started
 
-Shown in a `[boot]` line, on the Firmware tab, and after a watchdog or crash restart on the program's screen: power on, restart by software, **WATCHDOG** (the line gives where the loop was) or **CRASH**:
+Shown in a `[boot]` line, on the Firmware tab, and after a watchdog or crash restart on the program's screen:
+
+- power on
+- restart by software
+- **WATCHDOG** (the line gives where the loop was)
+- **CRASH**:
 
 `[boot] Start: CRASH at 0x0001D542, called from 0x0001EC86 (fault 0x00000082, address 0x2007A01C), restarted by the watchdog (v4.5_AiO_WEB, Teensyduino 1.58). Please send this line`
 
@@ -437,31 +854,68 @@ The addresses only mean something with that build. Send the `.elf` too: Arduino 
 
 ## Network stack
 
-NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt, which could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`). The firmware stops that timer after `Ethernet.begin()` and runs the stack itself from the loop and in every wait for the network (`zNet.h`). NativeEthernet itself is not changed.
+NativeEthernet runs the network stack (FNET) from a 1 ms timer interrupt. That could change the stack's memory in the middle of a network call from the loop (the crash at `0x0001D542`).
 
-A steering, steer settings or steer config packet from the program (PGN 254, 252, 251) shorter than its length byte says (8 data bytes) is dropped, with a line in the messages at most every 10 s. Until 22 Nov 2026 the bytes it lacked came from the packet before: a short steer settings packet saved counts per degree 1 instead of 120.
+- The firmware stops that timer after `Ethernet.begin()`, and runs the stack itself from the loop and in every wait for the network (`zNet.h`).
+- NativeEthernet itself is not changed.
 
-The mDNS responder (`aio.local`; the page announced as `_http._tcp` for the fork's **Search the network** and as `_aowcard._tcp` with TXT `v=1` and `path=/` for the official AgOpenWeb's add-on cards, `Docs/ADD_ON_CARDS.md`, both under the instance name `AiO-xxxx`) is FNET's own, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
+**Short packets.** A steering, steer settings or steer config packet from the program (PGN 254, 252, 251) shorter than its length byte says (8 data bytes) is dropped, with a line in the messages at most every 10 s.
+
+- Until 22 Nov 2026 the bytes it lacked came from the packet before: a short steer settings packet saved counts per degree 1 instead of 120.
+
+**mDNS** (`aio.local`): FNET's own responder, started after the IP is set (`mdnsStart` in `zEthernet.ino`) and run by the same polling.
+
+- The page is announced as `_http._tcp`, for the fork's **Search the network**.
+- And as `_aowcard._tcp` with TXT `v=1` and `path=/`, for the official AgOpenWeb's add-on cards (`Docs/ADD_ON_CARDS.md`).
+- Both under the instance name `AiO-xxxx`. The four digits come from the Teensy's serial id, because the Ethernet MAC is the same on every AiO board.
 
 ## Main loop
 
-Nothing in `loop()` waits: on the two-F9P + BNO085 board it runs about 38 000 times a second at 600 MHz and about 31 000 at the 450 MHz the firmware is built with since 4 Nov 2026 (measured; longest pass 3.5 ms, the same as at 600 MHz: it waits on the BNO085's I2C, not on the processor). 850 before 3 Nov 2026. The Firmware tab shows the longest pass; the diagnostic report has the passes per second and the time each step takes (`diag.loop`), which is how a slow step is found.
+Nothing in `loop()` waits. On the two-F9P + BNO085 board (measured):
 
-- **GNSS receiver**: each pass reads everything the receiver has sent (up to 512 bytes, about one GGA). Until 3 Nov 2026 it read one byte per pass: with an RTK fix an F9P at 10 Hz sends about 1300 bytes a second, more than a slow loop took, so the 2 KB serial buffer overflowed, GGA sentences were cut, the position came and went and the dual heading was never used.
-- **Receiver set-up check** (both F9Ps): once a second. Before 3 Nov 2026 it walked the whole settings file at every pass (1 ms each time, most of the loop on that board).
-- **Steering**: on its own timer, 40 or 100 Hz (Settings), whatever else the loop does.
-- **Web page**: never waits for a browser for more than 3 s, and the page goes out in small pieces between steering loops (see Web page).
-- **Memory for the stack**: RAM1 (512 KB) holds the code that runs from RAM, counted in 32 KB blocks, and the variables; the rest is the stack. The report shows what is left of it when the report is made (`diag.ram.stackFree`). On 4 Nov 2026 the temperatures took that code just over 256 KB and the stack lost a whole block (10 KB left); the web page's answers and JSON now run from flash (`FLASHMEM`), and the GitHub check fails when a build leaves less than 32 KB.
-- **Timers**: a timer that starts with the time (0 = not running) is started with `msStamp`: the time itself, never 0, never ahead of the loop's time. Until 21 Nov 2026 about 40 of them (the receiver, the dual F9P, the IMU, the LEDs, the XIAO, a message held 3 s) started one millisecond ahead half the time: in that millisecond a "once a second" job could run twice, a message be said twice, "heard lately" read no, or a time on the page read 49 days. The steering's own timers had it fixed on 17 Nov 2026 (see WAS check).
-- **BNO085 on I2C**: found at start-up (up to 1.5 s of waiting, before the loop starts); from then on it is started again only after 3 s of silence, with autosteer off (see IMU).
+- about 38 000 passes a second at 600 MHz
+- about 31 000 at the 450 MHz the firmware is built with since 4 Nov 2026
+- longest pass 3.5 ms, the same as at 600 MHz: it waits on the BNO085's I2C, not on the processor
+- 850 before 3 Nov 2026
+
+The Firmware tab shows the longest pass. The diagnostic report has the passes per second and the time each step takes (`diag.loop`): that is how a slow step is found.
+
+**GNSS receiver**: each pass reads everything the receiver has sent (up to 512 bytes, about one GGA).
+
+- Until 3 Nov 2026 it read one byte per pass. With an RTK fix an F9P at 10 Hz sends about 1300 bytes a second, more than a slow loop took.
+- So the 2 KB serial buffer overflowed, GGA sentences were cut, the position came and went, and the dual heading was never used.
+
+**Receiver set-up check** (both F9Ps): once a second. Before 3 Nov 2026 it walked the whole settings file at every pass (1 ms each time, most of the loop on that board).
+
+**Steering**: on its own timer, 40 or 100 Hz (Settings), whatever else the loop does.
+
+**Web page**: never waits for a browser for more than 3 s, and the page goes out in small pieces between steering loops (see Web page).
+
+**Memory for the stack**: RAM1 (512 KB) holds the code that runs from RAM (counted in 32 KB blocks) and the variables; the rest is the stack.
+
+- The report shows what is left of it when the report is made (`diag.ram.stackFree`).
+- On 4 Nov 2026 the temperatures took that code just over 256 KB, and the stack lost a whole block (10 KB left).
+- The web page's answers and JSON now run from flash (`FLASHMEM`), and the GitHub check fails when a build leaves less than 32 KB.
+
+**Timers**: a timer that starts with the time (0 = not running) is started with `msStamp`: the time itself, never 0, never ahead of the loop's time.
+
+- Until 21 Nov 2026 about 40 of them (the receiver, the dual F9P, the IMU, the LEDs, the XIAO, a message held 3 s) started one millisecond ahead half the time.
+- In that millisecond a "once a second" job could run twice, a message be said twice, "heard lately" read no, or a time on the page read 49 days.
+- The steering's own timers had it fixed on 17 Nov 2026 (see WAS check).
+
+**BNO085 on I2C**: found at start-up (up to 1.5 s of waiting, before the loop starts). From then on it is started again only after 3 s of silence, with autosteer off (see IMU).
 
 ## Inputs
 
-- **GNSS receiver**: Serial7, 460800, 10 Hz. UM982: GGA + VTG + HPR. F9P / X20P: GGA + VTG (the HPR is not waited for). Dual F9P: GGA + VTG, and the second F9P's RELPOSNED.
+- **GNSS receiver**: Serial7, 460800, 10 Hz.
+  - UM982: GGA + VTG + HPR.
+  - F9P / X20P: GGA + VTG (the HPR is not waited for).
+  - Dual F9P: GGA + VTG, and the second F9P's RELPOSNED.
 - **IMU**: Serial5 (TM171, BNO085 RVC) or I2C (BNO085).
 - **GPS2 port**: Serial2, 460800: the XIAO or the second F9P.
 - **Keya**: CAN3.
-- **Correction radio**: Serial3 RX, 115200 (XBee on the Micro, radio header on the Standard), passed to the receiver. The RTCM messages from the radio and from NTRIP (UDP 2233) are counted: good, bad checksum, types.
+- **Correction radio**: Serial3 RX, 115200 (XBee on the Micro, radio header on the Standard), passed to the receiver.
+  - The RTCM messages from the radio and from NTRIP (UDP 2233) are counted: good, bad checksum, types.
 
 ## Output to the program (UDP 9999)
 
@@ -476,29 +930,49 @@ Four lines per epoch, one per datagram:
 | `$GNTHS` | the dual-antenna heading; `V` = none |
 | `$INHPR` | the IMU: heading, roll (in the pitch field, HPR convention), pitch; QF 4 = OK, 0 = IMU lost |
 
-The dual heading goes out as `$GNTHS`, not `$GNHPR`: AgOpenWeb starts a new epoch when a sentence type repeats, so two HPR lines cannot share one. AgOpenWeb shows the family `GGA+VTG+HPR+THS`. Without two antennas, AgOpenWeb fuses the IMU heading with fix-to-fix itself.
+- The dual heading goes out as `$GNTHS`, not `$GNHPR`: AgOpenWeb starts a new epoch when a sentence type repeats, so two HPR lines cannot share one.
+- AgOpenWeb shows the family `GGA+VTG+HPR+THS`.
+- Without two antennas, AgOpenWeb fuses the IMU heading with fix-to-fix itself.
 
 ### Classic (AgOpenGPS)
 
-- **UM982 or dual F9P: `$PAOGI`**, heading source **"Dual"**. The antenna heading when valid (5 epochs in a row); without it, the IMU heading (aligned to the antennas, then corrected by the GPS course when driving straight), or the GPS course; faded back over 1 s. No `$PANDA` here: with "Dual", AgOpenGPS ignores its heading.
-- **F9P / X20P: `$PANDA`**, heading source **"Fix"**. The IMU heading once its yaw direction is known (AgOpenGPS fuses it with fix-to-fix), `65535` until then or without an IMU.
+**UM982 or dual F9P: `$PAOGI`**, heading source **"Dual"**.
+
+- The antenna heading when valid (5 epochs in a row).
+- Without it, the IMU heading (aligned to the antennas, then corrected by the GPS course when driving straight), or the GPS course.
+- Faded back over 1 s.
+- No `$PANDA` here: with "Dual", AgOpenGPS ignores its heading.
+
+**F9P / X20P: `$PANDA`**, heading source **"Fix"**.
+
+- The IMU heading once its yaw direction is known (AgOpenGPS fuses it with fix-to-fix).
+- `65535` until then, or without an IMU.
 
 ### Automatic
 
-AgOpenWeb and AgIO both send a hello (PGN 200) once a second; they differ in the last byte (AgIO `0x47`, AgOpenWeb the real checksum). In automatic mode the module sends the standard set to AgOpenWeb and classic to AgOpenGPS (and before the first hello). The other program needs 3 hellos in a row to take over. If a future AgIO computes that checksum, choose AgOpenGPS by hand.
+AgOpenWeb and AgIO both send a hello (PGN 200) once a second. They differ in the last byte: AgIO `0x47`, AgOpenWeb the real checksum.
+
+- In automatic mode the module sends the standard set to AgOpenWeb, and classic to AgOpenGPS (and before the first hello).
+- The other program needs 3 hellos in a row to take over.
+- If a future AgIO computes that checksum, choose AgOpenGPS by hand.
 
 ## Setting up
 
 **F9P / X20P (single antenna)**
 
-- UART1 at 460800, GGA + VTG at 10 Hz, high-precision NMEA, RTCM3 in, saved in the receiver. Or from the web page alone: receiver check → **Set to 460800 and save** → **Load the AgOpenGPS settings** (`Single.txt`).
+- UART1 at 460800, GGA + VTG at 10 Hz, high-precision NMEA, RTCM3 in, saved in the receiver.
+  - Or from the web page alone: receiver check → **Set to 460800 and save** → **Load the AgOpenGPS settings** (`Single.txt`).
 - AgOpenWeb: **"Dual GPS" off**. AgOpenGPS: heading source **"Fix"**.
-- The IMU yaw direction is learned in the first turns (about 30°); set it on the page afterwards. The IMU heading is aligned to the GPS course once (2.5 s / 5 m straight above 3 km/h).
+- The IMU yaw direction is learned in the first turns (about 30°); set it on the page afterwards.
+- The IMU heading is aligned to the GPS course once (2.5 s / 5 m straight above 3 km/h).
 
 **UM982 (dual antenna)**
 
-- On its Teensy port at 10 Hz: `GPGGA 0.1`, `GPVTG 0.1`, `GPHPR 0.1`, `SAVECONFIG`. Or receiver check → **Load the AgOpenGPS settings** (two antennas or one).
-- AgOpenWeb: **"Dual GPS" on**. With `AutoDualFix` on, above `DualSwitchSpeed` it steers on fix-to-fix corrected by the antennas; turn it off to steer on the antenna heading.
+- On its Teensy port at 10 Hz: `GPGGA 0.1`, `GPVTG 0.1`, `GPHPR 0.1`, `SAVECONFIG`.
+  - Or receiver check → **Load the AgOpenGPS settings** (two antennas or one).
+- AgOpenWeb: **"Dual GPS" on**.
+  - With `AutoDualFix` on, above `DualSwitchSpeed` it steers on fix-to-fix corrected by the antennas.
+  - Turn it off to steer on the antenna heading.
 - Antenna orientation: `CONFIG HEADING OFFSET` in the UM982 **or** `DualHeadingOffset` in AgOpenWeb, not both.
 - `MinFixQuality` (default 4, RTK fixed): set 1 or 2 on the bench.
 - NTRIP (ReNEP) ports 2101 and 2102 both give RTK fixed.
@@ -518,18 +992,25 @@ AgOpenWeb and AgIO both send a hello (PGN 200) once a second; they differ in the
 
 On the USB serial monitor and the Messages tab:
 
-- `[boot]`: one line per fact at start-up (firmware and build, why it started, settings, WAS check off, simulator mode, autosteer, Ethernet, IMU, Keya, watchdog, setup time).
-- `[status]`: written **only when something changes** (a new state must last 1 s): Ethernet link and the page's address, the program talking and the output mode, corrections, autosteer off and why, WAS, GPS fix, the receiver, its sentences and rates, the receiver check, the dual heading (or why there is none, and what the program gets meanwhile), the IMU, the Keya.
+- `[boot]`: one line per fact at start-up: firmware and build, why it started, settings, WAS check off, simulator mode, autosteer, Ethernet, IMU, Keya, watchdog, setup time.
+- `[status]`: written **only when something changes** (a new state must last 1 s):
+  - Ethernet link and the page's address
+  - the program talking and the output mode
+  - corrections
+  - autosteer off and why, WAS
+  - GPS fix, the receiver, its sentences and rates, the receiver check
+  - the dual heading (or why there is none, and what the program gets meanwhile)
+  - the IMU, the Keya
 - `[web]`: what is done from the page (settings, commands, updates, restarts).
 - `[xiao]`: the XIAO's hello, silence, first PGN, bad frames, its text lines.
 
 ## LEDs
 
-The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide as far as red and green allow
-(both on = orange; the AiO 26 blue pulse is a short dark flick here). Orange is hard to tell from red through
-the diffused light window of an enclosure panel, so the in-between (orange) state is shown as red and green in
-turn, changing twice a second (`LED_MID_MS` in `zLeds.ino`; 0 gives steady orange). The IMU state has no
-LED: see the IMU card on the page and the message on the program's screen.
+The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide, as far as red and green allow.
+
+- Both on = orange. The AiO 26 blue pulse is a short dark flick here.
+- Orange is hard to tell from red through the diffused light window of an enclosure panel. So the in-between (orange) state is shown as red and green in turn, changing twice a second (`LED_MID_MS` in `zLeds.ino`; 0 gives steady orange).
+- The IMU state has no LED: see the IMU card on the page and the message on the program's screen.
 
 | LED | Red | Orange (shown as red and green in turn) | Green | Flick |
 |---|---|---|---|---|
@@ -537,7 +1018,8 @@ LED: see the IMU card on the page and the message on the program's screen.
 | GPS | GGA without a fix | fix, not RTK fixed (GPS, DGPS, RTK float) | RTK fixed | corrections arriving (NTRIP or radio): once a second |
 | STEER | fault: no ADS1115 (WAS), WAS voltage out of range or a jump of its angle, Keya heartbeat lost | ready, autosteer off | autosteer on | steer button or switch used |
 
-The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 13) blinks with every GGA.
+- The GPS LED is off when no GGA has arrived for 10 s.
+- The Teensy's own LED (pin 13) blinks with every GGA.
 
 ## Files
 
@@ -569,51 +1051,84 @@ The GPS LED is off when no GGA has arrived for 10 s. The Teensy's own LED (pin 1
 
 **Wiring**
 
-- **AiO v4.5 Micro:** in the GPS2 socket (U11), through the adapter board or the 3D-printed holder: pin 1 = 3V3, pin 2 = Teensy RX2 ← XIAO D6, pin 3 = Teensy TX2 → XIAO D7, pins 10 / 11 = GND.
+- **AiO v4.5 Micro:** in the GPS2 socket (U11), through the adapter board or the 3D-printed holder:
+  - pin 1 = 3V3
+  - pin 2 = Teensy RX2 ← XIAO D6
+  - pin 3 = Teensy TX2 → XIAO D7
+  - pins 10 / 11 = GND
 - **AiO v4.5 Standard:** header P8 (pin 1 = RX2 ← D6, pin 2 = TX2 → D7), 3.3 V and GND from another header.
 - Web page: Settings → GPS2 port: automatic (the default): the XIAO is found by its hello.
-- The XIAO card on Status says when the XIAO runs another program version than this firmware (update it on
-  the XIAO's page, or over USB-C), and, when no hello ever came, that a new XIAO has to be programmed first
-  (`v4.5_XIAO_ESP32C3_USB.bin` / `S3_USB.bin`, see `v4.5_XIAO_ESP32_bin/README.md`), with a link to the files.
+- The XIAO card on Status says:
+  - when the XIAO runs another program version than this firmware (update it on the XIAO's page, or over USB-C)
+  - when no hello ever came, that a new XIAO has to be programmed first (`v4.5_XIAO_ESP32C3_USB.bin` / `S3_USB.bin`, see `v4.5_XIAO_ESP32_bin/README.md`), with a link to the files
 - Powered from the board's 3.3 V: **a USB cable to the XIAO must not carry 5 V** while it is on the board. Program it off the board, or over WiFi from its own page.
 - The box is aluminium: use an external antenna on the XIAO's U.FL connector.
 - Bench without the board: XIAO on USB-C, and D6 → Teensy pin 7, D7 → pin 8, GND → GND.
 
-**Link** (the official firmware v26 protocol, 460800 baud; `XIAO_BAUD` in `zXiao.h` and `LINK_BAUD` in the XIAO program must match, so a XIAO program older than 4.5, at 230400, needs updating too):
+**Link**: the official firmware v26 protocol, 460800 baud.
 
-- XIAO → Teensy: `ESP32-hello` at least every 5 s (present for 10 s after each), AgOpenGPS frames sent on to UDP 9999, and text lines shown as `[xiao] > ...`.
-- Teensy → XIAO, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
-- XIAO → Teensy: PGN 143 (the XIAO's state, for its card); PGN 144 (a command: 1 = the module's subnet, which the Teensy saves and restarts with).
-- Both ways: PGN 145 (the module's firmware from the XIAO page): the XIAO sends begin (size, name, "other firmware"), the `.hex` text in numbered pieces of 252 bytes, end, cancel, or "go back to the previous firmware"; the Teensy answers each one (ok, or the reason it refused) before the XIAO sends the next piece, so nothing arrives while a flash sector is written with interrupts off.
-- XIAO → Teensy: PGN 146 (a datagram the program on the XIAO's WiFi sent to UDP 8888: its IP, then the datagram) and PGN 147 (the corrections it sent to UDP 2233). Teensy → XIAO: PGN 148 (a datagram for that program's UDP 9999) and PGN 149 (the bridge's state, once a second and at each change). See [WiFi bridge](#wifi-bridge).
-- PGN 141-149 never go on the network.
-- Differences from v26, on the safe side: the checksum is checked (bad frames dropped and counted); frames only while the XIAO is present; the Teensy never waits (a packet for the XIAO is dropped if the buffer is full, and counted).
+- `XIAO_BAUD` in `zXiao.h` and `LINK_BAUD` in the XIAO program must match. So a XIAO program older than 4.5, at 230400, needs updating too.
 - At 460800, AgOpenWeb's 100 Hz steering packets use 6-10 % of the link.
+
+What goes over the link:
+
+- **XIAO → Teensy**: `ESP32-hello` at least every 5 s (present for 10 s after each), AgOpenGPS frames sent on to UDP 9999, and text lines shown as `[xiao] > ...`.
+- **Teensy → XIAO**, while it is present: every UDP 8888 packet starting with `80 81`; PGN 141 (the module status, once a second) and PGN 142 (each log line).
+- **XIAO → Teensy**: PGN 143 (the XIAO's state, for its card); PGN 144 (a command: 1 = the module's subnet, which the Teensy saves and restarts with).
+- **Both ways**: PGN 145, the module's firmware from the XIAO page.
+  - The XIAO sends begin (size, name, "other firmware"), the `.hex` text in numbered pieces of 252 bytes, end, cancel, or "go back to the previous firmware".
+  - The Teensy answers each one (ok, or the reason it refused) before the XIAO sends the next piece. So nothing arrives while a flash sector is written with interrupts off.
+- **XIAO → Teensy**: PGN 146 (a datagram the program on the XIAO's WiFi sent to UDP 8888: its IP, then the datagram) and PGN 147 (the corrections it sent to UDP 2233).
+- **Teensy → XIAO**: PGN 148 (a datagram for that program's UDP 9999) and PGN 149 (the bridge's state, once a second and at each change). See [WiFi bridge](#wifi-bridge).
+- PGN 141-149 never go on the network.
+
+Differences from v26, on the safe side:
+
+- the checksum is checked (bad frames dropped and counted)
+- frames only while the XIAO is present
+- the Teensy never waits: a packet for the XIAO is dropped if the buffer is full, and counted
 
 The XIAO program (`v4.5_XIAO_ESP32`) has its own WiFi network and page: module status and messages, what the program sends to the module, WiFi settings, update over WiFi. See its README, or try the page in the [simulator](https://renatorgr.github.io/Boards/xiao/).
 
 ### WiFi bridge
 
-For a tablet with **no network cable to the module** (no USB-Ethernet adapter). The tablet joins the XIAO's own WiFi; the XIAO hands the program's datagrams to the Teensy over the link and sends the Teensy's answers to that tablet only. Switched on on the XIAO's page (WiFi tab, off from new); the Teensy has no setting for it. How to set it up, and its limits: the XIAO program's README, [WiFi bridge](v4.5_XIAO_ESP32/README.md#wifi-bridge).
+For a tablet with **no network cable to the module** (no USB-Ethernet adapter).
 
-Why not the router's WiFi: there the module's packets are broadcasts, which a router holds for its beacon. Measured on a tractor (22 Nov 2026): 8 at a time every 0.2 s, each 1.5 s late, half of them lost. To one address they are not held.
+- The tablet joins the XIAO's own WiFi.
+- The XIAO hands the program's datagrams to the Teensy over the link, and sends the Teensy's answers to that tablet only.
+- Switched on on the XIAO's page (WiFi tab, off from new). The Teensy has no setting for it.
+- How to set it up, and its limits: the XIAO program's README, [WiFi bridge](v4.5_XIAO_ESP32/README.md#wifi-bridge).
+
+**Why not the router's WiFi**: there the module's packets are broadcasts, which a router holds for its beacon.
+
+- Measured on a tractor (22 Nov 2026): 8 at a time every 0.2 s, each 1.5 s late, half of them lost.
+- To one address they are not held.
 
 What the Teensy does (`zXiao.ino`, "the WiFi bridge"; `programPacket` and `progSend` in `Autosteer.ino`):
 
-| | |
-|---|---|
-| A packet from the WiFi (PGN 146) | is taken as a packet on UDP 8888: hello, steering (254), settings (252, 251), machine (239, 229). The program's IP in Messages and on the page is the tablet's on the XIAO's network, with "on the XIAO's WiFi". |
-| What goes to the program | GPS sentences, PGN 253, 250, the hello replies and the texts for its screen go to the XIAO (PGN 148) and **not** on the network cable: a tablet on both would get everything twice, from two addresses. |
-| The cable comes first | a program packet on the network cable in the last 3 s keeps the module the cable's: packets from the WiFi are not taken (counted, and said in Messages once per 30 s). |
-| The module is free again | after 3 s with nothing from the WiFi, or when the XIAO is gone. GPS then goes out on the network cable as before. |
-| Corrections (PGN 147) | written to the receiver as those from UDP 2233, only while the program on the WiFi has the module. |
-| Subnet (PGN 201) and scan (PGN 202) | not done from the WiFi: the subnet is for the network cable, and a change would restart the module under the tablet. Messages says so. |
-| A link that stops | no steering data: the steering watchdog turns the outputs off, as with a pulled cable. |
-| The Teensy's own frames (status, log lines) | wait for a nearly empty transmit buffer while the program is on the WiFi, so a GPS sentence never waits behind more than one of them. |
+- **A packet from the WiFi (PGN 146)** is taken as a packet on UDP 8888: hello, steering (254), settings (252, 251), machine (239, 229). The program's IP in Messages and on the page is the tablet's on the XIAO's network, with "on the XIAO's WiFi".
+- **What goes to the program** (GPS sentences, PGN 253, 250, the hello replies and the texts for its screen) goes to the XIAO (PGN 148), and **not** on the network cable. A tablet on both would get everything twice, from two addresses.
+- **The cable comes first**: a program packet on the network cable in the last 3 s keeps the module the cable's. Packets from the WiFi are then not taken (counted, and said in Messages once per 30 s).
+- **The module is free again** after 3 s with nothing from the WiFi, or when the XIAO is gone. GPS then goes out on the network cable as before.
+- **Corrections (PGN 147)** are written to the receiver as those from UDP 2233, only while the program on the WiFi has the module.
+- **Subnet (PGN 201) and scan (PGN 202)** are not done from the WiFi: the subnet is for the network cable, and a change would restart the module under the tablet. Messages says so.
+- **A link that stops**: no steering data, so the steering watchdog turns the outputs off, as with a pulled cable.
+- **The Teensy's own frames** (status, log lines) wait for a nearly empty transmit buffer while the program is on the WiFi. So a GPS sentence never waits behind more than one of them.
 
-**This page through the XIAO**: a phone or tablet on the XIAO's own WiFi opens this page at the XIAO's address, port 8080 (http://192.168.5.1:8080/ with the bridge on). The XIAO passes the browser's request over the link (PGN 150) and the Teensy serves it as one more connection, one request at a time like the cable's; its answer goes back (PGN 151) as the link has room for the Teensy's own frames, never more than the XIAO says it can hold. A firmware update and going back to the previous firmware are refused that way (the XIAO page's Firmware tab does both). Details: the XIAO program's README, [The module's page through the XIAO](v4.5_XIAO_ESP32/README.md#the-modules-page-through-the-xiao).
+**This page through the XIAO**: a phone or tablet on the XIAO's own WiFi opens this page at the XIAO's address, port 8080 (http://192.168.5.1:8080/ with the bridge on).
 
-**Section modules on the XIAO's WiFi** (a sprayer or seed drill module on a tractor with no router): the XIAO passes their own packets to the Teensy too (PGN 152: the module's address and its packet), so the **Machine tab** shows them as one on the network cable, with "on the XIAO's WiFi" in Messages, also before the program is open. Only the hello reply and PGN 237, 160, 161; nothing of it goes on. Needs this firmware of 22 Nov 2026 evening and a XIAO `.bin` of the same day (bridge version 3).
+- The XIAO passes the browser's request over the link (PGN 150).
+- The Teensy serves it as one more connection, one request at a time like the cable's.
+- Its answer goes back (PGN 151) as the link has room for the Teensy's own frames, never more than the XIAO says it can hold.
+- A firmware update and going back to the previous firmware are refused that way (the XIAO page's Firmware tab does both).
+- Details: the XIAO program's README, [The module's page through the XIAO](v4.5_XIAO_ESP32/README.md#the-modules-page-through-the-xiao).
+
+**Section modules on the XIAO's WiFi** (a sprayer or seed drill module on a tractor with no router):
+
+- The XIAO passes their own packets to the Teensy too (PGN 152: the module's address and its packet).
+- So the **Machine tab** shows them as one on the network cable, with "on the XIAO's WiFi" in Messages, also before the program is open.
+- Only the hello reply and PGN 237, 160, 161; nothing of it goes on.
+- Needs this firmware of 22 Nov 2026 evening and a XIAO `.bin` of the same day (bridge version 3).
 
 The XIAO card (Status) has a **WiFi bridge** row: off, on with no program, standing by (a program is on the cable), or the program on the XIAO's WiFi with the datagrams in / out and those lost at the link.
 
@@ -643,6 +1158,21 @@ This firmware is built on other people's work:
 | Pin comparison of the AiO v4.5 Micro and Standard | the AgOpenGPS board design files (EasyEDA, 2024-02-05) |
 | The AgOpenGPS receiver settings (`zRxConfig.h`) and how they are sent: the F9P files `Single.txt`, `DualPosition.txt`, `DualRelPos.txt` (firmware HPG 1.13), the UM982 commands `ConfigUM982D.txt`, `ConfigUM982S.txt` | AOGConfigOMatic by lansalot (github.com/lansalot/AOGConfigOMatic, GPL v3); the F9P configuration by Jaap van den Handel. `X20P.txt` (HPG 2.11) was read from Renato's X20P with this firmware |
 
-The rest was written in 2026 by Claude (Anthropic) for renatorgr: the web page, settings, messages, update from the page, the XIAO link and the XIAO program, the standard / classic / automatic output, the rewritten `zHandlers.ino`, the autosteer safety, watchdog and crash hook (`zSafety.ino`), the network stack run from the loop (`zNet.h`), the RTCM counter (`zRtcm.h`), the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`), the IMU detection (`zImu.ino`), the GPS2 port setting, the second F9P (`zDualF9P.ino`) and the Keya and steering changes around the AiO firmware's code. Every file says at the top where it comes from and what was changed.
+The rest was written in 2026 by Claude (Anthropic) for renatorgr:
 
-**Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from. It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor. The files from other authors keep their own notes too (CC0, public domain, Adafruit, MIT for the BNO080 library).
+- the web page, settings, messages, update from the page
+- the XIAO link and the XIAO program
+- the standard / classic / automatic output, the rewritten `zHandlers.ino`
+- the autosteer safety, watchdog and crash hook (`zSafety.ino`)
+- the network stack run from the loop (`zNet.h`), the RTCM counter (`zRtcm.h`)
+- the receiver identification and settings (`zReceiver.ino`), the receiver check (`zRxCheck.ino`)
+- the IMU detection (`zImu.ino`)
+- the GPS2 port setting, the second F9P (`zDualF9P.ino`)
+- the Keya and steering changes around the AiO firmware's code
+
+Every file says at the top where it comes from and what was changed.
+
+**Licence:** GNU General Public License v3 or later (file `COPYING`), like chriskinal's AOG_Teensy_UM982 and the AgOpenGPS firmware it comes from.
+
+- It comes WITHOUT ANY WARRANTY: check it on the bench before trusting it to steer a tractor.
+- The files from other authors keep their own notes too (CC0, public domain, Adafruit, MIT for the BNO080 library).

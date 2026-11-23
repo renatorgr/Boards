@@ -4,8 +4,23 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
-**Built:** 23 Nov 2026 (C3 and S3 04:43 UTC), from the program with the WiFi bridge (a tablet with no network cable runs the program on the XIAO's network; off from new, switched on in the WiFi tab), the link task (a slow browser no longer holds up the bridge or the link to the Teensy), the bridge's part for the section modules on the XIAO's WiFi, and the XIAO's own network on the module's numbers (192.168.5.x) while the bridge is on, and the module's (Teensy's) page through the XIAO (port 8080; it needs the Teensy firmware of the same day), and the section modules on its WiFi passed to the Teensy for its Machine tab (Teensy firmware of 22 Nov evening), the module's page that waits when the XIAO is short of memory, and «Done on this device» for the sign-in notice. Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
-When the program in `v4.5_XIAO_ESP32` changes, compile these files again and upload them over the old ones, with the same names. **Install from GitHub** on the XIAO page offers a file when it was compiled later than the program running on the XIAO (the date is read from the file).
+**Built:** 23 Nov 2026 (C3 and S3 04:43 UTC). This build has:
+
+- the WiFi bridge: a tablet with no network cable runs the program on the XIAO's network (off from new, switched on in the WiFi tab)
+- the link task: a slow browser no longer holds up the bridge or the link to the Teensy
+- the bridge's part for the section modules on the XIAO's WiFi
+- the XIAO's own network on the module's numbers (192.168.5.x) while the bridge is on
+- the module's (Teensy's) page through the XIAO (port 8080; it needs the Teensy firmware of the same day)
+- the section modules on its WiFi passed to the Teensy for its Machine tab (Teensy firmware of 22 Nov evening)
+- the module's page that waits when the XIAO is short of memory
+- «Done on this device» for the sign-in notice
+
+Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
+
+When the program in `v4.5_XIAO_ESP32` changes:
+
+- Compile these files again and upload them over the old ones, with the same names.
+- **Install from GitHub** on the XIAO page offers a file when it was compiled later than the program running on the XIAO (the date is read from the file).
 
 | File | What for |
 |---|---|
@@ -32,7 +47,10 @@ It can also be installed from the Arduino IDE, by compiling the program (see the
 
 ## Later: update over WiFi
 
-- Phone on the XIAO's network → page → **Firmware** → **Install from a file…** → the `.bin` **without** "_USB" for your XIAO → the box says what is inside → password → **Install**. A `_USB.bin` is refused there.
+1. Phone on the XIAO's network → page → **Firmware** → **Install from a file…**
+2. Choose the `.bin` **without** "_USB" for your XIAO. A `_USB.bin` is refused there.
+3. The box says what is inside → password → **Install**.
+
 - The WiFi settings are kept.
 - Or, when the phone has internet: **Firmware → Install from GitHub** downloads the right file from github.com/renatorgr/Boards by itself (see the program's README).
 
