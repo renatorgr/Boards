@@ -113,6 +113,7 @@ public:
     bool     operator==(const IPAddress& o) const { return memcmp(a_, o.a_, 4) == 0; }
     bool     operator!=(const IPAddress& o) const { return !(*this == o); }
     uint32_t raw() const { uint32_t v; memcpy(&v, a_, 4); return v; }      // as in a sockaddr: the first number in the low byte
+    operator uint32_t() const { return raw(); }                                // as the core's (a sockaddr's order)
     static IPAddress fromRaw(uint32_t v) { IPAddress i; memcpy(i.a_, &v, 4); return i; }
     String   toString() const
     {
@@ -576,6 +577,8 @@ struct Device
     // UDP sockets (lwIP), by number
     std::vector<UdpSocket> udp;
     std::vector<Datagram> udpOut;           // sent by the program (the harness takes them away)
+    std::vector<uint32_t> apPeers;          // devices on the XIAO's own network so far, by address (IPAddress::raw): the
+                                            // access point's list; each one's MAC is 02:00:00:00:00:<last number>
     bool        udpJam = false;             // the WiFi takes no datagram now (its queue is full): sendto() fails
     uint32_t    udpSendFails = 0;
 
@@ -603,7 +606,8 @@ struct Device
     bool      staUp() const { return staJoined; }       // joined the other network
     bool      staSearching() const;         // trying to join it (the radio leaves the XIAO's own channel to look)
     bool      scanning() const { return scanState == -1; }
-    size_t    udpOpen() const { size_t n = 0; for (auto& s : udp) n += s.open; return n; }     // UDP sockets the program has open
+    size_t    udpOpen() const { size_t n = 0; for (auto& s : udp) n += s.open && s.port != 53; return n; }   // UDP sockets the program has open (its DNS server's on port 53, always open, not counted)
+    bool      dnsOpen() const { for (auto& s : udp) if (s.open && s.port == 53) return true; return false; }
     IPAddress staIp() const { return IPAddress(router.subnet[0], router.subnet[1], router.subnet[2], 50); }
 
     // ---- what the harness does to the board

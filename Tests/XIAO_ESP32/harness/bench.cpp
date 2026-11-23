@@ -505,6 +505,7 @@ void World::datagramsOut()
         Machine* m = nullptr;
         for (Machine& q : mod) if (q.ip() == to && (q.on || q.sent)) m = &q;
         if (to[3] == 255 || to[0] != dev.apIp[0] || to[1] != dev.apIp[1] || to[2] != dev.apIp[2]) broke("a datagram went to " + where + " (to everyone, or off the XIAO's own network)");
+        else if (d.srcPort == 53) { dnsOut.push_back(d); continue; }   // the DNS server's answer to a device (dns())
         else if (m && d.dstPort == 8888)
         {
             // for a section-control module: one of the program's own, each once and in order, never the subnet or the scan
@@ -756,4 +757,47 @@ void World::step()
         if (gap > rules.worstSteerGapMs) rules.worstSteerGapMs = gap;
     }
 }
+
+// A name asked of the XIAO's DNS server by a device on its own network
+World::DnsReply World::dns(const std::string& name, uint8_t ipLast)
+{
+    static uint16_t id = 0x4100;
+    id++;
+    std::vector<uint8_t> q = { (uint8_t)(id >> 8), (uint8_t)id, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0 };   // a query, recursion desired
+    size_t at = 0;
+    while (at <= name.size())
+    {
+        size_t dot = name.find('.', at);
+        if (dot == std::string::npos) dot = name.size();
+        q.push_back((uint8_t)(dot - at));
+        q.insert(q.end(), name.begin() + at, name.begin() + dot);
+        at = dot + 1;
+    }
+    q.insert(q.end(), { 0, 0, 1, 0, 1 });          // end of the name, type A, class IN
+    fake::Datagram d;
+    d.ms = fake::clockMs;
+    d.src = IPAddress(dev.apIp[0], dev.apIp[1], dev.apIp[2], ipLast).raw();
+    d.srcPort = 53000 + ipLast;
+    d.dst = dev.apIp.raw();
+    d.dstPort = 53;
+    d.data = q;
+    DnsReply r;
+    if (!dev.udpIn(d)) return r;
+    const uint64_t until = fake::clockMs + 2000;
+    while (fake::clockMs < until)
+    {
+        run(1);
+        for (size_t i = 0; i < dnsOut.size(); i++)
+        {
+            const fake::Datagram& a = dnsOut[i];
+            if (a.dst != d.src || a.dstPort != d.srcPort || a.data.size() < 12 || a.data[0] != q[0] || a.data[1] != q[1]) continue;
+            r.rcode = a.data[3] & 0x0F;
+            if (a.data[7] >= 1 && a.data.size() >= q.size() + 16) { const uint8_t* p = a.data.data() + q.size() + 12; r.addr = fmt("%u.%u.%u.%u", p[0], p[1], p[2], p[3]); }
+            dnsOut.erase(dnsOut.begin() + i);
+            return r;
+        }
+    }
+    return r;
+}
+
 }

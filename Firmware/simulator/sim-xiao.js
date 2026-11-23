@@ -56,6 +56,7 @@ function state() {
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
   // the WiFi bridge: the pretend program is on the module's network cable, so the bridge (when switched on) stands by
   bridge: {on: !!X.bridge, teensy: mod && mt > 5.2, state: mod && mt > 5.2 ? (prog ? 1 : 0) : -1, prog: "", steer: false, in: 0, out: 0, rtcmKB: 0, lost: 0, other: 0, mods: []},
+  captive: {ap: false, done: false, n: 0},
   // the module's page through the XIAO (http://<apIp>:8080/): only with a password of one's own on this network
   tpage: X.pass === "agopengps" ? {ready: false, why: "this WiFi still has the password it came with: give it one of your own first (WiFi tab), because whoever opens the module's page can change how the tractor steers", req: 0, refused: 0, broken: 0, lowMem: 0}
                                 : {ready: true, why: "", req: 0, refused: 0, broken: 0, lowMem: 0},
@@ -131,6 +132,10 @@ S.hook((method, path, q, body) => {
  else if (post && path === "/api/settings") r = settingsPost(b);
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/subnet") r = subnet(b);
+ else if (post && path === "/api/captive") {         // the sign-in page: no device of the simulator is on the XIAO's WiFi
+  if (b.forget === "1") r = b.pw !== X.pass ? S.err(403, "wrong password") : S.ok();
+  else r = S.err(400, "only for a device on the XIAO's own WiFi");
+ }
  else if (post && path === "/api/restart") {
   if (b.pw !== X.pass) r = S.err(403, "wrong password");
   else { event("Restart requested from the page"); restart("restart requested", 3000); r = S.ok(); }

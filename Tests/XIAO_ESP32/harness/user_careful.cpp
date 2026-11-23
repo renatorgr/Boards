@@ -446,3 +446,44 @@ SCENARIO(User::Careful, "careful-usb-and-restart", "USB serial monitor: status, 
     must("reason", w.state()["reset"].str() == "restart requested", "The page then shows 'restart requested', not an error", "");
     rules(w);
 }
+
+SCENARIO(User::Careful, "careful-sign-in-page", "A phone joins the XIAO's WiFi: the XIAO's page opens by itself (sign-in page); 'Done on this device' stops the sign-in notice on that phone only, over restarts", oneKit())
+{
+    World w(kit);
+    w.start();
+    w.run(1500);
+    const std::string ap = w.dev.apIp.toString().c_str();
+    Link phone;
+    phone.ipLast = 30;
+    World::DnsReply d = w.dns("connectivitycheck.gstatic.com", 30);
+    must("dns", d.rcode == 0 && d.addr == ap, "A phone asking for any name gets the XIAO's address (so its 'is there internet?' lands on the page)", fmt("code %d, %s", d.rcode, d.addr.c_str()));
+    Reply r = w.http(GET("/generate_204", "connectivitycheck.gstatic.com"), phone);
+    must("redirect", r.code == 302 && has(r.headers["location"], ap), "... and is sent to the XIAO's page: the phone opens it by itself", fmt("code %d -> %s", r.code, r.headers["location"].c_str()));
+    r = w.get("/api/state", phone);
+    must("banner", r.json["captive"]["ap"].num() != 0 && r.json["captive"]["done"].num() == 0, "The page shows the phone the 'Done on this device' button", "");
+    r = w.post("/api/captive", {}, phone);
+    must("done", r.code == 200 && r.json["ok"].num() != 0 && w.said("Sign-in page: done"), "'Done on this device': answered ok, and Messages say so", fmt("code %d %s", r.code, r.error().c_str()));
+    d = w.dns("connectivitycheck.gstatic.com", 30);
+    must("no-such-name", d.rcode == 3 && d.addr.empty(), "From then on that phone gets 'no such name': it says only 'no internet', no sign-in notice", fmt("code %d", d.rcode));
+    r = w.http(GET("/generate_204", "connectivitycheck.gstatic.com"), phone);
+    must("no-redirect", r.code != 302, "... and is no longer sent to the page", fmt("code %d", r.code));
+    must("page", w.get("/", phone).code == 200, "The XIAO's page still opens at its address", "");
+    Link other;
+    other.ipLast = 31;
+    d = w.dns("www.msftconnecttest.com", 31);
+    must("others", d.rcode == 0 && d.addr == ap, "Another device still gets the sign-in page", fmt("code %d, %s", d.rcode, d.addr.c_str()));
+    must("flash", has(w.flashStr("capOk"), "02000000001e"), "The phone is kept in the flash (by its MAC)", w.flashStr("capOk"));
+    const int boots = w.xiao.boots;
+    w.noteUserRestart();
+    w.usb("restart");
+    must("restarted", backAfterRestart(w, boots), "The XIAO restarts", "");
+    w.run(2000);
+    d = w.dns("connectivitycheck.gstatic.com", 30);
+    must("kept", d.rcode == 3, "After a restart that phone still gets no sign-in notice", fmt("code %d", d.rcode));
+    r = w.post("/api/captive", { { "forget", "1" }, { "pw", "wrong-one" } }, other);
+    must("forget-pw", r.code == 403, "'Show it again on all' needs the XIAO's password", fmt("code %d", r.code));
+    r = w.post("/api/captive", { { "forget", "1" }, { "pw", "agopengps" } }, other);
+    d = w.dns("connectivitycheck.gstatic.com", 30);
+    must("forget", r.code == 200 && d.rcode == 0 && d.addr == ap, "With the password: every device gets the sign-in page again", fmt("code %d, then %d %s", r.code, d.rcode, d.addr.c_str()));
+    rules(w);
+}
