@@ -38,6 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a cable-less tablet steers, opens this page, sees section modules on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled here. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
 | 19 Nov 2026 | A WAS plug out or a broken wire that reads inside 0.2-4.8 V is caught by the angle: a jump faster than wheels turn blocks autosteer, and wheels that do not follow at the Max Limit for 0.5 s turn it off ([WAS check](#was-check)). |
@@ -121,6 +122,18 @@ Every question the page asks opens in a box of the page itself, not a browser po
 - Inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there (official `Docs/ADD_ON_CARDS.md`: the card's frame has no `allow-modals`).
 - Enter is its OK, but a held Enter answers nothing: the key that pressed a button cannot also confirm it.
 - The tabs and the light/dark button at the top are 44 px high, with the same 8 px corners as that box's buttons: a size a finger hits on the cab's screen.
+
+### The dot at the top
+
+The dot left of the title is checked every second:
+
+- **green**: the module answers the page, and a program (AgOpenWeb or AgOpenGPS) talks to it: a packet on UDP 8888 in the last 5 s
+- **orange**: the module answers, but no program talks to it (closed, or on another network)
+- **red**: no answer from the module (switched off, restarting, or this device is off its network)
+
+The mouse on the dot shows the same words. The Status tab's *Program* line says which program talks.
+
+The XIAO, sprayer and seed drill pages use the same three colours since 23 Nov 2026. Before, this dot was green whenever the module answered, even with no program.
 
 ### An old page in the browser
 

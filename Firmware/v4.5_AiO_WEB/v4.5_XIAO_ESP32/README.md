@@ -26,7 +26,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). `.bin` rebuilt. |
+| 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). The [dot at the top](#the-dot-at-the-top) turns orange when no program talks. `.bin` rebuilt. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
 | 13 Nov 2026 | Loading the page no longer stops the XIAO on weak WiFi ("XIAO silent for 10 s"). Enter in a password field does what its button does. Firmware tab: one card per device, one box for each install ([What it does](#what-it-does)). |
@@ -79,6 +79,16 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 - It goes out without holding up the XIAO. On a weak WiFi link the 53 kB page can take a few seconds, but the link to the Teensy (hello, data) keeps going meanwhile. Before 13 Nov 2026 the XIAO waited for the browser, and the Teensy log showed "XIAO silent for 10 s".
 - The browser keeps the page and asks the XIAO each time whether it changed. The same build answers "not modified" (a few hundred bytes), so only the first visit after an update sends the whole page.
 - A spare connection a browser opens and leaves silent is dropped after 1 s when another one is waiting (it used to hold up the next request for 5 s).
+
+### The dot at the top
+
+The dot left of the title is checked every second:
+
+- **green**: the XIAO answers the page, and the program's messages (AgOpenWeb or AgOpenGPS) reach it: a hello, PGN 254 or 239 in the last 5 s. They come from the module's cable through the Teensy, or on the [WiFi bridge](#wifi-bridge).
+- **orange**: the XIAO answers, but no message of the program reaches it (program closed, or the link to the Teensy down)
+- **red**: no answer from the XIAO
+
+The mouse on the dot shows the same words. The Teensy, sprayer and seed drill pages use the same three colours since 23 Nov 2026. Before, this dot was green whenever the XIAO answered, even with no program.
 
 ### The tabs
 

@@ -45,6 +45,10 @@ header h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
 header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dot{width:11px;height:11px;border-radius:50%;background:var(--bad);flex:none}
 .dot.on{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+/* light theme: a brighter orange than its text orange (#b45309), which a small dot shows almost as the red */
+:root[data-theme=light] .dot.warn{background:#d97706}
+@media (prefers-color-scheme:light){:root:not([data-theme]) .dot.warn{background:#d97706}}
 nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
@@ -143,7 +147,7 @@ p.chk{text-align:right;margin:4px 0 0}
 </head>
 <body>
 <div id="top">
-<header><span class="dot" id="dot" title="link to the module"></span><h1>Teensy 4.1 Settings</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
+<header><span class="dot" id="dot" title="No answer from the module"></span><h1>Teensy 4.1 Settings</h1><span class="sub" id="hdr">connecting…</span><button class="tbtn" id="theme" type="button" title="Light / dark">☀</button></header>
 <nav id="nav"><button data-t="status" class="on">Status</button><button data-t="log">Messages</button><button data-t="settings">Settings</button><button data-t="gps">GPS</button><button data-t="imu">IMU</button><button data-t="machine" id="navMach" class="hidden">Machine</button><button data-t="firmware">Firmware</button></nav>
 </div>
 <main>
@@ -484,7 +488,10 @@ function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classLis
 function setLink(id,txt,url,cls){set(id,txt,cls);if(!url)return;const e=$(id),a=document.createElement("a");a.href=url;a.textContent=url;e.appendChild(document.createTextNode(txt?" · ":""));e.appendChild(a);}
 function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.createElement("span");s.className="pill "+(cls||"");s.textContent=txt;e.appendChild(s);}
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
-function setOnline(v){online=v;$("dot").classList.toggle("on",v);}
+// The dot: red = no answer from the module; orange = it answers, but no program (AgOpenWeb / AgOpenGPS) talks to it
+// (net.aog, a packet on UDP 8888 in the last 5 s); green = both. The same three colours on the XIAO, sprayer and seed drill pages
+function setOnline(v,prog){online=v;const d=$("dot");d.className="dot"+(v?(prog?" on":" warn"):"");
+ d.title=v?(prog?"The module answers and the program talks to it":"The module answers, but no program talks to it"):"No answer from the module";}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
 const OFF={keya:"Keya: wheel turned by hand",keyafault:"Keya motor fault",angle:"wheel angle above 50°",fast:"speed above the maximum",keyalost:"Keya not responding",wasjump:"WAS jump (plug or wire?)",stuck:"wheels did not follow (WAS plug?)",switch:"steer switch",button:"steer button",pressure:"pressure kickout",current:"current kickout",encoder:"wheel encoder",was:"WAS fault",silent:"the program stopped sending",program:"by the program (its screen says why: its button, boundary, speed, RTK)",speed:"speed below 0.1 km/h",other:"other"};
 const BW={power:"power on (or button / USB)",upload:"programming",restart:"restart requested (page, update or program)",watchdog:"watchdog (the firmware stopped)",crash:"firmware fault","crash-wdt":"firmware fault, restarted by the watchdog",temp:"high temperature",other:"other",unknown:"other"};
@@ -807,7 +814,7 @@ async function pollStatus(){
   if(pageStale(s.built))return;
   if(waitingBoot&&restarted(s.up)){waitingBoot=false;busy=false;$("prog").classList.add("hidden");fwButtons();
    fwMsg(("Updated. Running: "+s.fw+", built "+s.built+"."),"ok");}
-  setOnline(true);render(s);
+  setOnline(true,!!(s.net&&s.net.aog));render(s);
  }catch(e){setOnline(false);}
 }
 function addLines(box,lines,withTime){

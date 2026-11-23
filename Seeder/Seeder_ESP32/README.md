@@ -7,7 +7,7 @@ Each section is one linear actuator, switched by a 12 V DPDT relay. Two boards:
 - the **[Relay24_ESP32](../../Relay24_ESP32)** board of this repository (the default): an ESP32 DevKitC on a board with 24 DPDT relays and a network socket, the actuators wired straight to it
 - a **KinCony KC868-A32** (ESP32, 32 relays, network socket), each relay switching an external DPDT relay
 
-Version 0.2.16, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has not run on either board yet.
+Version 0.2.17, made from [Sprayer_ESP32](../../Sprayer/Sprayer_ESP32) v0.8 when the seed drill got its own folder. Written from the Relay24_ESP32 design and KinCony's pin list: it has not run on either board yet.
 
 ## Changelog
 
@@ -15,6 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 23 Nov 2026 | **0.2.17**: the page's [dot at the top](#the-dot-at-the-top) has three colours, as on the sprayer, Teensy and XIAO pages: green = program talking, orange = module answers but the program is silent, red = no answer. |
 | 22 Nov 2026 | **0.2.15**, **0.2.16**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge, with the subnet it has (192.168.5) ([No router on the tractor](#no-router-on-the-tractor)). |
 | 21 Nov 2026 | **0.2.10-0.2.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); two harness fixes; Wi-Fi reason, name and program checked; outputs inverted said on screen ([Notes](#notes)). |
 | 13 Nov 2026 | **0.2.8**: Enter in the *Network settings* password saves; an empty password or a held Enter answers no question. **0.2.9**: the Firmware tab in one card, and one box that says what a `.bin` holds before it is installed ([How it works](#how-it-works)). |
@@ -111,6 +112,16 @@ The tabs at the top are 44 px high, with the same 8 px corners as that box's but
 
 Without the board, the page can be tried in the [simulator](https://renatorgr.github.io/Boards/seeder/), rebuilt from this code on every change.
 
+#### The dot at the top
+
+The dot left of the title is checked every second:
+
+- **green**: the module answers the page, and the program talks to it: a PGN 239 in the last 2 s (*program talking*)
+- **orange**: the module answers, but the program is silent, so the sections stay closed (*program silent*)
+- **red**: no answer from the module (*no answer from the module*)
+
+The same three colours as the sprayer, Teensy and XIAO pages since 0.2.17. Before, red stood for both a silent program and no answer.
+
 ## Choosing the board
 
 `BOARD` near the top of `Seeder_ESP32.ino`:
@@ -167,7 +178,7 @@ The relays close when their PCF8574 pin is **LOW** (`RELAY_ON_HIGH 0`).
    - Relay24_ESP32: plug the DevKitC's USB socket into the computer (the board can be powered or not).
    - KC868-A32: power it with 12 V and plug its USB socket in, as in KinCony's guide.
    - *Tools → Port*: its COM port. Click *Upload*.
-5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.16` and `ready`.
+5. Serial Monitor at **115200**: it prints `Seeder_ESP32 v0.2.17` and `ready`.
 
 ### Later program updates
 
@@ -384,6 +395,7 @@ The module only accepts messages with a right checksum from source `0x7F` (the p
 
 ## Notes
 
+- **0.2.17**: only the page. Its [dot at the top](#the-dot-at-the-top) is orange when the module answers but the program is silent (it was red, as with no answer), as on the sprayer, Teensy and XIAO pages.
 - **0.2.16**: only words on the page. On the XIAO's WiFi the subnet stays as it is (192.168.5), since the XIAO's network takes the AiO module's numbers with its bridge on.
 - **0.2.15**: a tractor with no router ([No router on the tractor](#no-router-on-the-tractor)).
   - With the program subnet 192.168.4 the own network is at 192.168.40.1.
