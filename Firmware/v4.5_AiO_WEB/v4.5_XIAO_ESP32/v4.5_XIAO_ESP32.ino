@@ -17,7 +17,8 @@
 // What it does:
 //   - its own WiFi network (access point), always on: "XIAO-xxxx", password "agopengps" until changed.
 //     A phone that joins it gets the page by itself (captive page), or opens http://192.168.4.1/ (with the WiFi
-//     bridge on, the module's numbers: normally http://192.168.5.1/)
+//     bridge on, the module's numbers: normally http://192.168.5.1/); "Done on this device" ends the sign-in notice
+//     on that device ("the sign-in page" below)
 //   - optionally joins another WiFi network too (farm, phone hotspot): then also http://<name>.local/
 //     or its IP on that network
 //   - web page (English; dark, or light when the phone asks for it, button at the top), 4 tabs:
@@ -52,7 +53,8 @@
 
 #include <WiFi.h>
 #include <WebServer.h>
-#include <DNSServer.h>
+#include "esp_wifi.h"                  // the devices on our own network (esp_wifi_ap_get_sta_list) ...
+#include "esp_netif.h"                 // ... and the address our DHCP gave each one: the sign-in page
 #include <ESPmDNS.h>
 #include <Preferences.h>
 #include <Update.h>
@@ -166,7 +168,6 @@ private:
 };
 
 LinkWebServer             server(80);
-DNSServer                 dns;
 Preferences               prefs;
 
 // ---------------------------------------------------------------- settings (saved in the XIAO's flash)
@@ -1018,6 +1019,177 @@ static void bridgeStaWatch(uint32_t now)
     }
 }
 
+// ---------------------------------------------------------------- the sign-in page (captive page, 23 Nov 2026)
+// A phone or computer that joins our network asks "is there internet?" (Android: connectivitycheck.gstatic.com,
+// Windows: www.msftconnecttest.com, Apple: captive.apple.com). We answer every name with our own address, so the
+// question lands on our page and the device opens it by itself: handy the first time. But the device then keeps
+// saying "sign in to this network", every time it joins. So the page has a button, "Done on this device": from then
+// on that device (by its MAC address, kept over restarts) gets "no such name" for every name, and says only "no
+// internet", which is true. It never gets "there is internet": a tablet would then send all its traffic here, its
+// NTRIP over mobile data too. Our own DNS server (UDP 53) answers per device; the core's DNSServer cannot.
+#define CAPTIVE_DEVICES   16                 // devices that pressed "Done" (the oldest is forgotten first)
+#define CAPTIVE_TTL_S     5                  // how long a device may keep our answer (short: "Done" works at once)
+#define CAPTIVE_MAC_MS    5000               // the access point's list of devices is read again after this long
+
+static struct
+{
+    uint8_t  mac[CAPTIVE_DEVICES][6];
+    uint8_t  n = 0, next = 0;                // how many, and the place the next one takes
+    int      sock = -1;                      // our DNS server's socket
+    uint32_t asked = 0, refused = 0;         // names asked: answered with our address / "no such name" (a device that is done)
+    struct { uint32_t ip; uint8_t mac[6]; bool known; } cache[ESP_WIFI_MAX_CONN_NUM];   // address -> MAC, from the list
+    uint8_t  cacheN = 0;
+    uint32_t cacheMs = 0;
+} captive;
+
+static void captiveLoad()
+{
+    prefs.begin("xiao", true);
+    const String t = prefs.getString("capOk", "");             // "aabbccddeeff,..." oldest first
+    prefs.end();
+    captive.n = captive.next = 0;
+    for (int at = 0; at + 12 <= (int)t.length() && captive.n < CAPTIVE_DEVICES; at += 13)
+    {
+        uint8_t m[6];
+        bool ok = true;
+        for (int b = 0; b < 6 && ok; b++)
+        {
+            unsigned v;
+            char h[3] = { t[at + 2 * b], t[at + 2 * b + 1], 0 };
+            ok = sscanf(h, "%2x", &v) == 1;
+            m[b] = (uint8_t)v;
+        }
+        if (ok) memcpy(captive.mac[captive.n++], m, 6);
+    }
+    captive.next = captive.n % CAPTIVE_DEVICES;
+}
+
+static void captiveSave()
+{
+    char t[CAPTIVE_DEVICES * 13 + 1] = "";
+    for (uint8_t i = 0; i < captive.n; i++)                    // oldest first: from the place the next one takes
+    {
+        const uint8_t* m = captive.mac[(captive.n < CAPTIVE_DEVICES ? i : (captive.next + i) % CAPTIVE_DEVICES)];
+        snprintf(t + strlen(t), sizeof(t) - strlen(t), "%s%02x%02x%02x%02x%02x%02x", i ? "," : "", m[0], m[1], m[2], m[3], m[4], m[5]);
+    }
+    prefs.begin("xiao", false);
+    prefs.putString("capOk", t);
+    prefs.end();
+}
+
+// The MAC of the device on our network at this address (ip as in a sockaddr), from the access point's list
+static bool captiveMacOf(uint32_t ip, uint8_t* mac, uint32_t now)
+{
+    for (int pass = 0; pass < 2; pass++)
+    {
+        for (uint8_t i = 0; i < captive.cacheN; i++)
+            if (captive.cache[i].ip == ip) { memcpy(mac, captive.cache[i].mac, 6); return true; }
+        if (pass == 1 || (captive.cacheMs != 0 && now - captive.cacheMs < 200)) return false;   // read just now
+        wifi_sta_list_t l;
+        esp_netif_pair_mac_ip_t p[ESP_WIFI_MAX_CONN_NUM];
+        captive.cacheN = 0;
+        captive.cacheMs = msStamp(now);
+        if (esp_wifi_ap_get_sta_list(&l) != ESP_OK || l.num <= 0) return false;
+        const int n = l.num < ESP_WIFI_MAX_CONN_NUM ? l.num : ESP_WIFI_MAX_CONN_NUM;
+        for (int i = 0; i < n; i++) { memcpy(p[i].mac, l.sta[i].mac, 6); p[i].ip.addr = 0; }
+        esp_netif_t* ap = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+        if (!ap || esp_netif_dhcps_get_clients_by_mac(ap, n, p) != ESP_OK) return false;
+        for (int i = 0; i < n; i++)
+        {
+            if (p[i].ip.addr == 0) continue;
+            captive.cache[captive.cacheN].ip = p[i].ip.addr;
+            memcpy(captive.cache[captive.cacheN].mac, p[i].mac, 6);
+            captive.cacheN++;
+        }
+    }
+    return false;
+}
+
+// This device pressed "Done" (ip as in a sockaddr)
+static bool captiveDone(uint32_t ip, uint32_t now)
+{
+    if (captive.cacheMs != 0 && now - captive.cacheMs >= CAPTIVE_MAC_MS) captive.cacheN = 0;   // read the list again
+    uint8_t m[6];
+    if (!captiveMacOf(ip, m, now)) return false;
+    for (uint8_t i = 0; i < captive.n; i++) if (!memcmp(captive.mac[i], m, 6)) return true;
+    return false;
+}
+
+// "Done on this device": false when the device is not on our network (or the access point does not know it)
+static bool captiveMarkDone(uint32_t ip, uint32_t now)
+{
+    captive.cacheN = 0;                                        // a device that just joined: read the list again
+    captive.cacheMs = 0;
+    uint8_t m[6];
+    if (!captiveMacOf(ip, m, now)) return false;
+    for (uint8_t i = 0; i < captive.n; i++) if (!memcmp(captive.mac[i], m, 6)) return true;
+    memcpy(captive.mac[captive.next], m, 6);
+    captive.next = (captive.next + 1) % CAPTIVE_DEVICES;
+    if (captive.n < CAPTIVE_DEVICES) captive.n++;
+    captiveSave();
+    logEvent("Sign-in page: done on the device %02X:%02X:%02X:%02X:%02X:%02X (it gets no more sign-in notice)", m[0], m[1], m[2], m[3], m[4], m[5]);
+    return true;
+}
+
+static void captiveStart()
+{
+    captiveLoad();
+    captive.sock = lwip_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (captive.sock < 0) { logEvent("Sign-in page: the DNS server did NOT start (no socket)"); return; }
+    struct sockaddr_in a;
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_port = htons(53);
+    a.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (lwip_bind(captive.sock, (struct sockaddr*)&a, sizeof(a)) < 0)
+    {
+        lwip_close(captive.sock);
+        captive.sock = -1;
+        logEvent("Sign-in page: the DNS server did NOT start (port 53 taken)");
+    }
+}
+
+// Our DNS server: a few questions per loop pass, never waits. Only for devices on our own network.
+static void captivePoll(uint32_t now)
+{
+    if (captive.sock < 0) return;
+    static uint8_t b[512];
+    for (int k = 0; k < 8; k++)
+    {
+        struct sockaddr_in from;
+        socklen_t fl = sizeof(from);
+        int n = lwip_recvfrom(captive.sock, b, sizeof(b) - 16, MSG_DONTWAIT, (struct sockaddr*)&from, &fl);
+        if (n <= 0) break;
+        const uint32_t ip = from.sin_addr.s_addr;
+        if (n < 12 || !onApNet((const uint8_t*)&ip)) continue;          // a question, from our own network only
+        if ((b[2] & 0x80) || (b[2] & 0x78) || b[4] != 0 || b[5] == 0) continue;   // a query, standard, with a question
+        int at = 12;                                                    // the first question's name, then its type and class
+        while (at < n && b[at] != 0 && (b[at] & 0xC0) == 0) at += b[at] + 1;
+        if (at >= n || b[at] != 0 || at + 5 > n) continue;
+        at++;
+        const uint16_t type = (uint16_t)(b[at] << 8 | b[at + 1]), cls = (uint16_t)(b[at + 2] << 8 | b[at + 3]);
+        at += 4;                                                        // the answer: our header, that one question, ...
+        b[2] = 0x84 | (b[2] & 0x01);                                    // an answer, authoritative, "recursion desired" as asked
+        b[4] = 0; b[5] = 1;                                             // one question
+        b[6] = b[7] = b[8] = b[9] = b[10] = b[11] = 0;
+        if (captiveDone(ip, now)) { b[3] = 3; captive.refused++; }      // "no such name": the device says "no internet"
+        else
+        {
+            b[3] = 0;
+            captive.asked++;
+            if (type == 1 && cls == 1)                                  // an address: ours
+            {
+                const uint8_t a[16] = { 0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, CAPTIVE_TTL_S, 0, 4, apNet[0], apNet[1], apNet[2], 1 };
+                memcpy(b + at, a, sizeof(a));
+                at += sizeof(a);
+                b[7] = 1;
+            }
+        }
+        struct sockaddr_in to = from;
+        lwip_sendto(captive.sock, b, at, MSG_DONTWAIT, (struct sockaddr*)&to, sizeof(to));
+    }
+}
+
 // ---------------------------------------------------------------- WiFi
 static bool     staWasUp = false;
 static int      apClientsWas = -1;
@@ -1064,8 +1236,7 @@ static void wifiStart()
         WiFi.setAutoReconnect(true);
         WiFi.begin(cfg.staSsid.c_str(), cfg.staPass.c_str());
     }
-    dns.setErrorReplyCode(DNSReplyCode::NoError);
-    dns.start(53, "*", WiFi.softAPIP());            // every name -> this page (captive page)
+    if (captive.sock < 0) captiveStart();          // every name -> this page (the sign-in page), until "Done" on a device
     if (MDNS.begin(cfg.host.c_str()))
     {
         MDNS.setInstanceName(cfg.apSsid);                   // the name in AgOpenWeb's list: the own network's, unique to this XIAO
@@ -1199,6 +1370,7 @@ static bool passwordOk()
 static bool captiveRedirect()
 {
     if (!(server.client().localIP() == WiFi.softAPIP())) return false;
+    if (captiveDone((uint32_t)server.client().remoteIP(), millis())) return false;   // pressed "Done": no sign-in page for it
     String h = server.hostHeader();
     h.toLowerCase();
     if (h.length() == 0 || h == apIpText || h == cfg.host + ".local") return false;
@@ -1269,6 +1441,14 @@ static void apiState()
     j.u("modLink", bridge.modLink);            // ... and those not passed: no room on the link
     j.close();
 
+    {
+        const bool onAp = server.client().localIP() == WiFi.softAPIP();
+        j.obj("captive");                      // the sign-in page (23 Nov 2026): this browser's device, and how many are done
+        j.bo("ap", onAp);
+        j.bo("done", onAp && captiveDone((uint32_t)server.client().remoteIP(), now));
+        j.u("n", captive.n);
+        j.close();
+    }
     j.obj("tpage");                            // the module's page through the XIAO (Nov 2026): http://<apIp>:8080/
     const char* tn = tpageNot(now);
     j.bo("ready", tn == nullptr);
@@ -1725,6 +1905,25 @@ static void apiTeensyRevert()
     }
 }
 
+// The sign-in page: "done" = no more sign-in notice on the device of this browser (on our own network only; no
+// password: it changes that device only); "forget" = every device gets the sign-in page again (password)
+static void apiCaptive()
+{
+    const uint32_t now = millis();
+    if (server.arg("forget") == "1")
+    {
+        if (!passwordOk()) return;
+        captive.n = captive.next = 0;
+        captiveSave();
+        logEvent("Sign-in page: every device gets it again");
+        server.send(200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (!(server.client().localIP() == WiFi.softAPIP())) { sendError(400, "only for a device on the XIAO's own WiFi"); return; }
+    if (!captiveMarkDone((uint32_t)server.client().remoteIP(), now)) { sendError(400, "the XIAO does not find this device among those on its WiFi (a fixed address?)"); return; }
+    server.send(200, "application/json", "{\"ok\":true}");
+}
+
 static void apiRestart()
 {
     if (!passwordOk()) return;
@@ -1772,6 +1971,7 @@ static void webSetup()
     server.on("/api/settings", HTTP_POST, apiSettingsPost);
     server.on("/api/scan", HTTP_GET, apiScan);
     server.on("/api/restart", HTTP_POST, apiRestart);
+    server.on("/api/captive", HTTP_POST, apiCaptive);
     server.on("/api/subnet", HTTP_POST, apiSubnet);
     server.on("/api/teensy-update", HTTP_POST, teensyUpdateDone, teensyUpdateUpload);   // the Teensy's firmware over the link
     server.on("/api/teensy-revert", HTTP_POST, apiTeensyRevert);
@@ -1862,7 +2062,7 @@ void loop()
 
     stillHere();
     linkPoll(millis());
-    dns.processNextRequest();
+    captivePoll(millis());
     server.handleClient();
     usbCommands();
 

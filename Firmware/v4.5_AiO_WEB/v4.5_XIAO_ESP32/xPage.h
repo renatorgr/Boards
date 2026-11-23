@@ -127,6 +127,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <section id="t-status">
 <div id="verNote" class="info warn hidden"></div>
 <div id="ghNote" class="info hidden"></div>
+<div id="capNote" class="info hidden">This device opened this page by itself: the XIAO's WiFi has no internet, so the device asks to «sign in». <button type="button" id="capDone">Done on this device</button> <span id="capMsg" class="note">From then on it says only «no internet» on this WiFi, which is right; the page stays at <b class="capAt">192.168.4.1</b>.</span></div>
 <div id="stale" class="info hidden">This page is older than the XIAO program running now. Reload it: Ctrl+F5 on a computer; on a phone or in a web card, close the page and open it again.</div>
 <div class="grid3">
  <div class="card"><h2>Module (Teensy)<span class="age" id="mAge"></span></h2>
@@ -168,6 +169,7 @@ p.chk{text-align:right;margin:4px 0 0}
  <label class="field"><span>Network name</span><input type="text" name="apSsid" maxlength="32"></label>
  <label class="field"><span>New password (only to change it: 8 to 63 characters; blank keeps the current one)</span><input type="password" name="apPass" maxlength="63"></label>
  <p class="note">Always on, at <b id="apAt">192.168.4.1</b>. Its password is also the one for changing the settings and the firmware.</p>
+ <p class="note">Sign-in page: a device that joins opens this page by itself, until «Done on this device» (Status tab). <span id="capN"></span> <button type="button" id="capForget" class="hidden">Show it again on all</button></p>
  <label class="opt"><input type="checkbox" name="bridge" value="1"><span>WiFi bridge: run AgOpenWeb / AgOpenGPS on this network<small>For a tablet with no network cable to the module: it joins this network and the program reaches the module through the XIAO. Needs a password of your own here (whoever is on this network can steer the tractor) and the Teensy firmware of 22 Nov 2026 or later. This network then takes the module's numbers (192.168.5.x, as AgOpenGPS by definition): the program keeps its subnet, and a sprayer or seed drill module joins it as it is. A program on the module's network cable comes first. No internet here: corrections (NTRIP) come through the tablet's mobile data.</small></span></label>
  <p class="note" id="brNote"></p>
 </div>
@@ -266,6 +268,14 @@ let lastState=null,lastTeensy=null,lastNets=null,tab="status",chipId=-1,chipName
 const fmt=(v,d,u)=>(v===null||v===undefined||Number.isNaN(v))?"–":Number(v).toFixed(d)+(u||"");
 function set(id,txt,cls){const e=$(id);if(!e)return;e.textContent=txt;e.classList.remove("ok","warn","bad");if(cls)e.classList.add(cls);}
 function pill(id,txt,cls){const e=$(id);e.textContent="";const s=document.createElement("span");s.className="pill "+(cls||"");s.textContent=txt;e.appendChild(s);}
+let capPressed=false;
+$("capDone").onclick=async()=>{const m=$("capMsg");m.textContent="…";m.className="note";
+ const j=await getJ("/api/captive",{method:"POST"}).catch(()=>({error:"no answer"}));
+ if(j.ok){capPressed=true;$("capDone").disabled=true;m.textContent="Done. Close this window; the device now says «no internet» on this WiFi, which is right. The page is at http://"+apAddr+"/";m.className="note ok";}
+ else{m.textContent="Not done: "+(j.error||"no answer");m.className="note bad";}};
+$("capForget").onclick=async()=>{const p=await fwAsk({text:"Every device gets the sign-in page again when it joins. Go on?"});if(!p)return;
+ const j=await getJ("/api/captive",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"forget=1&pw="+encodeURIComponent(p)});if(!j.ok)pwRefused(403,j.error);
+ set("capN",j.ok?"Done: every device gets it again.":"Not done: "+(j.error||"no answer"),j.ok?"ok":"bad");};
 async function getJ(u,o){const r=await fetch(u,Object.assign({cache:"no-store"},o||{}));let j={};try{j=await r.json();}catch(e){}if(!r.ok&&!j.error)j.error="HTTP "+r.status;return j;}
 function dur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+" h "+m+" min":m?m+" min "+(s%60)+" s":s+" s";}
 function ago(s){return s<0?"never":s<2?"now":(dur(s)+" ago");}
@@ -306,6 +316,8 @@ function renderVer(){
 function renderState(x){
  lastState=x;lastUp=x.up;if(x.chipId!==undefined){chipId=x.chipId;chipName=x.chip;}
  if(x.wifi.apIp){apAddr=x.wifi.apIp;$("apAt").textContent=apAddr;}
+ {const c=x.captive;if(c){$("capNote").classList.toggle("hidden",!c.ap||c.done||capPressed);for(const b of document.querySelectorAll(".capAt"))b.textContent=apAddr;   // the sign-in page (23 Nov 2026)
+  set("capN",c.n?c.n+" device(s) done.":"No device done yet.");$("capForget").classList.toggle("hidden",!c.n);}}
  {const a=$("mPageX"),tp=x.tpage;a.href="http://"+apAddr+":8080/";a.textContent=a.href;   // the module's page through the XIAO (Nov 2026)
   set("mPageXNot",tp&&!tp.ready?" (not now: "+tp.why+")":"",tp&&!tp.ready?"warn":"");}
  $("hdr").textContent=x.fw+" · "+(x.wifi.st==="ok"?x.wifi.ip:apAddr);

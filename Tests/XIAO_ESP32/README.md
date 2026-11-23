@@ -19,6 +19,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 23 Nov 2026 | `careful-sign-in-page`: the XIAO's own DNS server, «Done on this device» and its MAC list over a restart; the pretend core gets the access point's device list ([How it works](#how-it-works)). |
 | 22 Nov 2026 | First version, then section modules on its WiFi (and in the Machine tab), its network on the module's numbers, the module's page: 76 scenarios, five users, two XIAOs (88 runs) ([How it works](#how-it-works)). Two of four findings fixed ([What it found](#what-it-found)). |
 
 ## Running it
@@ -85,7 +86,7 @@ On GitHub the **XIAO harness** check runs it on every pull request that changes 
 
 | User | Scenarios |
 |---|---|
-| Careful user | `careful-first-start`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-network-numbers` (the XIAO's network on the module's numbers, 192.168.5.x, and back), `careful-bridge-modules` (a sprayer and a seed drill module on the XIAO's WiFi), `careful-bridge-page-while-steering`, `careful-module-page` (the module's page at port 8080 while the tablet steers), `careful-usb-and-restart` |
+| Careful user | `careful-first-start`, `careful-sign-in-page`, `careful-status-and-messages`, `careful-settings-save`, `careful-other-network`, `careful-update`, `careful-update-other-chip`, `careful-teensy-update`, `careful-teensy-revert-subnet`, `careful-bridge` (a minute of steering through the bridge with corrections), `careful-bridge-network-numbers` (the XIAO's network on the module's numbers, 192.168.5.x, and back), `careful-bridge-modules` (a sprayer and a seed drill module on the XIAO's WiFi), `careful-bridge-page-while-steering`, `careful-module-page` (the module's page at port 8080 while the tablet steers), `careful-usb-and-restart` |
 | XIAO never set up | `new-bridge-needs-password`, `new-no-teensy`, `new-gps2-port-not-set`, `new-older-teensy`, `new-wrong-password` (every change with a wrong password), `new-phones-join` (the phones' "is there internet?" checks), `module-page-default-password` |
 | Wrong settings | `settings-bad-values`, `settings-special-characters`, `settings-other-network-wrong`, `settings-what-is-kept`, `settings-flash-nonsense`, `settings-forgotten-password` (`wifi-reset`), `settings-subnet-values`, `settings-bridge-router-same-numbers` (an other network at 192.168.5.1 too: left), `settings-bridge-module-subnet` (the module's subnet changed: the XIAO's network follows), `update-wrong-files` (a `.hex`, a cut or damaged `.bin`, the USB file), `update-header-byte-later`, `module-page-firmware` (an update or going back through port 8080: refused) |
 | Wrong connections | `conn-two-tablets`, `conn-program-on-other-network`, `conn-forged-address`, `conn-cable-and-wifi`, `conn-not-a-teensy`, `conn-broken-wire`, `conn-teensy-restarts`, `conn-xiao-loses-power`, `conn-odd-packets`, `conn-search-while-steering`, `conn-forged-module`, `conn-modules-bridge-off`, `conn-five-modules` (there are places for four), `conn-module-subnet-and-scan`, `module-page-old-teensy`, `module-page-other-network`, `machine-tab-old-teensy` |

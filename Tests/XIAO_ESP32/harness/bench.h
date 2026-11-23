@@ -364,6 +364,11 @@ struct World
     Reply& reply(int id) { return exchanges_[id]->reply; }
     Reply wait(int id);
     Reply http(const std::string& req, const Link& l = Link());
+    // A name asked of the XIAO's DNS server (UDP 53) by a device on its own network: rcode -1 = no answer in 2 s,
+    // else the answer's code (0 = found, 3 = no such name) and the address in it (empty: none)
+    struct DnsReply { int rcode = -1; std::string addr; };
+    DnsReply dns(const std::string& name, uint8_t ipLast = 20);
+    std::vector<fake::Datagram> dnsOut;     // the DNS server's answers (taken away by dns())
     Reply get(const std::string& path, const Link& l = Link()) { return http(GET(path, hostFor(l)), l); }
     Reply post(const std::string& path, const std::vector<std::pair<std::string, std::string>>& form, const Link& l = Link()) { return http(POST(path, form, hostFor(l)), l); }
     Reply upload(const std::string& pathAndQuery, const std::string& fileName, const std::vector<uint8_t>& file, const Link& l = Link()) { return http(UPLOAD(pathAndQuery, fileName, file, hostFor(l)), l); }

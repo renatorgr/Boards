@@ -136,6 +136,8 @@ void Device::uartFeed(const uint8_t* b, size_t n)
 
 bool Device::udpIn(const Datagram& d)
 {
+    const IPAddress from = IPAddress::fromRaw(d.src);
+    if (from[0] == apIp[0] && from[1] == apIp[1] && from[2] == apIp[2] && std::find(apPeers.begin(), apPeers.end(), d.src) == apPeers.end()) apPeers.push_back(d.src);
     for (auto& s : udp)
     {
         if (!s.open || s.port != d.dstPort) continue;
@@ -153,6 +155,7 @@ std::shared_ptr<Conn> Device::connect(bool fromAp, IPAddress peer, uint16_t port
     for (auto& p : pending) waiting += p->port == port;
     if (!listening || waiting >= TCP_BACKLOG) return nullptr;
     if (fromAp ? !apOn : !staJoined) return nullptr;
+    if (fromAp && std::find(apPeers.begin(), apPeers.end(), peer.raw()) == apPeers.end()) apPeers.push_back(peer.raw());
     auto c = std::make_shared<Conn>();
     c->fd = nextFd++;
     c->fromAp = fromAp;
@@ -1271,4 +1274,33 @@ void WebServer::handleRequest()
     else if (notFound_) notFound_();
     else send(404, "text/html", String("Not found: ") + String(uri_));
     uri_.clear();
+}
+
+// ---------------------------------------------------------------- the access point's devices (esp_wifi.h, esp_netif.h)
+#include "esp_wifi.h"
+#include "esp_netif.h"
+esp_err_t esp_wifi_ap_get_sta_list(wifi_sta_list_t* sta)
+{
+    memset(sta, 0, sizeof(*sta));
+    if (!fake::cur->apOn) return -1;
+    for (uint32_t ip : fake::cur->apPeers)
+    {
+        if (sta->num >= ESP_WIFI_MAX_CONN_NUM) break;
+        wifi_sta_info_t& i = sta->sta[sta->num++];
+        i.mac[0] = 0x02;
+        i.mac[5] = IPAddress::fromRaw(ip)[3];
+    }
+    return ESP_OK;
+}
+static int netifDummy;
+esp_netif_t* esp_netif_get_handle_from_ifkey(const char*) { return (esp_netif_t*)&netifDummy; }
+esp_err_t esp_netif_dhcps_get_clients_by_mac(esp_netif_t*, int num, esp_netif_pair_mac_ip_t* p)
+{
+    for (int i = 0; i < num; i++)
+    {
+        p[i].ip.addr = 0;
+        for (uint32_t ip : fake::cur->apPeers)
+            if (p[i].mac[0] == 0x02 && IPAddress::fromRaw(ip)[3] == p[i].mac[5]) p[i].ip.addr = ip;
+    }
+    return ESP_OK;
 }
