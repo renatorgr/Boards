@@ -41,6 +41,10 @@ typedef bool boolean;
 #define CHANGE 0x03
 #define PROGMEM
 #define IRAM_ATTR
+// RTC memory that a reset leaves as it was (esp_attr.h): an ordinary variable here; the harness (Module in bench.cpp) keeps
+// the bytes of a program variable named lastRun through a reset by itself or ESP.restart(), and fills them with
+// rubbish at a power on, as the chip's RTC memory has
+#define RTC_NOINIT_ATTR
 #define F(s) (s)
 #define lowByte(w) ((uint8_t)((w) & 0xff))
 #define highByte(w) ((uint8_t)((w) >> 8))
@@ -160,6 +164,7 @@ class EspClass
 public:
     uint64_t getEfuseMac();
     uint32_t getFreeHeap() { return 180000; }
+    uint32_t getMinFreeHeap() { return 150000; }
     [[noreturn]] void restart();
 };
 extern EspClass ESP;
@@ -438,6 +443,7 @@ struct Device
     // flash
     std::map<std::string, std::map<std::string, PrefValue>> prefs;
     uint32_t flashWrites = 0;               // putX calls that changed something (flash wear)
+    std::vector<uint8_t> rtc;               // RTC memory the program keeps through a reset (RTC_NOINIT_ATTR lastRun); empty = rubbish
 
     // Wi-Fi and the cable
     int         wifiMode = WIFI_OFF;

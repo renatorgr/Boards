@@ -421,7 +421,7 @@ async function refresh(){
     $('log').textContent=d.log.join('\n');
     // Firmware tab
     $('ver').textContent=d.fw+' '+verText(d.ver,d.built);$('board').textContent=d.board||'–';
-    $('up').textContent=Math.floor(d.up/60)+' min';say($('start'),d.startBad?'bad':'',d.start||'–');$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
+    $('up').textContent=Math.floor(d.up/60)+' min';say($('start'),d.startBad?'bad':'',(d.start||'–')+(d.before?' (before: up '+d.before.up+' s, at '+d.before.at+')':''));$('heap').textContent=Math.round(d.heap/1024)+' kB';$('name').textContent=d.name;
     running(d);
     if(!settingsLoaded){settingsLoaded=true;loadSettings()}
   }catch(e){$('sub').textContent='no answer from the module';$('dot').className='dot';if(waitBoot)progMsg('The module is restarting…','warn')}

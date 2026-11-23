@@ -160,6 +160,67 @@ SCENARIO(User::Careful, "sprayer-litres-kept", "sprays; the module restarts by i
     statusAlwaysJson(m);
 }
 
+// A restart by the watchdog says which watchdog, and what the module was doing just before: on 23 Nov 2026 the sprayer
+// restarted by the watchdog on the tractor and said nothing more (0.10.17).
+SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog restarts the module twice (once after a flood of flow pulses), then a power cut",
+         sprayerBoards())
+{
+    World w;
+    Module& m = carefulSprayer(w, board);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    driveAndCompare(w, m, first(8), rs, 20000);
+
+    // a task gets no time for 5 s: the task watchdog resets the chip while it sprays
+    uint64_t from = w.now();
+    m.resetBy(ESP_RST_TASK_WDT);
+    w.run(3000);
+    Json s = m.status();
+    must("start-task-wdt", s["start"].str() == "watchdog: a task stuck" && s["startBad"].num() == 1,
+         "the Module tab says which watchdog restarted the module", s["start"].str());
+    must("screen-task-wdt", contains(screenMessages(w, from), "restarted: watchdog: a task stuck"),
+         "AgOpenWeb's screen says which watchdog", screenMessages(w, from));
+    Json b = s["before"];
+    must("before-kept", b.type == Json::Object && b["up"].num() >= 19 && b["up"].num() <= 24 && b["flowPerS"].num() > 100
+         && b["relays"].num() != 0 && !b["at"].str().empty(),
+         "the module says what it was doing before: up about 21 s, spraying (flow pulses, relays on), where in its loop",
+         fmt("up %g s, at '%s', flow %g/s, relays %g", b["up"].num(), b["at"].str().c_str(), b["flowPerS"].num(), b["relays"].num()));
+    must("log-before", contains(pageLog(m), "before: up"), "the events say what it was doing before", pageLog(m));
+
+    // electrical noise on the meter's wire: a flood of pulses holds the chip in its interrupt, the interrupt watchdog resets it
+    driveAndCompare(w, m, first(8), rs, 5000);
+    {
+        fake::Device* was = fake::cur;
+        fake::cur = &m.dev;
+        for (int i = 0; i < 200000; i++) m.dev.isr[35]();
+        fake::cur = was;
+    }
+    m.resetBy(ESP_RST_INT_WDT);
+    w.run(3000);
+    s = m.status();
+    b = s["before"];
+    must("start-int-wdt", s["start"].str() == "watchdog: interrupts stuck", "the interrupt watchdog is named", s["start"].str());
+    must("before-flood", b["flowAfter"].num() >= 200000 && b["up"].num() <= 9,
+         "the flow pulses that came after the loop's last pass show the flood (and the time up is this start's)",
+         fmt("%g pulses after the last pass, up %g s", b["flowAfter"].num(), b["up"].num()));
+
+    // the power is cut: RTC memory is gone, and a power on says nothing about before
+    driveAndCompare(w, m, 0, rs, 3000);
+    m.powerOff();
+    w.run(500);
+    m.powerOn();
+    w.run(3000);
+    s = m.status();
+    must("before-none-power-on", s["before"].type == Json::Null && s["start"].str() == "power on",
+         "after a power on there is nothing about before (the RTC memory went with the power)", s["start"].str());
+    // a restart asked for: nothing either
+    m.http(HTTP_POST, "/api/restart", { { "pw", "agopengps" } });
+    w.run(3000);
+    s = m.status();
+    must("before-none-asked", s["before"].type == Json::Null && s["start"].str() == "restart asked",
+         "a restart asked for says nothing about before", s["start"].str());
+    statusAlwaysJson(m);
+}
+
 SCENARIO(User::Careful, "careful-seeder", "sets up the seed drill module (19 sections, cable) and sows a field", seederBoards())
 {
     World w;

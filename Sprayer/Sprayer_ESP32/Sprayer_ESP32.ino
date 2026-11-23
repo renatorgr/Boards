@@ -62,7 +62,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.17"
+#define FW_VERSION          "0.10.18"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -204,6 +204,42 @@ uint32_t totalPulses = 0;
 
 const char* startWhy = "";      // why the chip started (startRead), for the events, the page and the program's screen
 bool     startUnexpected = false;   // a start nobody asked for: a voltage drop, a crash, a watchdog, power back while spraying
+
+// What the module was doing, kept through a reset: a start nobody asked for (the watchdog, a crash, a voltage drop)
+// says what it was doing just before (lastRunRead). On 23 Nov 2026 the module restarted by the watchdog on the
+// tractor, with nothing to tell where it had stopped. RTC memory keeps this through a reset; a power off leaves
+// anything in it (LAST_RUN_MAGIC tells). The flow meter's interrupt counts in it too: interrupts that went on after
+// the last pass of loop() point at a flood of pulses (electrical noise on the meter's wire) that stopped the chip.
+#define LAST_RUN_MAGIC 0x53505231u  // "SPR1"
+struct LastRun
+{
+    uint32_t magic;             // LAST_RUN_MAGIC when the rest is a run of this program
+    uint32_t upS;               // seconds up, once a second
+    uint32_t isr;               // flow meter interrupts, counted in the interrupt itself
+    uint32_t isrAtPass;         // isr at the last pass of loop()
+    uint32_t pulsesLastS;       // flow meter pulses in the last whole second
+    uint32_t heapMin;           // the least free heap since the start
+    uint32_t relays;            // relayBits
+    int8_t   rssi;              // the tractor network's signal, 0 = not joined
+    uint8_t  apClients;         // devices on the own network
+    uint8_t  step;              // the part of loop() it was in (STEP_*)
+    uint8_t  alarms;            // sprayAlarms
+};
+RTC_NOINIT_ATTR LastRun lastRun;    // not static: the test harness keeps it through a reset by this name
+
+// The parts of loop(), for lastRun.step
+enum : uint8_t
+{
+    STEP_START, STEP_UDP, STEP_WEB, STEP_DNS, STEP_SERIAL, STEP_BUTTON, STEP_SENSORS, STEP_HYD, STEP_FLOW,
+    STEP_SEND, STEP_WIFI, STEP_TOTAL, STEP_RESTART, STEP_CORE, STEP_COUNT
+};
+static const char* const STEP_NAME[STEP_COUNT] = {
+    "the start", "program messages", "the web page", "own network DNS", "serial monitor", "IO0 button",
+    "sensors and relays", "hydraulics", "flow and rate", "messages out", "Wi-Fi watch", "litres to flash",
+    "a restart", "between passes"
+};
+bool     beforeKept = false;    // lastRunRead found what the module was doing before a start nobody asked for
+LastRun  lastRunBefore = {};    // that, for the events and /api/status
 
 // worked out once a second from the readings (zRate.ino); -1 = none
 float    openWidthM = 0;        // width of the open sections, m (from PGN 235)
@@ -390,14 +426,41 @@ static void startRead()
     case ESP_RST_DEEPSLEEP: startWhy = "woke from sleep"; startUnexpected = false; break;
     case ESP_RST_BROWNOUT:  startWhy = "supply voltage dropped (brownout)"; break;
     case ESP_RST_PANIC:     startWhy = "program crash"; break;
-    case ESP_RST_INT_WDT:
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:       startWhy = "watchdog (the program stopped)"; break;
+    // three watchdogs (README, "Why the module started"): interrupts held 0.3 s, a task with no time for 5 s, the chip's own
+    case ESP_RST_INT_WDT:   startWhy = "watchdog: interrupts stuck"; break;
+    case ESP_RST_TASK_WDT:  startWhy = "watchdog: a task stuck"; break;
+    case ESP_RST_WDT:       startWhy = "watchdog (other)"; break;
     default:
         snprintf(other, sizeof(other), "other (code %d)", (int)r);
         startWhy = other;
         break;
     }
+}
+
+// What the module was doing before this start (lastRun), said when nobody asked for the start; then a new record.
+static void lastRunRead()
+{
+    beforeKept = startUnexpected && lastRun.magic == LAST_RUN_MAGIC && lastRun.step < STEP_COUNT;
+    if (beforeKept) lastRunBefore = lastRun;
+    memset(&lastRun, 0, sizeof(lastRun));
+    lastRun.magic = LAST_RUN_MAGIC;
+    lastRun.step = STEP_START;
+    if (!beforeKept) return;
+    const LastRun& b = lastRunBefore;
+    logEvent("before: up %lu s, at %s, flow %lu/s +%lu, heap min %lu kB, %d dBm", (unsigned long)b.upS, STEP_NAME[b.step],
+             (unsigned long)b.pulsesLastS, (unsigned long)(b.isr - b.isrAtPass), (unsigned long)(b.heapMin / 1024), (int)b.rssi);
+}
+
+// Once a second: what lastRun keeps besides the part of loop()
+static void lastRunTick()
+{
+    lastRun.upS = millis() / 1000;
+    const uint32_t heap = ESP.getMinFreeHeap();
+    lastRun.heapMin = heap;
+    lastRun.relays = relayBits;
+    lastRun.rssi = staUp() ? (int8_t)WiFi.RSSI() : 0;
+    lastRun.apClients = (uint8_t)WiFi.softAPgetStationNum();
+    lastRun.alarms = sprayAlarms;
 }
 
 // ---------------------------------------------------------------- setup and loop
@@ -416,6 +479,7 @@ void setup()
     startRead();                    // why the chip started
     totalLoad();                    // the litres applied so far, from flash
     logEvent("start: %s; %.1f L applied so far", startWhy, totalLitres);
+    lastRunRead();                  // what it was doing before a start nobody asked for
     sensorsInit();
     wifiStart();
     udpStart();
@@ -428,15 +492,22 @@ void loop()
     static uint32_t last50 = 0, last200 = 0, last1000 = 0;
     const uint32_t now = millis();
 
+    lastRun.isrAtPass = lastRun.isr;    // the flow meter's interrupts so far (lastRun: what it was doing)
+    lastRun.step = STEP_UDP;
     udpPoll();                      // messages from the program
+    lastRun.step = STEP_WEB;
     server.handleClient();          // the web page
+    lastRun.step = STEP_DNS;
     dns.processNextRequest();       // captive page on the own network
+    lastRun.step = STEP_SERIAL;
     serialCommands();
+    lastRun.step = STEP_BUTTON;
     buttonTick();
 
     if (now - last50 >= 50)         // 20 times a second
     {
         last50 = now;
+        lastRun.step = STEP_SENSORS;
         readSensors();
         applyOutputs();
         ledTick();
@@ -445,6 +516,7 @@ void loop()
     if (now - last200 >= 200)       // 5 times a second, like the official module
     {
         last200 = now;
+        lastRun.step = STEP_HYD;
         hydTick();
         sendSignOfLife();
     }
@@ -452,24 +524,31 @@ void loop()
     if (now - last1000 >= 1000)     // once a second
     {
         last1000 = now;
+        lastRun.step = STEP_FLOW;
         updateFlow();
         sensorsTick();              // a pressure sensor that is not there
         rateTick();                 // L/ha, pressure for the target, alarms
+        lastRun.step = STEP_SEND;
         sendReadings();
         sendProcessData();
         sendAlarmMessage();
         startNoteTick();            // a restart nobody asked for, on the program's screen
         noRelayTick();              // a section with no relay: the log, the page, the program's screen
         invertTick();               // outputs inverted on a board that closes one way only
+        lastRun.step = STEP_WIFI;
         wifiWatch();
+        lastRun.step = STEP_TOTAL;
         totalTick();                // the litres applied to flash while they change
+        lastRunTick();
     }
 
     if (restartAtMs && (int32_t)(now - restartAtMs) >= 0)
     {
+        lastRun.step = STEP_RESTART;
         totalSave();                // the last litres, so the restart keeps them
         outputsAllOff();
         delay(100);
         ESP.restart();
     }
+    lastRun.step = STEP_CORE;
 }

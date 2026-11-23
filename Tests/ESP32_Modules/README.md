@@ -25,6 +25,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 23 Nov 2026 | The memory that a restart keeps and a power cut clears (`RTC_NOINIT_ATTR`, [How it works](#how-it-works)). `sprayer-restart-says-before`: which watchdog, and what the sprayer was doing before. 41 scenarios. |
 | 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 40 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
 
@@ -94,6 +95,7 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - A restart (asked by the page, by PGN 201, by `ESP.restart()`) loads the program again. So everything in RAM starts fresh while the flash keeps what was saved, as on a board.
 - A reset by itself (a brownout, a crash, the watchdog: `Module::resetBy`) does the same.
 - `esp_reset_reason()` gives the program the reason, as the chip does.
+- A program's `RTC_NOINIT_ATTR` variable (the sprayer's `lastRun`) is kept through a restart or a reset by itself, and filled with noise at a power cut (`Module::powerOff`), as the chip's RTC memory. The bench finds it by its name in the program.
 
 ## The users
 
@@ -104,6 +106,7 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - `careful-on-xiao-wifi-192-168-4`: the AiO itself on 192.168.4; the own network moves to 192.168.40.1.
 - `careful-tablet-hotspot`.
 - `sprayer-litres-kept`: the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning.
+- `sprayer-restart-says-before`: the watchdog restarts the module twice (once after a flood of flow pulses), then a power cut: the module names the watchdog and says what it was doing, and says nothing after a power on.
 
 **Module never set up**
 
