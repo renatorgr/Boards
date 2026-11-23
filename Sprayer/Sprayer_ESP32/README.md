@@ -7,7 +7,7 @@ Section control for an 8 m sprayer boom with 8 sections of 1 m:
 - it also measures boom pressure and flow
 - it has its own web page
 
-Version 0.10.18, the successor of [Sprayer_Nano](../Sprayer_Nano) v0.3. Tested on the bench; first used on the sprayer on 22 Nov 2026.
+Version 0.10.19, the successor of [Sprayer_Nano](../Sprayer_Nano) v0.3. Tested on the bench; first used on the sprayer on 22 Nov 2026.
 
 ## Changelog
 
@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 23 Nov 2026 | **0.10.18**: after a start nobody asked for, the module says which watchdog it was and what it was doing just before: time up, step of its loop, flow pulses, relays, memory, Wi-Fi ([Why the module started](#why-the-module-started)). |
+| 23 Nov 2026 | **0.10.18-19**: after a start nobody asked for, the module says which watchdog, what it was doing just before, and the task that held the Wi-Fi core ([Why the module started](#why-the-module-started)). |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
@@ -103,7 +103,7 @@ An alarm also goes to the program as PGN 221, the text message it shows on its s
 - program crash
 - watchdog, in three kinds:
   - *watchdog: interrupts stuck*: interrupts ran for too long, for example a flood of pulses on the flow input (GPIO 35) from electrical noise
-  - *watchdog: a task stuck*: one part of the program did not let the rest run (the Wi-Fi, the web page)
+  - *watchdog: a task stuck*: the half of the chip that runs the Wi-Fi had no time for its own work for 5 s (0.10.19 names the task that held it)
   - *watchdog (other)*
 
 Shown in red, and on the program's screen for 30 s (*Sprayer module restarted: …*, PGN 221):
@@ -121,7 +121,7 @@ On the ESP32 the EN button reads as a power on.
 
 - after *Last start* on the Module tab: *(before: up 1234 s, at the web page)*
 - in the events, as the line after *start:*: `before: up 1234 s, at the web page, flow 85/s +0, heap min 120 kB, -61 dBm`
-- in the report, as `before` in the status: `up`, `at`, `flowPerS`, `flowAfter`, `heapMin`, `rssi`, `apCl` (phones on its own network), `relays` (one bit per relay), `alarms`
+- in the report, as `before` in the status: `up`, `at`, `flowPerS`, `flowAfter`, `heapMin`, `rssi`, `apCl` (phones on its own network), `relays` (one bit per relay), `alarms`, `task0`, `task1`
 
 How to read it:
 
@@ -129,6 +129,9 @@ How to read it:
 - **flow N/s +M**: N flow pulses in the last whole second, and M pulses counted after the loop's last pass. A huge M with *interrupts stuck* means a flood of pulses on the flow wire: noise from a valve or the pump, a flow cable next to a valve cable, a missing 1N4007.
 - **heap min**: the least free memory since the start. Under about 20 kB points at memory.
 - **dBm**: the tractor network's signal (0 when the module was on its own network only).
+- **task0, task1** (0.10.19, *a task stuck* only): the task each half of the chip was running when the watchdog fired. Also in the events (`before: the watchdog found core 0 (Wi-Fi) on 'wifi', core 1 (loop) on 'loopTask'`) and after *Last start* (*Wi-Fi core on wifi*).
+  - The watchdog watches core 0 only, the half that runs the Wi-Fi. The module's own loop runs on core 1, so *at* names where the loop happened to be, not the cause; a small *+M* after the flow pulses shows the loop was still running.
+  - `task0` is the cause: *wifi* (the radio), *tiT* (the network: TCP/IP), *async_udp* (the DNS of its own network), *mdns* (its name on the network), *ipc0* (a flash write from the other half), *sys_evt* (Wi-Fi events).
 
 After a power on, or a restart asked for, there is nothing to say: `before` is `null`.
 
@@ -278,7 +281,7 @@ divider (to-GND ÷ total) in the page's calibration.
 4. *Tools → Port*: the adapter's COM port.
 5. Hold **IO0**, press and release **EN**, release IO0. Click *Upload*. When it says
    "Hard resetting", press **EN** once.
-6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.18` and `ready`.
+6. Serial Monitor at **115200**: it prints `Sprayer_ESP32 v0.10.19` and `ready`.
 
 "Failed to connect": TX and RX are probably swapped, or step 5 was skipped.
 
@@ -484,6 +487,10 @@ If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or
 
 ## Notes
 
+- **0.10.19**: on 23 Nov 2026 at 15:17, 16:22 and 16:28 the module restarted with *watchdog: a task stuck*.
+  - At 16:28 it was *at the web page* with *flow 262/s +1*: the loop was running, so the half of the chip that runs the Wi-Fi was the one stuck for 5 s.
+  - Now the watchdog keeps the task each half was running (`task0`, `task1` in *What it was doing before*), so the next restart names the part of the Wi-Fi that held it.
+  - Tested in `Tests/ESP32_Modules` (scenario *sprayer-restart-says-before*): the bench calls the program's watchdog hook with the Wi-Fi task on core 0.
 - **0.10.18**: on 23 Nov 2026 at 11:58 the module restarted by itself in the middle of a job, the third time in two days. *watchdog* was all it could say.
   - The litres were kept (0.10.16), so the job went on.
   - Now it names the watchdog and keeps what it was doing (*What it was doing before* in [Why the module started](#why-the-module-started)), to find the cause the next time.
