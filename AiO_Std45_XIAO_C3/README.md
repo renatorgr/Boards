@@ -1,6 +1,10 @@
 # XIAO ESP32C3 adapter for the AiO v4.5 Standard (GPS2 socket → Serial2)
 
-A small board (40.0 × 52.6 mm overall, 2 layers, cut away where the Bynav / UM982 module goes) that plugs into the **second GPS socket (GPS2, "F9P RelPosNED")** of the AiO v4.5 Standard, in place of a second simpleRTK2B, and connects a **Seeed XIAO ESP32C3** (or **ESP32S3**) to the **Teensy's Serial2** (pins 7 and 8). The XIAO plugs into two female headers on the adapter.
+A small board that connects a **Seeed XIAO ESP32C3** (or **ESP32S3**) to the **Teensy's Serial2** (pins 7 and 8).
+
+- 40.0 × 52.6 mm overall, 2 layers, cut away where the Bynav / UM982 module goes.
+- It plugs into the **second GPS socket (GPS2, "F9P RelPosNED")** of the AiO v4.5 Standard, in place of a second simpleRTK2B.
+- The XIAO plugs into two female headers on the adapter.
 
 ## Connections
 
@@ -27,13 +31,17 @@ The positions of the 17 pins were copied from the official AiO v4.5 Standard PCB
 - The Micro is different: its GPS2 socket has its own 1 A 3.3 V regulator, so the Micro adapter uses 3.3 V.
 - This adapter takes the 5 V of the socket (P7 pin 4) through a Schottky diode (D1) into the XIAO's 5V pin, and the XIAO makes its own 3.3 V. Seeed asks for this diode when the 5V pin is fed from outside.
 - With D1, the XIAO's USB-C can be plugged in with the adapter on the board: D1 keeps the USB 5 V out of the AiO's 5 V.
-- R1 and R2 are 1 kΩ (the Micro adapter too, from its v1.2). If the XIAO is on USB with the AiO switched off, its TX pin feeds the unpowered Teensy through R1; 1 kΩ keeps that current to about 3 mA. At 460800 baud, 1 kΩ makes no difference.
+- R1 and R2 are 1 kΩ (the Micro adapter too, from its v1.2).
+  - If the XIAO is on USB with the AiO switched off, its TX pin feeds the unpowered Teensy through R1; 1 kΩ keeps that current to about 3 mA.
+  - At 460800 baud, 1 kΩ makes no difference.
 
 ## Shape
 
 - It plugs into P7 (power), P8 pins 1–3 (Serial2) and H14 (6 pins, only to hold it).
 - The XIAO sits on the H14 / P8 side of the socket (towards the ADS1115), with its USB-C on the left edge.
-- A strip along P7 carries the 5 V. Everything to the right of the XIAO and below that strip is cut away: from 4.0 mm to the right of P7 pin 1 and from 4.6 mm below the P7 row. The Bynav / UM982 module (and the U16 MP1584) can sit under that area.
+- A strip along P7 carries the 5 V.
+- Everything to the right of the XIAO and below that strip is cut away: from 4.0 mm to the right of P7 pin 1 and from 4.6 mm below the P7 row.
+- The Bynav / UM982 module (and the U16 MP1584) can sit under that area.
 - A leg goes down to P8 and stays at least 1.5 mm away from the UM982 board drawn on the official PCB (part GPS_UM982EB, socket H20), which covers P8 pins 5–8 and H7.
 - P8 and P7 alone would let the adapter go in turned 180°. With H14 it cannot: turned around, its H14 pins land between the holes of H7.
 - The outline stays inside the drawing of the GPS2 module on the Standard's silkscreen.
@@ -49,6 +57,7 @@ The positions of the 17 pins were copied from the official AiO v4.5 Standard PCB
 ## Opening it in EasyEDA
 
 EasyEDA Pro: **File → Import → KiCad**, then choose the project folder (or the .zip). It imports the schematic and the PCB.
+
 EasyEDA is not needed to order the board: the Gerber zip goes straight to JLCPCB.
 
 ## Ordering (JLCPCB)
@@ -59,7 +68,8 @@ EasyEDA is not needed to order the board: the Gerber zip goes straight to JLCPCB
   - the pin headers J1, J2 and J3: through-hole parts on the **bottom** side, with the long pins pointing down (away from the board). The CPL already gives them on the bottom layer, at the centre of each header;
   - the two female headers J4 and J5 for the XIAO: through-hole parts on the **top** side.
 - Through-hole assembly costs a little more than SMD only.
-- There are parts on both sides, so choose **Standard PCBA** with assembly on **both sides**. With Economic PCBA or top side only, JLCPCB leaves out J1, J2 and J3 (they are on the bottom) and stops with "Coordinate file missing data for: J1, J2, J3".
+- There are parts on both sides, so choose **Standard PCBA** with assembly on **both sides**.
+  - With Economic PCBA or top side only, JLCPCB leaves out J1, J2 and J3 (they are on the bottom) and stops with "Coordinate file missing data for: J1, J2, J3".
 - Cheaper alternative: Economic PCBA, top side only, with `BOM_…_top_only.csv` and `CPL_…_top_only.csv` (the same files without J1, J2 and J3), and solder J1, J2 and J3 by hand.
 - In JLCPCB's placement preview, check:
   - J1, J2 and J3 on the bottom side, over the rows of holes marked "P8", "P7" and "H14";
@@ -77,7 +87,9 @@ EasyEDA is not needed to order the board: the Gerber zip goes straight to JLCPCB
 | J4, J5 | 1x07 female header, 2.54 mm, 8.5 mm high, HCTL PM254-1-07-Z-8.5 | C2897370 |
 | U1 | Seeed XIAO ESP32C3 or ESP32S3, plugged into J4 / J5 | (not assembled) |
 
-The headers have 6.1 mm mating pins and a 2.5 mm insulator, like the ones on the AiO board itself. Without assembly, J1, J2 and J3 can be cut from one ordinary 1x40 strip of 2.54 mm male headers.
+The headers have 6.1 mm mating pins and a 2.5 mm insulator, like the ones on the AiO board itself.
+
+Without assembly, J1, J2 and J3 can be cut from one ordinary 1x40 strip of 2.54 mm male headers.
 
 ## Assembly
 
@@ -86,16 +98,21 @@ The headers have 6.1 mm mating pins and a 2.5 mm insulator, like the ones on the
    - J1 goes into **P8 pins 1 to 3**: the three holes at the end of P8 closest to the ADS1115 module.
    - J2 goes into P7 (all 8 pins) and J3 into H14 (all 6 pins).
 3. **XIAO:** solder the two 1x7 male headers that come with it **underneath the XIAO**, long pins pointing down. To keep them straight, push them into J4 and J5 first, lay the XIAO on top and solder from above.
-4. **Plug the XIAO into J4 and J5 with its USB-C at the "USB-C" mark** (left edge, ADS1115 side). The two rows have 7 pins each, so the XIAO also goes in turned 180°: that way the 5 V goes into D6 (a 3.3 V pin) and the XIAO is damaged. Check the USB-C mark before powering the AiO.
+4. **Plug the XIAO into J4 and J5 with its USB-C at the "USB-C" mark** (left edge, ADS1115 side).
+   - The two rows have 7 pins each, so the XIAO also goes in turned 180°: that way the 5 V goes into D6 (a 3.3 V pin) and the XIAO is damaged.
+   - Check the USB-C mark before powering the AiO.
 5. Orientation of the adapter: the square pads are pin 1, and the silkscreen says "P8", "P7" and "H14" next to the header that goes into each one. The H14 header stops it going in turned around.
 
 ## Cautions
 
 - With the adapter in place, the GPS2 socket cannot hold a second F9P (dual F9P).
-- The Bynav / UM982 module (H20) and the XIAO can be fitted at the same time. They use different serial ports (the module the GPS1 port, the XIAO Serial2), and both take their 5 V from the 1 A K7805M (5V1).
+- The Bynav / UM982 module (H20) and the XIAO can be fitted at the same time.
+  - They use different serial ports (the module the GPS1 port, the XIAO Serial2).
+  - Both take their 5 V from the 1 A K7805M (5V1).
 - Check that the antenna cables of the Bynav / UM982 module do not press on the adapter.
 - If there is a standoff in the GPS2 mounting hole next to the ADS1115 (left there for a simpleRTK2B), take it out: it would push on the adapter's leg.
-- The XIAO's USB-C can be used with the adapter on the board (see "Why 5 V"): the plug goes in from the left, over the ADS1115 side. The XIAO can also be unplugged to program it, or programmed over WiFi (OTA) after the first time.
+- The XIAO's USB-C can be used with the adapter on the board (see "Why 5 V"): the plug goes in from the left, over the ADS1115 side.
+  - The XIAO can also be unplugged to program it, or programmed over WiFi (OTA) after the first time.
 - On the sockets the XIAO sits about 11 mm higher than soldered flat (8.5 mm socket + 2.5 mm of the male header). Check that the box lid closes.
 - Tractor vibration: hold the XIAO in its sockets, for example with a cable tie around the XIAO and the adapter, or a dot of neutral-cure silicone at the corners (not on the U.FL connector or the buttons).
 - In a metal box, use an external WiFi antenna on the XIAO's U.FL connector, taken out through the box.
@@ -120,8 +137,12 @@ The headers have 6.1 mm mating pins and a 2.5 mm insulator, like the ones on the
 
 ## Versions
 
-- **1.2** (19 Oct 2026): pin headers J1, J2 and J3 with LCSC codes in the BOM and the CPL (bottom side), so JLCPCB solders them too. The XIAO plugs into two 1x7 female headers (J4, J5, top side, also soldered by JLCPCB) instead of being soldered to the board.
-- **1.1** (19 Oct 2026): XIAO moved to the H14 / P8 side, USB-C on the left edge; board cut away to the right of the XIAO so the Bynav / UM982 module can be fitted under that area.
+- **1.2** (19 Oct 2026):
+  - Pin headers J1, J2 and J3 with LCSC codes in the BOM and the CPL (bottom side), so JLCPCB solders them too.
+  - The XIAO plugs into two 1x7 female headers (J4, J5, top side, also soldered by JLCPCB) instead of being soldered to the board.
+- **1.1** (19 Oct 2026):
+  - XIAO moved to the H14 / P8 side, USB-C on the left edge.
+  - Board cut away to the right of the XIAO so the Bynav / UM982 module can be fitted under that area.
 - **1.0** (19 Oct 2026): first version (not made).
 
 ## Credits
