@@ -32,7 +32,7 @@ Each folder has its own README with the details.
 - **XIAO program v4.5:** must match the Teensy firmware version.
 - **Adapter boards and Relay24_ESP32:** designed and checked in KiCad, but not built or tested yet.
 - **Sprayer ESP32 v0.10:**
-  - Runs on the bench (page, Wi-Fi), not tested on the sprayer yet.
+  - Runs on the bench (page, Wi-Fi), and was first used on the sprayer on 22 Nov 2026.
   - Also builds for a plain ESP32 with relay modules (up to 16 relays).
   - Sensor dividers use 10 kΩ and 22 kΩ resistors from a common kit.
   - The sensors fitted are ticked on its page. With none, it sends no PGN 160.
