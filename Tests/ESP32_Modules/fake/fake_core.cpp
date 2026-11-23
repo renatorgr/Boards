@@ -113,6 +113,48 @@ TaskHandle_t xTaskGetCurrentTaskHandleForCore(int core)
     return core >= 0 && core < 2 && cur->coreTask[core][0] ? (TaskHandle_t)cur->coreTask[core] : nullptr;
 }
 char* pcTaskGetName(TaskHandle_t task) { return (char*)task; }
+esp_err_t esp_register_freertos_idle_hook_for_cpu(esp_freertos_idle_cb_t cb, UBaseType_t cpu)
+{
+    if (cpu != 0) return ESP_FAIL;          // only core 0's is kept (the sprayer's)
+    cur->idleHook = cb;
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------- the crash record
+esp_err_t esp_core_dump_image_check(void)
+{
+    return cur->crash.state == 1 ? ESP_OK : cur->crash.state == 2 ? ESP_ERR_INVALID_CRC : ESP_ERR_INVALID_SIZE;
+}
+esp_err_t esp_core_dump_image_get(size_t* out_addr, size_t* out_size)
+{
+    if (!cur->crash.state) return ESP_ERR_INVALID_SIZE;
+    *out_addr = 0x3F0000;
+    *out_size = cur->crash.size;
+    return ESP_OK;
+}
+esp_err_t esp_core_dump_get_summary(esp_core_dump_summary_t* s)
+{
+    if (cur->crash.state != 1) return ESP_ERR_INVALID_CRC;
+    const fake::Device::Crash& c = cur->crash;
+    memset(s, 0, sizeof(*s));
+    snprintf(s->exc_task, sizeof(s->exc_task), "%s", c.task.c_str());
+    s->exc_pc = c.pc;
+    s->exc_bt_info.depth = (uint32_t)std::min<size_t>(c.bt.size(), 16);
+    for (uint32_t i = 0; i < s->exc_bt_info.depth; i++) s->exc_bt_info.bt[i] = c.bt[i];
+    snprintf((char*)s->app_elf_sha256, sizeof(s->app_elf_sha256), "%s", c.prog.c_str());
+    s->ex_info.exc_cause = 28;              // LoadProhibited, when the record has no words
+    return ESP_OK;
+}
+esp_err_t esp_core_dump_get_panic_reason(char* buf, size_t size)
+{
+    if (cur->crash.state != 1 || cur->crash.reason.empty()) return ESP_ERR_NOT_FOUND;
+    snprintf(buf, size, "%s", cur->crash.reason.c_str());
+    return ESP_OK;
+}
+int esp_app_get_elf_sha256(char* dst, size_t size)
+{
+    return snprintf(dst, size, "%s", cur->appSha.c_str());
+}
 void EspClass::restart()
 {
     cur->restarts++;

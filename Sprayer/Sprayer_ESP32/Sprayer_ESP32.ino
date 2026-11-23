@@ -59,10 +59,13 @@
 #include <Preferences.h>
 #include <Update.h>
 #include "esp_system.h"
+#include "esp_core_dump.h"        // the crash record the chip keeps in flash (crashRead)
+#include "esp_app_desc.h"         // this program's fingerprint, to tell its crash record from an earlier program's
+#include "esp_freertos_hooks.h"   // core 0's idle time (core0Idle)
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.19"
+#define FW_VERSION          "0.10.20"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -212,7 +215,10 @@ bool     startUnexpected = false;   // a start nobody asked for: a voltage drop,
 // the last pass of loop() point at a flood of pulses (electrical noise on the meter's wire) that stopped the chip.
 // The task watchdog (0.10.19) also writes in it the task each core was running when it fired: on the tractor the
 // loop was running (flow pulses +1) and the Wi-Fi core was the one stuck, so its task is the cause.
-#define LAST_RUN_MAGIC 0x53505232u  // "SPR2": the layout with the tasks
+// 0.10.20: the time of the loop's last pass, of the last relay change and of core 0's last idle moment. The same
+// evening the module restarted by "watchdog (other)", with the relays just off: a relay change a few ms before the
+// last pass points at the supply (the coils letting go), core 0 idle long after it at the loop stuck alone.
+#define LAST_RUN_MAGIC 0x53505233u  // "SPR3": the layout with the times
 struct LastRun
 {
     uint32_t magic;             // LAST_RUN_MAGIC when the rest is a run of this program
@@ -228,6 +234,9 @@ struct LastRun
     uint8_t  alarms;            // sprayAlarms
     char     task0[16];         // the task core 0 (Wi-Fi, network) was running when the task watchdog fired, "" none
     char     task1[16];         // and core 1 (loop(), the web page)
+    uint32_t passMs;            // millis() at the start of the loop's last pass
+    uint32_t relayMs;           // millis() at the last relay change, 0 = none since the start
+    uint32_t core0Ms;           // millis() when core 0 was last idle (core0Idle), 0 = never
 };
 RTC_NOINIT_ATTR LastRun lastRun;    // not static: the test harness keeps it through a reset by this name
 
@@ -244,6 +253,24 @@ static const char* const STEP_NAME[STEP_COUNT] = {
 };
 bool     beforeKept = false;    // lastRunRead found what the module was doing before a start nobody asked for
 LastRun  lastRunBefore = {};    // that, for the events and /api/status
+
+// The crash record (crashRead): after a crash the chip writes in a flash area of its own (ESP-IDF core dump) the
+// task that crashed, where in the program and the calls that led there. A start and a program update keep it; the
+// next crash writes over it.
+enum : uint8_t { CRASH_NONE, CRASH_KEPT, CRASH_DAMAGED };
+struct CrashInfo
+{
+    uint8_t  state;             // CRASH_*
+    bool     isNew;             // not there, or another one, at the start before
+    bool     same;              // written by this program (its fingerprint)
+    char     task[16];          // the task that crashed
+    char     why[120];          // the chip's reason (the panic's words, one line)
+    uint32_t pc;                // where in the program
+    uint32_t bt[8];             // the calls that led there, the latest first
+    uint8_t  depth;
+    char     prog[APP_ELF_SHA256_SZ];   // the fingerprint of the program that crashed (9 hex digits)
+};
+CrashInfo crash = {};
 
 // worked out once a second from the readings (zRate.ino); -1 = none
 float    openWidthM = 0;        // width of the open sections, m (from PGN 235)
@@ -441,6 +468,11 @@ static void startRead()
     }
 }
 
+// From lastRun: how long before the loop's last pass the relays last changed (a change in that pass counts as 0),
+// and when core 0 was last idle from it (+ after it: core 0 went on while the loop stood still)
+long relaysBeforePass(const LastRun& b) { const int32_t d = (int32_t)(b.passMs - b.relayMs); return d < 0 ? 0 : d; }
+long core0FromPass(const LastRun& b) { return (int32_t)(b.core0Ms - b.passMs); }
+
 // What the module was doing before this start (lastRun), said when nobody asked for the start; then a new record.
 static void lastRunRead()
 {
@@ -459,6 +491,92 @@ static void lastRunRead()
              (unsigned long)b.pulsesLastS, (unsigned long)(b.isr - b.isrAtPass), (unsigned long)(b.heapMin / 1024), (int)b.rssi);
     if (b.task0[0] || b.task1[0])
         logEvent("before: the watchdog found core 0 (Wi-Fi) on '%s', core 1 (loop) on '%s'", b.task0, b.task1);
+    char relay[16] = "none", core0[16] = "never";
+    if (b.relayMs) snprintf(relay, sizeof(relay), "%ld ms", (long)relaysBeforePass(b));
+    if (b.core0Ms) snprintf(core0, sizeof(core0), "%+ld ms", (long)core0FromPass(b));
+    logEvent("before: last relay change %s, core 0 idle %s (from the loop's last pass)", relay, core0);
+}
+
+// Core 0's idle task calls this each time it runs (ESP-IDF idle hook, the one the task watchdog uses): core 0 had time
+// for nothing else then. Kept in lastRun, so a restart says whether core 0 was still idling after the loop's last pass.
+static bool core0Idle()
+{
+    lastRun.core0Ms = millis();
+    return true;                    // the core may wait for the next interrupt, as usual
+}
+
+// The crash record the chip keeps in flash (ESP-IDF core dump; the Arduino core writes it on a crash, the task watchdog
+// too, and checks it at the start): read once at the start, for the events, the Firmware tab and the report. A record
+// whose check fails was not written to the end: the chip stopped while writing it. Whether it is new is kept in flash
+// as a small sum of it (namespace "crash"), so the events say a record once, the start after the crash.
+static uint32_t crashSum(const void* p, size_t n, uint32_t h)
+{
+    for (size_t i = 0; i < n; i++) h = (h ^ ((const uint8_t*)p)[i]) * 16777619u;
+    return h;
+}
+
+static void crashRead()
+{
+    const esp_err_t check = esp_core_dump_image_check();
+    uint32_t sum = 2166136261u;
+    if (check == ESP_ERR_INVALID_CRC)
+    {
+        size_t addr = 0, size = 0;
+        esp_core_dump_image_get(&addr, &size);
+        crash.state = CRASH_DAMAGED;
+        sum = crashSum(&size, sizeof(size), sum ^ 0xDA);
+    }
+    else if (check == ESP_OK)
+    {
+        static esp_core_dump_summary_t cd;  // about 250 bytes: not on the stack
+        if (esp_core_dump_get_summary(&cd) != ESP_OK) return;
+        crash.state = CRASH_KEPT;
+        memcpy(crash.task, cd.exc_task, sizeof(crash.task) - 1);
+        crash.pc = cd.exc_pc;
+        crash.depth = cd.exc_bt_info.depth < 8 ? cd.exc_bt_info.depth : 8;
+        for (uint8_t i = 0; i < crash.depth; i++) crash.bt[i] = cd.exc_bt_info.bt[i];
+        memcpy(crash.prog, cd.app_elf_sha256, sizeof(crash.prog) - 1);
+        char mine[APP_ELF_SHA256_SZ] = "";
+        esp_app_get_elf_sha256(mine, sizeof(mine));
+        crash.same = !strcmp(mine, crash.prog);
+        static char reason[200];
+        if (esp_core_dump_get_panic_reason(reason, sizeof(reason)) != ESP_OK)
+            snprintf(reason, sizeof(reason), "exception %lu at address 0x%08lx", (unsigned long)cd.ex_info.exc_cause,
+                     (unsigned long)cd.ex_info.exc_vaddr);
+        size_t n = 0;                   // one line: the line breaks of the panic's words as spaces
+        for (size_t i = 0; reason[i] && n + 1 < sizeof(crash.why); i++)
+        {
+            const char c = reason[i] == '\n' || reason[i] == '\r' || reason[i] == '\t' ? ' ' : reason[i];
+            if (c == ' ' && (n == 0 || crash.why[n - 1] == ' ')) continue;
+            crash.why[n++] = c;
+        }
+        crash.why[n] = 0;
+        sum = crashSum(crash.task, sizeof(crash.task), sum);
+        sum = crashSum(&crash.pc, sizeof(crash.pc), sum);
+        sum = crashSum(crash.bt, sizeof(crash.bt), sum);
+        sum = crashSum(crash.prog, sizeof(crash.prog), sum);
+    }
+    else return;                        // no record (a blank area), or no area for it
+
+    prefs.begin("crash", true);
+    const uint32_t seen = prefs.getUInt("seen", 0);
+    prefs.end();
+    crash.isNew = seen != sum;
+    if (!crash.isNew) return;
+    prefs.begin("crash", false);
+    prefs.putUInt("seen", sum);
+    prefs.end();
+    if (crash.state == CRASH_DAMAGED)
+    {
+        logEvent("crash record, new: damaged, the chip stopped while writing it");
+        return;
+    }
+    logEvent("crash record, new: task '%s' (%s), %.28s", crash.task, crash.same ? "this program" : "older program", crash.why);
+    char calls[48] = "";            // the first calls back (the latest is where it crashed); 4 fit in the line
+    size_t n = 0;
+    for (uint8_t i = 1; i < crash.depth && i < 5 && n < sizeof(calls); i++)
+        n += snprintf(calls + n, sizeof(calls) - n, " 0x%08lx", (unsigned long)crash.bt[i]);
+    logEvent("crash record: at 0x%08lx, from%s", (unsigned long)crash.pc, crash.depth > 1 ? calls : " -");
 }
 
 // The task watchdog's interrupt calls this (ESP-IDF esp_task_wdt_isr_user_handler) just before the restart, when a core
@@ -486,7 +604,6 @@ static void lastRunTick()
     lastRun.upS = millis() / 1000;
     const uint32_t heap = ESP.getMinFreeHeap();
     lastRun.heapMin = heap;
-    lastRun.relays = relayBits;
     lastRun.rssi = staUp() ? (int8_t)WiFi.RSSI() : 0;
     lastRun.apClients = (uint8_t)WiFi.softAPgetStationNum();
     lastRun.alarms = sprayAlarms;
@@ -509,6 +626,8 @@ void setup()
     totalLoad();                    // the litres applied so far, from flash
     logEvent("start: %s; %.1f L applied so far", startWhy, totalLitres);
     lastRunRead();                  // what it was doing before a start nobody asked for
+    crashRead();                    // the crash record the chip keeps in flash
+    esp_register_freertos_idle_hook_for_cpu(core0Idle, 0);
     sensorsInit();
     wifiStart();
     udpStart();
@@ -522,6 +641,7 @@ void loop()
     const uint32_t now = millis();
 
     lastRun.isrAtPass = lastRun.isr;    // the flow meter's interrupts so far (lastRun: what it was doing)
+    lastRun.passMs = now;
     lastRun.step = STEP_UDP;
     udpPoll();                      // messages from the program
     lastRun.step = STEP_WEB;
@@ -539,6 +659,11 @@ void loop()
         lastRun.step = STEP_SENSORS;
         readSensors();
         applyOutputs();
+        if (relayBits != lastRun.relays)    // the time of each relay change (lastRun: what it was doing)
+        {
+            lastRun.relays = relayBits;
+            lastRun.relayMs = millis();
+        }
         ledTick();
     }
 

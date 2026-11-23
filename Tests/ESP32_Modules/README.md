@@ -25,7 +25,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 23 Nov 2026 | The memory that a restart keeps and a power cut clears (`RTC_NOINIT_ATTR`, [How it works](#how-it-works)). `sprayer-restart-says-before`: which watchdog, what the sprayer was doing before, the task on each core. 41 scenarios. |
+| 23 Nov 2026 | RTC memory kept through a restart, the crash record in flash, core 0 or the loop held ([How it works](#how-it-works)). `sprayer-restart-says-before`, `sprayer-crash-record`: which watchdog, what the sprayer did before. 42 scenarios. |
 | 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 40 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
 
@@ -97,6 +97,8 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - `esp_reset_reason()` gives the program the reason, as the chip does.
 - A program's `RTC_NOINIT_ATTR` variable (the sprayer's `lastRun`) is kept through a restart or a reset by itself, and filled with noise at a power cut (`Module::powerOff`), as the chip's RTC memory. The bench finds it by its name in the program.
 - A reset by the task watchdog (`Module::resetBy(ESP_RST_TASK_WDT)`) first calls the program's `esp_task_wdt_isr_user_handler`, as the chip's watchdog interrupt does, with the tasks in `Device::coreTask` (`xTaskGetCurrentTaskHandleForCore`, `pcTaskGetName`).
+- The program's idle hook on core 0 (`esp_register_freertos_idle_hook_for_cpu`) is called at each step, before `loop()`. `Module::core0Stuck` stops it (the Wi-Fi half held); `Module::loopStuck` stops `loop()` while core 0 goes on. A start clears both.
+- The crash record in flash (`Device::crash`: none, kept or damaged; the task, the chip's words, the program counter, the calls, the program's fingerprint) answers `esp_core_dump_image_check`, `esp_core_dump_get_summary` and `esp_core_dump_get_panic_reason`. It is kept through every start, a power cut too. `esp_app_get_elf_sha256` gives the running program's fingerprint (`Device::appSha`).
 
 ## The users
 
@@ -108,6 +110,7 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - `careful-tablet-hotspot`.
 - `sprayer-litres-kept`: the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning.
 - `sprayer-restart-says-before`: the watchdog restarts the module twice (once after a flood of flow pulses), then a power cut: the module names the watchdog and says what it was doing, and says nothing after a power on.
+- `sprayer-crash-record`: the chip resets 30 ms after the relays let go, then with the Wi-Fi half held, then with the loop held: the module says when the relays last changed and when core 0 was last idle. Then the crash records of a crash, of an older program and a damaged one: told once, kept through a restart and a power cut.
 
 **Module never set up**
 

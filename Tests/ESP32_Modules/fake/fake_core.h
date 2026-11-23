@@ -179,6 +179,42 @@ typedef void* TaskHandle_t;
 TaskHandle_t xTaskGetCurrentTaskHandleForCore(int core);
 char* pcTaskGetName(TaskHandle_t task);
 
+// Error codes (esp_err.h), as many as the programs read
+typedef int esp_err_t;
+#define ESP_OK 0
+#define ESP_FAIL -1
+#define ESP_ERR_INVALID_SIZE 0x104
+#define ESP_ERR_NOT_FOUND 0x105
+#define ESP_ERR_INVALID_CRC 0x109
+
+// The idle hook (esp_freertos_hooks.h): the sprayer marks core 0's idle moments; the harness calls it at each step
+// while core 0 is not held (Module::core0Stuck)
+typedef bool (*esp_freertos_idle_cb_t)(void);
+typedef unsigned int UBaseType_t;
+esp_err_t esp_register_freertos_idle_hook_for_cpu(esp_freertos_idle_cb_t cb, UBaseType_t cpu);
+
+// The crash record (esp_core_dump.h, ESP-IDF core dump to flash, ELF) and the program's fingerprint (esp_app_desc.h):
+// what Device::crash holds, the record the chip keeps in flash through a restart and a program update
+#define APP_ELF_SHA256_SZ 10
+typedef struct { uint32_t bt[16]; uint32_t depth; bool corrupted; } esp_core_dump_bt_info_t;
+typedef struct { uint32_t exc_cause; uint32_t exc_vaddr; uint32_t exc_a[16]; uint32_t epcx[7]; uint8_t epcx_reg_bits; }
+    esp_core_dump_summary_extra_info_t;
+typedef struct
+{
+    uint32_t exc_tcb;
+    char exc_task[16];
+    uint32_t exc_pc;
+    esp_core_dump_bt_info_t exc_bt_info;
+    uint32_t core_dump_version;
+    uint8_t app_elf_sha256[APP_ELF_SHA256_SZ];
+    esp_core_dump_summary_extra_info_t ex_info;
+} esp_core_dump_summary_t;
+esp_err_t esp_core_dump_image_check(void);
+esp_err_t esp_core_dump_image_get(size_t* out_addr, size_t* out_size);
+esp_err_t esp_core_dump_get_summary(esp_core_dump_summary_t* summary);
+esp_err_t esp_core_dump_get_panic_reason(char* reason_buffer, size_t buffer_size);
+int esp_app_get_elf_sha256(char* dst, size_t size);
+
 namespace fake { struct Device; }
 
 // ---------------------------------------------------------------- Wi-Fi
@@ -450,6 +486,16 @@ struct Device
     uint32_t flashWrites = 0;               // putX calls that changed something (flash wear)
     std::vector<uint8_t> rtc;               // RTC memory the program keeps through a reset (RTC_NOINIT_ATTR lastRun); empty = rubbish
     char coreTask[2][16] = { "", "loopTask" };  // the task each core runs (the task watchdog's hook reads them); "" = none
+    esp_freertos_idle_cb_t idleHook = nullptr;  // the program's idle hook on core 0 (cleared before the program goes)
+    struct Crash                            // the crash record in flash (ESP-IDF core dump): kept through every start
+    {
+        int state = 0;                      // 0 none (a blank area), 1 kept, 2 damaged (its check fails)
+        std::string task, reason, prog;     // the task that crashed, the panic's words, the program's fingerprint
+        uint32_t pc = 0;
+        std::vector<uint32_t> bt;           // the calls, bt[0] = pc
+        size_t size = 4096;
+    } crash;
+    std::string appSha = "5f28c0de1";       // this program's fingerprint (esp_app_get_elf_sha256), 9 hex digits
 
     // Wi-Fi and the cable
     int         wifiMode = WIFI_OFF;

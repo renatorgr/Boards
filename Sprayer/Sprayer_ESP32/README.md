@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 23 Nov 2026 | **0.10.18-19**: after a start nobody asked for, the module says which watchdog, what it was doing just before, and the task that held the Wi-Fi core ([Why the module started](#why-the-module-started)). |
+| 23 Nov 2026 | **0.10.18-20**: after a start nobody asked for, the module says which watchdog, what it was doing before, the Wi-Fi core's task, the last relay change; and the crash record kept in flash ([Why the module started](#why-the-module-started)). |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
 | 20 Nov 2026 | **0.10.9**: the own network's password is typed once: every box that asks for it and the *Network settings* field offer it again, also when the page is opened again in the same browser tab ([How it works](#how-it-works)). |
@@ -121,7 +121,7 @@ On the ESP32 the EN button reads as a power on.
 
 - after *Last start* on the Module tab: *(before: up 1234 s, at the web page)*
 - in the events, as the line after *start:*: `before: up 1234 s, at the web page, flow 85/s +0, heap min 120 kB, -61 dBm`
-- in the report, as `before` in the status: `up`, `at`, `flowPerS`, `flowAfter`, `heapMin`, `rssi`, `apCl` (phones on its own network), `relays` (one bit per relay), `alarms`, `task0`, `task1`
+- in the report, as `before` in the status: `up`, `at`, `flowPerS`, `flowAfter`, `heapMin`, `rssi`, `apCl` (phones on its own network), `relays` (one bit per relay), `alarms`, `task0`, `task1`, `relaysMs`, `core0Ms`
 
 How to read it:
 
@@ -132,8 +132,26 @@ How to read it:
 - **task0, task1** (0.10.19, *a task stuck* only): the task each half of the chip was running when the watchdog fired. Also in the events (`before: the watchdog found core 0 (Wi-Fi) on 'wifi', core 1 (loop) on 'loopTask'`) and after *Last start* (*Wi-Fi core on wifi*).
   - The watchdog watches core 0 only, the half that runs the Wi-Fi. The module's own loop runs on core 1, so *at* names where the loop happened to be, not the cause; a small *+M* after the flow pulses shows the loop was still running.
   - `task0` is the cause: *wifi* (the radio), *tiT* (the network: TCP/IP), *async_udp* (the DNS of its own network), *mdns* (its name on the network), *ipc0* (a flash write from the other half), *sys_evt* (Wi-Fi events).
+- **relaysMs** (0.10.20): how many ms before the loop's last pass the relays last changed (`null`: not since the start). A few tens of ms points at the supply: the valve coils letting go, or the pump. Also in the events: `before: last relay change 30 ms, core 0 idle +0 ms (from the loop's last pass)`.
+- **core0Ms** (0.10.20): when core 0, the Wi-Fi half, was last idle, from the loop's last pass.
+  - About 0: the whole chip stopped at once (the supply, a crash).
+  - Positive, a second or more: the loop stood still while the Wi-Fi half went on.
+  - About −5000: the Wi-Fi half had no idle moment for 5 s (*a task stuck*).
 
 After a power on, or a restart asked for, there is nothing to say: `before` is `null`.
+
+**The crash record** (0.10.20). After a crash, the task watchdog's too, the chip writes in a flash area of its own the task that crashed, where in the program, and the calls that led there (ESP-IDF's core dump). A restart, a power cut and a program update keep it; the next crash writes over it. The module reads it at each start:
+
+- the *Crash record* row on the Module tab: *none*, or *new, task async_udp, Task watchdog got triggered… (this program)*
+- in the events, at the start after the crash only: `crash record, new: task 'async_udp' (this program), …` and `crash record: at 0x400d1234, from 0x400d5678 …`
+- in the report, as `crash` in the status: `new`, `damaged`, `task`, `why` (the chip's words), `pc` (where), `bt` (the calls, the latest first), `prog` (the fingerprint of the program that crashed), `same` (this program or an older one); `null` when there is none
+
+How to read it:
+
+- **pc** and **bt** are addresses in the program. The `.elf` file of that version's compile turns them into the file and the line (`xtensa-esp32-elf-addr2line -pfiaC -e Sprayer_ESP32.ino.elf 0x400d1234`): send the report, Claude keeps the `.elf` of each version.
+- **same** `false`: an older program wrote it, before an update.
+- **damaged**: the chip stopped while writing it, as when the supply goes right after a crash.
+- *watchdog (other)* writes no record of its own. It is the chip's own watchdog, which ESP-IDF arms only while the chip restarts or starts, so that restart did not finish. A new record at that start says a crash came first; none points at the supply.
 
 ### Sections with no relay
 
