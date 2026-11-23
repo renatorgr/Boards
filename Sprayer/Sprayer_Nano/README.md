@@ -67,10 +67,10 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
   an LM2596 set to 5.0 V, so a loose USB cable can't drop the sections.
 - **Valves:** 12 V from the battery, 5 A fuse → master switch → relay COM.
   Relay NO → valve +. Valve − → GND. 1N4007 diode across each valve (stripe to +).
-- **Sensors:** red = 5 V, black = GND, signal to A0 / D2. Never power the YF-S201
-  from 12 V: its signal would rise to 12 V and damage the Nano.
-- Use a separate shielded cable for the sensors, with its own GND wire back to the
-  Nano. Don't share the valve GND with the sensors.
+- **Sensors:** red = 5 V, black = GND, signal to A0 / D2.
+  - Never power the YF-S201 from 12 V: its signal would rise to 12 V and damage the Nano.
+- Use a separate shielded cable for the sensors, with its own GND wire back to the Nano.
+  - Don't share the valve GND with the sensors.
 - All grounds (battery, LM2596, Nano, relay board) joined together.
 
 ## Settings (top of `Sprayer_Nano.ino`)
@@ -106,15 +106,14 @@ Arduino Nano + ENC28J60 ──► relay board ──► 5 solenoid valves (NC)
 
 ## Calibrating the flow meter
 
-With the pump running and one nozzle open, fill a 10 L bucket and note how many
-litres the Serial Monitor counted. Then:
-
-`PULSES_PER_LITRE = 450 × (litres counted ÷ 10)`
+1. With the pump running and one nozzle open, fill a 10 L bucket.
+2. Note how many litres the Serial Monitor counted.
+3. Then: `PULSES_PER_LITRE = 450 × (litres counted ÷ 10)`
 
 ## Sprayer readings message (PGN 0xA0)
 
-Sent once a second to UDP port 9999 (broadcast). AgOpenGPS and AgOpenWeb ignore
-it for now. It is meant for a future pressure/flow display.
+- Sent once a second to UDP port 9999 (broadcast).
+- AgOpenGPS and AgOpenWeb ignore it for now. It is meant for a future pressure/flow display.
 
 | Byte | Content |
 |---|---|
@@ -131,7 +130,8 @@ it for now. It is meant for a future pressure/flow display.
 
 ## Notes
 
-- The FPD-270A valves and the YF-S201 are plastic and made for water. Rinse with
-  clean water after each job. Fit a filter before the flow meter.
-- The YF-S201 is only about ±10 % accurate. The boom uses about 15 L/min
-  (Albuz AVI110 red nozzles), well inside its 1–30 L/min range.
+- The FPD-270A valves and the YF-S201 are plastic and made for water.
+  - Rinse with clean water after each job.
+  - Fit a filter before the flow meter.
+- The YF-S201 is only about ±10 % accurate.
+  - The boom uses about 15 L/min (Albuz AVI110 red nozzles), well inside its 1–30 L/min range.
