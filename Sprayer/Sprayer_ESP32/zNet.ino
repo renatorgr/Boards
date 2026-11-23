@@ -222,7 +222,8 @@ static void apiStatus()
         j += ",\"before\":{\"up\":" + String(b.upS) + ",\"at\":" + jsonStr(STEP_NAME[b.step]);
         j += ",\"flowPerS\":" + String(b.pulsesLastS) + ",\"flowAfter\":" + String(b.isr - b.isrAtPass);
         j += ",\"heapMin\":" + String(b.heapMin) + ",\"rssi\":" + String(b.rssi) + ",\"apCl\":" + String(b.apClients);
-        j += ",\"relays\":" + String(b.relays) + ",\"alarms\":" + String(b.alarms) + "}";
+        j += ",\"relays\":" + String(b.relays) + ",\"alarms\":" + String(b.alarms);
+        j += ",\"task0\":" + jsonStr(b.task0) + ",\"task1\":" + jsonStr(b.task1) + "}";   // the task watchdog's, "" none
     }
     else j += ",\"before\":null";
     j += ",\"name\":" + jsonStr(moduleName());

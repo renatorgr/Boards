@@ -170,9 +170,11 @@ SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog res
     const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
     driveAndCompare(w, m, first(8), rs, 20000);
 
-    // a task gets no time for 5 s: the task watchdog resets the chip while it sprays
+    // a task gets no time for 5 s: the task watchdog resets the chip while it sprays (the Wi-Fi task holds core 0)
     uint64_t from = w.now();
+    snprintf(m.dev.coreTask[0], sizeof(m.dev.coreTask[0]), "wifi");
     m.resetBy(ESP_RST_TASK_WDT);
+    m.dev.coreTask[0][0] = 0;
     w.run(3000);
     Json s = m.status();
     must("start-task-wdt", s["start"].str() == "watchdog: a task stuck" && s["startBad"].num() == 1,
@@ -185,6 +187,10 @@ SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog res
          "the module says what it was doing before: up about 21 s, spraying (flow pulses, relays on), where in its loop",
          fmt("up %g s, at '%s', flow %g/s, relays %g", b["up"].num(), b["at"].str().c_str(), b["flowPerS"].num(), b["relays"].num()));
     must("log-before", contains(pageLog(m), "before: up"), "the events say what it was doing before", pageLog(m));
+    must("before-task", b["task0"].str() == "wifi" && b["task1"].str() == "loopTask"
+         && contains(pageLog(m), "core 0 (Wi-Fi) on 'wifi'"),
+         "the task watchdog says which task held each core: the Wi-Fi task on core 0, loop() on core 1",
+         fmt("core 0 '%s', core 1 '%s'", b["task0"].str().c_str(), b["task1"].str().c_str()));
 
     // electrical noise on the meter's wire: a flood of pulses holds the chip in its interrupt, the interrupt watchdog resets it
     driveAndCompare(w, m, first(8), rs, 5000);
@@ -202,6 +208,9 @@ SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog res
     must("before-flood", b["flowAfter"].num() >= 200000 && b["up"].num() <= 9,
          "the flow pulses that came after the loop's last pass show the flood (and the time up is this start's)",
          fmt("%g pulses after the last pass, up %g s", b["flowAfter"].num(), b["up"].num()));
+    must("before-no-task", b["task0"].str().empty() && b["task1"].str().empty(),
+         "the interrupt watchdog names no task (only the task watchdog does)",
+         fmt("core 0 '%s', core 1 '%s'", b["task0"].str().c_str(), b["task1"].str().c_str()));
 
     // the power is cut: RTC memory is gone, and a power on says nothing about before
     driveAndCompare(w, m, 0, rs, 3000);

@@ -62,7 +62,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.18"
+#define FW_VERSION          "0.10.19"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -210,7 +210,9 @@ bool     startUnexpected = false;   // a start nobody asked for: a voltage drop,
 // tractor, with nothing to tell where it had stopped. RTC memory keeps this through a reset; a power off leaves
 // anything in it (LAST_RUN_MAGIC tells). The flow meter's interrupt counts in it too: interrupts that went on after
 // the last pass of loop() point at a flood of pulses (electrical noise on the meter's wire) that stopped the chip.
-#define LAST_RUN_MAGIC 0x53505231u  // "SPR1"
+// The task watchdog (0.10.19) also writes in it the task each core was running when it fired: on the tractor the
+// loop was running (flow pulses +1) and the Wi-Fi core was the one stuck, so its task is the cause.
+#define LAST_RUN_MAGIC 0x53505232u  // "SPR2": the layout with the tasks
 struct LastRun
 {
     uint32_t magic;             // LAST_RUN_MAGIC when the rest is a run of this program
@@ -224,6 +226,8 @@ struct LastRun
     uint8_t  apClients;         // devices on the own network
     uint8_t  step;              // the part of loop() it was in (STEP_*)
     uint8_t  alarms;            // sprayAlarms
+    char     task0[16];         // the task core 0 (Wi-Fi, network) was running when the task watchdog fired, "" none
+    char     task1[16];         // and core 1 (loop(), the web page)
 };
 RTC_NOINIT_ATTR LastRun lastRun;    // not static: the test harness keeps it through a reset by this name
 
@@ -441,7 +445,11 @@ static void startRead()
 static void lastRunRead()
 {
     beforeKept = startUnexpected && lastRun.magic == LAST_RUN_MAGIC && lastRun.step < STEP_COUNT;
-    if (beforeKept) lastRunBefore = lastRun;
+    if (beforeKept)
+    {
+        lastRunBefore = lastRun;
+        lastRunBefore.task0[15] = lastRunBefore.task1[15] = 0;     // whatever the reset left, a string
+    }
     memset(&lastRun, 0, sizeof(lastRun));
     lastRun.magic = LAST_RUN_MAGIC;
     lastRun.step = STEP_START;
@@ -449,6 +457,27 @@ static void lastRunRead()
     const LastRun& b = lastRunBefore;
     logEvent("before: up %lu s, at %s, flow %lu/s +%lu, heap min %lu kB, %d dBm", (unsigned long)b.upS, STEP_NAME[b.step],
              (unsigned long)b.pulsesLastS, (unsigned long)(b.isr - b.isrAtPass), (unsigned long)(b.heapMin / 1024), (int)b.rssi);
+    if (b.task0[0] || b.task1[0])
+        logEvent("before: the watchdog found core 0 (Wi-Fi) on '%s', core 1 (loop) on '%s'", b.task0, b.task1);
+}
+
+// The task watchdog's interrupt calls this (ESP-IDF esp_task_wdt_isr_user_handler) just before the restart, when a core
+// has given its idle task no time for 5 s: the task each core is running then is the one that held it. Only core 0's
+// idle task is watched (Arduino), so core 0's task is the cause: wifi (the radio), tiT (the network stack), async_udp
+// (own network DNS), mdns, ipc0 (a flash write from the other core), sys_evt (Wi-Fi events). In an interrupt: no
+// logging, no allocation, a plain copy into RTC memory.
+static void copyTaskName(char* to, TaskHandle_t task)
+{
+    const char* name = task ? pcTaskGetName(task) : nullptr;
+    size_t i = 0;
+    if (name) for (; i < 15 && name[i]; i++) to[i] = name[i];
+    to[i] = 0;
+}
+
+extern "C" void esp_task_wdt_isr_user_handler(void)
+{
+    copyTaskName(lastRun.task0, xTaskGetCurrentTaskHandleForCore(0));
+    copyTaskName(lastRun.task1, xTaskGetCurrentTaskHandleForCore(1));
 }
 
 // Once a second: what lastRun keeps besides the part of loop()

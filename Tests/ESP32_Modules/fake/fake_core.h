@@ -174,6 +174,11 @@ typedef enum { ESP_RST_UNKNOWN, ESP_RST_POWERON, ESP_RST_EXT, ESP_RST_SW, ESP_RS
                ESP_RST_WDT, ESP_RST_DEEPSLEEP, ESP_RST_BROWNOUT, ESP_RST_SDIO } esp_reset_reason_t;
 esp_reset_reason_t esp_reset_reason();
 
+// FreeRTOS, as much as the sprayer's task watchdog hook reads: the task each core is running (Device::coreTask)
+typedef void* TaskHandle_t;
+TaskHandle_t xTaskGetCurrentTaskHandleForCore(int core);
+char* pcTaskGetName(TaskHandle_t task);
+
 namespace fake { struct Device; }
 
 // ---------------------------------------------------------------- Wi-Fi
@@ -444,6 +449,7 @@ struct Device
     std::map<std::string, std::map<std::string, PrefValue>> prefs;
     uint32_t flashWrites = 0;               // putX calls that changed something (flash wear)
     std::vector<uint8_t> rtc;               // RTC memory the program keeps through a reset (RTC_NOINIT_ATTR lastRun); empty = rubbish
+    char coreTask[2][16] = { "", "loopTask" };  // the task each core runs (the task watchdog's hook reads them); "" = none
 
     // Wi-Fi and the cable
     int         wifiMode = WIFI_OFF;

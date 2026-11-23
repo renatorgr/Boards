@@ -108,6 +108,11 @@ size_t HardwareSerial::println(const char* s) { cur->serialOut += s; cur->serial
 EspClass ESP;
 uint64_t EspClass::getEfuseMac() { return cur->mac; }
 esp_reset_reason_t esp_reset_reason() { return cur->resetReason; }
+TaskHandle_t xTaskGetCurrentTaskHandleForCore(int core)
+{
+    return core >= 0 && core < 2 && cur->coreTask[core][0] ? (TaskHandle_t)cur->coreTask[core] : nullptr;
+}
+char* pcTaskGetName(TaskHandle_t task) { return (char*)task; }
 void EspClass::restart()
 {
     cur->restarts++;

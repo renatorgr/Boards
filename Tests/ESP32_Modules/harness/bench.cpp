@@ -199,6 +199,14 @@ void Module::powerOn()
 void Module::resetBy(esp_reset_reason_t why)
 {
     if (!so_) return;
+    if (why == ESP_RST_TASK_WDT)            // the task watchdog's interrupt calls the program's hook just before the reset
+        if (auto hook = (void (*)())dlsym(so_, "esp_task_wdt_isr_user_handler"))
+        {
+            fake::Device* before = fake::cur;
+            fake::cur = &dev;
+            hook();
+            fake::cur = before;
+        }
     unload();
     dev.resetReason = why;
     load();
