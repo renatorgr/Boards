@@ -109,6 +109,7 @@ a{color:var(--acc)}
 .askBox h3{margin:0 0 10px;font-size:17px}
 .askBox dl{margin:0 0 10px}
 .askBox p.verdict{font-weight:650}
+#askErr{margin:0 0 6px;color:var(--mute);font-size:13.5px}#askErr.bad{color:var(--bad);font-weight:650;font-size:inherit}
 .askBox label.opt{display:flex;gap:10px;align-items:center;margin:0 0 12px;font-weight:600}
 .askBox label.opt input{display:inline-block;width:22px;height:22px;margin:0}
 #askPwL{display:block;color:var(--mute);font-size:13.5px;margin:0 0 3px}
@@ -273,7 +274,7 @@ p.chk{text-align:right;margin:4px 0 0}
 </section>
 
 </main>
-<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
+<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><p id="askErr" role="alert" hidden></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 const $=id=>document.getElementById(id);
 // ---- the page's own question box, instead of the browser's confirm() and prompt(): inside an AgOpenWeb web card the frame has
@@ -281,10 +282,13 @@ const $=id=>document.getElementById(id);
 // true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
 // askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
 // o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
-// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words. Answers true for OK, false otherwise.
-let askDone=null;
+// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words; o.check(text) a check made when OK is
+// pressed, before the box closes: it answers nothing, and OK goes on, or {text, forget}, which keeps the box open with the
+// text above the field (forget(): a wrong password, forgotten, and the field emptied). Answers true for OK, false otherwise.
+let askDone=null,askCheck=null,askN=0;
 function askShow(o){
   if(askDone)askEnd(false);
+  askCheck=o.check||null;askN++;$('askErr').hidden=true;$('askErr').textContent='';$('askIn').readOnly=false;$('askForceIn').disabled=false;
   const t=$('askTitle'),r=$('askRows'),v=$('askVerdict'),x=$('askText'),l=$('askPwL'),i=$('askIn'),y=$('askYes');
   t.textContent=o.title||'';t.hidden=!o.title;
   r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=k;b.textContent=w;r.append(a,b)}r.hidden=!r.firstChild;
@@ -297,18 +301,28 @@ function askShow(o){
   $('askBox').setAttribute('aria-labelledby',o.title?'askTitle':'askText');$('ask').hidden=false;
   (o.input&&!i.value?i:y.hidden||y.disabled?$('askNo'):y).focus();
   return new Promise(res=>{askDone=res})}
-function askEnd(v){const r=askDone;askDone=null;$('ask').hidden=true;if(r)r(v)}
+function askEnd(v){const r=askDone;askDone=null;askCheck=null;askN++;$('ask').hidden=true;if(r)r(v)}
 const ask=text=>askShow({text});
 const askText=text=>askShow({text,input:true}).then(ok=>ok?$('askIn').value:null);
 $('askForceIn').onchange=()=>{$('askYes').disabled=!$('askForceIn').checked};
-// OK with the password field empty goes back to the field
-$('askYes').onclick=()=>{const i=$('askIn');if(!i.hidden&&!i.value){i.focus();return}askEnd(true)};$('askNo').onclick=()=>askEnd(false);
+// OK with the password field empty goes back to the field; with a check (o.check), OK waits for it. Meanwhile OK, the field and
+// the tick are off: what was checked is what the box answers. A check that answers after the box closed changes nothing
+async function askOk(){const i=$('askIn'),y=$('askYes'),e=$('askErr'),f=$('askForceIn');if(!i.hidden&&!i.value){i.focus();return}
+  if(!askCheck){askEnd(true);return}
+  const n=askN;y.disabled=true;i.readOnly=true;f.disabled=true;e.className='';e.textContent='Checking…';e.hidden=false;
+  const r=await askCheck(i.value);
+  if(n!==askN)return;   // closed meanwhile (Cancel, Escape), or another question
+  i.readOnly=false;f.disabled=false;y.disabled=false;
+  if(!r){askEnd(true);return}
+  if(r.forget){r.forget();i.value=''}
+  e.className='bad';e.textContent=r.text;(i.hidden||i.value?y:i).focus();e.scrollIntoView({block:'nearest'})}
+$('askYes').onclick=askOk;$('askNo').onclick=()=>askEnd(false);
 $('ask').onclick=e=>{if(e.target===$('ask'))askEnd(false)};
 // Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
 // nothing, so the key press that opened the question cannot also answer it
 $('ask').onkeydown=e=>{if(e.key==='Escape')askEnd(false);
   else if(e.key==='Enter'){if(e.repeat){e.preventDefault();return}
-    if(e.target===$('askIn')){e.preventDefault();if($('askIn').value&&!e.isComposing&&!$('askYes').disabled&&!$('askYes').hidden)askEnd(true)}}};
+    if(e.target===$('askIn')){e.preventDefault();if($('askIn').value&&!e.isComposing&&!$('askYes').disabled&&!$('askYes').hidden)askOk()}}};
 // relay functions as the module sends them: 1-64 a section, 101-105 the program's other functions
 const FN={0:'–',101:'Lift ↓',102:'Lift ↑',103:'Tram R',104:'Tram L',105:'Geo'};
 function fnName(f){return f>=1&&f<=64?'S'+f:(FN[f]||'?')}
@@ -518,6 +532,19 @@ async function binInfo(blob,name){
   else if(i.board&&fwNow.board&&i.board!==fwNow.board)i.error='This program is for the '+i.board+' board, but this module is on the '+fwNow.board+' board (its relays are on other pins).';
   return i;
 }
+// Before a firmware is downloaded or sent, the module says whether it takes the password (POST /api/update-check; nothing is
+// changed there): a wrong one is told at once in the install box, which stays open for it to be typed again, instead of after
+// the whole file has gone up. For the box's check (o.check): nothing only for the module's yes; anything else is said, and
+// nothing is sent (no answer in 8 s too)
+async function updateCheck(p){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),8000);
+  try{const r=await fetch('/api/update-check',{method:'POST',body:new URLSearchParams({pw:p}),signal:ac.signal});
+    let j={};try{j=await r.json()}catch(e){}
+    if(r.ok&&j.ok)return null;
+    if(r.status===403)return {text:'Wrong password: nothing was sent. Type it again.',forget:()=>{pwSet('')}};
+    const w=j.error||('error '+r.status);return {text:w.charAt(0).toUpperCase()+w.slice(1)+'. Nothing was sent.'}}
+  catch(e){return {text:'No answer from the module: nothing was sent. Try again.'}}
+  finally{clearTimeout(t)}}
 function infoText(i){return i.fw+' '+verText(i.ver,i.built)+(i.board?' for the '+i.board:'')}
 function progMsg(t,c){const m=$('msgProg');m.className='msg'+(c?' '+c:'');m.textContent=t}
 let busy=false,waitBoot=false,upBefore=0,fwNow=null;
@@ -549,7 +576,7 @@ async function binChosen(){
     if(await askShow({title:'This file cannot be installed',rows:[['File',file]],verdict:['✗ '+i.error,'bad'],okText:'Choose another file',noText:'Close'}))inp.click();
     return}
   const p=await pwAsk({title:'Install this file?',rows:[['File',file],['Inside',infoText(i)],['Runs now',infoText(fwNow)]],
-    verdict:verdict(cmpNow(i.ver,i.built)),text:'The sections close during the update.',okText:'Install'});
+    verdict:verdict(cmpNow(i.ver,i.built)),text:'The sections close during the update.',okText:'Install',check:updateCheck});
   if(p===null)return;
   busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;
   sendBin(f,f.name,p,0);
@@ -623,7 +650,7 @@ async function ghInstall(){
   if(!ghNewer()||busy)return;
   const name=gh.file.split('/').pop(),want=gh.size||0;
   const pass=await pwAsk({title:'Install from GitHub?',rows:[['On GitHub',fwNow.fw+' '+verText(gh.version,gh.built)],['Runs now',infoText(fwNow)]],
-    verdict:verdict(ghCmp()),text:'The sections close during the update.',okText:'Install'});
+    verdict:verdict(ghCmp()),text:'The sections close during the update.',okText:'Install',check:updateCheck});
   if(pass===null)return;
   busy=true;fwButtons();const g=$('prog');g.hidden=false;g.value=0;
   progMsg('Downloading from GitHub…');

@@ -435,6 +435,9 @@ SCENARIO(User::BadLink, "link-own-update-while-steering", "While the tablet stee
         phone.upPerMs = 300;
         const Reply u = w.upload("/update?pw=trator-2026", "update.bin", repoFile(info(kit).bin), phone);
         must("update-refused", u.code == 400 && has(u.error(), "autosteer is on") && !w.dev.updDone, "The XIAO's own update is refused", fmt("code %d '%s' %s", u.code, u.error().c_str(), u.why.c_str()));
+        const Reply ck = w.post("/api/update-check", { { "pw", "trator-2026" } }, phone), tk = w.post("/api/update-check", { { "for", "teensy" }, { "pw", "trator-2026" } }, phone);
+        must("update-check-refused", ck.code == 409 && has(ck.error(), "autosteer is on") && tk.code == 409 && has(tk.error(), "autosteer is on") && ck.tookMs() < 1500,
+             "The page's check before an update (the XIAO's, the module's) says so at once, before any file is sent", fmt("codes %d %d '%s' in %u ms", ck.code, tk.code, ck.error().c_str(), ck.tookMs()));
         const Reply s = w.post("/api/settings", settings("trator-2026", "Other name", "", true), phone);
         must("save-refused", s.code == 409 && has(s.error(), "Save: not now"), "Save is refused, with the reason", fmt("code %d '%s'", s.code, s.error().c_str()));
         const Reply rs = w.post("/api/restart", { { "pw", "trator-2026" } }, phone);

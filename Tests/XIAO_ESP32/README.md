@@ -28,7 +28,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 24 Nov 2026 | `memory-low-noted`: the lowest free memory, when and what was going on, on the page and in Messages (a line each, none cut off); the pretend core keeps the lowest point and the largest piece ([How it works](#how-it-works)). |
+| 24 Nov 2026 | `memory-low-noted`: lowest free memory, when and what was going on ([How it works](#how-it-works)). The check before an install (`/api/update-check`): wrong password, autosteer on, silent Teensy, said at once ([The users](#the-users)). |
 | 23 Nov 2026 | `careful-sign-in-page`: the XIAO's own DNS server, «Done on this device» and its MAC list over a restart; the pretend core gets the access point's device list ([How it works](#how-it-works)). |
 | 22 Nov 2026 | First version, then section modules on its WiFi (and in the Machine tab), its network on the module's numbers, the module's page: 76 scenarios, five users, two XIAOs (88 runs) ([How it works](#how-it-works)). Two of four findings fixed ([What it found](#what-it-found)). |
 

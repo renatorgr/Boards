@@ -25,6 +25,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | `install-wrong-password`: the page's check before an install (`/api/update-check`) refuses a wrong or missing password at once and changes nothing: the sections stay on, no restart ([The users](#the-users)). |
 | 23 Nov 2026 | RTC memory kept through a restart, the crash record in flash, core 0 or the loop held ([How it works](#how-it-works)). `sprayer-restart-says-before`, `sprayer-crash-record`: which watchdog, what the sprayer did before. 42 scenarios. |
 | 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 40 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |

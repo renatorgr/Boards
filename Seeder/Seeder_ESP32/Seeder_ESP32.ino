@@ -64,7 +64,7 @@
 #include "dPage.h"
 
 #define FW_NAME             "Seeder_ESP32"
-#define FW_VERSION          "0.2.17"
+#define FW_VERSION          "0.2.18"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):

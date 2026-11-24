@@ -15,6 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | **0.2.18**: an install asks the module for the password before the file is downloaded or sent: a wrong one is said at once in the box, which stays open to type it again ([The web page](#the-web-page)). |
 | 23 Nov 2026 | **0.2.17**: the page's [dot at the top](#the-dot-at-the-top) has three colours, as on the sprayer, Teensy and XIAO pages: green = program talking, orange = module answers but the program is silent, red = no answer. |
 | 22 Nov 2026 | **0.2.15**, **0.2.16**: on a tractor with no router the module joins the Wi-Fi of the AiO board's XIAO and works through its WiFi bridge, with the subnet it has (192.168.5) ([No router on the tractor](#no-router-on-the-tractor)). |
 | 21 Nov 2026 | **0.2.10-0.2.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); two harness fixes; Wi-Fi reason, name and program checked; outputs inverted said on screen ([Notes](#notes)). |
@@ -100,7 +101,7 @@ It has four tabs, as the sprayer page:
 Each install and the restart are confirmed in one box:
 
 - what the file holds against what runs now
-- the own network's password (offered again while the page stays open)
+- the own network's password (offered again while the page stays open). For an install it is checked with the module **before** the file is downloaded or sent: a wrong one is said at once under the field (*Wrong password: nothing was sent*), and the box stays open to type it again.
 
 Every question the page asks (save and restart, install a program, the password) opens in a box of the page itself, not a browser pop-up. Inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
 

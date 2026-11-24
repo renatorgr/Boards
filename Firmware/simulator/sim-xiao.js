@@ -7,7 +7,7 @@
 */
 // The XIAO's answers (v4.5_XIAO_ESP32.ino apiState, apiTeensy, apiLog, apiSettings*, apiScan, apiSubnet,
 // apiRestart, the WiFi bridge's switch and state, the program update on /update, the module's firmware over the link on /api/teensy-update and
-// /api/teensy-revert), with the module's status from the pretend Teensy of
+// /api/teensy-revert, the check before an update on /api/update-check), with the module's status from the pretend Teensy of
 // sim-common.js (its short copy, as the Teensy sends it to the XIAO once a second). The XIAO network password
 // is the XIAO's default, agopengps.
 "use strict";
@@ -139,6 +139,12 @@ S.hook((method, path, q, body) => {
  else if (post && path === "/api/restart") {
   if (b.pw !== X.pass) r = S.err(403, "wrong password");
   else { event("Restart requested from the page"); restart("restart requested", 3000); r = S.ok(); }
+ }
+ else if (post && path === "/api/update-check") {   // apiUpdateCheck: would the update start? (updateRefusal; autosteer never on here)
+  const toTeensy = b.for === "teensy";
+  const why = b.for && !toTeensy && b.for !== "xiao" ? "for: teensy (the module's firmware) or xiao" : b.pw !== X.pass ? "wrong password" : toTeensy && M.offline() ? "no data from the module: is the Teensy on and the link working?" : "";
+  if (why && !why.startsWith("for:")) event((toTeensy ? "Module firmware update" : "Program update") + " REFUSED: " + why);
+  r = why ? S.err(why === "wrong password" ? 403 : why.startsWith("for:") ? 400 : 409, why) : S.ok();
  }
  else if (post && path === "/api/teensy-revert") {   // the Teensy's answer to our PGN 145 command 5 (zXiao.ino)
   if (b.pw !== X.pass) r = S.err(403, "wrong password");

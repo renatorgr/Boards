@@ -15,6 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | **0.10.22**: an install asks the module for the password before the file is downloaded or sent: a wrong one is said at once in the box, which stays open to type it again ([The Firmware tab](#the-firmware-tab)). |
 | 23 Nov 2026 | **0.10.18-20**: after a restart nobody asked for, the module says which watchdog, what it was doing, the last relay change, the crash record ([Why the module started](#why-the-module-started)). **0.10.21**: [dot at the top](#the-dot-at-the-top) orange when the program is silent. |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
@@ -224,7 +225,7 @@ The phone or tablet asks GitHub, so it needs internet: open the page over the tr
 Each install and the restart are confirmed in one box. The box:
 
 - says what the file holds (version, build date, board) against what runs now: newer, the same or older
-- asks the own network's password
+- asks the own network's password, and checks it with the module **before** the file is downloaded or sent. A wrong one is said at once under the field (*Wrong password: nothing was sent*), and the box stays open to type it again. Before, it was only refused after the whole file had gone up.
 - refuses, as soon as it is chosen, a `.bin` for another board, another module's program or the `.merged.bin`, with the reason
 
 ### The page's questions and the password
