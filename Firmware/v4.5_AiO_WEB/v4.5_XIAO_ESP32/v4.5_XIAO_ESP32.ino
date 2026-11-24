@@ -949,7 +949,7 @@ static void tpageStart()
 // milliseconds) and of every request to our page.
 #define MEM_TELL   32768      // a lowest point under this is noted (= TPAGE_HEAP_LOW)
 #define MEM_STEP   4096       // Messages again only this much lower than the last one they gave
-#define MEM_WHAT   200
+#define MEM_WHAT   320      // room for every piece of what was going on at its longest (about 318)
 
 static const char* staState();        // (below, with the WiFi)
 
@@ -998,7 +998,7 @@ static void memWatch(const char* where)
         {
             memLow.inS = (in - memLow.in0) * 1000u / (uint32_t)span;
             memLow.outS = (out - memLow.out0) * 1000u / (uint32_t)span;
-            memLow.toS = (to >= memLow.to0 ? to - memLow.to0 : to) * 1000u / (uint32_t)span;   // (a module's place freed)
+            memLow.toS = to >= memLow.to0 ? (to - memLow.to0) * 1000u / (uint32_t)span : 0;   // a module's place freed: not counted
             memLow.lostS = (lost - memLow.lost0) * 1000u / (uint32_t)span;
         }
         memLow.secMs = msStamp(now);
@@ -1016,7 +1016,7 @@ static void memWatch(const char* where)
     if (tpage.cur >= 0)                                              // the module's page: its request's first words
     {
         int k = 0, spaces = 0;
-        while (k < (int)tpage.lineLen && k < 48 && tpage.line[k] != '\r' && tpage.line[k] != '\n' && !(tpage.line[k] == ' ' && ++spaces == 2)) k++;
+        while (k < (int)tpage.lineLen && k < 40 && tpage.line[k] != '\r' && tpage.line[k] != '\n' && !(tpage.line[k] == ' ' && ++spaces == 2)) k++;
         int conns = 0;
         for (const TPageConn& c : tpage.conn) if (c.used) conns++;
         memAdd("module page (port 8080) %.*s, %u bytes held, %d browser connection(s)", k, tpage.line, (unsigned)tpage.len, conns);
@@ -1030,7 +1030,15 @@ static void memWatch(const char* where)
     if (!strcmp(staState(), "con")) memAdd("joining the other network");
     if (memLow.told && memLow.told - lo < MEM_STEP) return;          // Messages: only a step lower than the last time
     memLow.told = lo;
-    logEvent("Short of memory: %lu bytes free at the lowest; %s", (unsigned long)lo, memLow.what);
+    // A line of Messages holds EVENT_LEN characters: the lowest point on one line, then each piece on its own
+    logEvent("Short of memory: %lu bytes free at the lowest. Going on then:", (unsigned long)lo);
+    for (const char* p = memLow.what; *p; )
+    {
+        const char* end = strstr(p, "; ");
+        const int n = end ? (int)(end - p) : (int)strlen(p);
+        logEvent("... %.*s", n, p);
+        p += n + (end ? 2 : 0);
+    }
 }
 
 // What loop() does all the time, and every wait for a browser too: the link to the Teensy, the bridge, the module's page
@@ -1499,7 +1507,7 @@ static void apiState()
     j.u("heapMin", ESP.getMinFreeHeap());
     j.obj("memLow");                           // the lowest point under MEM_TELL since the start, and what was going on (24 Nov 2026)
     j.u("free", memLow.lowest);                // 0: never that short
-    j.i("ago", memLow.ms ? (long)((int32_t)(now - memLow.ms) > 0 ? (now - memLow.ms) / 1000 : 0) : -1);
+    j.i("ago", memLow.ms ? (long)((now - memLow.ms) / 1000u) : -1);   // (noted before now: never ahead of it)
     j.u("freeThen", memLow.freeThen);
     j.u("block", memLow.block);                // the largest piece of free memory then
     j.str("what", memLow.what);

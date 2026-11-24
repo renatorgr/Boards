@@ -26,7 +26,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 24 Nov 2026 | When free memory falls under 32 kB the XIAO notes when, and what it was doing: Status shows the lowest point, Messages say what was going on ([Short of memory](#short-of-memory)). `.bin` rebuilt. |
+| 24 Nov 2026 | When free memory falls under 32 kB the XIAO notes when, and what it was doing: Status shows the lowest point, Messages say what was going on, a line each ([Short of memory](#short-of-memory)). `.bin` rebuilt. |
 | 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). The [dot at the top](#the-dot-at-the-top) turns orange when no program talks. `.bin` rebuilt. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
@@ -337,12 +337,12 @@ Out of memory the XIAO restarts, and the [WiFi bridge](#wifi-bridge) with it. So
 When that falls under **32 kB**, the XIAO notes when, and what it was doing then:
 
 - **Status › XIAO › Free memory** shows the lowest point and how long ago, in orange.
-- **Messages** say it in one line: «Short of memory: 6000 bytes free at the lowest; …». They say it again only when it falls 4 kB lower.
+- **Messages** say it: «Short of memory: 6000 bytes free at the lowest. Going on then:», then one line for each thing below («... module page (port 8080) GET /, …»), so none is cut off at the end of a line. They say it again only when it falls 4 kB lower.
 - **Download the report** and `/api/state` (`memLow`) have it whole.
 
 What it notes:
 
-- the module's page (port 8080) if one was loading: its request and the bytes held for the browser;
+- the module's page (port 8080) if one was loading: its request (the first 40 characters) and the bytes held for the browser;
 - the request of this page it was answering;
 - the bridge's packets a second: to the Teensy, to the program, to the section modules, and lost;
 - the devices on the XIAO's WiFi;
