@@ -69,6 +69,36 @@ SCENARIO(User::FieldFailures, "keya-lost", "The Keya's CAN cable comes off while
     reportRules(w);
 }
 
+SCENARIO(User::FieldFailures, "keya-lost-was-back", "The WAS wire breaks and is mended while the Keya's CAN cable is off", { Kit::Um982Keya })
+{
+    World w(kit);
+    w.aow.sc.steerSwitch = true;               // a steer switch, left on all through: both blocks stay
+    w.sw.steerClosed = true;
+    w.startUp();
+    steerFor(w, 8, 5000);
+    w.ruleRightWay = false;                    // the Keya runs on its last command until its own timeout
+    w.was.shortToGround = true;                // the WAS check blocks
+    w.expectOff("the WAS wire broke", 700);
+    w.run(1500);
+    w.keya.canWired = false;                   // and the Keya stops answering
+    w.run(3000);
+    w.was.shortToGround = false;               // the WAS is mended; the Keya is still lost
+    w.run(2000);
+    w.aow.engage = false;                      // AgOpenWeb's button off and on; the steer switch stays on
+    w.run(500);
+    const size_t mark = w.aio.logMark(), smark = w.aow.screen.size();
+    w.aow.engage = true;                       // AgOpenWeb asks to steer again
+    w.run(2000);
+    const std::string last = lastScreen(w);
+    note("screen", last);
+    must("says-keya", w.aow.screenHas("Keya not responding", smark) && last.find("Keya not responding") != std::string::npos,
+         "AgOpenWeb's screen says the Keya still does not answer, not only that the WAS is back", last);
+    tell("logs-both", w.aio.logHas("Keya motor does not answer", mark) && w.aio.logHas("WAS is back in range", mark),
+         "The module's log keeps both reasons", w.aio.logLine("[status]"));
+    w.expectOffEnd();
+    reportRules(w);
+}
+
 SCENARIO(User::FieldFailures, "keya-fault", "The Keya reports an over-current fault while steering", { Kit::Um982Keya })
 {
     World w(kit);

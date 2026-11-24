@@ -178,7 +178,7 @@ Each scenario runs in its own process: a crash, or a memory error the sanitizer 
 **Failures in the field**
 
 - The WAS: `was-unplugged-steering`, `was-wire-cut`.
-- The Keya: `keya-lost`, `keya-fault`.
+- The Keya: `keya-lost`, `keya-fault`, `keya-lost-was-back` (the Keya still silent when the WAS is back: the screen says the Keya).
 - The firmware and power: `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `millis-wrap`.
 - Driving: `too-fast`, `gps-lost`, `rtk-lost`, `imu-frozen`.
 - The network: `packet-loss`, `short-settings-packet`, `udp-garbage`, `ntrip-flood`.
