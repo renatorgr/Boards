@@ -91,7 +91,7 @@ SCENARIO(User::FieldFailures, "keya-lost-was-back", "The WAS wire breaks and is 
     w.run(2000);
     const std::string last = lastScreen(w);
     note("screen", last);
-    must("says-keya", w.aow.screenHas("Keya not responding", smark) && last.find("WAS in range again") == std::string::npos,
+    must("says-keya", w.aow.screenHas("Keya not responding", smark) && last.find("Keya not responding") != std::string::npos,
          "AgOpenWeb's screen says the Keya still does not answer, not only that the WAS is back", last);
     tell("logs-both", w.aio.logHas("Keya motor does not answer", mark) && w.aio.logHas("WAS is back in range", mark),
          "The module's log keeps both reasons", w.aio.logLine("[status]"));

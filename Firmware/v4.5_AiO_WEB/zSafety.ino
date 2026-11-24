@@ -325,9 +325,10 @@ bool steerStuckBlocked()
 // program's button goes on (PGN 254 status bit 0 from 0 to 1), at most every 3 s. Not when the block
 // starts while the program already asks: wasCheck() / keyaCheck() have just said it.
 // A fault that is over (the WAS back in range, the Keya answering) blocks on only until a steer switch
-// left on is turned off: then that is what it says, not the fault. With both blocks every one gets its
-// line in Messages; the program's screen has room for one, the WAS. A steer switch left on after the wheels did
-// not follow (steerStuckCheck) is said the same way.
+// left on is turned off: then that is what it says, not the fault. With several blocks every one gets its
+// line in Messages; the program's screen has room for one: a fault still there (Keya lost, WAS jump held, WAS
+// out) before one that is over, and of two still there the WAS. A steer switch left on after the wheels did
+// not follow (steerStuckCheck) is said the same way as a fault that is over.
 FLASHMEM void blockedSay()
 {
     static uint32_t saidMs = 0;
@@ -335,8 +336,7 @@ FLASHMEM void blockedSay()
     if (!wasBlock && !keyaBlock && !wasJumpBlock && !stuckBlock) return;
     if (saidMs && now - saidMs < 3000) return;
     saidMs = msStamp(now);
-    // The screen shows one line: a fault still there (Keya lost, WAS jump held, WAS out) wins over a
-    // "back again, switch off and on" line, whatever order the blocks come in. Every block keeps its log line.
+    // A fault still there (live) wins the screen's line over a "back again, switch off and on" line.
     char m[64] = "";
     bool live = false;
     if (stuckBlock)
