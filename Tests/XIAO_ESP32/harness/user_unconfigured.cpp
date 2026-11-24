@@ -119,6 +119,18 @@ SCENARIO(User::Unconfigured, "new-wrong-password", "Someone on the network tries
         must("check-refused-" + (pw.empty() ? std::string("none") : enc(pw)), k1.code == 403 && k2.code == 403 && k1.error() == "wrong password" && k2.error() == "wrong password",
              "Password '" + pw + "': the page's check before an update (the XIAO's, the module's) answers 403 'wrong password' at once", fmt("%d %d", k1.code, k2.code));
     }
+    // the page's check asked again and again with a wrong password (a script, a stuck key): Messages say it once in 10 s at most,
+    // so the older messages stay; a check for something unknown is refused
+    auto refusedLines = [&]() { size_t n = 0; for (size_t p = 0; (p = w.dev.usbOut.find("REFUSED: wrong password", p)) != std::string::npos; p++) n++; return n; };
+    w.run(11000);                           // the last line about a wrong password is older than 10 s: the next one is said
+    const size_t linesBefore = refusedLines();
+    int burst403 = 0;
+    for (int k = 0; k < 40; k++) burst403 += w.post("/api/update-check", { { "pw", "guess-" + std::to_string(k) } }).code == 403;
+    const size_t burstLines = refusedLines() - linesBefore;
+    must("check-burst-calm", burst403 == 40 && burstLines == 1, "40 checks with a wrong password: each refused, Messages say it once",
+         fmt("%d refused, %u lines", burst403, (unsigned)burstLines));
+    const Reply odd = w.post("/api/update-check", { { "for", "other" }, { "pw", "segredo-2026" } });
+    must("check-unknown-for", odd.code == 400, "A check for something that is neither the XIAO nor the module is refused", fmt("code %d '%s'", odd.code, odd.error().c_str()));
     w.run(3000);
     must("nothing-changed", w.dev.flashWrites == 0 && w.xiao.restarts.empty() && w.teensy.subnets.empty() && w.teensy.reverts == 0 && w.teensy.fwDone == 0 && w.dev.updInstalled == 0 && !w.dev.updDone,
          "Nothing changed: no setting, no restart, nothing sent to the Teensy, no program written", fmt("%u flash writes, %u restarts", w.dev.flashWrites, (unsigned)w.xiao.restarts.size()));

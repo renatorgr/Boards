@@ -235,12 +235,12 @@ const $=id=>document.getElementById(id);
 // askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
 // o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
 // that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words; o.check(text) a check made when OK is
-// pressed, before the box closes: it answers an error, which the box shows under the field and stays open with, or nothing,
-// and OK goes on. Answers true for OK, false otherwise.
+// pressed, before the box closes: it answers nothing, and OK goes on, or {text, forget}, which keeps the box open with the
+// text above the field (forget(): a wrong password, forgotten, and the field emptied). Answers true for OK, false otherwise.
 let askDone=null,askCheck=null,askN=0;
 function askShow(o){
  if(askDone)askEnd(false);
- askCheck=o.check||null;askN++;$("askErr").hidden=true;$("askErr").textContent="";
+ askCheck=o.check||null;askN++;$("askErr").hidden=true;$("askErr").textContent="";$("askIn").readOnly=false;$("askForceIn").disabled=false;
  const t=$("askTitle"),r=$("askRows"),v=$("askVerdict"),x=$("askText"),l=$("askPwL"),i=$("askIn"),y=$("askYes");
  t.textContent=o.title||"";t.hidden=!o.title;
  r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement("dt"),b=document.createElement("dd");a.textContent=k;b.textContent=w;r.append(a,b);}r.hidden=!r.firstChild;
@@ -257,15 +257,17 @@ function askEnd(v){const r=askDone;askDone=null;askCheck=null;askN++;$("ask").hi
 const ask=text=>askShow({text});
 const askText=text=>askShow({text,input:true}).then(ok=>ok?$("askIn").value:null);
 $("askForceIn").addEventListener("change",()=>{$("askYes").disabled=!$("askForceIn").checked;});
-// OK with the password field empty goes back to the field; with a check (o.check), OK waits for it and is off meanwhile
-async function askOk(){const i=$("askIn"),y=$("askYes"),e=$("askErr");if(!i.hidden&&!i.value){i.focus();return;}
+// OK with the password field empty goes back to the field; with a check (o.check), OK waits for it. Meanwhile OK, the field and
+// the tick are off: what was checked is what the box answers. A check that answers after the box closed changes nothing
+async function askOk(){const i=$("askIn"),y=$("askYes"),e=$("askErr"),f=$("askForceIn");if(!i.hidden&&!i.value){i.focus();return;}
  if(!askCheck){askEnd(true);return;}
- const n=askN;y.disabled=true;e.className="";e.textContent="Checking…";e.hidden=false;
- const why=await askCheck(i.value);
+ const n=askN;y.disabled=true;i.readOnly=true;f.disabled=true;e.className="";e.textContent="Checking…";e.hidden=false;
+ const r=await askCheck(i.value);
  if(n!==askN)return;   // closed meanwhile (Cancel, Escape), or another question
- y.disabled=false;
- if(!why){askEnd(true);return;}
- e.className="bad";e.textContent=why;(i.hidden||i.value?y:i).focus();e.scrollIntoView({block:"nearest"});}
+ i.readOnly=false;f.disabled=false;y.disabled=false;
+ if(!r){askEnd(true);return;}
+ if(r.forget){r.forget();i.value="";}
+ e.className="bad";e.textContent=r.text;(i.hidden||i.value?y:i).focus();e.scrollIntoView({block:"nearest"});}
 $("askYes").addEventListener("click",askOk);$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
 // Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
@@ -530,14 +532,17 @@ function pwRefused(status,err){if(status===403||/password/.test(err||""))pwKeep=
 // Before a firmware is downloaded or sent, the XIAO says whether it would take it (POST /api/update-check: the password, autosteer
 // through the bridge and, for the module's firmware (forWhat "teensy"), the link to the Teensy; nothing is changed there): a
 // refusal is told at once in the install box, which stays open (a wrong password to be typed again), instead of after the whole
-// file has gone up. Gives the box's check (o.check): an error text, or nothing
+// file has gone up. Gives the box's check (o.check): nothing only for the XIAO's yes; anything else is said, and nothing is sent
+// (no answer in 8 s too)
 function updateCheck(forWhat){return async p=>{
- try{const r=await fetch("/api/update-check",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"for="+forWhat+"&pw="+encodeURIComponent(p)});
-  if(r.status===403){pwRefused(403);$("askIn").value="";return "Wrong password: nothing was sent. Type it again.";}
-  if(r.ok||r.status===404)return "";
+ const ac=new AbortController(),t=setTimeout(()=>ac.abort(),8000);
+ try{const r=await fetch("/api/update-check",{method:"POST",cache:"no-store",signal:ac.signal,headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"for="+forWhat+"&pw="+encodeURIComponent(p)});
   let j={};try{j=await r.json();}catch(e){}
-  const t=j.error||("error "+r.status);return t.charAt(0).toUpperCase()+t.slice(1)+". Nothing was sent.";}
- catch(e){return "No answer from the XIAO: nothing was sent. Try again.";}};}
+  if(r.ok&&j.ok)return null;
+  if(r.status===403)return {text:"Wrong password: nothing was sent. Type it again.",forget:()=>pwRefused(403)};
+  const w=j.error||("error "+r.status);return {text:w.charAt(0).toUpperCase()+w.slice(1)+". Nothing was sent."};}
+ catch(e){return {text:"No answer from the XIAO: nothing was sent. Try again."};}
+ finally{clearTimeout(t);}};}
 // newer, the same or older than what runs now, as the box says it
 function verdict(c){return c>0?["✓ Newer than the one installed.","ok"]:c===0?["The same as the one installed.",""]:c<0?["Older than the one installed.","warn"]:null;}
 // the version text of a dd, and a pill: newer (green), installed, older (orange)

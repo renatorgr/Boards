@@ -142,9 +142,9 @@ S.hook((method, path, q, body) => {
  }
  else if (post && path === "/api/update-check") {   // apiUpdateCheck: would the update start? (updateRefusal; autosteer never on here)
   const toTeensy = b.for === "teensy";
-  const why = b.pw !== X.pass ? "wrong password" : toTeensy && M.offline() ? "no data from the module: is the Teensy on and the link working?" : "";
-  if (why) event((toTeensy ? "Module firmware update" : "Program update") + " REFUSED: " + why);
-  r = why ? S.err(why === "wrong password" ? 403 : 409, why) : S.ok();
+  const why = b.for && !toTeensy && b.for !== "xiao" ? "for: teensy (the module's firmware) or xiao" : b.pw !== X.pass ? "wrong password" : toTeensy && M.offline() ? "no data from the module: is the Teensy on and the link working?" : "";
+  if (why && !why.startsWith("for:")) event((toTeensy ? "Module firmware update" : "Program update") + " REFUSED: " + why);
+  r = why ? S.err(why === "wrong password" ? 403 : why.startsWith("for:") ? 400 : 409, why) : S.ok();
  }
  else if (post && path === "/api/teensy-revert") {   // the Teensy's answer to our PGN 145 command 5 (zXiao.ino)
   if (b.pw !== X.pass) r = S.err(403, "wrong password");

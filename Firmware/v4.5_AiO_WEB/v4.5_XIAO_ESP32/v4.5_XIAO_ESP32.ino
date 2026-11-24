@@ -1815,15 +1815,25 @@ static const char* updateRefusal(bool toTeensy)
     return nullptr;
 }
 
-// POST /api/update-check, pw= and for=teensy (the module's firmware) or nothing (the XIAO's own): would the update start?
-// Nothing is changed; a refusal is in Messages as the upload's own would be.
+// POST /api/update-check, pw= and for=teensy (the module's firmware) or for=xiao / nothing (the XIAO's own): would the update
+// start? Nothing is changed. A refusal is in Messages as the upload's own would be, a wrong password once in 10 s at most: a
+// page (or anyone on the network) asking again and again must not push the older messages out of the few kept.
 static void apiUpdateCheck()
 {
-    const bool toTeensy = server.arg("for") == "teensy";
+    const String what = server.arg("for");
+    if (what.length() && what != "teensy" && what != "xiao") { sendError(400, "for: teensy (the module's firmware) or xiao"); return; }
+    const bool toTeensy = what == "teensy";
     const char* why = updateRefusal(toTeensy);
     if (!why) { server.send(200, "application/json", "{\"ok\":true}"); return; }
-    logEvent("%s REFUSED: %s", toTeensy ? "Module firmware update" : "Program update", why);
-    sendError(strcmp(why, "wrong password") == 0 ? 403 : 409, why);
+    const bool wrongPw = strcmp(why, "wrong password") == 0;
+    static bool     pwSaid = false;
+    static uint32_t pwSaidAt = 0;
+    if (!wrongPw || !pwSaid || millis() - pwSaidAt >= 10000)
+    {
+        logEvent("%s REFUSED: %s", toTeensy ? "Module firmware update" : "Program update", why);
+        if (wrongPw) { pwSaid = true; pwSaidAt = millis(); }
+    }
+    sendError(wrongPw ? 403 : 409, why);
 }
 
 static void updateUpload()

@@ -4,7 +4,7 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
-**Built:** 24 Nov 2026 (C3 18:39, S3 18:39 UTC). This build has:
+**Built:** 24 Nov 2026 (C3 18:54, S3 18:54 UTC). This build has:
 
 - the WiFi bridge: a tablet with no network cable runs the program on the XIAO's network (off from new, switched on in the WiFi tab)
 - the link task: a slow browser no longer holds up the bridge or the link to the Teensy
