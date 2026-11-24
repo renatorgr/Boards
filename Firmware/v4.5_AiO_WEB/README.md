@@ -38,6 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a cable-less tablet steers, opens this page, sees section modules on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled here. |
 | 21 Nov 2026 | Every timer that starts with the time now starts at the time itself: about 40 started a millisecond ahead half the time, so a message could be said twice or a time on the page read 49 days ([Main loop](#main-loop)). Not compiled in the cloud. |
@@ -818,6 +819,7 @@ Not caught:
 - The same for a Keya that does not answer.
 - Since 17 Nov 2026, when the fault is over and only a steer switch left on still blocks, it says so (`WAS in range again: steer switch off and on`).
 - With a WAS fault and a silent Keya together, Messages gets a line for each (the program's screen shows the WAS).
+- Since 24 Nov 2026 a fault still there wins the screen's one line over one that is over: a Keya still silent is shown, not `WAS in range again` (found by Sourcery on #148).
 
 ### Why autosteer went off
 

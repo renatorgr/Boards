@@ -335,7 +335,10 @@ FLASHMEM void blockedSay()
     if (!wasBlock && !keyaBlock && !wasJumpBlock && !stuckBlock) return;
     if (saidMs && now - saidMs < 3000) return;
     saidMs = msStamp(now);
-    char m[64];
+    // The screen shows one line: a fault still there (Keya lost, WAS jump held, WAS out) wins over a
+    // "back again, switch off and on" line, whatever order the blocks come in. Every block keeps its log line.
+    char m[64] = "";
+    bool live = false;
     if (stuckBlock)
     {
         snprintf(m, sizeof(m), "Wheels did not follow: steer switch off and on");
@@ -346,11 +349,12 @@ FLASHMEM void blockedSay()
         if (keyaLost)
         {
             snprintf(m, sizeof(m), "Keya not responding (CAN cable?): autosteer off");
+            live = true;
             StatusLog.line("[status] The program asks to steer: autosteer blocked, the Keya motor does not answer");
         }
         else
         {
-            snprintf(m, sizeof(m), "Keya answers again: steer switch off and on");
+            if (!live) snprintf(m, sizeof(m), "Keya answers again: steer switch off and on");
             StatusLog.line("[status] The program asks to steer: the Keya motor answers again - turn the steer switch off and on again to engage autosteer");
         }
     }
@@ -359,11 +363,12 @@ FLASHMEM void blockedSay()
         if (now - wasJumpMs < WAS_JUMP_HOLD_MS)
         {
             snprintf(m, sizeof(m), "WAS jumped %d deg: plug or wire? Autosteer blocked", (int)(wasJumpDeg + 0.5f));
+            live = true;
             StatusLog.line("[status] The program asks to steer: autosteer blocked, the WAS angle jumped %.1f deg (plug or wire?)", wasJumpDeg);
         }
         else
         {
-            snprintf(m, sizeof(m), "WAS jump over: steer switch off and on");
+            if (!live) snprintf(m, sizeof(m), "WAS jump over: steer switch off and on");
             StatusLog.line("[status] The program asks to steer: the WAS jump is over - turn the steer switch off and on again to engage autosteer");
         }
     }
@@ -371,7 +376,7 @@ FLASHMEM void blockedSay()
     {
         if (!wasOut)
         {
-            snprintf(m, sizeof(m), "WAS in range again: steer switch off and on");
+            if (!live) snprintf(m, sizeof(m), "WAS in range again: steer switch off and on");
             StatusLog.line("[status] The program asks to steer: the WAS is back in range (%.2f V) - turn the steer switch off and on again to engage autosteer", wasVolts);
         }
         else
