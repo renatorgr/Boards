@@ -26,6 +26,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | When free memory falls under 32 kB the XIAO notes when, and what it was doing: Status shows the lowest point, Messages say what was going on ([Short of memory](#short-of-memory)). `.bin` rebuilt. |
 | 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). The [dot at the top](#the-dot-at-the-top) turns orange when no program talks. `.bin` rebuilt. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
@@ -97,7 +98,7 @@ The mouse on the dot shows the same words. The Teensy, sprayer and seed drill pa
 - **Module (Teensy)**, sent by the Teensy once a second: GNSS (fix, satellites, age of corrections), dual antenna heading, IMU (TM171 or BNO085), the GPS receiver's model, steering, network, the Teensy's clock and temperature.
   - The fix is green whenever the receiver has a position (GPS, DGPS, RTK float, RTK fixed: the name says which), and red only without one.
 - **Program → module** (named AgOpenWeb or AgOpenGPS when the Teensy knows which program sends the hello): speed, requested steer angle, autosteer on / off, sections (one box each: 16, or up to 64 with PGN 229), hydraulic lift (up / down), tramline, PGN 254 per second.
-- **XIAO**: uptime, start-up reason, WiFi, the [WiFi bridge](#wifi-bridge), the link to the Teensy, memory, the chip's temperature. (Its version is in the header and the Firmware tab; the requested steer angle is in Program → module.)
+- **XIAO**: uptime, start-up reason, WiFi, the [WiFi bridge](#wifi-bridge), the link to the Teensy, memory (and its lowest point, see [Short of memory](#short-of-memory)), the chip's temperature. (Its version is in the header and the Firmware tab; the requested steer angle is in Program → module.)
 
 **Messages**: the module's `[status]` messages (the same as the Messages tab of the Teensy page, last 60), and the XIAO's own events (WiFi, phones joining, updates).
 
@@ -328,6 +329,28 @@ Since 22 Nov 2026 a second task (the link task) keeps the link to the Teensy and
 - The time is now read after the web server.
 
 Not yet tried on a real XIAO. In the harness the steering packets kept passing 10 ms apart while the page waited two minutes for an upload that came a few bytes at a time.
+
+## Short of memory
+
+Out of memory the XIAO restarts, and the [WiFi bridge](#wifi-bridge) with it. So it watches its lowest point of free memory since it started.
+
+When that falls under **32 kB**, the XIAO notes when, and what it was doing then:
+
+- **Status › XIAO › Free memory** shows the lowest point and how long ago, in orange.
+- **Messages** say it in one line: «Short of memory: 6000 bytes free at the lowest; …». They say it again only when it falls 4 kB lower.
+- **Download the report** and `/api/state` (`memLow`) have it whole.
+
+What it notes:
+
+- the module's page (port 8080) if one was loading: its request and the bytes held for the browser;
+- the request of this page it was answering;
+- the bridge's packets a second: to the Teensy, to the program, to the section modules, and lost;
+- the devices on the XIAO's WiFi;
+- that it was joining the other network.
+
+Why: on the bench (24 Nov 2026) a C3 had fallen to 5.5 kB free once in three hours, and nothing said when or why.
+
+The memory is taken by other parts of the chip too (its WiFi, its network), so the XIAO notices the lowest point a moment later: at its next look, every few milliseconds.
 
 ## Install the first time (USB-C, off the board)
 

@@ -17,6 +17,7 @@ namespace fake
 Device* cur = nullptr;
 uint64_t clockMs = 100000;      // the bench was switched on a while ago
 uint32_t freeHeap = 182000;
+uint32_t minFreeHeap = 151000;
 std::function<void()> onMs;
 
 // The program's other tasks: each one whose sleep is over runs until it sleeps again (vTaskDelay throws TaskSleep).
@@ -172,6 +173,7 @@ void Device::stopped(esp_reset_reason_t why)
     resetReason = why;
     running = false;
     wdtOn = wdtUserOn = false;
+    minFreeHeap = freeHeap < 151000 ? freeHeap : 151000;   // the allocator's lowest point starts again with the program
     tasks.clear();
     locks.clear();
     inTask = -1;
@@ -270,7 +272,9 @@ esp_reset_reason_t esp_reset_reason() { return cur->resetReason; }
 EspClass ESP;
 uint64_t EspClass::getEfuseMac() { return cur->mac; }
 uint32_t EspClass::getFreeHeap() { return fake::freeHeap; }
-uint32_t EspClass::getMinFreeHeap() { return 151000; }
+// The lowest point is the allocator's own: it never goes back up, and never stays above what is free now
+uint32_t EspClass::getMinFreeHeap() { if (fake::freeHeap < fake::minFreeHeap) fake::minFreeHeap = fake::freeHeap; return fake::minFreeHeap; }
+uint32_t EspClass::getMaxAllocHeap() { return fake::freeHeap * 3 / 4; }   // the largest piece: some of the free memory is in small pieces
 uint32_t EspClass::getSketchSize() { return 1167872; }
 uint32_t EspClass::getFreeSketchSpace() { return (uint32_t)cur->updPartition; }
 void EspClass::restart() { throw fake::Restart{ ESP_RST_SW }; }

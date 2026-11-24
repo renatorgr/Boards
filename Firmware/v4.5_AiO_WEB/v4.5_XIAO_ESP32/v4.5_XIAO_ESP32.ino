@@ -92,6 +92,8 @@ static void linkPoll(uint32_t now);   // the link to the Teensy and the WiFi bri
 //     with a browser, does one linkPoll() and gives it back. It must never wait for anything.
 static SemaphoreHandle_t linkLock = nullptr;
 static void stillHere();              // the loop's sign of life, for the watchdog (with the link task, below)
+static const char* webNow = nullptr;  // the address our page is answering now (nullptr: none), for memWatch
+static void memWatch(const char* where);   // a new lowest point of free memory: when, and what was going on (below)
 
 // "The link is in my hands" for the loop and the page's handlers. The lock counts: who holds it may take it again.
 struct LinkTurn
@@ -130,15 +132,16 @@ public:
     // These hide the core's own: every handler runs with the link back in the loop's hands, and counts as its sign of life
     void on(const char* uri, HTTPMethod method, THandlerFunction fn)
     {
-        WebServer::on(uri, method, [fn]() { LinkTurn mine; stillHere(); fn(); });
+        WebServer::on(uri, method, [fn, uri]() { LinkTurn mine; stillHere(); webNow = uri; fn(); memWatch(uri); webNow = nullptr; });
     }
     void on(const char* uri, HTTPMethod method, THandlerFunction fn, THandlerFunction upload)
     {
-        WebServer::on(uri, method, [fn]() { LinkTurn mine; stillHere(); fn(); }, [upload]() { LinkTurn mine; stillHere(); upload(); });
+        WebServer::on(uri, method, [fn, uri]() { LinkTurn mine; stillHere(); webNow = uri; fn(); memWatch(uri); webNow = nullptr; },
+                      [upload, uri]() { LinkTurn mine; stillHere(); webNow = uri; upload(); memWatch(uri); webNow = nullptr; });
     }
     void onNotFound(THandlerFunction fn)
     {
-        WebServer::onNotFound([fn]() { LinkTurn mine; stillHere(); fn(); });
+        WebServer::onNotFound([fn]() { LinkTurn mine; stillHere(); webNow = "(an unknown address)"; fn(); memWatch(webNow); webNow = nullptr; });
     }
 
 protected:
@@ -383,6 +386,9 @@ struct Bridge
     uint32_t other = 0;              // from another program while one has the bridge
     bool     staPaused = false;      // the search for the other network is stopped (bridgeStaWatch)
 } bridge;
+
+// Datagrams the bridge did not pass on, all reasons together (the page's "lost")
+static uint32_t bridgeLost() { return bridge.dropLink + bridge.dropBig + bridge.dropOut + bridge.modDrop + bridge.modOver; }
 
 static void ipText(char* b, size_t cap, uint32_t ip)
 {
@@ -933,12 +939,107 @@ static void tpageStart()
     tpageOn = true;
 }
 
+// ---------------------------------------------------------------- short of memory: when, and what was going on
+// 24 Nov 2026, bench: the C3's lowest free memory since its start (heapMin) was 5.5 kB, three hours after a restart,
+// and nothing said when, nor what the XIAO was doing then (the module's page had waited for memory once). Out of
+// memory the XIAO restarts, and the WiFi bridge with it. So a new lowest point under MEM_TELL is noted with what was
+// going on: on our page (/api/state "memLow": the lowest of them) and in Messages (again only MEM_STEP lower than the
+// last one they gave, so a slow slide does not fill them). The allocator keeps the lowest point itself, whichever task
+// took the memory (the WiFi's, the network's), so it is noticed at the next look: the end of every link pass (a few
+// milliseconds) and of every request to our page.
+#define MEM_TELL   32768      // a lowest point under this is noted (= TPAGE_HEAP_LOW)
+#define MEM_STEP   4096       // Messages again only this much lower than the last one they gave
+#define MEM_WHAT   200
+
+static const char* staState();        // (below, with the WiFi)
+
+struct MemLow
+{
+    uint32_t seen = 0;                       // the lowest point seen so far (0: not looked yet)
+    uint32_t told = 0;                       // the last one Messages gave (0: none)
+    uint32_t lowest = 0;                     // the lowest point under MEM_TELL (0: none yet) ...
+    uint32_t ms = 0, freeThen = 0, block = 0;   // ... when it was noticed, the free memory then, its largest piece then
+    char     what[MEM_WHAT] = "";            // ... and what was going on
+    uint32_t secMs = 0;                      // the bridge's datagrams a second, over the last second or so (for "what")
+    uint32_t in0 = 0, out0 = 0, to0 = 0, lost0 = 0;
+    uint32_t inS = 0, outS = 0, toS = 0, lostS = 0;
+} memLow;
+
+static uint32_t bridgeToModules()
+{
+    uint32_t n = 0;
+    for (const BridgeModule& m : bridge.mod) n += m.toIt;
+    return n;
+}
+
+// "a; b; c": one more piece of what was going on
+static void memAdd(const char* fmt, ...)
+{
+    const size_t at = strlen(memLow.what);
+    if (at + 3 >= sizeof(memLow.what)) return;
+    char* b = memLow.what + at;
+    size_t cap = sizeof(memLow.what) - at;
+    if (at) { *b++ = ';'; *b++ = ' '; cap -= 2; }
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(b, cap, fmt, ap);
+    va_end(ap);
+}
+
+// where: the address of our page just answered (nullptr: a link pass)
+static void memWatch(const char* where)
+{
+    const uint32_t now = millis();
+    const int32_t span = (int32_t)(now - memLow.secMs);
+    if (memLow.secMs == 0 || span >= 1000)
+    {
+        const uint32_t in = bridge.in, out = bridge.out, to = bridgeToModules(), lost = bridgeLost();
+        if (memLow.secMs)
+        {
+            memLow.inS = (in - memLow.in0) * 1000u / (uint32_t)span;
+            memLow.outS = (out - memLow.out0) * 1000u / (uint32_t)span;
+            memLow.toS = (to >= memLow.to0 ? to - memLow.to0 : to) * 1000u / (uint32_t)span;   // (a module's place freed)
+            memLow.lostS = (lost - memLow.lost0) * 1000u / (uint32_t)span;
+        }
+        memLow.secMs = msStamp(now);
+        memLow.in0 = in; memLow.out0 = out; memLow.to0 = to; memLow.lost0 = lost;
+    }
+    const uint32_t lo = ESP.getMinFreeHeap();
+    if (memLow.seen && lo >= memLow.seen) return;                    // no new lowest point
+    memLow.seen = lo;
+    if (lo >= MEM_TELL) return;
+    memLow.lowest = lo;
+    memLow.ms = msStamp(now);
+    memLow.freeThen = ESP.getFreeHeap();
+    memLow.block = ESP.getMaxAllocHeap();
+    memLow.what[0] = '\0';
+    if (tpage.cur >= 0)                                              // the module's page: its request's first words
+    {
+        int k = 0, spaces = 0;
+        while (k < (int)tpage.lineLen && k < 48 && tpage.line[k] != '\r' && tpage.line[k] != '\n' && !(tpage.line[k] == ' ' && ++spaces == 2)) k++;
+        int conns = 0;
+        for (const TPageConn& c : tpage.conn) if (c.used) conns++;
+        memAdd("module page (port 8080) %.*s, %u bytes held, %d browser connection(s)", k, tpage.line, (unsigned)tpage.len, conns);
+    }
+    if (where) memAdd("our page answered %s", where);
+    else if (webNow) memAdd("our page answering %s", webNow);
+    if (bridge.sIn >= 0)
+        memAdd("bridge a second: %lu to the Teensy, %lu to the program, %lu to modules, %lu lost",
+               (unsigned long)memLow.inS, (unsigned long)memLow.outS, (unsigned long)memLow.toS, (unsigned long)memLow.lostS);
+    memAdd("%d device(s) on our WiFi", WiFi.softAPgetStationNum());
+    if (!strcmp(staState(), "con")) memAdd("joining the other network");
+    if (memLow.told && memLow.told - lo < MEM_STEP) return;          // Messages: only a step lower than the last time
+    memLow.told = lo;
+    logEvent("Short of memory: %lu bytes free at the lowest; %s", (unsigned long)lo, memLow.what);
+}
+
 // What loop() does all the time, and every wait for a browser too: the link to the Teensy, the bridge, the module's page
 static void linkPoll(uint32_t now)
 {
     teensy.poll(now);
     bridgePoll(now);
     tpagePoll(now);
+    memWatch(nullptr);
 }
 
 // ---- the link task and the watchdog (the why is at the top, with the lock)
@@ -1396,6 +1497,13 @@ static void apiState()
     j.bo("resetBad", rr == ESP_RST_PANIC || rr == ESP_RST_INT_WDT || rr == ESP_RST_TASK_WDT || rr == ESP_RST_WDT || rr == ESP_RST_BROWNOUT);
     j.u("heap", ESP.getFreeHeap());
     j.u("heapMin", ESP.getMinFreeHeap());
+    j.obj("memLow");                           // the lowest point under MEM_TELL since the start, and what was going on (24 Nov 2026)
+    j.u("free", memLow.lowest);                // 0: never that short
+    j.i("ago", memLow.ms ? (long)((int32_t)(now - memLow.ms) > 0 ? (now - memLow.ms) / 1000 : 0) : -1);
+    j.u("freeThen", memLow.freeThen);
+    j.u("block", memLow.block);                // the largest piece of free memory then
+    j.str("what", memLow.what);
+    j.close();
     j.num("temp", temperatureRead(), 1);       // 4 Nov 2026: the chip's temperature, degrees C
     j.u("sketch", sketchSize);
     j.u("sketchFree", sketchFree);
@@ -1422,7 +1530,7 @@ static void apiState()
     j.u("in", bridge.in);
     j.u("out", bridge.out);
     j.num("rtcmKB", bridge.rtcm / 1024.0, 1);
-    j.u("lost", bridge.dropLink + bridge.dropBig + bridge.dropOut + bridge.modDrop + bridge.modOver);
+    j.u("lost", bridgeLost());
     j.u("other", bridge.other);
     j.arr("mods");                             // the other modules on this network (sprayer, seed drill)
     for (const BridgeModule& m : bridge.mod)
@@ -2002,7 +2110,7 @@ static void printState()
         Serial.printf("WiFi bridge: on, Teensy %s, program %s, %lu packets to the module, %lu to the program, %lu lost, %d other module(s) on this network\n",
                       !teensy.bridgeKnown(millis()) ? "does NOT know it (older firmware?)" : teensy.bridgeState == LINK_BRIDGE_WIFI ? "gives it the module"
                       : teensy.bridgeState == LINK_BRIDGE_CABLE ? "has a program on its cable" : "free", t,
-                      (unsigned long)bridge.in, (unsigned long)bridge.out, (unsigned long)(bridge.dropLink + bridge.dropBig + bridge.dropOut + bridge.modDrop + bridge.modOver), bridgeModules());
+                      (unsigned long)bridge.in, (unsigned long)bridge.out, (unsigned long)bridgeLost(), bridgeModules());
     }
     Serial.println("Commands: status | wifi-reset | restart");
 }
