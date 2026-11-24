@@ -160,6 +160,43 @@ SCENARIO(User::Careful, "sprayer-litres-kept", "sprays; the module restarts by i
     statusAlwaysJson(m);
 }
 
+// With every section closed the flow meter still turns when the water runs back through it to the tank (the pump
+// slowing with the hoses at 6-7 bar): on 22 Nov 2026 that added litres at the end of a job with nothing sprayed.
+SCENARIO(User::Careful, "sprayer-litres-sections-closed", "sprays; closes every section and the water runs back through the flow meter for a minute; sprays again",
+         sprayerBoards())
+{
+    World w;
+    Module& m = carefulSprayer(w, board);
+    const std::vector<int> rs = inARow(m.bi.relays, 1, 8);
+    driveAndCompare(w, m, first(8), rs, 20000);
+    const double sprayed = m.status()["spr"]["total"].num();
+    must("litres-counted", fabs(sprayed - 76.8 * 20 / 60) < 3, "20 s of spraying counts about 25.6 L", fmt("%.1f L", sprayed));
+
+    driveAndCompare(w, m, 0, rs, 5000);
+    Json s = m.status();
+    const double closed = s["spr"]["total"].num();
+    const double pulses = s["spr"]["pulses"].num();
+    must("closing-counted", closed >= sprayed && closed - sprayed < 2.6, "the last second before the valves closed still counts, nothing after",
+         fmt("%.1f L when they closed, %.1f L 5 s later", sprayed, closed));
+
+    const uint64_t from = w.now();
+    w.rig->backflowLpm = 6;
+    driveAndCompare(w, m, 0, rs, 60000);
+    s = m.status();
+    must("backflow-not-applied", fabs(s["spr"]["total"].num() - closed) < 0.05, "a minute of water running back with every section closed adds no litres applied",
+         fmt("%.2f L before, %.2f L after (6 L ran back through the meter)", closed, s["spr"]["total"].num()));
+    must("backflow-pulses", s["spr"]["pulses"].num() - pulses > 6 * 450 * 0.9, "the flow meter's pulses still count it",
+         fmt("%.0f pulses (about 2700 for 6 L)", s["spr"]["pulses"].num() - pulses));
+    must("backflow-alarm", contains(screenMessages(w, from), "flow with the sections off"), "AgOpenWeb's screen says there is flow with the sections off",
+         screenMessages(w, from));
+
+    w.rig->backflowLpm = 0;
+    driveAndCompare(w, m, first(8), rs, 10000);
+    const double again = m.status()["spr"]["total"].num() - closed;
+    must("counted-again", fabs(again - 76.8 * 10 / 60) < 2, "opened again, the litres count again (about 12.8 L in 10 s)", fmt("%.1f L", again));
+    statusAlwaysJson(m);
+}
+
 // A restart by the watchdog says which watchdog, and what the module was doing just before: on 23 Nov 2026 the sprayer
 // restarted by the watchdog on the tractor and said nothing more (0.10.17).
 SCENARIO(User::Careful, "sprayer-restart-says-before", "sprays; the watchdog restarts the module twice (once after a flood of flow pulses), then a power cut",

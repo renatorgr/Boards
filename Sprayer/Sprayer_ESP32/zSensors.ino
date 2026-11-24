@@ -66,7 +66,23 @@ void sensorsTick()
     else logEvent("pressure sensor reads %.2f V again", sensorVolts);
 }
 
-// Once a second
+static uint32_t sectionsOpenAtMs = 0;  // the last time a section was open
+static bool     sectionsOpenSeen = false;
+
+// 20 times a second, right after the relays are set
+void noteSectionsOpen()
+{
+    if (!sectionsOn) return;
+    sectionsOpenAtMs = millis();
+    sectionsOpenSeen = true;
+}
+
+// Once a second.
+// Only what goes out of the nozzles is applied: the litres count while a section is open and for FLOW_AFTER_CLOSE_S
+// after the last one closes (the valves closing). With every section closed the meter still turns when the water runs
+// back through it to the tank (the pump slowing with the hoses at 6-7 bar), with a tap open or a leak: on 22 Nov 2026
+// that added litres at the end of a job with nothing sprayed. The alarm "flow with the sections off" tells about it.
+// The pulses count everything the meter gives (the flow meter's own count).
 void updateFlow()
 {
     noInterrupts();
@@ -78,7 +94,8 @@ void updateFlow()
     lastRun.pulsesLastS = n;                                // kept through a reset (what it was doing)
     const float litres = n / cfg.pulsesPerLitre;            // litres in this second
     flowLpm = litres * 60.0f;
-    totalLitres += litres;
+    const bool applied = sectionsOn || (sectionsOpenSeen && millis() - sectionsOpenAtMs <= FLOW_AFTER_CLOSE_S * 1000UL);
+    if (applied) totalLitres += litres;
     totalPulses += n;
 }
 

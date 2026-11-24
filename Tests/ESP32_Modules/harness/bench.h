@@ -139,6 +139,7 @@ struct SprayerRig
     float pumpBar = 3.0f;
     bool  pressureFitted = true, flowFitted = true, swapped = false;
     float sensorMaxBar = 10.0f, divider = 0.5f, meterPpl = 450.0f;   // the real sensor, divider and meter
+    float backflowLpm = 0;                  // water running back through the meter to the tank (the pump slowing, hoses under pressure)
 
     float bar = 0, lpm = 0;
     double pulseAcc = 0;
