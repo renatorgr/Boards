@@ -223,6 +223,19 @@ int timesSaid(World& w, const std::string& part)
     for (size_t at = w.dev.usbOut.find(part); at != std::string::npos; at = w.dev.usbOut.find(part, at + 1)) n++;
     return n;
 }
+
+// The first line the XIAO wrote (Messages, USB) that holds part, without its line end; "" when none does
+std::string lineWith(World& w, const std::string& part)
+{
+    const std::string& out = w.dev.usbOut;
+    const size_t at = out.find(part);
+    if (at == std::string::npos) return "";
+    const size_t from = out.rfind('\n', at) == std::string::npos ? 0 : out.rfind('\n', at) + 1;
+    size_t to = out.find('\n', at);
+    if (to == std::string::npos) to = out.size();
+    while (to > from && (out[to - 1] == '\r' || out[to - 1] == '\n')) to--;
+    return out.substr(from, to - from);
+}
 }
 
 SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while a phone loads the module's page: when, and what was going on, are noted (bench, 24 Nov 2026: 5.5 kB at the lowest, nothing said)", oneKit())
@@ -246,8 +259,14 @@ SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while
          "... with what was going on: the module's page loading, the devices on its WiFi", what);
     tell("told", w.said("Short of memory: 6000 bytes free at the lowest") && w.said("... module page (port 8080) GET /,"),
          "Messages say the XIAO was short of memory, and what it was doing", "");
-    must("whole", w.said("... module page (port 8080) GET /,") && w.said(" device(s) on our WiFi"),
-         "... each piece on a line of its own, so none is cut off at the end of a line (Sourcery on #185)", what);
+    const std::string head = lineWith(w, "Short of memory: 6000"), page8080 = lineWith(w, "module page (port 8080)"),
+                      devices = lineWith(w, "device(s) on our WiFi");
+    must("whole", head == "Short of memory: 6000 bytes free at the lowest. Going on then:"
+                      && page8080.rfind("... module page (port 8080) GET /,", 0) == 0 && page8080.find("device(s)") == std::string::npos
+                      && devices.rfind("... ", 0) == 0 && devices.find("module page") == std::string::npos
+                      && page8080.size() <= 120 && devices.size() <= 120,
+         "... each piece on a line of its own, so none is cut off at the end of a line (Sourcery on #185 and #186)",
+         head + " | " + page8080 + " | " + devices);
     fake::freeHeap = 4000;                  // a little lower: the page shows it, Messages do not say it again
     w.run(1000);
     st = w.state();
