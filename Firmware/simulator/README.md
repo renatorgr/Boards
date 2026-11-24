@@ -97,6 +97,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 24 Nov 2026 | The pretend XIAO sends `memLow` (never short of memory), for the XIAO page's lowest point of free memory. |
 | 22 Nov 2026 | The XIAO page's WiFi bridge: its switch (refused with the XIAO's starting password), its rows on both pages; the pretend program is on the network cable, so a bridge switched on stands by. Module pages: the own network's address. |
 | 21 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.13): settings in AgOpenWeb's order; Smoothing row; a hard field edge gives the margin as distance from boundary ([the page](#set-up-agopenweb-from-your-measures)). |
 | 15 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.11): Renato's centre-pivot mower with his measures, onto the next pass (the tractor on the cut strip), swung across to the other side as the pass ends: a 4 m turn ([the page](#set-up-agopenweb-from-your-measures)). |

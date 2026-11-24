@@ -158,6 +158,7 @@ public:
     uint64_t getEfuseMac();
     uint32_t getFreeHeap();
     uint32_t getMinFreeHeap();
+    uint32_t getMaxAllocHeap();
     uint32_t getSketchSize();
     uint32_t getFreeSketchSpace();
     [[noreturn]] void restart();
@@ -621,6 +622,7 @@ struct Device
 extern Device* cur;
 extern uint64_t clockMs;
 extern uint32_t freeHeap;                   // what ESP.getFreeHeap() says (a scenario makes it short)
+extern uint32_t minFreeHeap;                // the lowest it has been since the start (ESP.getMinFreeHeap(); never above freeHeap)
 extern std::function<void()> onMs;          // the world around the XIAO: one step, every millisecond
 void tick(uint32_t ms = 1);                 // pretend time passes (the watchdog may bite: throws Restart)
 }

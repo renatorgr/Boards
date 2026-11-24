@@ -214,3 +214,51 @@ SCENARIO(User::BadLink, "module-page-low-memory", "The XIAO is short of memory (
     must("then", r.done && r.code == 200 && r.body == w.teensy.webPage, "With the memory back the page loads whole", fmt("code %d, %u bytes, %s", r.code, (unsigned)r.body.size(), r.why.c_str()));
     rules(w);
 }
+
+namespace
+{
+int timesSaid(World& w, const std::string& part)
+{
+    int n = 0;
+    for (size_t at = w.dev.usbOut.find(part); at != std::string::npos; at = w.dev.usbOut.find(part, at + 1)) n++;
+    return n;
+}
+}
+
+SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while a phone loads the module's page: when, and what was going on, are noted (bench, 24 Nov 2026: 5.5 kB at the lowest, nothing said)", oneKit())
+{
+    World w(kit);
+    w.bridgeSaved();
+    w.start();
+    w.run(1500);
+    JsonDoc st = w.state();
+    must("none", st.has("memLow") && st["memLow"]["free"].num() == 0 && st["memLow"]["ago"].num() == -1 && !w.said("Short of memory"),
+         "With plenty of memory nothing is noted", fmt("free %g, ago %g", st["memLow"]["free"].num(), st["memLow"]["ago"].num()));
+    const int a = w.ask(GET("/", host8080(w)), page(30));
+    w.run(300);                             // the page is on its way (136 kB) ...
+    fake::freeHeap = 6000;                  // ... and the WiFi takes the memory
+    w.run(2000);
+    st = w.state();
+    const std::string what = st["memLow"]["what"].str();
+    must("noted", st["memLow"]["free"].num() == 6000 && st["memLow"]["ago"].num() >= 0 && st["memLow"]["ago"].num() <= 3 && st["memLow"]["freeThen"].num() == 6000,
+         "The XIAO page shows the lowest point and when", fmt("free %g, %g s ago, %g free then", st["memLow"]["free"].num(), st["memLow"]["ago"].num(), st["memLow"]["freeThen"].num()));
+    must("what", what.find("module page (port 8080) GET /") != std::string::npos && what.find("device(s) on our WiFi") != std::string::npos,
+         "... with what was going on: the module's page loading, the devices on its WiFi", what);
+    tell("told", w.said("Short of memory: 6000 bytes free at the lowest; module page"), "Messages say the XIAO was short of memory, and what it was doing", "");
+    fake::freeHeap = 4000;                  // a little lower: the page shows it, Messages do not say it again
+    w.run(1000);
+    st = w.state();
+    must("lower", st["memLow"]["free"].num() == 4000, "The page follows the lowest point", fmt("free %g", st["memLow"]["free"].num()));
+    must("quiet", timesSaid(w, "Short of memory:") == 1, "A little lower is not said again in Messages", fmt("said %d time(s)", timesSaid(w, "Short of memory:")));
+    fake::freeHeap = 1500;                  // much lower: said again
+    w.run(1000);
+    must("again", timesSaid(w, "Short of memory:") == 2 && w.said("Short of memory: 1500 bytes"), "Much lower is said again", fmt("said %d time(s)", timesSaid(w, "Short of memory:")));
+    fake::freeHeap = 182000;                // the memory comes back: the lowest point stays, nothing more is said
+    const Reply r = w.wait(a);
+    w.run(2000);
+    st = w.state();
+    must("kept", st["memLow"]["free"].num() == 1500 && st["heapMin"].num() == 1500 && timesSaid(w, "Short of memory:") == 2,
+         "With the memory back the lowest point stays on the page, and nothing more is said", fmt("free %g, heapMin %g", st["memLow"]["free"].num(), st["heapMin"].num()));
+    must("then", r.done && r.code == 200 && r.body == w.teensy.webPage, "With the memory back the page loads whole", fmt("code %d, %u bytes, %s", r.code, (unsigned)r.body.size(), r.why.c_str()));
+    rules(w);
+}

@@ -356,7 +356,7 @@ function renderState(x){
  pill("xLink",(x.link.talking?"talking":"no data"),x.link.talking?"ok":"bad");
  set("xKB",x.link.rxKB.toFixed(1)+" / "+x.link.txKB.toFixed(1)+" kB");
  set("xCrc",String(x.link.crcErr),x.link.crcErr?"warn":"");
- set("xHeap",Math.round(x.heap/1024)+" kB");set("xTemp",x.temp!==undefined?Number(x.temp).toFixed(1)+" °C":"–");
+ const ml=x.memLow;set("xHeap",Math.round(x.heap/1024)+" kB"+(ml&&ml.free?" · lowest "+(ml.free/1024).toFixed(1)+" kB, "+ago(ml.ago)+" (Messages say what was going on)":""),ml&&ml.free?"warn":"");set("xTemp",x.temp!==undefined?Number(x.temp).toFixed(1)+" °C":"–");
  renderGh();
  renderVer();
  set("pFw",x.fw+", built "+(builtText(x.built)||x.built));set("pSize",Math.round(x.sketch/1024)+" kB ("+"max. "+Math.round(x.sketchFree/1024)+" kB)");

@@ -52,7 +52,7 @@ function state() {
  const w = {ap: X.ap, apIp: X.bridge ? "192.168.5.1" : "192.168.4.1", apCl: t > 8 ? 1 : 0, ch: 6, host: X.host, staOn: X.staOn && !!X.sta, sta: X.sta, st: staSt()};
  if (w.st === "ok") { w.ip = "192.168.1.57"; w.rssi = -61 + Math.round(S.wob(t, 3, 0.1)); }
  return {fw: "v" + S.VERSION + "_XIAO_" + (C3 ? "ESP32C3" : "ESP32S3"), ver: S.VERSION, chip: CHIP, chipId: CHIP_ID, built: (S.BUILD.xiaoBuilt || {})[C3 ? "c3" : "s3"] || S.BUILD.built || "Oct 25 2026 09:00:00",
-  up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
+  up: up, reset: X.reset, resetBad: false, heap: (C3 ? 187000 : 251000) + Math.round(S.wob(t, 900, 0.3)), heapMin: C3 ? 171036 : 236412, memLow: { free: 0, ago: -1, freeThen: 0, block: 0, what: "" }, temp: S.r2(44.3 + S.wob(t, 0.8, 0.05), 1),
   sketch: BIN, sketchFree: C3 ? 1966080 : 3342336, wifi: w,
   // the WiFi bridge: the pretend program is on the module's network cable, so the bridge (when switched on) stands by
   bridge: {on: !!X.bridge, teensy: mod && mt > 5.2, state: mod && mt > 5.2 ? (prog ? 1 : 0) : -1, prog: "", steer: false, in: 0, out: 0, rtcmKB: 0, lost: 0, other: 0, mods: []},
