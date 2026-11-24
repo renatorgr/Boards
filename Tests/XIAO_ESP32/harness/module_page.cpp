@@ -276,10 +276,9 @@ SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while
     static const std::regex whole(
         "Short of memory: 6000 bytes free at the lowest\\. Going on then:\n"
         "\\.\\.\\. module page \\(port 8080\\) GET /, [0-9]+ bytes held, [0-9]+ browser connection\\(s\\)\n"
-        "(\\.\\.\\. our page answer(ed|ing) [^\n]+\n)?"
+        "(\\.\\.\\. our page answer(ed|ing) (/[a-z/-]*|\\(an unknown address\\))\n)?"   // a whole address
         "\\.\\.\\. bridge a second: [0-9]+ to the Teensy, [0-9]+ to the program, [0-9]+ to modules, [0-9]+ lost\n"
-        "\\.\\.\\. [0-9]+ device\\(s\\) on our WiFi"
-        "(\n\\.\\.\\. joining the other network)?");
+        "\\.\\.\\. [0-9]+ device\\(s\\) on our WiFi");   // (no other network set here: no join)
     must("whole", fits && std::regex_match(joined, whole),
          "... the lowest point on a line alone, then each piece whole on a line of its own, in order, none longer than a line of Messages",
          joined);
