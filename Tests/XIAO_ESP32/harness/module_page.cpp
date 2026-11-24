@@ -242,9 +242,12 @@ SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while
     const std::string what = st["memLow"]["what"].str();
     must("noted", st["memLow"]["free"].num() == 6000 && st["memLow"]["ago"].num() >= 0 && st["memLow"]["ago"].num() <= 3 && st["memLow"]["freeThen"].num() == 6000,
          "The XIAO page shows the lowest point and when", fmt("free %g, %g s ago, %g free then", st["memLow"]["free"].num(), st["memLow"]["ago"].num(), st["memLow"]["freeThen"].num()));
-    must("what", what.find("module page (port 8080) GET /") != std::string::npos && what.find("device(s) on our WiFi") != std::string::npos,
+    must("what", what.find("module page (port 8080) GET /,") != std::string::npos && what.find("device(s) on our WiFi") != std::string::npos,
          "... with what was going on: the module's page loading, the devices on its WiFi", what);
-    tell("told", w.said("Short of memory: 6000 bytes free at the lowest; module page"), "Messages say the XIAO was short of memory, and what it was doing", "");
+    tell("told", w.said("Short of memory: 6000 bytes free at the lowest") && w.said("... module page (port 8080) GET /,"),
+         "Messages say the XIAO was short of memory, and what it was doing", "");
+    must("whole", w.said("... module page (port 8080) GET /,") && w.said(" device(s) on our WiFi"),
+         "... each piece on a line of its own, so none is cut off at the end of a line (Sourcery on #185)", what);
     fake::freeHeap = 4000;                  // a little lower: the page shows it, Messages do not say it again
     w.run(1000);
     st = w.state();
