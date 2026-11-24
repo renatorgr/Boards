@@ -304,3 +304,29 @@ SCENARIO(User::WrongSettings, "xiao-wifi-subnet-forgotten", "joins the WiFi of t
          "moved to a tractor with a router (subnet 192.168.5): the relays follow, the own network is at 192.168.4.1", bad);
     statusAlwaysJson(m);
 }
+
+// Install (a chosen .bin or the one on GitHub) with a wrong password: the page asks the module first (POST /api/update-check,
+// 24 Nov 2026), so a wrong password is told at once in its box instead of after the whole file has gone up. The check itself
+// changes nothing: the sections asked stay on, no restart, no update begun
+SCENARIO(User::WrongSettings, "install-wrong-password", "installs a firmware with a wrong password: the page asks the module first", allBoards())
+{
+    World w;
+    Module& m = readyModule(w, board);
+    w.aow.startup(false, { 1, 2, 3, 4, 5, 6, 7, 8 });
+    w.aow.sections = 0x3;                                   // sections 1 and 2 spraying / sowing
+    w.run(3000);
+    const uint32_t before = m.relays();
+    const uint32_t restarts = m.dev.restarts;
+    Http r = m.http(HTTP_POST, "/api/update-check", { { "pw", "wrong-one" } });
+    must("check-refuses-wrong", r.code == 403 && contains(r.body, "wrong password"), "a wrong password is refused at once, with 'wrong password'",
+         fmt("answer %d %s", r.code, r.body.c_str()));
+    r = m.http(HTTP_POST, "/api/update-check", {});
+    must("check-refuses-none", r.code == 403, "no password at all is refused the same way", fmt("answer %d", r.code));
+    r = m.http(HTTP_POST, "/api/update-check", { { "pw", "agopengps" } });
+    must("check-takes-right", r.code == 200 && r.jsonOk && r.json["ok"].num() == 1, "the right password: the update would start",
+         fmt("answer %d %s", r.code, r.body.c_str()));
+    w.run(2000);
+    must("check-changes-nothing", m.relays() == before && before != 0 && m.dev.restarts == restarts && !m.dev.updBegun,
+         "the check changes nothing: the sections stay on, no restart, no update begun",
+         fmt("relays %s -> %s, %u restarts", hex(before).c_str(), hex(m.relays()).c_str(), m.dev.restarts - restarts));
+}

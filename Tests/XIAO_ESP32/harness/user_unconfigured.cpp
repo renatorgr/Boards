@@ -44,6 +44,11 @@ SCENARIO(User::Unconfigured, "new-no-teensy", "The XIAO is powered alone (USB on
     const std::vector<uint8_t> hex = makeHex(60000);
     r = w.upload(fmt("/api/teensy-update?pw=agopengps&force=0&size=%u", (unsigned)hex.size()), "fw.hex", hex);
     must("update", r.code == 400 && has(r.error(), "no data from the module") && r.tookMs() < 3000, "A .hex for the module: refused, with the reason", fmt("code %d '%s' in %u ms", r.code, r.error().c_str(), r.tookMs()));
+    r = w.post("/api/update-check", { { "for", "teensy" }, { "pw", "agopengps" } });
+    must("update-check", r.code == 409 && has(r.error(), "no data from the module") && r.tookMs() < 1000,
+         "The page's check before a .hex is sent (or downloaded): refused at once, with the reason", fmt("code %d '%s' in %u ms", r.code, r.error().c_str(), r.tookMs()));
+    r = w.post("/api/update-check", { { "pw", "agopengps" } });
+    must("own-update-check", r.code == 200 && r.jsonOk, "The check before its own update says yes", fmt("code %d '%s'", r.code, r.error().c_str()));
     must("own-update", w.upload("/update?pw=agopengps", "x.bin", makeImage(info(kit).chip, 30000)).code == 200, "Its own update still works without the Teensy", "");
     w.noteUserRestart();
     w.run(4000);
@@ -108,8 +113,11 @@ SCENARIO(User::Unconfigured, "new-wrong-password", "Someone on the network tries
         const int c4 = w.post("/api/teensy-revert", { { "pw", pw } }).code;
         const Reply u = w.upload("/update?" + q, "x.bin", bin);
         const Reply t = w.upload(fmt("/api/teensy-update?%s&force=1&size=%u", q.c_str(), (unsigned)hex.size()), "x.hex", hex);
+        const Reply k1 = w.post("/api/update-check", { { "pw", pw } }), k2 = w.post("/api/update-check", { { "for", "teensy" }, { "pw", pw } });
         must("refused-" + (pw.empty() ? std::string("none") : enc(pw)), c1 == 403 && c2 == 403 && c3 == 403 && c4 == 403 && u.code == 403 && t.code == 403 && u.error() == "wrong password",
              "Password '" + pw + "': every change answers 403 'wrong password'", fmt("%d %d %d %d %d %d", c1, c2, c3, c4, u.code, t.code));
+        must("check-refused-" + (pw.empty() ? std::string("none") : enc(pw)), k1.code == 403 && k2.code == 403 && k1.error() == "wrong password" && k2.error() == "wrong password",
+             "Password '" + pw + "': the page's check before an update (the XIAO's, the module's) answers 403 'wrong password' at once", fmt("%d %d", k1.code, k2.code));
     }
     w.run(3000);
     must("nothing-changed", w.dev.flashWrites == 0 && w.xiao.restarts.empty() && w.teensy.subnets.empty() && w.teensy.reverts == 0 && w.teensy.fwDone == 0 && w.dev.updInstalled == 0 && !w.dev.updDone,

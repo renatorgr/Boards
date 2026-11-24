@@ -1803,6 +1803,29 @@ static size_t  updBytes = 0;            // size of the program received (Update.
 // in Messages and only "The connection failed" on the page.
 #define UPLOAD_WAIT_MS 20000
 
+// Why an update would be refused before its first byte is taken, or nullptr: the XIAO's own program (toTeensy false) or
+// the module's firmware over the link (true). Asked at the start of the upload, and by POST /api/update-check, which the
+// page sends before it sends (or downloads) the file: a wrong password, autosteer on or a silent Teensy is then told at
+// once in the install box, not after the whole file has gone up (24 Nov 2026).
+static const char* updateRefusal(bool toTeensy)
+{
+    if (server.arg("pw") != cfg.apPass) return "wrong password";
+    if (bridgeSteering(millis())) return "not now: autosteer is on in the program that reaches the module through this XIAO - switch autosteer off first";
+    if (toTeensy && !teensy.teensyTalking(millis())) return "no data from the module: is the Teensy on and the link working?";
+    return nullptr;
+}
+
+// POST /api/update-check, pw= and for=teensy (the module's firmware) or nothing (the XIAO's own): would the update start?
+// Nothing is changed; a refusal is in Messages as the upload's own would be.
+static void apiUpdateCheck()
+{
+    const bool toTeensy = server.arg("for") == "teensy";
+    const char* why = updateRefusal(toTeensy);
+    if (!why) { server.send(200, "application/json", "{\"ok\":true}"); return; }
+    logEvent("%s REFUSED: %s", toTeensy ? "Module firmware update" : "Program update", why);
+    sendError(strcmp(why, "wrong password") == 0 ? 403 : 409, why);
+}
+
 static void updateUpload()
 {
     HTTPUpload& up = server.upload();
@@ -1812,8 +1835,7 @@ static void updateUpload()
         updOk = false;
         updErr = "";
         server.client().setTimeout(UPLOAD_WAIT_MS);
-        if (server.arg("pw") != cfg.apPass) { updErr = "wrong password"; return; }
-        if (bridgeSteering(millis())) { updErr = "not now: autosteer is on in the program that reaches the module through this XIAO - switch autosteer off first"; return; }
+        if (const char* why = updateRefusal(false)) { updErr = why; return; }
         logEvent("Program update: receiving %s", up.filename.c_str());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) updErr = Update.errorString();
     }
@@ -1935,9 +1957,7 @@ static void teensyUpdateUpload()
         tfwSeq = 0;
         tfwSize = 0;
         server.client().setTimeout(UPLOAD_WAIT_MS);
-        if (server.arg("pw") != cfg.apPass) { tfwErr = "wrong password"; return; }
-        if (bridgeSteering(millis())) { tfwErr = "not now: autosteer is on in the program that reaches the module through this XIAO - switch autosteer off first"; return; }
-        if (!teensy.teensyTalking(millis())) { tfwErr = "no data from the module: is the Teensy on and the link working?"; return; }
+        if (const char* why = updateRefusal(true)) { tfwErr = why; return; }
         const uint32_t size = strtoul(server.arg("size").c_str(), nullptr, 10);
         logEvent("Module firmware: sending %s (%lu kB) to the Teensy over the link", up.filename.c_str(), (unsigned long)(size / 1024));
         teensy.fwAck = false;
@@ -2091,6 +2111,7 @@ static void webSetup()
     server.on("/api/subnet", HTTP_POST, apiSubnet);
     server.on("/api/teensy-update", HTTP_POST, teensyUpdateDone, teensyUpdateUpload);   // the Teensy's firmware over the link
     server.on("/api/teensy-revert", HTTP_POST, apiTeensyRevert);
+    server.on("/api/update-check", HTTP_POST, apiUpdateCheck);                         // before an update: would it start?
     server.on("/update", HTTP_POST, updateDone, updateUpload);
     server.onNotFound([]() {
         if (captiveRedirect()) return;

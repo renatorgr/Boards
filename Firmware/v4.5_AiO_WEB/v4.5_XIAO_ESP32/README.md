@@ -26,7 +26,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
-| 24 Nov 2026 | When free memory falls under 32 kB the XIAO notes when, and what it was doing: Status shows the lowest point, Messages say what was going on, a line each ([Short of memory](#short-of-memory)). `.bin` rebuilt. |
+| 24 Nov 2026 | Short of memory (under 32 kB): when, and what it was doing ([Short of memory](#short-of-memory)). An install (XIAO or module) is checked before the file is sent: a wrong password said at once ([The password](#the-password-and-the-pages-questions)). `.bin` rebuilt. |
 | 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). The [dot at the top](#the-dot-at-the-top) turns orange when no program talks. `.bin` rebuilt. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
 | 21 Nov 2026 | Its timers no longer start a millisecond ahead: a hello to the Teensy could go out twice ([What it does](#what-it-does)). The `.bin` files are rebuilt. |
@@ -124,6 +124,7 @@ The mouse on the dot shows the same words. The Teensy, sprayer and seed drill pa
 Changes (WiFi, update, restart) **ask for the password of the XIAO's own network**, to confirm.
 
 - The question before each one (save and restart, install, the module's firmware, the subnet) opens in a box of the page itself, not a browser pop-up. Inside an AgOpenWeb web card the browser's pop-ups show nothing, so those buttons did nothing there.
+- An install (the XIAO's or the module's firmware, from GitHub or from a file) asks the XIAO **before** the file is downloaded or sent: a wrong password, autosteer on through the bridge or a silent Teensy is said at once under the field (*Wrong password: nothing was sent*), and the box stays open. Before, it was only refused after the whole file had gone up.
 - **Enter** in a password field does what its button does, and the question still comes first.
   - On the Firmware tab the password is typed in the box that confirms the action, where Enter is its **Install** or **Restart**.
   - An empty field does nothing, and a held Enter does not also answer the box it opened.

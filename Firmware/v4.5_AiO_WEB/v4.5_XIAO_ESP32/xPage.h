@@ -107,6 +107,7 @@ a{color:var(--acc)}
 .askBox h3{margin:0 0 10px;font-size:17px}
 .askBox dl{margin:0 0 10px}
 .askBox p.verdict{font-weight:650}
+#askErr{margin:0 0 6px;color:var(--mute);font-size:13.5px}#askErr.bad{color:var(--bad);font-weight:650;font-size:inherit}
 .askBox label.opt{display:flex;gap:10px;align-items:center;margin:0 0 12px;padding:0;font-weight:600}
 .askBox label.opt input{display:inline-block;width:22px;height:22px;margin:0}
 #askPwL{display:block;color:var(--mute);font-size:13.5px;margin:0 0 3px}
@@ -224,7 +225,7 @@ p.chk{text-align:right;margin:4px 0 0}
 </div>
 </section>
 </main>
-<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
+<div id="ask" class="ask" hidden><div class="askBox" id="askBox" role="dialog" aria-modal="true" aria-labelledby="askText"><h3 id="askTitle" hidden></h3><dl id="askRows" hidden></dl><p id="askVerdict" class="verdict" hidden></p><p id="askText"></p><label id="askForce" class="opt" hidden><input type="checkbox" id="askForceIn"><span id="askForceT"></span></label><label id="askPwL" for="askIn" hidden></label><p id="askErr" role="alert" hidden></p><input id="askIn" type="password" autocomplete="current-password" hidden><div class="askBtns"><button type="button" class="sec" id="askNo">Cancel</button><button type="button" class="act" id="askYes">OK</button></div></div></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -233,10 +234,13 @@ const $=id=>document.getElementById(id);
 // true for OK and false for Cancel; askText(text) the text typed, or null for Cancel. A new question closes the one still open.
 // askShow(o) is both, with more: o.text the question; o.input the password field (o.pw fills it, o.pwLabel goes above it);
 // o.title, o.rows [[name, value]] and o.verdict [text, class] (what is in a file, compared with what runs now); o.force a tick
-// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words. Answers true for OK, false otherwise.
-let askDone=null;
+// that OK waits for; o.okText (null: no OK button) and o.noText the buttons' words; o.check(text) a check made when OK is
+// pressed, before the box closes: it answers an error, which the box shows under the field and stays open with, or nothing,
+// and OK goes on. Answers true for OK, false otherwise.
+let askDone=null,askCheck=null,askN=0;
 function askShow(o){
  if(askDone)askEnd(false);
+ askCheck=o.check||null;askN++;$("askErr").hidden=true;$("askErr").textContent="";
  const t=$("askTitle"),r=$("askRows"),v=$("askVerdict"),x=$("askText"),l=$("askPwL"),i=$("askIn"),y=$("askYes");
  t.textContent=o.title||"";t.hidden=!o.title;
  r.replaceChildren();for(const [k,w] of o.rows||[]){const a=document.createElement("dt"),b=document.createElement("dd");a.textContent=k;b.textContent=w;r.append(a,b);}r.hidden=!r.firstChild;
@@ -249,18 +253,26 @@ function askShow(o){
  $("askBox").setAttribute("aria-labelledby",o.title?"askTitle":"askText");$("ask").hidden=false;
  (o.input&&!i.value?i:y.hidden||y.disabled?$("askNo"):y).focus();
  return new Promise(res=>{askDone=res;});}
-function askEnd(v){const r=askDone;askDone=null;$("ask").hidden=true;if(r)r(v);}
+function askEnd(v){const r=askDone;askDone=null;askCheck=null;askN++;$("ask").hidden=true;if(r)r(v);}
 const ask=text=>askShow({text});
 const askText=text=>askShow({text,input:true}).then(ok=>ok?$("askIn").value:null);
 $("askForceIn").addEventListener("change",()=>{$("askYes").disabled=!$("askForceIn").checked;});
-// OK with the password field empty goes back to the field
-$("askYes").addEventListener("click",()=>{const i=$("askIn");if(!i.hidden&&!i.value){i.focus();return;}askEnd(true);});$("askNo").addEventListener("click",()=>askEnd(false));
+// OK with the password field empty goes back to the field; with a check (o.check), OK waits for it and is off meanwhile
+async function askOk(){const i=$("askIn"),y=$("askYes"),e=$("askErr");if(!i.hidden&&!i.value){i.focus();return;}
+ if(!askCheck){askEnd(true);return;}
+ const n=askN;y.disabled=true;e.className="";e.textContent="Checking…";e.hidden=false;
+ const why=await askCheck(i.value);
+ if(n!==askN)return;   // closed meanwhile (Cancel, Escape), or another question
+ y.disabled=false;
+ if(!why){askEnd(true);return;}
+ e.className="bad";e.textContent=why;(i.hidden||i.value?y:i).focus();e.scrollIntoView({block:"nearest"});}
+$("askYes").addEventListener("click",askOk);$("askNo").addEventListener("click",()=>askEnd(false));
 $("ask").addEventListener("click",e=>{if(e.target===$("ask"))askEnd(false);});
 // Enter is OK (on the OK button, or in the field once something is typed and OK is offered); a held Enter answers
 // nothing, so the key press that opened the question cannot also answer it
 $("ask").addEventListener("keydown",e=>{if(e.key==="Escape")askEnd(false);
  else if(e.key==="Enter"){if(e.repeat){e.preventDefault();return;}
-  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing&&!$("askYes").disabled&&!$("askYes").hidden)askEnd(true);}}});
+  if(e.target===$("askIn")){e.preventDefault();if($("askIn").value&&!e.isComposing&&!$("askYes").disabled&&!$("askYes").hidden)askOk();}}});
 // ---- light / dark: the phone's setting until the header button is used, then this phone's choice
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");}
 function themeShow(){$("theme").textContent=themeNow()==="light"?"☾":"☀";}
@@ -515,6 +527,17 @@ async function fwAsk(o){
  pwKeep=$("askIn").value;$("pwW").value=pwKeep;return pwKeep;
 }
 function pwRefused(status,err){if(status===403||/password/.test(err||""))pwKeep="";}
+// Before a firmware is downloaded or sent, the XIAO says whether it would take it (POST /api/update-check: the password, autosteer
+// through the bridge and, for the module's firmware (forWhat "teensy"), the link to the Teensy; nothing is changed there): a
+// refusal is told at once in the install box, which stays open (a wrong password to be typed again), instead of after the whole
+// file has gone up. Gives the box's check (o.check): an error text, or nothing
+function updateCheck(forWhat){return async p=>{
+ try{const r=await fetch("/api/update-check",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"for="+forWhat+"&pw="+encodeURIComponent(p)});
+  if(r.status===403){pwRefused(403);$("askIn").value="";return "Wrong password: nothing was sent. Type it again.";}
+  if(r.ok||r.status===404)return "";
+  let j={};try{j=await r.json();}catch(e){}
+  const t=j.error||("error "+r.status);return t.charAt(0).toUpperCase()+t.slice(1)+". Nothing was sent.";}
+ catch(e){return "No answer from the XIAO: nothing was sent. Try again.";}};}
 // newer, the same or older than what runs now, as the box says it
 function verdict(c){return c>0?["✓ Newer than the one installed.","ok"]:c===0?["The same as the one installed.",""]:c<0?["Older than the one installed.","warn"]:null;}
 // the version text of a dd, and a pill: newer (green), installed, older (orange)
@@ -553,7 +576,7 @@ $("binFile").addEventListener("change",async()=>{const inp=$("binFile"),f=inp.fi
  const other=!i.fw;
  const p=await fwAsk({title:"Install this file on the XIAO?",rows:[["File",fileText(f)],["Inside",other?"no XIAO firmware name inside":verText(i.fw,i.built)],["Runs now",xiaoNow()]],
   verdict:other?["! Another program, not this XIAO firmware: this page goes with it, so the next update would be over USB-C.","warn"]:verdict(xiaoCmp(i.ver,i.built)),
-  force:other?"Install it anyway":null,okText:"Install"});
+  force:other?"Install it anyway":null,okText:"Install",check:updateCheck("xiao")});
  if(p===null)return;
  busy=true;fwButtons();const g=$("prog");g.classList.remove("hidden");g.value=0;
  sendBin(f,f.name,p,0);});
@@ -628,7 +651,7 @@ async function ghInstall(){
  const chip=myChip();
  if(!chip){fwMsg("It is not known whether this XIAO is a C3 or an S3.","bad");return;}
  const bdir="v"+gh.ver+"_XIAO_ESP32_bin",name="v"+gh.ver+"_XIAO_ESP32"+chip+".bin";
- const pass=await fwAsk({title:"Install from GitHub on the XIAO?",rows:[["On GitHub",verText(gh.ver,ghBuilt())+" ("+name+")"],["Runs now",xiaoNow()]],verdict:verdict(ghCmp()),okText:"Install"});
+ const pass=await fwAsk({title:"Install from GitHub on the XIAO?",rows:[["On GitHub",verText(gh.ver,ghBuilt())+" ("+name+")"],["Runs now",xiaoNow()]],verdict:verdict(ghCmp()),okText:"Install",check:updateCheck("xiao")});
  if(pass===null)return;
  busy=true;fwButtons();const p=$("prog");p.classList.remove("hidden");p.value=0;
  fwMsg("Downloading from GitHub…");
@@ -700,7 +723,7 @@ async function tHexChosen(f,b){
   !b.fw?"Another firmware (no AiO_WEB build data inside).":"No update page inside: the next update will have to be by USB.";
  const p=await fwAsk({title:"Install this file on the module?",rows:[["File",fileText(f)],["Inside",b.fw?tText(b.fw,b.built):"a Teensy 4.1 firmware, not AiO_WEB"],["Runs now",tNow()]],
   verdict:other?["! "+warn,"warn"]:verdict(tCmp(b.fw,b.built)),text:"Autosteer must be off and the tractor stopped. About a minute, over this XIAO's link.",
-  force:other?"Install it anyway":null,okText:"Install"});
+  force:other?"Install it anyway":null,okText:"Install",check:updateCheck("teensy")});
  if(p===null)return;
  sendTeensyHex(f,f.name,other,0,p);
 }
@@ -732,7 +755,7 @@ async function tGhInstall(){
  const g=gh&&gh.teensy;if(!g||tBusy)return;
  const names=[g.file,gh.dir+".hex",gh.dir+".ino.hex"].filter(Boolean);   // the Arduino IDE exports vX.Y_AiO_WEB.ino.hex
  const pass=await fwAsk({title:"Install from GitHub on the module?",rows:[["On GitHub",verText(gh.ver,g.built)],["Runs now",tNow()]],verdict:verdict(tCmp("v"+gh.ver+"_",g.built)),
-  text:"Autosteer must be off and the tractor stopped. About a minute, over this XIAO's link.",okText:"Install"});
+  text:"Autosteer must be off and the tractor stopped. About a minute, over this XIAO's link.",okText:"Install",check:updateCheck("teensy")});
  if(pass===null)return;
  tBusy=true;busy=true;renderTeensyFw();const p=$("tProg");p.classList.remove("hidden");p.value=0;tMsg("Downloading from GitHub…");
  try{

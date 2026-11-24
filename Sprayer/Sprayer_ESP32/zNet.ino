@@ -505,6 +505,14 @@ static void updScan(const uint8_t* b, size_t n)
 
 static bool updWrongProgram() { return updOther[0] && !updOwn; }
 
+// POST /api/update-check, pw=: would an update start? Asked by the page before it sends (or downloads) a .bin, so a
+// wrong password is told at once in the install box, not after the whole file has gone up. Nothing is changed.
+static void apiUpdateCheck()
+{
+    if (!passwordOk()) return;
+    sendJson("{\"ok\":true}");
+}
+
 // A new program (.bin from the Arduino IDE: Sketch > Export compiled binary), password in the URL
 static void apiUpdateDone()
 {
@@ -574,6 +582,7 @@ void webStart()
     server.on("/api/spray", HTTP_POST, apiSprayPost);
     server.on("/api/total", HTTP_POST, apiTotalPost);
     server.on("/api/restart", HTTP_POST, apiRestartPost);
+    server.on("/api/update-check", HTTP_POST, apiUpdateCheck);
     server.on("/api/update", HTTP_POST, apiUpdateDone, apiUpdateUpload);
     server.onNotFound(notFound);
     server.begin();

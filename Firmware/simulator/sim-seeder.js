@@ -6,7 +6,7 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 // The seed drill module's answers (zNet.ino: apiStatus, apiSettingsGet, apiWifiPost, apiScan, apiRelaysPost, apiRestartPost, the
-// program update on /api/update). The sections the program asks for come from the pretend tractor of sim-common.js, the
+// program update on /api/update, apiUpdateCheck). The sections the program asks for come from the pretend tractor of sim-common.js, the
 // same the Teensy page's Machine tab shows: Renato's no-till seed drill, 19 sections on the Relay24_ESP32 board (24 relays,
 // relay 1 follows section 1 and so on, "Sections on the seed drill" set to 19 on its Settings tab), on the network cable.
 // No pressure or flow sensor.
@@ -189,6 +189,7 @@ S.hook(async (method, path, q, body) => {
  else if (get && path === "/api/scan") r = scan();
  else if (post && path === "/api/relays") r = relaysPost(b);
  else if (post && path === "/api/restart") r = restartPost(b);
+ else if (post && path === "/api/update-check") r = b.pw !== X.pass ? S.err(403, "wrong password") : S.ok();   // apiUpdateCheck: nothing changed
  S.save(KEY, X);
  return r;
 });

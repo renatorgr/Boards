@@ -15,6 +15,7 @@
 // and Teensy pages inside a frame with the sandbox of an AgOpenWeb web card, where the browser's confirm() and prompt() do
 // nothing: the pages' own question box must show there, fit the card and answer. A browser dialog on any page fails the check.
 // Enter in a password box does what its button does; an empty box or a held Enter does nothing.
+// An installation with a wrong password is told in its box at once, before anything is downloaded or sent.
 "use strict";
 const fs = require("fs"), path = require("path"), http = require("http");
 const {chromium} = require("playwright");
@@ -126,6 +127,19 @@ async function askShown(fr, what, re, withInput, title) {
 async function askClosed(fr, what, how) {
  await fr.waitForTimeout(200);
  if (await fr.locator("#ask").isVisible()) fail.push(what + ": " + how + " does not close the question");
+}
+// an install box open: a wrong password typed and Install pressed. The page asks the module first (POST /api/update-check), so
+// the box stays open and says so under the field, which is emptied, and Install is on again: nothing is sent (24 Nov 2026)
+async function wrongPassword(fr, what) {
+ await fr.fill("#askIn", "wrongpass"); await fr.click("#askYes");
+ await expectSoon(fr, what, "#askErr", /^Wrong password: nothing was sent\. Type it again\.$/);
+ if (!(await fr.locator("#ask").isVisible())) fail.push(what + ": the box closed with a wrong password (the file would be refused only after it went up)");
+ if (await fr.inputValue("#askIn") !== "") fail.push(what + ": the wrong password stays in the box");
+ if (await fr.locator("#askYes").isDisabled()) fail.push(what + ": Install stays off after a wrong password");
+ // the line is in sight, not under the box's buttons (they stay at its bottom in a small web card)
+ const seen = await fr.evaluate(() => { const e = document.getElementById("askErr"), r = e.getBoundingClientRect();
+  const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return r.height > 0 && !!at && (at === e || e.contains(at)); });
+ if (!seen) fail.push(what + ": the wrong-password line is hidden (under the buttons or out of the box)");
 }
 
 async function teensy(browser, port, q, name) {
@@ -393,6 +407,13 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#tPrev", /^none kept yet/);
   if (!(await pg.locator("#tRevert").isDisabled())) fail.push(what + ": Go back is offered with no previous firmware kept");
   if (!(await pg.locator("#tGhInstall").isDisabled())) fail.push(what + ": Install from GitHub is offered with the same build");
+  await holdAsk(pg, true);   // first with a wrong password: said in the box at once, nothing sent to the module
+  await pg.setInputFiles("#tHexFile", hex); await pg.waitForTimeout(1000);
+  await expect(pg, what, "#askTitle", /^Install this file on the module\?$/);
+  await wrongPassword(pg, what + " (Install with a wrong password)");
+  if (await pg.locator("#tProg").isVisible()) fail.push(what + ": the .hex was sent with a wrong password");
+  await pg.click("#askNo"); await pg.waitForTimeout(200);
+  await holdAsk(pg, false);
   await asked(pg);
   await pg.setInputFiles("#tHexFile", hex);   // Install from a file… in the module card: the box says what is inside
   await pg.waitForTimeout(1500);
@@ -476,6 +497,10 @@ async function teensy(browser, port, q, name) {
   }
   await askOpen(/^Install this file on the XIAO\?$/, "a chosen .bin", "#askTitle");
   if (await pg.locator("#prog").isVisible()) fail.push(what + ": an installation started");
+  await pg.click("#ghInstall"); await pg.waitForTimeout(300);   // Install from GitHub with a wrong password: nothing downloaded or sent
+  await wrongPassword(pg, what + " (Install from GitHub with a wrong password)");
+  if (await pg.locator("#prog").isVisible()) fail.push(what + ": Install from GitHub started with a wrong password");
+  await pg.keyboard.press("Escape");
   await pg.close();
  }
  // the seed drill module's page: the Relay24_ESP32 on the network cable sowing a pass with 19 of its 24 relays (relay 1 =
@@ -557,6 +582,14 @@ async function teensy(browser, port, q, name) {
    if (await pg.locator("#ask").isVisible()) fail.push(what + " (" + name + "): Close does not close the box");
    await holdAsk(pg, false);
   }
+  // the right file with a wrong password: said in the box at once, nothing sent
+  await holdAsk(pg, true);
+  await pg.setInputFiles("#bin", {name: "Seeder_ESP32.ino.bin", mimeType: "application/octet-stream", buffer: sdBin("Seeder_ESP32", "0.2", LATER, "Relay24_ESP32")});
+  await pg.waitForTimeout(500);
+  await expect(pg, what, "#askTitle", /^Install this file\?$/);
+  await wrongPassword(pg, what + " (Install with a wrong password)");
+  await pg.click("#askNo"); await pg.waitForTimeout(200);
+  await holdAsk(pg, false);
   if (/program update/.test(await pg.locator("#log").textContent())) fail.push(what + ": a wrong file was sent to the module");
   try {
    const [dl] = await Promise.all([pg.waitForEvent("download", {timeout: 5000}), pg.click("#dumpBtn")]);
@@ -793,6 +826,18 @@ async function teensy(browser, port, q, name) {
    await fr.click("#askNo"); await askClosed(fr, what, "Cancel");
    await fr.evaluate(() => location.reload()); await fr.waitForTimeout(2500);   // the page opened again in the same tab
    if (await fr.inputValue("#pwW") !== "agopengps") fail.push(what + ": the password is forgotten when the page is opened again");
+   // a .bin with a wrong password: said in the box at once, nothing sent; the right one typed there installs it
+   await fr.click('nav button[data-t="firmware"]'); await fr.waitForTimeout(300);
+   await fr.setInputFiles("#bin", onMain);
+   await askShown(fr, what, /^The sections close during the update\.$/, true, /^Install this file\?$/);
+   await wrongPassword(fr, what + " (Install with a wrong password)");
+   await shot(pg, "sprayer-card-wrong-password");
+   const wb = await fr.locator(".askBox").boundingBox(), wy = await fr.locator("#askYes").boundingBox();
+   if (!wb || !wy || wb.y + wb.height > 320 || wy.y + wy.height > 320) fail.push(what + ": with the wrong-password line the box or its Install button leaves the card");
+   await expect(fr, what, "#msgProg", /^$/);
+   if (await fr.inputValue("#pwW") !== "") fail.push(what + ": a refused password stays in the Network settings field");
+   await fr.fill("#askIn", "agopengps"); await fr.locator("#askIn").press("Enter"); await askClosed(fr, what, "Install with the right password");
+   await expectSoon(fr, what, "#msgProg", /^(Sending|Installed)/);
   }
   await pg.close();
  }
