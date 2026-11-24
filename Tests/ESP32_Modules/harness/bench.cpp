@@ -374,7 +374,7 @@ void SprayerRig::tick()
     float flow = 0;
     for (int v = 0; v < valves; v++)
         if (open[v]) flow += (v < (int)nozzles.size() ? nozzles[v] : 6) * nozzleLpm * sqrtf(bar / chartBar);
-    lpm = flow;
+    lpm = flow + backflowLpm;               // the meter counts either way
 
     const float sensorV = std::min(4.5f, std::max(0.5f, 0.5f + 4.0f * bar / sensorMaxBar));
     const uint32_t pressureMv = (uint32_t)std::min(3100.0f, sensorV * divider * 1000.0f);

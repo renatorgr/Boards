@@ -25,7 +25,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 24 Nov 2026 | `install-wrong-password`: the page's check before an install (`/api/update-check`) refuses a wrong or missing password at once and changes nothing: the sections stay on, no restart ([The users](#the-users)). |
+| 24 Nov 2026 | `install-wrong-password`: a wrong password before an install is refused at once ([The users](#the-users)). `sprayer-litres-sections-closed`: water running back through the meter adds no litres applied. 44 scenarios. |
 | 23 Nov 2026 | RTC memory kept through a restart, the crash record in flash, core 0 or the loop held ([How it works](#how-it-works)). `sprayer-restart-says-before`, `sprayer-crash-record`: which watchdog, what the sprayer did before. 42 scenarios. |
 | 22 Nov 2026 | No router: a pretend XIAO with its WiFi bridge, and a tablet's hotspot ([How it works](#how-it-works), [The users](#the-users)). `sprayer-litres-kept`: litres kept through a brownout, a power cut and the night. 40 scenarios. |
 | 21 Nov 2026 | First version: 33 scenarios for five users on the four boards (87 runs, about 350 checks), a report, and the "Module harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users)). A section with no relay: now a must. |
@@ -80,6 +80,7 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - 8 valves of 6 nozzles (1.6 L/min at 3 bar), a pump at 3 bar.
 - A 0-10 bar sensor behind the 10k / 10k divider and a 450 pulses/L flow meter.
 - Wiring faults: valves on NC contacts, a valve stuck open, sensors missing or swapped.
+- Water running back through the flow meter with every valve closed (`backflowLpm`).
 
 **The network.** The tractor's router (it can be switched off), the cable (it can be pulled out), a static IP or one from the router.
 
@@ -110,6 +111,7 @@ On GitHub the **Module harness** check runs it on every pull request that change
 - `careful-on-xiao-wifi-192-168-4`: the AiO itself on 192.168.4; the own network moves to 192.168.40.1.
 - `careful-tablet-hotspot`.
 - `sprayer-litres-kept`: the module restarts by itself, a brownout, and loses its power mid-job; a new tank; the next morning.
+- `sprayer-litres-sections-closed`: every section closed and water running back through the flow meter for a minute (the bench's `backflowLpm`): no litres applied, the alarm on the screen, the pulses still counted; then spraying again counts.
 - `sprayer-restart-says-before`: the watchdog restarts the module twice (once after a flood of flow pulses), then a power cut: the module names the watchdog and says what it was doing, and says nothing after a power on.
 - `sprayer-crash-record`: the chip resets 30 ms after the relays let go, then with the Wi-Fi half held, then with the loop held: the module says when the relays last changed and when core 0 was last idle. Then the crash records of a crash, of an older program and a damaged one: told once, kept through a restart and a power cut.
 

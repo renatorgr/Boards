@@ -65,7 +65,7 @@
 #include "sPage.h"
 
 #define FW_NAME             "Sprayer_ESP32"
-#define FW_VERSION          "0.10.22"
+#define FW_VERSION          "0.10.23"
 
 // ---------------------------------------------------------------- board and pins
 // BOARD says which board this is (change the line below, or compile with -DBOARD=...):
@@ -115,6 +115,7 @@ const uint8_t RELAY_PIN[] = { 4, 5, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 
 #define ALARM_FLOW_HIGH     8       // more flow than that
 #define ALARM_FLOW_CLOSED   16      // flow while every section is closed (valve stuck open)
 #define ALARM_CONFIRM_S     3       // seconds in a row before an alarm comes on, and after the sections change
+#define FLOW_AFTER_CLOSE_S  3       // seconds the flow still counts as applied after the last section closes (the valves closing)
 
 // ---------------------------------------------------------------- settings you may want to change
 #define USE_MASTER_SWITCH   0       // 1 = MASTER_PIN reads the master switch. 0 = the switch cuts the valves' 12 V in the wiring
@@ -319,6 +320,7 @@ uint8_t relayFn(uint8_t i);
 void sensorsInit();
 void readSensors();
 void updateFlow();
+void noteSectionsOpen();
 void logEvent(const char* fmt, ...);
 String defaultApSsid();
 String moduleName();
@@ -659,6 +661,7 @@ void loop()
         lastRun.step = STEP_SENSORS;
         readSensors();
         applyOutputs();
+        noteSectionsOpen();         // the litres applied count while a section is open
         if (relayBits != lastRun.relays)    // the time of each relay change (lastRun: what it was doing)
         {
             lastRun.relays = relayBits;

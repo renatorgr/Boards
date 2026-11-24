@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 24 Nov 2026 | **0.10.22**: an install asks the module for the password before the file is downloaded or sent: a wrong one is said at once in the box, which stays open to type it again ([The Firmware tab](#the-firmware-tab)). |
+| 24 Nov 2026 | **0.10.22**: an install checks the password before the file is sent ([The Firmware tab](#the-firmware-tab)). **0.10.23**: flow through the meter with every section closed is not counted as applied ([The litres applied](#the-litres-applied)). |
 | 23 Nov 2026 | **0.10.18-20**: after a restart nobody asked for, the module says which watchdog, what it was doing, the last relay change, the crash record ([Why the module started](#why-the-module-started)). **0.10.21**: [dot at the top](#the-dot-at-the-top) orange when the program is silent. |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
 | 21 Nov 2026 | **0.10.10-0.10.14**: names shown as text; a section with no relay is said ([How it works](#how-it-works)); three harness fixes; Wi-Fi reason, name and program checked; sensor unplugged, outputs inverted on screen ([Notes](#notes)). |
@@ -93,6 +93,9 @@ An alarm also goes to the program as PGN 221, the text message it shows on its s
   - before a restart that is asked for
 - So a restart or a power cut loses 10 s of spraying at most.
 - Only **Total back to 0** (Settings, Sensors card) or the serial `total-reset` clears them: at a new tank or a new job.
+- They count only what goes out of the nozzles: while a section is open, and for 3 s after the last one closes (the valves closing).
+  - With every section closed the flow meter can still turn: water running back through it to the tank when the pump slows with the hoses under pressure, a tap left open, a leak.
+  - That flow is not counted as applied (it was until 0.10.22). The alarm *flow with the sections off* tells about it, and *Flow pulses* still counts every pulse of the meter.
 
 ### Why the module started
 
@@ -516,6 +519,10 @@ If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or
 
 ## Notes
 
+- **0.10.23**: on 22 Nov 2026 the litres applied went up at the end of a job with every section closed.
+  - No tap was open: the water ran back through the flow meter to the tank when the pump slowed, with the hoses at 6-7 bar, and the module counted it as applied.
+  - Now the litres count only while a section is open and for 3 s after (*The litres applied* in [How it works](#how-it-works)).
+  - Tested in `Tests/ESP32_Modules` (scenario *sprayer-litres-sections-closed*): a minute of water running back adds no litres; the alarm comes on and the pulses still count.
 - **0.10.21**: only the page. Its [dot at the top](#the-dot-at-the-top) is orange when the module answers but the program is silent (it was red, as with no answer), as on the Teensy, XIAO and seed drill pages.
 - **0.10.19**: on 23 Nov 2026 at 15:17, 16:22 and 16:28 the module restarted with *watchdog: a task stuck*.
   - At 16:28 it was *at the web page* with *flow 262/s +1*: the loop was running, so the half of the chip that runs the Wi-Fi was the one stuck for 5 s.

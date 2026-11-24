@@ -14,8 +14,15 @@
 // its divider the pin floats and would show made-up pressure or pulses.
 
 static volatile uint32_t flowPulses = 0;
+static volatile uint32_t appliedPulses = 0;     // of those, the ones that came while the flow counts as applied
+static volatile bool     flowApplied = false;   // a section open, or closed less than FLOW_AFTER_CLOSE_S ago (noteSectionsOpen)
 
-static void IRAM_ATTR flowIsr() { flowPulses++; lastRun.isr++; }   // lastRun: kept through a reset (Sprayer_ESP32.ino)
+static void IRAM_ATTR flowIsr()
+{
+    flowPulses++;
+    if (flowApplied) appliedPulses++;
+    lastRun.isr++;                                          // lastRun: kept through a reset (Sprayer_ESP32.ino)
+}
 
 void sensorsInit()
 {
@@ -66,19 +73,43 @@ void sensorsTick()
     else logEvent("pressure sensor reads %.2f V again", sensorVolts);
 }
 
-// Once a second
+static uint32_t sectionsOpenAtMs = 0;  // the last time a section was open
+static bool     sectionsOpenSeen = false;   // and that was less than FLOW_AFTER_CLOSE_S ago
+
+// 20 times a second, right after the relays are set: whether the flow meter's pulses count as applied from now on.
+// Each pulse is taken by what was so when it came (flowIsr), not by what is so at the end of the second.
+void noteSectionsOpen()
+{
+    const uint32_t now = millis();
+    if (sectionsOn)
+    {
+        sectionsOpenAtMs = now;
+        sectionsOpenSeen = true;
+    }
+    else if (sectionsOpenSeen && now - sectionsOpenAtMs > FLOW_AFTER_CLOSE_S * 1000UL)
+        sectionsOpenSeen = false;                           // forgotten, so it never looks recent after millis() goes round
+    flowApplied = sectionsOpenSeen;
+}
+
+// Once a second.
+// Only what goes out of the nozzles is applied: the litres count while a section is open and for FLOW_AFTER_CLOSE_S
+// after the last one closes (the valves closing). With every section closed the meter still turns when the water runs
+// back through it to the tank (the pump slowing with the hoses at 6-7 bar), with a tap open or a leak: on 22 Nov 2026
+// that added litres at the end of a job with nothing sprayed. The alarm "flow with the sections off" tells about it.
+// The pulses count everything the meter gives (the flow meter's own count).
 void updateFlow()
 {
     noInterrupts();
-    uint32_t n = flowPulses;
+    uint32_t n = flowPulses, applied = appliedPulses;
     flowPulses = 0;
+    appliedPulses = 0;
     interrupts();
-    if (!(cfg.sensors & SENSOR_FLOW)) n = 0;
+    if (!(cfg.sensors & SENSOR_FLOW)) n = applied = 0;
 
     lastRun.pulsesLastS = n;                                // kept through a reset (what it was doing)
     const float litres = n / cfg.pulsesPerLitre;            // litres in this second
     flowLpm = litres * 60.0f;
-    totalLitres += litres;
+    totalLitres += applied / cfg.pulsesPerLitre;
     totalPulses += n;
 }
 
