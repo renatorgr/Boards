@@ -9,6 +9,8 @@
 // tablet on the XIAO's own WiFi. The pretend Teensy serves a page of 136 kB and a few /api answers (teensy.cpp).
 #include "helpers.h"
 
+#include <regex>
+
 namespace
 {
 using namespace h;
@@ -224,17 +226,24 @@ int timesSaid(World& w, const std::string& part)
     return n;
 }
 
-// The first line the XIAO wrote (Messages, USB) that holds part, without its line end; "" when none does
-std::string lineWith(World& w, const std::string& part)
+// The note in Messages (USB): the line that starts with head and the "... " lines right after it, each without its line end
+std::vector<std::string> noteLines(World& w, const std::string& head)
 {
+    std::vector<std::string> lines;
     const std::string& out = w.dev.usbOut;
-    const size_t at = out.find(part);
-    if (at == std::string::npos) return "";
-    const size_t from = out.rfind('\n', at) == std::string::npos ? 0 : out.rfind('\n', at) + 1;
-    size_t to = out.find('\n', at);
-    if (to == std::string::npos) to = out.size();
-    while (to > from && (out[to - 1] == '\r' || out[to - 1] == '\n')) to--;
-    return out.substr(from, to - from);
+    size_t at = out.find(head);
+    if (at == std::string::npos || (at > 0 && out[at - 1] != '\n')) return lines;
+    while (at < out.size())
+    {
+        size_t end = out.find('\n', at);
+        if (end == std::string::npos) end = out.size();
+        std::string line = out.substr(at, end - at);
+        while (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!lines.empty() && line.rfind("... ", 0) != 0) break;
+        lines.push_back(line);
+        at = end + 1;
+    }
+    return lines;
 }
 }
 
@@ -259,14 +268,20 @@ SCENARIO(User::BadLink, "memory-low-noted", "The XIAO runs short of memory while
          "... with what was going on: the module's page loading, the devices on its WiFi", what);
     tell("told", w.said("Short of memory: 6000 bytes free at the lowest") && w.said("... module page (port 8080) GET /,"),
          "Messages say the XIAO was short of memory, and what it was doing", "");
-    const std::string head = lineWith(w, "Short of memory: 6000"), page8080 = lineWith(w, "module page (port 8080)"),
-                      devices = lineWith(w, "device(s) on our WiFi");
-    must("whole", head == "Short of memory: 6000 bytes free at the lowest. Going on then:"
-                      && page8080.rfind("... module page (port 8080) GET /,", 0) == 0 && page8080.find("device(s)") == std::string::npos
-                      && devices.rfind("... ", 0) == 0 && devices.find("module page") == std::string::npos
-                      && page8080.size() <= 120 && devices.size() <= 120,
-         "... each piece on a line of its own, so none is cut off at the end of a line (Sourcery on #185 and #186)",
-         head + " | " + page8080 + " | " + devices);
+    // The note whole, in order: the lowest point alone, then each piece on a line of its own (Sourcery on #185, #186, #189)
+    const std::vector<std::string> note = noteLines(w, "Short of memory: 6000");
+    std::string joined;
+    bool fits = !note.empty();
+    for (const std::string& line : note) { joined += (joined.empty() ? "" : "\n") + line; fits = fits && line.size() <= 120; }
+    static const std::regex whole(
+        "Short of memory: 6000 bytes free at the lowest\\. Going on then:\n"
+        "\\.\\.\\. module page \\(port 8080\\) GET /, [0-9]+ bytes held, [0-9]+ browser connection\\(s\\)\n"
+        "(\\.\\.\\. our page answer(ed|ing) (/[a-z/-]*|\\(an unknown address\\))\n)?"   // a whole address
+        "\\.\\.\\. bridge a second: [0-9]+ to the Teensy, [0-9]+ to the program, [0-9]+ to modules, [0-9]+ lost\n"
+        "\\.\\.\\. [0-9]+ device\\(s\\) on our WiFi");   // (no other network set here: no join)
+    must("whole", fits && std::regex_match(joined, whole),
+         "... the lowest point on a line alone, then each piece whole on a line of its own, in order, none longer than a line of Messages",
+         joined);
     fake::freeHeap = 4000;                  // a little lower: the page shows it, Messages do not say it again
     w.run(1000);
     st = w.state();
