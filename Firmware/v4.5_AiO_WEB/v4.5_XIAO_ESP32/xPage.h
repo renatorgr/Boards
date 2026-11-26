@@ -42,6 +42,8 @@ header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:
 nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+nav button.new::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
+nav button.on.new::after{background:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -710,6 +712,9 @@ function renderTeensyFw(){
  else verPill("tGh",verText(gh.ver,g.built)+(g.built?"":" (build date unknown)"),c,c>0?"ok":"","The new .hex is not on GitHub yet");
  $("tGhInstall").disabled=!g||!talk||tBusy||c===0;
  const off=!talk||tBusy;$("tHexFile").disabled=off;$("tFileBtn").classList.toggle("off",off);
+ // a dot on the Firmware tab, as on the sprayer page: a newer XIAO firmware, or a newer module (Teensy) firmware, on GitHub
+ const nx=ghNewer(),nt=c>0,b=document.querySelector('nav button[data-t="prog"]');
+ b.classList.toggle("new",nx||nt);b.title=nx&&nt?"A newer XIAO and module firmware is on GitHub":nx?"A newer XIAO firmware is on GitHub":nt?"A newer module firmware is on GitHub":"";
 }
 // Install from a file: the .hex is read as soon as it is chosen, and the box says what it is
 $("tHexFile").addEventListener("change",()=>{const inp=$("tHexFile"),f=inp.files[0];inp.value="";   // the same file again is a new choice

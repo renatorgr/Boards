@@ -52,6 +52,8 @@ header .sub{color:var(--mute);font-size:13px;flex:1;white-space:nowrap;overflow:
 nav{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
 nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;min-height:44px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+nav button.new::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
+nav button.on.new::after{background:var(--accInk)}
 main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
 .grid.fill{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
@@ -1369,6 +1371,7 @@ function renderGh(){
  $("ghLink").href=gh?GH_WEB+"/"+gh.dir:GH_WEB;
  const n=$("ghNote");n.textContent=nw?("New firmware on GitHub: "+verText(gh.ver,gh.built)+". This module runs "+runsText()+". Install it in the Firmware tab."):"";
  n.classList.toggle("hidden",!nw);
+ const b=document.querySelector('nav button[data-t="firmware"]');b.classList.toggle("new",nw);b.title=nw?"A newer firmware is on GitHub":"";   // a dot on the tab, as on the sprayer page
 }
 async function ghInstall(){
  if(!ghNewer()||busy)return;

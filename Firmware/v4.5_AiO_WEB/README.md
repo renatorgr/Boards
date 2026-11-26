@@ -38,7 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 26 Nov 2026 | After a WAS jump, the first push of the next engage is a short, gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it, else it goes off again (plug still out). Not compiled here. |
+| 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a cable-less tablet steers, opens this page, sees section modules on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled here. |
@@ -365,6 +365,7 @@ The page looks in the `Firmware` folder of **github.com/renatorgr/Boards** when 
   - Nothing needs renaming or numbering by hand.
   - If that file cannot be reached, the page compares the folder names alone (the version number only).
 - **A newer one** shows on Status and on the Firmware tab. **Install from GitHub** downloads it in the browser and installs it like a chosen file.
+- **A green dot on the Firmware button** (the tab at the top) says a newer one is waiting, as on the sprayer and seed drill pages: it shows from any tab and goes once the new one runs.
 - The device the page is open on needs internet; the Teensy never goes to the internet.
 - **To publish a new build**: compile, and upload the `.hex` into the version folder over the old one.
 - A new version number (v4.6) is a new folder `vX.Y_AiO_WEB` in `Firmware/`.

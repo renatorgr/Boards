@@ -4,7 +4,7 @@ The same program (`v4.5_XIAO_ESP32`, for the Teensy firmware v4.5_AiO_WEB), comp
 
 The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 
-**Built:** 24 Nov 2026 (C3 18:54, S3 18:54 UTC). This build has:
+**Built:** 26 Nov 2026 (C3 11:08, S3 11:09 UTC). This build has:
 
 - the WiFi bridge: a tablet with no network cable runs the program on the XIAO's network (off from new, switched on in the WiFi tab)
 - the link task: a slow browser no longer holds up the bridge or the link to the Teensy
@@ -17,6 +17,7 @@ The ESP32C3 and the ESP32S3 are different chips: each needs its own file.
 - the dot at the top of the page in three colours: green, orange when no program talks, red
 - a note when the XIAO is short of memory: when, and what it was doing (Status, and Messages a line each)
 - an install (the XIAO's or the module's firmware) that checks the password before the file is sent: a wrong one is said at once
+- a green dot on the Firmware button when a newer XIAO or module firmware is on GitHub
 
 Compiled in the cloud with the ESP32 core 3.3.12 (arduino-cli, the board's default settings, the same as in the program's README).
 

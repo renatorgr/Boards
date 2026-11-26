@@ -147,6 +147,7 @@ async function teensy(browser, port, q, name) {
  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/" + q, what);
  await pg.waitForTimeout(2500);
  await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
+ if (await pg.locator('nav button[data-t="firmware"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
  await expect(pg, what, "#hdr", /_AiO_WEB · 192\.168\.5\.126/);
  await expect(pg, what, "#simBar", /SIMULATOR/);
  if (!(await pg.locator("#dot.on, #dot.warn").count())) fail.push(what + ": the page is not connected to the pretend module");   // orange: no program talking yet
@@ -363,6 +364,7 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
   if (await pg.locator("#ghNote").isHidden()) fail.push(what + ": no note about the new firmware");
+  if (!(await pg.locator('nav button[data-t="firmware"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
   await pg.close();
  }
  // the XIAO page
@@ -376,6 +378,7 @@ async function teensy(browser, port, q, name) {
   if ((await pg.locator("#aSecs span").count()) !== 19) fail.push(what + ": Program → module should show the seed drill's 19 sections");
   await expect(pg, what, "#mFw", /AiO/);
   await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
+  if (await pg.locator('nav button[data-t="prog"].new').count()) fail.push(what + ": the Firmware tab is marked new with nothing newer");
   await expect(pg, what, "#xBr", /^off \(WiFi tab\)$/);          // the WiFi bridge: off from new
   await shot(pg, "xiao-status");
   for (const t of ["log", "wifi", "prog"]) {
@@ -439,6 +442,18 @@ async function teensy(browser, port, q, name) {
   await expect(pg, what, "#hdr", /_XIAO_ESP32S3/);
   await expect(pg, what, "#ghVer", /built 31 Dec 2099 23:59 newer$/);
   if (await pg.locator("#ghInstall").isDisabled()) fail.push(what + ": Install from GitHub is not offered");
+  if (!(await pg.locator('nav button[data-t="prog"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
+  await pg.close();
+ }
+ // the XIAO page when only the module's (Teensy's) .hex on GitHub is a newer build: the Firmware tab is marked too, for the module card
+ {
+  const what = "XIAO page, newer module build on GitHub";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/xiao/", what, j => { if (j.teensy) j.teensy.built = LATER; });
+  await pg.waitForTimeout(2500);
+  await expect(pg, what, "#ghVer", /^[\d.]+(, built .+)? installed$/);
+  await expectSoon(pg, what, "#tGh", /built 31 Dec 2099 23:59 newer$/);
+  if (!(await pg.locator('nav button[data-t="prog"].new').count())) fail.push(what + ": the Firmware tab is not marked new");
+  if (!/module/.test(await pg.locator('nav button[data-t="prog"]').getAttribute("title") || "")) fail.push(what + ": the tab's tip does not name the module");
   await pg.close();
  }
  // Enter on the XIAO page: in the Module network password it does what the card's button does (here the action asks first, and
