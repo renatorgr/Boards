@@ -798,9 +798,9 @@ Now, after a jump, autosteer can be engaged again after the 3 s, but its first p
 
 - gentle: Min To Move plus a third of the way to the Max Limit (Puma, Min 34 / Max 99: PWM 55)
 - the way the program asks
-- for at most 0.7 s; the angle must move 1° that way, two readings in a row
+- for at most 0.7 s; the angle must move 1° that way, two readings in a row while it pushes
 - standing still (below the minimum steering speed) there is no push: the test waits until the tractor drives; a pause like that does not count, so it never pushes more than 0.7 s in all
-- when the program asks past its maximum wheel angle and the wheels are already well over to that side (they may be at the stop), it pushes towards straight ahead instead
+- when the program asks past its maximum wheel angle and the wheels are already well over to that side (10° short of it, and at least half of it: they may be at the stop), it pushes towards straight ahead instead
 - a jump during the test starts it again: the movement of a plug going in does not count
 
 The wheels follow (plug back in):

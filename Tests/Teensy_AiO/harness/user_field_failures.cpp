@@ -86,10 +86,11 @@ SCENARIO(User::FieldFailures, "was-unplugged-reengage", "The WAS plug comes out,
     {
         const float from = w.tractor.wheelDeg;
         float far = 0;
-        uint32_t pushing = 0;
+        uint32_t pushing = 0, pushAfter = 0;
+        bool after = false;
         w.watchers.push_back([&] {
             far = std::max(far, fabsf(w.tractor.wheelDeg - from));
-            if (w.tractor.moduleDps != 0) pushing++;
+            if (w.tractor.moduleDps != 0) { pushing++; if (after) pushAfter++; }
         });
         const size_t m3 = w.aio.logMark();
         engage(w, true);
@@ -99,15 +100,18 @@ SCENARIO(User::FieldFailures, "was-unplugged-reengage", "The WAS plug comes out,
         w.run(1500);
         const bool failedInPause = w.aio.logHas("did not follow", m3);
         w.tractor.kmh = 8;
+        after = true;
         w.run(1500);
         w.watchers.pop_back();
         engage(w, false);
         w.run(500);
         w.expectOffEnd();
-        note("test-pause", fmt("speed below the minimum in the middle: pushed %u ms in all, wheels moved %s deg", pushing, fmt1(far).c_str()));
+        note("test-pause", fmt("speed below the minimum in the middle: pushed %u ms in all (%u ms after the pause), wheels moved %s deg",
+                               pushing, pushAfter, fmt1(far).c_str()));
         must("pause-no-fail", !failedInPause, "A pause below the minimum speed does not end the test as failed", logSince(w, m3));
-        must("pause-total", pushing <= 800 && w.aio.logHas("did not follow", m3), "With a pause, the test still pushes 0.7 s in all, then turns autosteer off",
-             fmt("%u ms of push", pushing));
+        must("pause-total", pushing <= 800 && pushAfter >= 100 && w.aio.logHas("did not follow", m3),
+             "With a pause, the test pushes again once the tractor drives, 0.7 s in all, then turns autosteer off",
+             fmt("%u ms of push, %u ms of it after the pause", pushing, pushAfter));
     }
     tell("says-test", told(w, mark, smark, "test push"), "Says the angle did not follow the test push, on AgOpenWeb's screen",
          w.aio.logLine("test push"));

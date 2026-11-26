@@ -316,9 +316,16 @@ int16_t wasTestPush(int16_t pwm, float angle, float setPoint)
 {
     if (wasTestNeed && (cfg.wasCheckOff || (isKeya && !steerConfig.SingleInputWAS))) wasTestNeed = false;   // no jump check then
     if (!wasTestNeed) { testOn = false; return pwm; }
-    // the PID asks for nothing (below the minimum steering speed it does not push): no push, the test pauses (its
-    // time used so far stays used, so it never pushes longer than WAS_TEST_MS in all)
-    if (pwm == 0) { testLast = 0; return 0; }
+    // the PID asks for nothing (below the minimum steering speed it does not push): no push, the test pauses. The
+    // last loop's push lasted until now and counts (else a PID output that flickers to 0 every other loop would
+    // push for ever); the readings in a row start again, so both come while it pushes
+    if (pwm == 0)
+    {
+        if (testLast) testUsed += millis() - testLast;
+        testLast = 0;
+        testSeen = 0;
+        return 0;
+    }
     const uint32_t now = millis();
     if (!testOn)
     {
@@ -328,9 +335,10 @@ int16_t wasTestPush(int16_t pwm, float angle, float setPoint)
         testPwm = (int16_t)t;
         // the PID's way; but when the program asks past its maximum wheel angle (PGN 247; 35 deg without it) and the
         // wheels are already well over to that side, they may stand at the stop (the steer wizard's Maximum Steering
-        // Angle step): then towards straight ahead
+        // Angle step): then towards straight ahead. "Well over": 10 deg short of it, and at least half of it (a small
+        // maximum angle in the program would make any angle that side count)
         const float lockDeg = aowMaxSteerDeg ? aowMaxSteerDeg + 2.0f : 35.0f;
-        const bool atStop = fabsf(setPoint) > lockDeg && angle * setPoint > 0 && fabsf(angle) > lockDeg - 10.0f;
+        const bool atStop = fabsf(setPoint) > lockDeg && angle * setPoint > 0 && fabsf(angle) > fmaxf(lockDeg - 10.0f, lockDeg * 0.5f);
         testDir = atStop ? (angle > 0 ? -1 : 1) : (pwm > 0 ? -1 : 1);
         testFrom = angle;
         testSeen = 0;
