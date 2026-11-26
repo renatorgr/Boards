@@ -35,7 +35,8 @@ enum SteerOff : uint8_t
     SO_FAST,        // AiO_WEB: the program's speed above the maximum (web page, default 25 km/h)
     SO_KEYA_LOST,   // AiO_WEB: no Keya heartbeat for 0.5 s (KeyaCANBUS.ino)
     SO_WAS_JUMP,    // AiO_WEB: the WAS angle jumped faster than wheels turn (plug out, broken wire)
-    SO_STUCK        // AiO_WEB: pushed at the Max Limit and the WAS angle did not follow (WAS unplugged, wheels held)
+    SO_STUCK,       // AiO_WEB: pushed at the Max Limit and the WAS angle did not follow (WAS unplugged, wheels held)
+    SO_WAS_TEST     // AiO_WEB: after a WAS jump, the angle did not follow the test push of the next engage (plug still out?)
 };
 #define SO_FROM_MODULE(c) (((c) >= SO_SWITCH && (c) <= SO_SILENT) || (c) >= SO_KEYA)
 
@@ -69,6 +70,10 @@ bool  wasVoltsOk();
 bool  wasJumpCheck(int16_t raw);      // after wasCheck(): an angle change faster than wheels turn blocks autosteer
 bool  steerStuckCheck(bool on, int16_t pwm, float angle, float setPoint);   // after the PID: the wheels must answer
 bool  steerStuckBlocked();            // a steer switch left on after steerStuckCheck() turned autosteer off
+int16_t wasTestPush(int16_t pwm, float angle, float setPoint);   // the PID: after a WAS jump, the first push is a short test
+void  wasTestIdle();                  // steering off: a test push under way is dropped (the next engage starts it again)
+bool  wasTestFailed();                // after the PID: the angle did not follow the test push, autosteer off (once)
+extern bool wasTestNeed;              // zSafety.ino: a jump seen, the wheels not yet seen to answer a test push (zLeds.ino)
 extern int16_t pwmAsk;                // Autosteer.ino: the PID's output before the motor direction (AutosteerPID.ino)
 void  blockedAskNote();
 uint32_t msStamp(uint32_t now);       // the start of a timer where 0 means "not running": never 0, never ahead of now

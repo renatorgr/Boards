@@ -23,6 +23,7 @@
 //     one side (-98 deg for -3.67 V), so this is a fault with the hint to choose Single.
 //     A plug out or a broken wire can float inside the range: the angle then jumps faster than wheels
 //     turn (blocked at once), or reads still while the module pushes at its Max Limit (autosteer off).
+//     After a jump, the first push of the next engage is a short test push the angle must follow.
 //   - Why autosteer went off: switch, button, pressure / current / encoder kickout, WAS, the program
 //     silent. Shown on the program's screen (PGN 221), in the [status] messages and on the web page.
 //   - Hardware watchdog (WDOG1): the Teensy restarts if the loop stops for 2 s. 0.5 s before, an
@@ -30,8 +31,9 @@
 //   - Crash (a fault): before the Teensy core's crash handler, faultHook switches the autosteer outputs
 //     off at once and notes the code that called the crashed function.
 //   - Why the Teensy started (power, restart, watchdog, crash), at boot and on the web page.
-// Autosteer.ino calls wasCheck(), wasJumpCheck(), steerStuckCheck(), steerKick(), steerOnNote() and
-// sensorViewNote() from its 40 Hz steering loop; loop() calls wdtFeed().
+// Autosteer.ino calls wasCheck(), wasJumpCheck(), steerStuckCheck(), wasTestFailed(), wasTestIdle(), steerKick(),
+// steerOnNote() and sensorViewNote() from its 40 Hz steering loop, and calcSteeringPID() (AutosteerPID.ino)
+// wasTestPush(); loop() calls wdtFeed().
 
 #include "zSafety.h"      // SteerOff, BootWhy (included first by the main .ino)
 #include "zVersion.h"     // FW_NAME (in the crash and watchdog lines)
@@ -150,7 +152,10 @@ bool wasCheck(int16_t raw)
 // voltage check above cannot tell that from a sensor; the angle can, in two ways:
 //   - a jump: the angle changes faster than wheels turn, as the input runs to its floating voltage when the
 //     plug comes out (or back to the sensor's when it goes in). Autosteer is blocked at once, also standing
-//     still with autosteer off, and the program's screen says it.
+//     still with autosteer off, and the program's screen says it. The block ends 3 s after the last jump, but
+//     the plug may still be out then: the first push of the next engage is a short, gentle test push, and the
+//     module steers on only when the angle follows it (wasTestPush). Else autosteer goes off again, and the
+//     next engage tests again. Only the wheels answering a push ends it: a still or drifting reading does not.
 //   - wheels that do not follow: the module pushes at its Max Limit and the angle does not move towards the
 //     set point. A floating input reads a still angle while the wheels turn: autosteer goes off.
 // Both belong to the WAS check: off with it (a bench without a WAS), and not used with a Keya as the WAS.
@@ -164,11 +169,15 @@ bool wasCheck(int16_t raw)
 #define STUCK_FIRST_MS    800     // (from the start of a push: the valve or motor takes up to 0.3 s to react)
 #define STUCK_DEG         1.0f    // ...must move this far towards the set point
 #define STUCK_PWM_PCT     90      // pushing hard: the PID's output at 90 % of the Max Limit (highPWM) or more
+#define WAS_TEST_PCT      33      // the test push after a jump: Min To Move + a third of the way to the Max Limit...
+#define WAS_TEST_MS       700     // ...for at most this long (a valve or motor takes up to 0.3 s to react)...
+#define WAS_TEST_DEG      1.0f    // ...and the angle must move this far the pushed way, two readings in a row (as STUCK_DEG)
 
 bool     wasJumpBlock = false;    // autosteer blocked by a jump
 uint32_t wasJumps     = 0;        // jumps since start-up
 float    wasJumpDeg   = 0;        // the last one, degrees
 bool     stuckBlock   = false;    // autosteer turned off by wheels that did not follow, a steer switch still on
+bool     wasTestNeed  = false;    // a jump seen, and the wheels not yet seen to answer a test push since
 static uint32_t wasJumpMs = 0;    // when the last jump was seen
 static int16_t  histRaw[WAS_HIST_N];
 static uint32_t histMs[WAS_HIST_N];
@@ -204,7 +213,7 @@ FLASHMEM void wasJumpSay(uint8_t what, int16_t from, int16_t to)
     else if (what == 1)
         StatusLog.line("[status] WAS: the angle jumped again, %.1f deg (%.2f V to %.2f V) - autosteer stays blocked", wasJumpDeg, v0, v1);
     else
-        StatusLog.line("[status] WAS: no jump for %u s - autosteer can be engaged again (check the wheel angle on the program's screen first)",
+        StatusLog.line("[status] WAS: no jump for %u s - autosteer can be engaged again: its first push is a short test, and it steers on only if the wheel angle follows",
                        (unsigned)(WAS_JUMP_HOLD_MS / 1000));
 }
 
@@ -245,6 +254,7 @@ bool wasJumpCheck(int16_t raw)
                 wasJumps++;
                 wasJumpSay(wasJumpBlock ? 1 : 0, candFrom, raw);
                 wasJumpBlock = true;
+                wasTestNeed = true;       // and after the block, the wheels must answer a test push (wasTestPush)
                 wasJumpMs = msStamp(now);
             }
         }
@@ -260,15 +270,103 @@ bool wasJumpCheck(int16_t raw)
         if (histCount < WAS_HIST_N) histCount++;
     }
     // The block ends WAS_JUMP_HOLD_MS after the last jump and, with a steer switch, once the switch is seen off
-    // (as the WAS check's). The plug may still be out then: steerStuckCheck() below turns autosteer off again
-    // when the wheels do not follow.
+    // (as the WAS check's). The plug may still be out then: wasTestNeed stays, so the next engage starts with a
+    // test push (wasTestPush below), and autosteer goes off again when the angle does not follow it.
     if (wasJumpBlock && now - wasJumpMs >= WAS_JUMP_HOLD_MS && (!steerConfig.SteerSwitch || digitalRead(STEERSW_PIN) == HIGH))
     {
         wasJumpBlock = false;
         wasJumpSay(2, 0, 0);
     }
-    if (cfg.wasCheckOff) wasJumpBlock = false;
+    if (cfg.wasCheckOff) { wasJumpBlock = false; wasTestNeed = false; }
     return wasJumpBlock;
+}
+
+// ---------------------------------------------------------------- the test push after a jump
+static uint32_t testMs   = 0;     // the test push started (0 = not now)
+static float    testFrom = 0;     // the wheel angle then
+static int8_t   testDir  = 0;     // the way the angle must go: +1 / -1
+static int16_t  testPwm  = 0;     // the push, without its sign
+static uint8_t  testSeen = 0;     // readings in a row at WAS_TEST_DEG or more that way
+static bool     testFail = false; // the angle did not follow: autosteer off (wasTestFailed)
+
+// The texts of the test push (rare: in flash). ok: the angle followed.
+FLASHMEM void wasTestSay(bool ok, float moved, uint32_t ms)
+{
+    if (ok)
+    {
+        StatusLog.line("[status] WAS: the wheel angle followed the test push (PWM %d: %.1f deg in %.2f s) - the WAS reads the wheels again, autosteer steers on",
+                       testPwm, moved, ms / 1000.0f);
+        hwMessage("WAS OK: the wheels followed the test push", 4, false);
+    }
+    else
+        StatusLog.line("[status] WAS: test push PWM %d for %.1f s and the wheel angle moved %.1f deg the pushed way (%.1f needed): the WAS does not see the wheels - plug or wire? - autosteer off; the next engage tests again",
+                       testPwm, ms / 1000.0f, moved, WAS_TEST_DEG);
+}
+
+// Called by the PID (AutosteerPID.ino calcSteeringPID) every steering loop while autosteer steers, with its output
+// (+ = the angle must go down, before the motor direction) and the wheel angle and set point in degrees. While a
+// jump is not cleared (wasTestNeed), the PID's output is replaced by the test push: gentle (a third of the way from
+// Min To Move to the Max Limit), the PID's way, for at most WAS_TEST_MS. When the angle moves WAS_TEST_DEG that
+// way, the test is over and the PID steers from then on; else the output goes to 0 and wasTestFailed() turns
+// autosteer off. A test with the plug still out moves the real wheels a few degrees at most.
+int16_t wasTestPush(int16_t pwm, float angle, float setPoint)
+{
+    if (wasTestNeed && (cfg.wasCheckOff || (isKeya && !steerConfig.SingleInputWAS))) wasTestNeed = false;   // no jump check then
+    if (!wasTestNeed) { testMs = 0; return pwm; }
+    // the PID asks for nothing (below the minimum steering speed it does not push): no push, the test waits for it
+    if (pwm == 0) { testMs = 0; return 0; }
+    const uint32_t now = millis();
+    if (!testMs)
+    {
+        const int hi = steerSettings.highPWM, lo = steerSettings.minPWM;
+        int t = lo + (hi > lo ? (hi - lo) * WAS_TEST_PCT / 100 : 0);
+        if (t > hi) t = hi;                               // never above the Max Limit (Min To Move above it)
+        testPwm = (int16_t)t;
+        // the PID's way; but past the program's maximum wheel angle (PGN 247; 35 deg without it) the wheels may stand
+        // at the stop that way (the steer wizard's Maximum Steering Angle step): then towards straight ahead
+        const float lockDeg = aowMaxSteerDeg ? aowMaxSteerDeg + 2.0f : 35.0f;
+        testDir = fabsf(setPoint) > lockDeg ? (angle > 0 ? -1 : 1) : (pwm > 0 ? -1 : 1);
+        testFrom = angle;
+        testSeen = 0;
+        testMs = msStamp(now);
+    }
+    const float moved = (angle - testFrom) * testDir;
+    testSeen = moved >= WAS_TEST_DEG ? (uint8_t)(testSeen + 1) : 0;
+    if (testSeen >= 2)                                    // it follows: the PID steers from this loop on
+    {
+        wasTestNeed = false;
+        wasTestSay(true, moved, now - testMs);
+        testMs = 0;
+        return pwm;
+    }
+    if (now - testMs >= WAS_TEST_MS)                      // it did not follow: output 0, autosteer off (wasTestFailed)
+    {
+        wasTestSay(false, moved, now - testMs);
+        testMs = 0;
+        testFail = true;
+        return 0;
+    }
+    return testDir < 0 ? testPwm : (int16_t)-testPwm;    // + = the angle must go down
+}
+
+// Called by the steering loop (Autosteer.ino) while autosteer is off: a test push under way is dropped, and the
+// next engage starts it again from its own angle
+void wasTestIdle()
+{
+    testMs = 0;
+    testFail = false;
+}
+
+// Called every steering loop after the PID (Autosteer.ino). True once when the angle did not follow the test push:
+// autosteer off now (the cause is SO_WAS_TEST); with a steer switch, it stays off until the switch is seen off (as
+// after wheels that did not follow, steerStuckBlocked), and the next engage tests again (wasTestNeed stays).
+bool wasTestFailed()
+{
+    if (!testFail) return false;
+    testFail = false;
+    steerKick(SO_WAS_TEST, testPwm);
+    stuckBlock = steerConfig.SteerSwitch;
+    return true;
 }
 
 // The text when the wheels did not follow (rare: in flash)
@@ -476,6 +574,7 @@ const char* offName(uint8_t c)          // for the web page
         case SO_KEYA_LOST: return "keyalost";
         case SO_WAS_JUMP: return "wasjump";
         case SO_STUCK:    return "stuck";
+        case SO_WAS_TEST: return "wastest";
         default:          return "";
     }
 }
@@ -507,6 +606,7 @@ static void offText(char* b, size_t n, uint8_t c, int v)
         case SO_KEYA_LOST: snprintf(b, n, "Keya not responding (no heartbeat for 0.5 s)"); break;
         case SO_WAS_JUMP: snprintf(b, n, "WAS jump (%d deg, plug or wire?)", v); break;
         case SO_STUCK:    snprintf(b, n, "wheels did not follow (PWM %d): WAS plug?", v); break;
+        case SO_WAS_TEST: snprintf(b, n, "WAS did not follow the test push: plug?"); break;
         default:          snprintf(b, n, "other"); break;
     }
 }

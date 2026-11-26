@@ -38,6 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 26 Nov 2026 | After a WAS jump, the first push of the next engage is a short, gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it, else it goes off again (plug still out). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a cable-less tablet steers, opens this page, sees section modules on the XIAO's WiFi. Refused update steers on ([Firmware update](#firmware-update-over-the-network)); short packets, bad PGN 201, damaged EEPROM, Min above Max checked ([Steering](#steering)). Not compiled here. |
@@ -786,7 +787,34 @@ The WAS voltage (single input) must stay between **0.2 and 4.8 V**. A broken wir
   - and the STEER LED red
 - One bad reading that comes back is not a jump.
 - The block ends 3 s after the last jump (with a steer switch, once it is off). The plug going back in is a jump too.
+- The plug may still be out then, so the next engage starts with a [test push](#test-push-after-a-jump).
 - A reading that drifts slowly is not seen. The Status line *WAS sensor* shows the fastest change within 0.15 s of the last 10-20 s, so a test shows how fast the reading moved.
+
+#### Test push after a jump
+
+**Test push after a jump** (since 26 Nov 2026): until then the block ended 3 s after the last jump even with the plug still out (a Puma, 25 Nov 2026: 11 s at a fake 23°), and engaging again pushed the wheels by a fake angle until *wheels that do not follow* turned autosteer off.
+
+Now, after a jump, autosteer can be engaged again after the 3 s, but its first push is a test:
+
+- gentle: Min To Move plus a third of the way to the Max Limit (Puma, Min 34 / Max 99: PWM 55)
+- the way the program asks (towards straight ahead when it asks past its maximum wheel angle: the wheels may be at the stop)
+- for at most 0.7 s; the angle must move 1° that way, two readings in a row
+- standing still (below the minimum steering speed) there is no push: the test waits until the tractor drives
+
+The wheels follow (plug back in):
+
+- the module steers on at once, as usual
+- `WAS: the wheel angle followed the test push (PWM 55: 1.2 deg in 0.25 s) - the WAS reads the wheels again, autosteer steers on`
+- on the program's screen `WAS OK: the wheels followed the test push` (not a warning)
+
+The angle does not follow (plug still out, wire broken, no oil pressure):
+
+- autosteer off: `Autosteer off: WAS did not follow the test push: plug?`, with a `[status]` line that gives the PWM and how far the angle moved
+- the real wheels moved a few degrees for 0.7 s at most (Teensy harness: 4-8°)
+- the next engage tests again; with a steer switch, turn it off first
+- only the wheels answering a push ends it (or a restart, or the WAS check switched off): a reading that sits still or drifts does not
+
+While a test is still needed, the STEER LED stays red, the Status line *WAS sensor* says `test push at the next engage`, and an alert on the Status tab explains it.
 
 **Wheels that do not follow**: autosteer pushes at 90 % of the Max Limit or more for 0.5 s, and the angle moves less than 1° towards the set point, or moves away. (0.8 s from the start of a push: a valve or motor takes up to 0.3 s to react.)
 
@@ -803,7 +831,8 @@ Both checks are off with the WAS check (bench) and with a Keya as the WAS.
 Not caught:
 
 - a sensor arm that slips (the angle moves with the wheels, but wrong)
-- a floating reading that sits near the set point while autosteer drives gently: the line error then grows until the module pushes at its Max Limit
+- with no jump seen (the plug already out at power-on, or a slow drift), a floating reading that sits near the set point while autosteer drives gently: the line error then grows until the module pushes at its Max Limit
+- a floating reading that happens to move 1° the pushed way during a test push
 
 #### Bench and messages
 
@@ -841,6 +870,7 @@ The reason goes to Messages, to the web page and to the program's screen:
 | WAS out of range (also each time the program's AutoSteer button goes on while it blocks) | `WAS fault (0.03 V): autosteer blocked` |
 | WAS angle jump (also each time the program's AutoSteer button goes on while it blocks) | `WAS jumped 29 deg: plug or wire? Autosteer blocked` |
 | wheels did not follow at the Max Limit for 0.5 s | `Autosteer off: wheels did not follow (PWM 99): WAS plug?` |
+| after a WAS jump, the angle did not follow the test push | `Autosteer off: WAS did not follow the test push: plug?` |
 | no steering data for 2.5 s | `Autosteer off: no steering data from the program for 2.5 s` |
 
 **When the program itself turns autosteer off** (its button, the tractor outside the field boundary, its speed limits, RTK lost, the steer wizard), the module only sees the program's bit go to zero:
@@ -1031,7 +1061,7 @@ The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide, a
 |---|---|---|---|---|
 | PWR/ETH | no Ethernet link | link, but no program talking (5 s without UDP) | AgOpenWeb or AgOpenGPS talking | |
 | GPS | GGA without a fix | fix, not RTK fixed (GPS, DGPS, RTK float) | RTK fixed | corrections arriving (NTRIP or radio): once a second |
-| STEER | fault: no ADS1115 (WAS), WAS voltage out of range or a jump of its angle, Keya heartbeat lost | ready, autosteer off | autosteer on | steer button or switch used |
+| STEER | fault: no ADS1115 (WAS), WAS voltage out of range or a jump of its angle (until the wheels have followed a test push), Keya heartbeat lost | ready, autosteer off | autosteer on | steer button or switch used |
 
 - The GPS LED is off when no GGA has arrived for 10 s.
 - The Teensy's own LED (pin 13) blinks with every GGA.
