@@ -187,6 +187,15 @@ static int16_t  candFrom = 0;     // the reading it jumped from...
 static int8_t   candSide = 0;     // ...and which way
 static float    stepPeak[2] = {0, 0};   // the largest change within WAS_JUMP_WIN_MS: this 10 s window and the one before
 static uint32_t stepPeakMs = 0;
+// the test push after a jump (wasTestPush below)
+static bool     testOn   = false; // a test push under way (from the first push of an engage)
+static uint32_t testUsed = 0;     // ms it has pushed so far (a pause below the minimum speed does not count)
+static uint32_t testLast = 0;     // the last loop that pushed (0 = paused, or not started)
+static float    testFrom = 0;     // the wheel angle when it started
+static int8_t   testDir  = 0;     // the way the angle must go: +1 / -1
+static int16_t  testPwm  = 0;     // the push, without its sign
+static uint8_t  testSeen = 0;     // readings in a row at WAS_TEST_DEG or more that way
+static bool     testFail = false; // the angle did not follow: autosteer off (wasTestFailed)
 
 static float wasCpd()             // the program's counts per degree (PGN 252)
 {
@@ -254,7 +263,8 @@ bool wasJumpCheck(int16_t raw)
                 wasJumps++;
                 wasJumpSay(wasJumpBlock ? 1 : 0, candFrom, raw);
                 wasJumpBlock = true;
-                wasTestNeed = true;       // and after the block, the wheels must answer a test push (wasTestPush)
+                wasTestNeed = true;       // and after the block, the wheels must answer a test push (wasTestPush)...
+                testOn = false;           // ...from the next engage: a test under way does not count what the jump moved
                 wasJumpMs = msStamp(now);
             }
         }
@@ -282,13 +292,6 @@ bool wasJumpCheck(int16_t raw)
 }
 
 // ---------------------------------------------------------------- the test push after a jump
-static uint32_t testMs   = 0;     // the test push started (0 = not now)
-static float    testFrom = 0;     // the wheel angle then
-static int8_t   testDir  = 0;     // the way the angle must go: +1 / -1
-static int16_t  testPwm  = 0;     // the push, without its sign
-static uint8_t  testSeen = 0;     // readings in a row at WAS_TEST_DEG or more that way
-static bool     testFail = false; // the angle did not follow: autosteer off (wasTestFailed)
-
 // The texts of the test push (rare: in flash). ok: the angle followed.
 FLASHMEM void wasTestSay(bool ok, float moved, uint32_t ms)
 {
@@ -312,38 +315,46 @@ FLASHMEM void wasTestSay(bool ok, float moved, uint32_t ms)
 int16_t wasTestPush(int16_t pwm, float angle, float setPoint)
 {
     if (wasTestNeed && (cfg.wasCheckOff || (isKeya && !steerConfig.SingleInputWAS))) wasTestNeed = false;   // no jump check then
-    if (!wasTestNeed) { testMs = 0; return pwm; }
-    // the PID asks for nothing (below the minimum steering speed it does not push): no push, the test waits for it
-    if (pwm == 0) { testMs = 0; return 0; }
+    if (!wasTestNeed) { testOn = false; return pwm; }
+    // the PID asks for nothing (below the minimum steering speed it does not push): no push, the test pauses (its
+    // time used so far stays used, so it never pushes longer than WAS_TEST_MS in all)
+    if (pwm == 0) { testLast = 0; return 0; }
     const uint32_t now = millis();
-    if (!testMs)
+    if (!testOn)
     {
         const int hi = steerSettings.highPWM, lo = steerSettings.minPWM;
         int t = lo + (hi > lo ? (hi - lo) * WAS_TEST_PCT / 100 : 0);
         if (t > hi) t = hi;                               // never above the Max Limit (Min To Move above it)
         testPwm = (int16_t)t;
-        // the PID's way; but past the program's maximum wheel angle (PGN 247; 35 deg without it) the wheels may stand
-        // at the stop that way (the steer wizard's Maximum Steering Angle step): then towards straight ahead
+        // the PID's way; but when the program asks past its maximum wheel angle (PGN 247; 35 deg without it) and the
+        // wheels are already well over to that side, they may stand at the stop (the steer wizard's Maximum Steering
+        // Angle step): then towards straight ahead
         const float lockDeg = aowMaxSteerDeg ? aowMaxSteerDeg + 2.0f : 35.0f;
-        testDir = fabsf(setPoint) > lockDeg ? (angle > 0 ? -1 : 1) : (pwm > 0 ? -1 : 1);
+        const bool atStop = fabsf(setPoint) > lockDeg && angle * setPoint > 0 && fabsf(angle) > lockDeg - 10.0f;
+        testDir = atStop ? (angle > 0 ? -1 : 1) : (pwm > 0 ? -1 : 1);
         testFrom = angle;
         testSeen = 0;
-        testMs = msStamp(now);
+        testUsed = 0;
+        testLast = 0;
+        testOn = true;
     }
+    if (testLast) testUsed += now - testLast;             // the time the last loop's push lasted
+    testLast = msStamp(now);
     const float moved = (angle - testFrom) * testDir;
-    testSeen = moved >= WAS_TEST_DEG ? (uint8_t)(testSeen + 1) : 0;
+    // the angle moved the pushed way, and not by a jump still being judged (wasJumpCheck: a plug going in)
+    testSeen = (moved >= WAS_TEST_DEG && !candMs) ? (uint8_t)(testSeen + 1) : 0;
     if (testSeen >= 2)                                    // it follows: the PID steers from this loop on
     {
         wasTestNeed = false;
-        wasTestSay(true, moved, now - testMs);
-        testMs = 0;
+        testOn = false;
+        wasTestSay(true, moved, testUsed);
         return pwm;
     }
-    if (now - testMs >= WAS_TEST_MS)                      // it did not follow: output 0, autosteer off (wasTestFailed)
+    if (testUsed >= WAS_TEST_MS)                          // it did not follow: output 0, autosteer off (wasTestFailed)
     {
-        wasTestSay(false, moved, now - testMs);
-        testMs = 0;
+        testOn = false;
         testFail = true;
+        wasTestSay(false, moved, testUsed);
         return 0;
     }
     return testDir < 0 ? testPwm : (int16_t)-testPwm;    // + = the angle must go down
@@ -353,7 +364,7 @@ int16_t wasTestPush(int16_t pwm, float angle, float setPoint)
 // next engage starts it again from its own angle
 void wasTestIdle()
 {
-    testMs = 0;
+    testOn = false;
     testFail = false;
 }
 
