@@ -26,6 +26,7 @@ Version 4.5, the same number as the Teensy firmware it goes with (v4.5_AiO_WEB).
 
 | Date | What changed |
 |---|---|
+| 26 Nov 2026 | A green dot on the Firmware button when a newer XIAO or module firmware is [on GitHub](#update-from-github), as on the sprayer page. `.bin` rebuilt. |
 | 24 Nov 2026 | Short of memory (under 32 kB): when, and what it was doing ([Short of memory](#short-of-memory)). An install (XIAO or module) is checked before the file is sent: a wrong password said at once ([The password](#the-password-and-the-pages-questions)). `.bin` rebuilt. |
 | 23 Nov 2026 | **Done on this device** ends the «sign in to this network» notice on a phone or tablet, by its MAC address ([What it does](#what-it-does)). The [dot at the top](#the-dot-at-the-top) turns orange when no program talks. `.bin` rebuilt. |
 | 22 Nov 2026 | [WiFi bridge](#wifi-bridge): a tablet with no network cable reaches the module through the XIAO, on the [module's numbers](#the-xiaos-network-numbers), with [section modules](#section-modules-on-the-xiaos-wifi) (also in the Teensy's Machine tab) and [the module's page](#the-modules-page-through-the-xiao). `.bin` rebuilt. |
@@ -388,7 +389,7 @@ No other libraries are needed: everything is in the esp32 package.
 
 The page looks for the newest version in the `Firmware` folder of **github.com/renatorgr/Boards**: when it opens, every 6 hours while it stays open, and with **Check now** (Firmware tab).
 
-**A newer one** shows at the top of Status and in Firmware.
+**A newer one** shows at the top of Status and in Firmware, and as a green dot on the **Firmware** button (the tab at the top), as on the sprayer and seed drill pages. The dot is also there when the module's (Teensy's) `.hex` on GitHub is newer than the one it runs ([The module's firmware from this page](#the-modules-firmware-from-this-page)); the button's tip says which.
 
 - **A new build of the same version counts as new**: the page compares when the `.bin` for this XIAO's chip (C3 or S3) on GitHub was compiled with this XIAO's **Built**.
 - That date is read from the file each time it reaches `main`, and published with the simulator (`https://renatorgr.github.io/Boards/firmware.json`).

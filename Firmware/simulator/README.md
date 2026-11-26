@@ -97,6 +97,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 26 Nov 2026 | The check looks for the green dot on the Firmware button of the Teensy and XIAO pages: there with a newer build on GitHub (on the XIAO page also for the module's), gone with nothing newer. |
 | 24 Nov 2026 | The pretend XIAO sends `memLow` (never short of memory), for the XIAO page's lowest point of free memory. The pretend XIAO, sprayer and seed drill answer `/api/update-check`; the check tries an install with a wrong password on each. |
 | 22 Nov 2026 | The XIAO page's WiFi bridge: its switch (refused with the XIAO's starting password), its rows on both pages; the pretend program is on the network cable, so a bridge switched on stands by. Module pages: the own network's address. |
 | 21 Nov 2026 | **Set up AgOpenWeb from your measures** (version 1.13): settings in AgOpenWeb's order; Smoothing row; a hard field edge gives the margin as distance from boundary ([the page](#set-up-agopenweb-from-your-measures)). |
