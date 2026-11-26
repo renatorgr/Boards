@@ -80,6 +80,39 @@ SCENARIO(User::FieldFailures, "was-unplugged-reengage", "The WAS plug comes out,
     must("small-push", moved[0] <= 10 && moved[1] <= 10, "The test push moves the wheels a few degrees at most, not to a stop",
          fmt("%s deg, %s deg", fmt1(moved[0]).c_str(), fmt1(moved[1]).c_str()));
     must("still-needed", w.status()["steer"]["wasTest"].b, "The test is still needed after a failed one (the next engage tests again)");
+
+    // a third engage where the speed drops below the module's minimum steering speed (0.2 km/h) in the middle of the
+    // test: the test pauses (no push, no failure) and goes on afterwards, never pushing more than 0.7 s in all
+    {
+        const float from = w.tractor.wheelDeg;
+        float far = 0;
+        uint32_t pushing = 0, pushAfter = 0;
+        bool after = false;
+        w.watchers.push_back([&] {
+            far = std::max(far, fabsf(w.tractor.wheelDeg - from));
+            if (w.tractor.moduleDps != 0) { pushing++; if (after) pushAfter++; }
+        });
+        const size_t m3 = w.aio.logMark();
+        engage(w, true);
+        w.expectOff("the WAS plug still out: only the test push", 3000);
+        w.run(500);
+        w.tractor.kmh = 0.12f;                 // sent as 0.1 km/h: steering on, below the module's 0.2: no push
+        w.run(1500);
+        const bool failedInPause = w.aio.logHas("did not follow", m3);
+        w.tractor.kmh = 8;
+        after = true;
+        w.run(1500);
+        w.watchers.pop_back();
+        engage(w, false);
+        w.run(500);
+        w.expectOffEnd();
+        note("test-pause", fmt("speed below the minimum in the middle: pushed %u ms in all (%u ms after the pause), wheels moved %s deg",
+                               pushing, pushAfter, fmt1(far).c_str()));
+        must("pause-no-fail", !failedInPause, "A pause below the minimum speed does not end the test as failed", logSince(w, m3));
+        must("pause-total", pushing <= 800 && pushAfter >= 100 && w.aio.logHas("did not follow", m3),
+             "With a pause, the test pushes again once the tractor drives, 0.7 s in all, then turns autosteer off",
+             fmt("%u ms of push, %u ms of it after the pause", pushing, pushAfter));
+    }
     tell("says-test", told(w, mark, smark, "test push"), "Says the angle did not follow the test push, on AgOpenWeb's screen",
          w.aio.logLine("test push"));
 
