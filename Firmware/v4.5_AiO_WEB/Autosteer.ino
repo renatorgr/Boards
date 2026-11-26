@@ -621,7 +621,8 @@ void autosteerLoop()
 		// WAS voltage check (zSafety.ino). Out of range (wire, plug, sensor) = autosteer
 		// blocked and turned off like a kickout, so the program sees the switch off.
 		// AiO_WEB: the same for a jump of the angle faster than wheels turn (a plug out that floats inside the
-		// range), and, with a steer switch left on, after the wheels did not follow (steerStuckCheck below).
+		// range), and, with a steer switch left on, after the wheels did not follow (steerStuckCheck below) or
+		// did not answer the test push after a jump (wasTestFailed below).
 		const bool wasBad  = !keyaWas && wasCheck(steeringPosition);
 		const bool wasJump = !keyaWas && wasJumpCheck(steeringPosition);
 		if (wasBad || wasJump || steerStuckBlocked())
@@ -761,6 +762,7 @@ void autosteerLoop()
 
 			pwmDrive = 0; //turn off steering motor
 			steerRampReset();           // the next engage starts with the soft start (AutosteerPID.ino)
+			wasTestIdle();              // ... and, after a WAS jump, with its test push again (zSafety.ino)
 			keyaIntendToSteer = false;  // Keya: motorDrive() sends it the disable command
 			motorDrive(); //out to motors the pwm value
 			pulseCount = 0;
@@ -768,7 +770,10 @@ void autosteerLoop()
 
 		// AiO_WEB: pushed at the Max Limit, the wheels must follow (zSafety.ino): a WAS plug out or a broken wire
 		// can read a still angle inside the voltage range while the wheels turn on. Off now, like a kickout.
-		if (steerStuckCheck(steerOn && !keyaWas, pwmAsk, steerAngleActual, steerAngleSetPoint))
+		// The same when, after a WAS jump, the angle did not follow the test push that starts the engage.
+		const bool stuck = steerStuckCheck(steerOn && !keyaWas, pwmAsk, steerAngleActual, steerAngleSetPoint);
+		const bool testBad = wasTestFailed();
+		if (stuck || testBad)
 		{
 			steerSwitch = 1;
 			currentState = 1;

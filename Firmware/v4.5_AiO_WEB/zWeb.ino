@@ -466,6 +466,7 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.bo("wasJump", wasJumpBlock);      // AiO_WEB 19 Nov 2026: blocked by a jump of the angle (zSafety.ino)...
     j.u("wasJumps", wasJumps);          // ...jumps since start-up, the last one in degrees
     j.num("wasJumpDeg", wasJumpDeg, 1);
+    j.bo("wasTest", wasTestNeed);       // AiO_WEB 26 Nov 2026: since the jump, the wheels have not answered a test push yet
     j.num("wasStep", wasStepPeak(), 1); // the largest change within 0.15 s, last 10-20 s
     j.bo("wasZero", wasBenchZero());   // angle sent as 0 deg (bench)
     j.bo("wasCheck", cfg.wasCheckOff == 0);

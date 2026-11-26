@@ -31,6 +31,79 @@ SCENARIO(User::FieldFailures, "was-unplugged-steering", "The WAS plug comes out 
     reportRules(w);
 }
 
+// After a jump the block ends in 3 s even with the plug still out (a Puma, 25 Nov 2026: 11 s at a fake 23 deg). Since
+// 26 Nov 2026 the next engage starts with a short test push the angle must follow: with the plug out it does not, so
+// autosteer goes off again after a short, gentle push; with the plug back it does, and autosteer steers on.
+SCENARIO(User::FieldFailures, "was-unplugged-reengage", "The WAS plug comes out, the driver engages again with it still out, then puts it back", allKits())
+{
+    World w(kit);
+    w.startUp();
+    w.tractor.x = -0.3f;
+    steerFor(w, 8, 5000);
+    const size_t mark = w.aio.logMark(), smark = w.aow.screen.size();
+    w.was.unplugged = true;
+    w.expectOff("the WAS plug came out", 300);
+    w.run(1000);
+    engage(w, false);                          // the driver sees autosteer off, and waits past the 3 s block
+    w.run(4000);
+    w.expectOffEnd();
+    Json st = w.status();
+    must("test-needed", !st["steer"]["wasJump"].b && st["steer"]["wasTest"].b,
+         "After the block, a test push is still needed (the plug is still out)",
+         fmt("wasJump %d, wasTest %d", (int)st["steer"]["wasJump"].b, (int)st["steer"]["wasTest"].b));
+
+    // engaged again twice with the plug still out: each time only the test push, then off
+    w.ruleRightWay = false;                    // the module pushes by a fake angle: the real wheels can go either way
+    uint64_t pushMs[2] = { 0, 0 };
+    float moved[2] = { 0, 0 };
+    for (int i = 0; i < 2; i++)
+    {
+        const float from = w.tractor.wheelDeg;
+        const uint64_t on0 = w.engagedMs;
+        float far = 0;
+        w.watchers.push_back([&] { far = std::max(far, fabsf(w.tractor.wheelDeg - from)); });
+        engage(w, true);
+        w.expectOff("the WAS plug still out: only the test push", 1200);   // (the outputs start up to 0.2 s after the button)
+        w.run(3000);
+        w.watchers.pop_back();
+        pushMs[i] = w.engagedMs - on0;
+        moved[i] = far;
+        engage(w, false);
+        w.run(500);
+        w.expectOffEnd();
+    }
+    note("test-push", fmt("plug out, two engages: outputs %llu ms and %llu ms, wheels moved %s and %s deg",
+                          (unsigned long long)pushMs[0], (unsigned long long)pushMs[1], fmt1(moved[0]).c_str(), fmt1(moved[1]).c_str()));
+    must("short-push", pushMs[0] <= 900 && pushMs[1] <= 900, "With the plug still out, each engage gives only a short test push (0.9 s at most)",
+         fmt("%llu ms, %llu ms", (unsigned long long)pushMs[0], (unsigned long long)pushMs[1]));
+    // (the bench's Danfoss is a linear valve: a third of its Max Limit turns the wheels at 12 deg/s, faster than a real one)
+    must("small-push", moved[0] <= 10 && moved[1] <= 10, "The test push moves the wheels a few degrees at most, not to a stop",
+         fmt("%s deg, %s deg", fmt1(moved[0]).c_str(), fmt1(moved[1]).c_str()));
+    must("still-needed", w.status()["steer"]["wasTest"].b, "The test is still needed after a failed one (the next engage tests again)");
+    tell("says-test", told(w, mark, smark, "test push"), "Says the angle did not follow the test push, on AgOpenWeb's screen",
+         w.aio.logLine("test push"));
+
+    // the plug back in (a jump too), standing still: no push while the tractor stands, the test once it drives
+    w.was.unplugged = false;
+    w.tractor.kmh = 0;
+    w.run(4000);
+    w.ruleRightWay = true;
+    const float still = w.tractor.wheelDeg;
+    engage(w, true);
+    w.run(2000);
+    must("no-push-standing", fabsf(w.tractor.wheelDeg - still) < 0.5f && w.status()["steer"]["wasTest"].b,
+         "Standing still, the test push waits (the module does not turn the wheels below the minimum speed)",
+         fmt("wheels moved %s deg", fmt1(fabsf(w.tractor.wheelDeg - still)).c_str()));
+    const size_t mark2 = w.aio.logMark();
+    w.tractor.kmh = 8;
+    w.run(6000);
+    st = w.status();
+    must("test-passed", !st["steer"]["wasTest"].b && w.engaged(), "With the plug back, the wheels follow the test push and autosteer steers on",
+         logSince(w, mark2));
+    tell("says-ok", told(w, mark2, smark, "followed the test push"), "Says the wheels followed the test push", w.aio.logLine("followed the test push"));
+    reportRules(w);
+}
+
 SCENARIO(User::FieldFailures, "was-wire-cut", "The WAS signal wire breaks while steering (0 V)", { Kit::PumaCytron, Kit::F9pIbt2, Kit::F9pDanfoss })
 {
     World w(kit);

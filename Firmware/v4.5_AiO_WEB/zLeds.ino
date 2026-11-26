@@ -23,7 +23,8 @@
 //            orange  fix, but not RTK fixed (GPS, DGPS, RTK float)
 //            green   RTK fixed
 //            flick   corrections (RTCM) arriving from NTRIP or the radio: a short dark flick every second
-//   STEER    red     fault: ADS1115 (WAS) not found, WAS voltage out of range, or Keya heartbeat lost
+//   STEER    red     fault: ADS1115 (WAS) not found, WAS voltage out of range, a jump of its angle not yet cleared
+//                    by a test push the wheels answered, or Keya heartbeat lost
 //            orange  ready, autosteer off
 //            green   autosteer on
 //            flick   the steer button or switch was used: a short dark flick
@@ -97,7 +98,7 @@ void ledsUpdate()
     ledPair(GPSRED_LED, GPSGREEN_LED, ledShown(c, now));
 
     // STEER
-    if (!Autosteer_running || wasOut || wasJumpBlock || (isKeya && keyaLost)) c = LED_RED;
+    if (!Autosteer_running || wasOut || wasJumpBlock || wasTestNeed || (isKeya && keyaLost)) c = LED_RED;
     else if (watchdogTimer < WATCHDOG_THRESHOLD)              c = LED_GREEN;
     else                                                      c = LED_ORANGE;
     if (ledSteerFlickMs && now - ledSteerFlickMs < LED_FLICK_MS) c = LED_OFF;
