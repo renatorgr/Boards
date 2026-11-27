@@ -38,6 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 27 Nov 2026 | The TM171's quality figure (QoS, 0 to 5) on the IMU card and the IMU tab, next to its temperature ([IMU](#imu-tm171-or-bno085)). Not compiled here. |
 | 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
@@ -531,6 +532,12 @@ At start-up the firmware looks for:
 - To test it: on a bench, with the program's simulator driving and the IMU lying still, the warning appears. Move the IMU and it clears.
 
 **Temperature**: a TM171 sends its temperature in its Status Output, and the IMU card shows it (since 4 Nov 2026). The BNO085 has none to show.
+
+**Quality (QoS)**: the same Status Output carries the TM171's own quality figure, 0 to 5, higher is better. The IMU card and the IMU tab show it (since 27 Nov 2026): green at 4 or 5, orange at 2 or lower.
+
+- It needs "Status output" on in the TM171 settings, like the temperature (the AgOpenGPS set-up has it on).
+- If it stays at 3 or lower with the tractor parked for a few minutes, run **Calibrate gyro** (below) and see if it rises.
+- Nothing is cut or sent to the program because of it: it is only shown.
 
 ### TM171 gyro calibration from the page
 
