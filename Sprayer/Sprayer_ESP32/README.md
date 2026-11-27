@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | A wiring drawing with a 1N4007 diode across each valve, the NO / NC check for boards printed the wrong way round, the diodes in the parts list, a numbered photo of a built box ([Wiring](#wiring), [The box](#the-box)). |
+| 27 Nov 2026 | A wiring drawing with a 1N4007 diode across each valve, valves on NO so a module with no power closes them, the diodes in the parts list, a numbered photo of a built box ([Wiring](#wiring), [The box](#the-box)). |
 | 24 Nov 2026 | **0.10.22**: an install checks the password before the file is sent ([The Firmware tab](#the-firmware-tab)). **0.10.23**: flow through the meter with every section closed is not counted as applied ([The litres applied](#the-litres-applied)). |
 | 23 Nov 2026 | **0.10.18-20**: after a restart nobody asked for, the module says which watchdog, what it was doing, the last relay change, the crash record ([Why the module started](#why-the-module-started)). **0.10.21**: [dot at the top](#the-dot-at-the-top) orange when the program is silent. |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
@@ -302,10 +302,11 @@ divider (to-GND ÷ total) in the page's calibration.
 - All grounds (battery, board, valves) joined together.
 - On the tractor, solder the sensor wires or use a latching connector: Dupont jumpers
   come loose with the vibration.
-- **Which screw is NO**: some boards print NO and NC the wrong way round (the one in [the photo](#the-box) too).
+- **The valves go on NO**, with *relay active high* unticked in AgOpenWeb ([Setup](#setup), step 5).
   - Relay off, multimeter on beep: COM beeps with NC, not with NO.
-  - The valve goes on the screw that stays silent, whatever is printed next to it.
-  - Then, with every section off, every valve must stay shut. A valve that opens with its section off is on NC.
+  - Then a module with no power, starting or restarting closes every valve.
+  - Valves on NC with *relay active high* ticked switch the same way with the sections, but every valve opens when the module has no power or restarts.
+  - Check: every section off, every valve shut. Then pull the board's 1 A fuse with the master switch on: no valve may open.
 - One **1N4007 diode across each valve**, the band (stripe) on the + side, the wire from NO.
   - Fit it at the valve, or in the box from each NO terminal to GND.
   - Without it, a valve gives a voltage spike each time its relay opens. The spikes wear the relay contacts and can restart the module.
@@ -320,7 +321,7 @@ A box as built on the sprayer (photo of 25 Nov 2026). The diodes are not in this
 1. ESP32_Relay_X8 board, screwed to the box's mounting plate.
 2. Power terminal: 12 V in (red) and GND (blue).
 3. Brown wire loops bridge the COM terminals, so every relay gets the 12 V for the valves.
-4. Valve wires on the NO contacts, with ferrules. On this board the screws printed NC are the real NO: the print is swapped.
+4. Valve wires, with ferrules.
 5. The sensor dividers on a small perfboard, with screw terminals for the sensor cable.
 6. WAGO 221 lever connectors join the common wires.
 7. In-line fuse holder.

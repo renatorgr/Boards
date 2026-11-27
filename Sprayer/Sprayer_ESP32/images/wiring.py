@@ -115,16 +115,16 @@ text(635, 485, "ESP32", 24, "white", True, "middle")
 text(635, 520, "drives relays 1-8", 18, "white", False, "middle")
 text(635, 545, "GPIO 32 33 25 26 27 14 12 13", 15, "white", False, "middle")
 line([(750, 495), (810, 495)], GREY, 3, "6 6")
-# which screw is NO: the print can be wrong
+# valves on NO, polarity normal: a module with no power closes every valve
 rect(500, 582, 290, 222, fill="#fef2f2", stroke=RED, sw=3, r=8)
-text(516, 612, "Which screw is NO?", 20, RED, True)
-for k, s in enumerate(("Some boards print NO and NC",
-                       "the wrong way round.",
+text(516, 612, "Valves on NO", 20, RED, True)
+for k, s in enumerate(("Leave 'relay active high'",
+                       "unticked in AgOpenWeb.",
                        "Relay off, meter on beep:",
                        "COM + NC beeps,",
                        "COM + NO is silent.",
-                       "The valve goes on NO,",
-                       "the screw that is silent.")):
+                       "A module with no power",
+                       "then closes every valve.")):
     text(516, 642 + 23 * k + (6 if k >= 2 else 0) + (6 if k >= 5 else 0), s, 17, BLK, k >= 5)
 
 # relays: COM bus at x=890, COM at 910, NC at (990, y-22), NO at (990, y)
@@ -220,8 +220,8 @@ text(160, 1300, "GND: battery −, board GND and every valve's − joined", 18, 
 # ---- checks
 rect(1040, 1000, 495, 240, fill="#f9fafb", stroke="#d1d5db", sw=2, r=8)
 text(1060, 1034, "Check before the 12 V", 21, BLK, True)
-for k, s in enumerate(("Sections off: every valve shut. One that",
-                       "opens is on NC: move it to the other screw.",
+for k, s in enumerate(("Sections off: every valve shut. Board's",
+                       "1 A fuse out, master on: still all shut.",
                        "Sensors on their own shielded cable,",
                        "with its GND to the board's GND pin.",
                        "G34 and G35 take 3.3 V at most: test",
