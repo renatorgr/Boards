@@ -1116,7 +1116,7 @@ void gnssProcess()
     // ---- out to AgOpenWeb / AgOpenGPS
     // Simulator mode (setting, for the program's simulator only): the GPS does not go out. AgOpenWeb
     // switches its simulator off (its button greyed out) while it gets GPS sentences, with or without a fix.
-    const bool hold = cfg.simMode != 0;
+    const bool hold = cfg.simMode != 0 && !implementMode();   // an implement's positions go to UDP 9990 whatever this says
     simHeld = hold;                                    // (its message: the [boot] line, or the [web] line when switched on)
     if (hold) epochsHeld++;
     else

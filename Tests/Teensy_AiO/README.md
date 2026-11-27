@@ -32,7 +32,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | Implement mode: `careful-implement-gps` (a module as the seed drill's GPS: never steers, nothing to UDP 9999, its sentences to UDP 9990, back to Tractor) and `implement-on-tractor-module` ([The users](#the-users)). 66 scenarios, about 1153 checks. |
+| 27 Nov 2026 | Implement mode: `careful-implement-gps` (never steers, nothing to UDP 9999, its sentences to UDP 9990), `implement-on-tractor-module`, `power-cut-role-save` ([The users](#the-users)). 67 scenarios, about 1162 checks. |
 | 26 Nov 2026 | `was-unplugged-reengage`: after a WAS jump, the next engage starts with a short test push (paused below the minimum speed), off again with the plug out, steering on once it is back ([The users](#the-users)). 64 scenarios, about 1072 checks. |
 | 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 9 scenarios for the WiFi bridge, this page through it, the Machine tab ([The users](#the-users)). Now 63 scenarios, 133 runs, about 1005 checks. |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
@@ -190,6 +190,7 @@ Each scenario runs in its own process: a crash, or a memory error the sanitizer 
   - `was-unplugged-reengage`: the driver engages twice with the plug still out after the 3 s block (each time only a test push of 0.7 s, a few degrees), then once more with the speed below the module's minimum in the middle (the test pauses, 0.7 s of push in all), then puts the plug back: standing still no push, driving the wheels follow the test push and autosteer steers on.
 - The Keya: `keya-lost`, `keya-fault`, `keya-lost-was-back` (the Keya still silent when the WAS is back: the screen says the Keya).
 - The firmware and power: `firmware-hangs`, `firmware-crash`, `crash-outputs-off`, `power-dip`, `millis-wrap`.
+  - `power-cut-role-save`: a module set as an implement's GPS, Tractor chosen on its page and the power gone while the role is written (after 1, half and all but one of its bytes): it starts as the implement's GPS each time, never as a second tractor GPS; a save not cut short is taken.
 - Driving: `too-fast`, `gps-lost`, `rtk-lost`, `imu-frozen`.
 - The network: `packet-loss`, `short-settings-packet`, `udp-garbage`, `ntrip-flood`.
 - The web page: `web-hammer`, `bad-requests`.

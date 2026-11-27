@@ -407,6 +407,14 @@ SCENARIO(User::Careful, "careful-implement-gps", "Sets a spare module as the see
     must("program-back", implSince(w, w.now() - 1000, head).lastDst == w.aow.ip, "With the program back, to its computer again",
          implSince(w, w.now() - 1000, head).lastDst.str());
 
+    // the simulator mode left on (it holds a tractor's GPS back from the program): an implement's positions still go out
+    h = w.http("POST", "/api/settings", "simMode=1");
+    w.run(3000);
+    const ImplSeen sim = implSince(w, w.now() - 2000, head);
+    must("sim-mode-not-used", h.code == 200 && sim.n >= 15, "With the simulator mode on, its positions still go to UDP 9990",
+         fmt("HTTP %d, %zu in 2 s", h.code, sim.n));
+    w.http("POST", "/api/settings", "simMode=0");
+
     // "Restore defaults" on the page keeps the role
     h = w.http("POST", "/api/settings", "defaults=1");
     must("defaults-keep-role", h.code == 200 && h.json["settings"]["role"].num() == 1, "Restore defaults keeps Implement (the role is not a page setting)",

@@ -707,3 +707,52 @@ SCENARIO(User::FieldFailures, "page-through-xiao-phone-leaves", "The module's pa
     must("still-steering", w.engaged() && fabsf(w.tractor.x) < 0.15f, "Steers on through all of it", fmt("%s, %.2f m off the line", w.engaged() ? "steering" : "not steering", w.tractor.x));
     reportRules(w);
 }
+
+SCENARIO(User::FieldFailures, "power-cut-role-save", "A spare module set as the seed drill's GPS: Tractor is chosen on its page and the power goes while it is saved",
+         { Kit::F9pDanfoss })
+{
+    World w(kit);
+    w.startUp();
+    Http h = w.http("POST", "/api/settings", "role=1");
+    w.http("POST", "/api/reboot", "");
+    w.runUntil([&] { return w.aio.boots == 2; }, 6000);
+    w.run(3000);
+    must("implement", w.status()["impl"]["on"].num() == 1, "Runs as an implement's GPS", h.body.substr(0, 120));
+    const std::vector<uint8_t> before = w.aio.dev.eeprom;
+    const uint32_t w0 = w.aio.dev.eepromWrites;
+    w.http("POST", "/api/settings", "role=0");
+    const int n = (int)(w.aio.dev.eepromWrites - w0);
+    note("bytes", fmt("saving Tractor changes %d bytes of the EEPROM", n));
+    must("saved-whole", n >= 2, "Saving the role writes the EEPROM", fmt("%d bytes", n));
+    // the power gone after 1, half and all but one of those bytes: each time it starts as the implement's GPS again
+    std::string bad;
+    uint32_t boots = w.aio.boots;
+    for (int k : { 1, n / 2, n - 1 })
+    {
+        if (k < 1 || k >= n) continue;
+        w.aio.dev.eeprom = before;               // the role saved before, the module still running
+        w.aio.dev.eepromWritesLeft = k;
+        w.http("POST", "/api/settings", "role=0");
+        w.aio.dev.eepromWritesLeft = -1;
+        w.aio.powerOff();
+        w.run(200);
+        w.aio.powerOn();
+        w.runUntil([&] { return w.aio.boots == boots + 1; }, 6000);
+        boots = w.aio.boots;
+        w.run(3000);
+        const Json st = w.status();
+        if (st["impl"]["on"].num() != 1) bad += fmt(" cut after %d of %d bytes: started as a tractor's module;", k, n);
+    }
+    must("keeps-implement", bad.empty(), "A save cut short by the power keeps the role saved before: never a second tractor GPS", bad);
+    // and a save not cut short is taken at the next start
+    w.aio.dev.eeprom = before;
+    w.http("POST", "/api/settings", "role=0");
+    w.aio.powerOff();
+    w.run(200);
+    w.aio.powerOn();
+    w.runUntil([&] { return w.aio.boots == boots + 1; }, 6000);
+    w.run(3000);
+    must("whole-save-taken", w.status()["impl"]["on"].num() == 0 && w.aio.dev.ip == IPAddress(192, 168, 5, 126),
+         "A save not cut short is taken: a tractor's module again (IP .126)", w.aio.dev.ip.str());
+    reportRules(w);
+}

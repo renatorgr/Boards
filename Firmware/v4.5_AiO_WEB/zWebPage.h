@@ -1228,10 +1228,11 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
  p.set("simMode",f.simMode.checked?"1":"0");
+ // the role only when chosen here (against what the page last read): a page open since before another changed it keeps theirs
  if(lastSet&&lastSet.role!==undefined&&f.role.value!==String(lastSet.role)){
   if(f.role.value==="1"&&!await ask("Make this module an implement's GPS? After the restart it never steers and sends nothing to AgOpenWeb. Never on the tractor's own module."))return;
-  if(f.role.value==="0"&&!await ask("Make this module a tractor's steer module again? After the restart its positions go to AgOpenWeb: never while it is on an implement on the tractor's network, or AgOpenWeb gets two GPS."))return;}
- p.set("role",f.role.value);
+  if(f.role.value==="0"&&!await ask("Make this module a tractor's steer module again? After the restart its positions go to AgOpenWeb: never while it is on an implement on the tractor's network, or AgOpenWeb gets two GPS."))return;
+  p.set("role",f.role.value);}
  p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
  p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
  postSettings(p.toString());});

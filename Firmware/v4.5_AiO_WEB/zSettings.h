@@ -87,9 +87,12 @@ void settingsSave();             // zSettings.ino
 // the default) or a GPS on an implement (ROLE_IMPLEMENT: its positions to UDP 9990 for a logger, nothing to the program, no
 // steering, IP .130; zImplement.ino). Kept apart from the settings block, which has no room left: a version 3 block would
 // be lost by a firmware that goes back to version 2 (the page's "Go back"), and this way "Restore defaults" or a damaged
-// settings block never turns an implement's module into a second tractor GPS. [magic, 2 bytes][role][role ^ 0xA5].
+// settings block never turns an implement's module into a second tractor GPS. Two records, written in turn, each
+// [magic, 2 bytes][sequence][role][role ^ sequence ^ 0xA5], the first magic byte written last: a save cut short by the
+// power leaves the record before it, so an implement's module never starts as a tractor's (zSettings.ino, roleSave).
 // Read once at start-up (settingsLoad): a change takes effect at the next start.
-#define ROLE_EEPROM_ADDR  240
+#define ROLE_EEPROM_ADDR  240         // the two records at 240 and 248 (ROLE_RECORD_GAP)
+#define ROLE_RECORD_GAP   8
 #define ROLE_MAGIC        0x524C      // "RL"
 #define ROLE_TRACTOR      0
 #define ROLE_IMPLEMENT    1
@@ -100,7 +103,7 @@ inline bool implementMode() { return roleNow == ROLE_IMPLEMENT; }
 void roleLoad();                      // from settingsLoad()
 void roleSave(uint8_t role);          // the page (zWeb.ino): saved now, taken at the next start
 void implementSend(const char* line, size_t n);                // zImplement.ino: one sentence to UDP 9990
-void implementNoteProgram(const uint8_t* ip, const char* what); // ...the program's computer heard (its hello, corrections)
+void implementNoteProgram(const uint8_t* ip, bool hello);       // ...the program's computer heard (its hello, or corrections)
 
 // AiO_WEB, 3 Nov 2026: a free-text note about this installation (wiring, calibration values, what was changed and when),
 // typed on the web page (Settings tab) and kept in the EEPROM away from the settings block:

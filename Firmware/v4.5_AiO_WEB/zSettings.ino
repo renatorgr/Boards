@@ -192,20 +192,49 @@ bool noteSave(const char* text, size_t n)
 uint8_t roleNow   = ROLE_TRACTOR;
 uint8_t roleSaved = ROLE_TRACTOR;
 
-// A blank or damaged block, or one another firmware wrote there, is a tractor's module, as every build before this one.
-FLASHMEM void roleLoad()
+// One of the two records (zSettings.h): whole and right, with its sequence number and role.
+static bool roleRecord(uint8_t slot, uint8_t& seq, uint8_t& role)
 {
-    uint8_t b[4];
-    for (uint8_t i = 0; i < 4; i++) b[i] = EEPROM.read(ROLE_EEPROM_ADDR + i);
-    const uint16_t magic = (uint16_t)(b[0] | (b[1] << 8));
-    const bool ok = magic == ROLE_MAGIC && b[2] <= ROLE_IMPLEMENT && b[3] == (uint8_t)(b[2] ^ 0xA5);
-    roleNow = roleSaved = ok ? b[2] : ROLE_TRACTOR;
+    const int a = ROLE_EEPROM_ADDR + slot * ROLE_RECORD_GAP;
+    uint8_t b[5];
+    for (uint8_t i = 0; i < 5; i++) b[i] = EEPROM.read(a + i);
+    if ((uint16_t)(b[0] | (b[1] << 8)) != ROLE_MAGIC || b[3] > ROLE_IMPLEMENT || b[4] != (uint8_t)(b[3] ^ b[2] ^ 0xA5)) return false;
+    seq = b[2];
+    role = b[3];
+    return true;
 }
 
+// The newer of the two records (-1 none): its slot, sequence and role.
+static int roleNewest(uint8_t& seq, uint8_t& role)
+{
+    uint8_t s0 = 0, r0 = 0, s1 = 0, r1 = 0;
+    const bool ok0 = roleRecord(0, s0, r0), ok1 = roleRecord(1, s1, r1);
+    if (ok0 && (!ok1 || (int8_t)(s0 - s1) > 0)) { seq = s0; role = r0; return 0; }
+    if (ok1) { seq = s1; role = r1; return 1; }
+    return -1;
+}
+
+// No record, or two damaged ones, or what another firmware wrote there: a tractor's module, as every build before this one.
+FLASHMEM void roleLoad()
+{
+    uint8_t seq = 0, role = ROLE_TRACTOR;
+    roleNow = roleSaved = roleNewest(seq, role) >= 0 ? role : ROLE_TRACTOR;
+}
+
+// Written over the older record, its first magic byte cleared first and written last: until then the newer record stands,
+// so a power cut in the middle keeps the role saved before (the page's "Saved" comes after the last write).
 FLASHMEM void roleSave(uint8_t role)
 {
     if (role > ROLE_IMPLEMENT) return;
-    const uint8_t b[4] = { (uint8_t)(ROLE_MAGIC & 0xFF), (uint8_t)(ROLE_MAGIC >> 8), role, (uint8_t)(role ^ 0xA5) };
-    for (uint8_t i = 0; i < 4; i++) EEPROM.update(ROLE_EEPROM_ADDR + i, b[i]);
+    uint8_t seq = 0, old = ROLE_TRACTOR;
+    const int newest = roleNewest(seq, old);
+    const int a = ROLE_EEPROM_ADDR + (newest == 0 ? 1 : 0) * ROLE_RECORD_GAP;
+    const uint8_t next = newest >= 0 ? (uint8_t)(seq + 1) : 1;
+    EEPROM.update(a, 0);
+    EEPROM.update(a + 1, (uint8_t)(ROLE_MAGIC >> 8));
+    EEPROM.update(a + 2, next);
+    EEPROM.update(a + 3, role);
+    EEPROM.update(a + 4, (uint8_t)(role ^ next ^ 0xA5));
+    EEPROM.update(a, (uint8_t)(ROLE_MAGIC & 0xFF));
     roleSaved = role;
 }

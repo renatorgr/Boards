@@ -38,7 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | The TM171's quality (QoS, 0 to 5) on the IMU card and tab ([IMU](#imu-tm171-or-bno085)). [Implement mode](#implement-mode): a spare module as a seed drill's GPS, its positions to UDP 9990, never steers, nothing to the program. Not compiled here. |
+| 27 Nov 2026 | The TM171's quality (QoS, 0 to 5) on the IMU card and tab ([IMU](#imu-tm171-or-bno085)). [Implement mode](#implement-mode): a spare module as a seed drill's GPS, positions to UDP 9990, never steers; role kept through a power cut. Not compiled here. |
 | 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
@@ -226,7 +226,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Soft start (Steering) | off | 0.2-1 s; see [below](#soft-start) |
 | Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s; see [below](#kickout-delay) |
 | Steering loop (Steering) | 40 Hz | 40 or 100 Hz; see [below](#steering-loop) |
-| Module role | Tractor | Tractor or Implement (a GPS on an implement); its own place in the EEPROM (240), not changed by Restore defaults, taken at the next start; see [Implement mode](#implement-mode) |
+| Module role | Tractor | Tractor or Implement (a GPS on an implement); its own place in the EEPROM (240, 248), not changed by Restore defaults, taken at the next start; see [Implement mode](#implement-mode) |
 
 #### Operating mode and simulator
 
@@ -1022,8 +1022,12 @@ As an implement's GPS the module:
 
 - sends its positions to **UDP 9990**, one sentence per fix, 10 a second: `$PANDA` with an F9P / X20P, `$PAOGI` with a
   UM982 or a dual F9P (heading and roll in it);
-- sends them to the computer the program runs on (the address its hello or its corrections come from, heard in the last
-  5 s), or to everyone on the subnet (x.x.x.255) while no program is heard;
+- sends them to the computer the program runs on (the address its hello comes from, or with no hello its corrections,
+  heard in the last 5 s), or to everyone on the subnet (x.x.x.255) while no program is heard. Only the hello of the
+  program the module follows counts (a second program's hello does not move them), and only an address on the module's
+  own subnet;
+- keeps sending them with the **Simulator** setting on (that setting holds a tractor's GPS back from the program; an
+  implement's positions never go to it);
 - sends **nothing** to the program's UDP 9999: no GPS, no hello reply, no scan reply, no PGN 253. The program sees only the
   tractor's module;
 - **never steers**, whatever the program asks (no outputs, the STEER LED off);
@@ -1031,8 +1035,11 @@ As an implement's GPS the module:
 - is at **x.x.x.130**, its page at `http://aio-implement.local/`. The page header ends in **· implement** and a note at the
   top of the Status tab says where the positions go.
 
-The role has its own place in the EEPROM (address 240): **Restore defaults** does not change it, and an empty or damaged
-place reads as Tractor (a new board is always a tractor's module).
+The role has its own place in the EEPROM (two records at 240 and 248, written in turn): **Restore defaults** does not
+change it, and an empty or damaged place reads as Tractor (a new board is always a tractor's module). A save cut short by
+the power keeps the role saved before: the record being written counts only once its last byte is in. The page sends the
+role only when it is changed there, so a page left open from before another change does not put the old role back.
+The page has no password, as every setting on it (anyone on the tractor's network can open it).
 
 **Corrections.** AgOpenWeb sends the RTK corrections (UDP 2233) to the address its GPS comes from. For the implement's
 receiver to get them too, switch on **Network IO > Broadcast corrections** in AgOpenWeb (to the subnet's .255).

@@ -39,7 +39,7 @@ static const char* imuSentence()  { return outClassicNow() ? (receiverIsDual() ?
 // AiO_WEB: the dual heading comes from the UM982 (HPR) or from the second F9P (RELPOSNED, zDualF9P.ino)
 static const char* dualMsg() { return dualSrc == 'F' ? "RELPOSNED" : "HPR"; }
 // After a line that says what goes to the program: in the simulator mode nothing goes (zHandlers.ino)
-static const char* simHeldTag() { return cfg.simMode ? " (now held back: simulator mode)" : ""; }
+static const char* simHeldTag() { return cfg.simMode && !implementMode() ? " (now held back: simulator mode)" : ""; }
 
 static uint32_t aogLastMs  = 0;     // last UDP packet from AgOpenWeb (port 8888)
 static uint8_t  aogIp[4]   = {0, 0, 0, 0};
@@ -150,17 +150,18 @@ static uint8_t helloKind(const uint8_t* d, uint16_t len)
 }
 
 // Called from ReceiveUdp() for every hello (PGN 200): d = the packet, len = its length
-void statusNoteHello(const uint8_t* d, uint16_t len, IPAddress ip)
+// True when the hello is from the program the module follows now (hostNow): an implement's positions go to it only
+bool statusNoteHello(const uint8_t* d, uint16_t len, IPAddress ip)
 {
     const uint32_t now = millis();
     const uint8_t  k   = helloKind(d, len);
     const bool     goneBefore = hostNow == HOST_NONE || now - hostLastMs[hostNow] >= HOST_GONE_MS;
     hostLastMs[k] = now;
     hostHellos++;
-    if (k == hostNow) { hostCandN = 0; hostIp[0] = ip[0]; hostIp[1] = ip[1]; hostIp[2] = ip[2]; hostIp[3] = ip[3]; return; }
-    if (k == HOST_OTHER && hostNow != HOST_NONE && !goneBefore) return;   // keep following the known program
+    if (k == hostNow) { hostCandN = 0; hostIp[0] = ip[0]; hostIp[1] = ip[1]; hostIp[2] = ip[2]; hostIp[3] = ip[3]; return true; }
+    if (k == HOST_OTHER && hostNow != HOST_NONE && !goneBefore) return false;   // keep following the known program
     if (k != hostCand) { hostCand = k; hostCandN = 0; }
-    if (++hostCandN < (goneBefore ? 1 : HOST_SWITCH_HELLOS)) return;
+    if (++hostCandN < (goneBefore ? 1 : HOST_SWITCH_HELLOS)) return false;
 
     const bool wasClassic = outClassicNow();
     hostNow   = k;
@@ -183,6 +184,7 @@ void statusNoteHello(const uint8_t* d, uint16_t len, IPAddress ip)
     else
         StatusLog.line("[status] Program: %s (%s from %s), output mode %s (set on the web page)", hostName(k), how, ipText,
                        cfg.outputMode == OUT_CLASSIC ? "AgOpenGPS (classic)" : "AgOpenWeb (standard)");
+    return true;
 }
 
 // A value that is reported only after it has been stable for STATUS_STABLE_MS

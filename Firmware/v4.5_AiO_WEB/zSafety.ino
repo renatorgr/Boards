@@ -1048,6 +1048,6 @@ void safetyNoteHello()
         else if (bootWhy == BOOT_CRASH || bootWhy == BOOT_CRASH_WDT) snprintf(m, sizeof(m), "Module restarted after a crash");
     }
     if (cfg.wasCheckOff) strncat(m, m[0] ? " - WAS check OFF" : "WAS check OFF (bench setting)", sizeof(m) - strlen(m) - 1);
-    if (cfg.simMode)     strncat(m, m[0] ? " - simulator mode" : "Simulator mode: the GPS is not sent", sizeof(m) - strlen(m) - 1);
+    if (cfg.simMode && !implementMode()) strncat(m, m[0] ? " - simulator mode" : "Simulator mode: the GPS is not sent", sizeof(m) - strlen(m) - 1);
     if (m[0]) hwMessage(m, 10, true);
 }

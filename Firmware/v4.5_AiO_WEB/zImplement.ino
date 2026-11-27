@@ -15,27 +15,36 @@
 //  - no steering at all (Autosteer_running false, autosteerSetup), IP .130 (zEthernet.ino), mDNS aio-implement.local;
 //  - one sentence per fix ($PANDA with an F9P / X20P, $PAOGI with a UM982 or a dual F9P: outClassicNow, zStatus.ino),
 //    so the logger writes one line per fix, with the roll in it.
-// They go to the program's computer (the address its hellos or its corrections come from, heard in the last 5 s),
-// where the logger runs; with no program heard, to everyone on the subnet (x.x.x.255).
+// They go to the program's computer (the address its hellos come from, or with no hello its corrections, heard in the
+// last 5 s and on the module's own subnet), where the logger runs; with no program heard, to everyone on the subnet
+// (x.x.x.255). The positions are not secret on the tractor's own network: the tractor's module broadcasts its own too.
 
 #define IMPL_PROGRAM_GONE_MS 5000
 
 static uint8_t     implProgIp[4] = { 0, 0, 0, 0 };
 static uint32_t    implProgMs    = 0;       // msStamp: the program's computer last heard (0 = never)
 static const char* implProgFrom  = "";      // what it was heard by: "hello" or "corrections"
+static uint32_t    implHelloMs   = 0;       // msStamp: the program's hello last heard (0 = never)
 static uint32_t    implSent      = 0;       // datagrams sent to UDP 9990 since start-up
+static uint32_t    implFailed    = 0;       // ...and the ones the network stack did not take
 static uint32_t    implSecMs     = 0;       // the second being counted (msStamp)
 static uint16_t    implSecN      = 0;       // ...datagrams in it so far
 static uint16_t    implRate      = 0;       // datagrams in the last whole second
 static int8_t      implUnicast   = -1;      // the last one went to: 1 the program's computer, 0 everyone, -1 none yet
 
-// The program's computer: from its hello (Autosteer.ino, programPacket) and from its corrections (zUdpNtrip.ino)
-void implementNoteProgram(const uint8_t* ip, const char* what)
+// The program's computer: from the hello of the program the module follows (Autosteer.ino, programPacket; zStatus.ino,
+// statusNoteHello), else from corrections (zUdpNtrip.ino), which any program on the network may send. Only an address on
+// the module's own subnet: anything else is not the tractor's network.
+void implementNoteProgram(const uint8_t* ip, bool hello)
 {
     if (!implementMode()) return;
+    if (ip[0] != Eth_myip[0] || ip[1] != Eth_myip[1] || ip[2] != Eth_myip[2] || ip[3] == 0 || ip[3] == 255) return;
+    const uint32_t now = millis();
+    if (!hello && implHelloMs != 0 && now - implHelloMs < IMPL_PROGRAM_GONE_MS) return;   // the hello's address stands
     memcpy(implProgIp, ip, 4);
-    implProgMs   = msStamp(millis());
-    implProgFrom = what;
+    implProgMs   = msStamp(now);
+    implProgFrom = hello ? "hello" : "corrections";
+    if (hello) implHelloMs = implProgMs;
 }
 
 static bool implProgramHeard(uint32_t now) { return implProgMs != 0 && now - implProgMs < IMPL_PROGRAM_GONE_MS; }
@@ -56,9 +65,10 @@ void implementSend(const char* line, size_t n)
         else     StatusLog.line("[status] Implement: positions to everyone, %u.%u.%u.%u:%u (no program heard for %u s)",
                                 dst[0], dst[1], dst[2], dst[3], IMPLEMENT_PORT, IMPL_PROGRAM_GONE_MS / 1000);
     }
-    Eth_udpPAOGI.beginPacket(dst, IMPLEMENT_PORT);
-    Eth_udpPAOGI.write(line, n);
-    Eth_udpPAOGI.endPacket();
+    // counted as sent only when the network stack took it: the page's rate is what went out
+    const bool begun = Eth_udpPAOGI.beginPacket(dst, IMPLEMENT_PORT) == 1;
+    if (begun) Eth_udpPAOGI.write(line, n);
+    if (!begun || Eth_udpPAOGI.endPacket() != 1) { implFailed++; return; }
     implSent++;
     if (implSecMs == 0 || now - implSecMs >= 1000)
     {
@@ -77,6 +87,7 @@ FLASHMEM void implementJson(Json& j, uint32_t now)
     j.bo("next", roleSaved == ROLE_IMPLEMENT);       // the role saved, taken at the next start
     j.u("port", IMPLEMENT_PORT);
     j.u("sent", implSent);
+    j.u("failed", implFailed);                        // not taken by the network stack
     j.u("rate", (implSecMs != 0 && now - implSecMs < 2000) ? implRate : 0);
     char ip[20] = "";
     if (implUnicast == 1) snprintf(ip, sizeof(ip), "%u.%u.%u.%u", implProgIp[0], implProgIp[1], implProgIp[2], implProgIp[3]);

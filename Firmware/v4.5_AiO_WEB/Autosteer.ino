@@ -889,8 +889,13 @@ void programPacket(uint8_t* udpPacket, int got, IPAddress from, bool viaXiao)
 				const uint8_t pgnNo = autoSteerUdpData[3];
 				if (pgnNo == 200)
 				{
-					statusNoteHello(udpPacket, (uint16_t)got, from);
-					if (!viaXiao) { const uint8_t ip[4] = { from[0], from[1], from[2], from[3] }; implementNoteProgram(ip, "hello"); }
+					// the program the module follows only (a second program's hellos don't move the positions), and on
+					// the cable only: the positions go out on the cable (zImplement.ino)
+					if (statusNoteHello(udpPacket, (uint16_t)got, from) && !viaXiao)
+					{
+						const uint8_t ip[4] = { from[0], from[1], from[2], from[3] };
+						implementNoteProgram(ip, true);
+					}
 					return;
 				}
 				if (pgnNo != 201) return;
