@@ -336,8 +336,10 @@ function Module(key) {
   if (f9pOn()) L.push([1.6, "[status] GPS2 port: second F9P (dual F9P) - a GNSS receiver sends valid data on it"]);
   if (f9pOn()) L.push([5.4, "[status] Second F9P (GPS2 port): RELPOSNED arriving, baseline 121.4 cm"]);
   if (h.mach) L.push([5.5, "[machine] machine module " + st.net + ".123 heard on UDP 9999 (web page: Machine tab)"]);
-  const classic = cfg.outputMode === 1 || (cfg.outputMode === 2 && hostName === "AgOpenGPS");
-  L.push([6.2, cfg.outputMode === 2 ? "[status] Program: " + hostName + " (" + (hostName === "AgOpenGPS" ? "AgIO hello" : "hello") + " from " + st.net + ".10). Automatic mode: " +
+  // an implement's GPS: its one classic sentence whatever the operating mode says, and the program's hello not answered (zStatus.ino)
+  const classic = implNow() || cfg.outputMode === 1 || (cfg.outputMode === 2 && hostName === "AgOpenGPS");
+  L.push([6.2, implNow() ? "[status] Program: " + hostName + " (" + (hostName === "AgOpenGPS" ? "AgIO hello" : "hello") + " from " + st.net + ".10), not answered: this module is an implement's GPS (its positions to UDP 9990)"
+   : cfg.outputMode === 2 ? "[status] Program: " + hostName + " (" + (hostName === "AgOpenGPS" ? "AgIO hello" : "hello") + " from " + st.net + ".10). Automatic mode: " +
    (classic ? "classic sentences ($PAOGI with the UM982, $PANDA with F9P / X20P)" : "standard sentences ($GNGGA $GNVTG $GNTHS $INHPR) from now on")
    : "[status] Program: " + hostName + " (hello from " + st.net + ".10), output mode " + (cfg.outputMode === 1 ? "AgOpenGPS (classic)" : "AgOpenWeb (standard)") + " (set on the web page)"]);
   L.push([6.3, "[status] " + hostName + " connected, IP " + st.net + ".10"]);
@@ -805,7 +807,7 @@ function Module(key) {
   Object.assign(cfg, s); st.saved = true;
   if (cfg.wasCheckOff !== was.wasCheckOff) line(cfg.wasCheckOff ? "[web] WAS check OFF (bench setting): a broken WAS wire will NOT stop autosteer" : "[web] WAS check on");
   if (cfg.wdtOff !== was.wdtOff) { if (!cfg.wdtOff) st.wdt = true; else line("[web] Watchdog switched off: it stops at the next start of the Teensy"); }
-  const outT = cfg.outputMode === 2 ? "automatic" + (hostName === "AgOpenGPS" ? " (now classic)" : " (now standard, AgOpenWeb)") : cfg.outputMode === 1 ? "classic ($PAOGI with UM982, $PANDA with F9P / X20P)" : "standard";
+  const outT = cfg.outputMode === 2 ? "automatic" + (implNow() || hostName === "AgOpenGPS" ? " (now classic)" : " (now standard, AgOpenWeb)") : cfg.outputMode === 1 ? "classic ($PAOGI with UM982, $PANDA with F9P / X20P)" : "standard";
   line("[web] settings saved: output " + outT + ", float heading " + (cfg.hprAcceptFloat ? "yes" : "no") + ", epoch wait " + cfg.epochWaitMs + " ms, IMU roll/pitch swap " +
    (cfg.tm171SwapRollPitch ? "yes" : "no") + ", yaw " + (cfg.tm171YawSign === 0 ? "auto" : cfg.tm171YawSign > 0 ? "+1" : "-1") + ", GPS2 port " +
    gps2Name() + ", WAS check " + (cfg.wasCheckOff ? "OFF" : "on") + ", watchdog " + (cfg.wdtOff ? "off" : "on"));

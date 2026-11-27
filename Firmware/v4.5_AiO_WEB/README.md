@@ -1037,7 +1037,8 @@ As an implement's GPS the module:
 - shows on its page only what an implement's GPS uses. Not shown: the **Steering** card on Status, and on Settings the
   **Operating mode** and **Steering** cards and the WAS check (the *Autosteer safety* card is then called **Watchdog**,
   the one setting of it that still works). No warning about the WAS, the ADS1115 or the Simulator setting. What is not
-  shown keeps the value it had: a Save there changes none of it, and back in the Tractor role it is all as before.
+  shown is not sent by a Save there, so it keeps the value it had, and back in the Tractor role it is all as before. Only
+  **Restore defaults** puts it back to the defaults too (the question says so first).
 
 The role has its own place in the EEPROM (two records at 240 and 248, written in turn): **Restore defaults** does not
 change it, and an empty or damaged place reads as Tractor (a new board is always a tractor's module). A save cut short by

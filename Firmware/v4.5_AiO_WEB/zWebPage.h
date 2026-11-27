@@ -670,11 +670,12 @@ function render(s){
   set("scMinKmh",sc.aowMinKmhX10?fmt(sc.aowMinKmhX10/10,1," km/h"):"off");
  }
  const al=[],impl=!!(s.impl&&s.impl.on);   /* an implement's GPS: no warnings about steering or the program's simulator */
- if(!st.adc&&!impl)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
+ if(impl){}
+ else if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
  else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
- if(st.adc&&!st.wasBlock&&st.wasJump)al.push("Autosteer blocked: the WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+", faster than wheels turn. A plug coming out or a broken wire reads a voltage that looks normal. Check the WAS plug and wire. The block ends 3 s after the last jump (with a steer switch, once it is off); then the next engage starts with a short test push, and autosteer steers on only if the wheel angle follows it. The steering wheel works as usual.");
- if(st.adc&&!st.wasBlock&&!st.wasJump&&st.wasTest)al.push("The WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+" and has not been checked since: the next engage starts with a short, gentle test push, and autosteer steers on only if the wheel angle follows it (else it goes off again, and the next engage tests again). Check the WAS plug first.");
- if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
+ if(!impl&&st.adc&&!st.wasBlock&&st.wasJump)al.push("Autosteer blocked: the WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+", faster than wheels turn. A plug coming out or a broken wire reads a voltage that looks normal. Check the WAS plug and wire. The block ends 3 s after the last jump (with a steer switch, once it is off); then the next engage starts with a short test push, and autosteer steers on only if the wheel angle follows it. The steering wheel works as usual.");
+ if(!impl&&st.adc&&!st.wasBlock&&!st.wasJump&&st.wasTest)al.push("The WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+" and has not been checked since: the next engage starts with a short, gentle test push, and autosteer steers on only if the wheel angle follows it (else it goes off again, and the next engage tests again). Check the WAS plug first.");
+ if(!impl&&st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
  if(s.tm&&s.tm.frozen)al.push("IMU frozen: its roll and heading have not changed for 3 s while driving. Check the IMU (power, cable; restart the module). The roll sent to the program is stale."+(s.tm.frozenN>1?" ("+s.tm.frozenN+"× since start-up)":""));
  if(s.cpuHot)al.push("The Teensy is at "+Math.round(s.cpuTemp)+" °C: hot. Check the module's box (sun, no air). The chip restarts itself at about 95 °C.");
  if(!st.wasCheck&&!impl)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
@@ -1223,25 +1224,29 @@ async function postSettings(body){
  }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
 }
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
- const p=new URLSearchParams();p.set("outputMode",f.querySelector("input[name=outputMode]:checked").value);
+ // an implement's GPS: what its page does not show (.noImpl) is not sent, so a Save there cannot change it (the module keeps what is not sent)
+ const impl=document.body.classList.contains("impl"),sent=el=>!(impl&&el.closest(".noImpl"));
+ const p=new URLSearchParams(),om=f.querySelector("input[name=outputMode]:checked");if(sent(om))p.set("outputMode",om.value);
  p.set("hprAcceptFloat",f.hprAcceptFloat.checked?"1":"0");p.set("epochWaitMs",f.epochWaitMs.value);
  p.set("tm171SwapRollPitch",f.tm171SwapRollPitch.checked?"1":"0");p.set("tm171YawSign",f.tm171YawSign.value);
  p.set("xiaoOff",f.xiaoOff.value);
- if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!await ask("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
- p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
- if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
- p.set("simMode",f.simMode.checked?"1":"0");
+ if(sent(f.wasCheckOn)){
+  if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!await ask("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
+  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");}
+ p.set("wdtOff",f.wdtOn.checked?"0":"1");
+ if(sent(f.simMode)){
+  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
+  p.set("simMode",f.simMode.checked?"1":"0");}
  // the role only when chosen here (against what the page last read): a page open since before another changed it keeps theirs
  if(lastSet&&lastSet.role!==undefined&&f.role.value!==String(lastSet.role)){
   if(f.role.value==="1"&&!await ask("Make this module an implement's GPS? After the restart it never steers and sends nothing to AgOpenWeb. Never on the tractor's own module."))return;
   if(f.role.value==="0"&&!await ask("Make this module a tractor's steer module again? After the restart its positions go to AgOpenWeb: never while it is on an implement on the tractor's network, or AgOpenWeb gets two GPS."))return;
   p.set("role",f.role.value);}
- p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
- p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
+ for(const n of ["steerMinKmhX10","steerMaxKmh","softStartX10ms","currentKickX10ms","steerLoop100"])if(sent(f[n]))p.set(n,f[n].value);
  postSettings(p.toString());});
 $("roleRestart").addEventListener("click",async()=>{if(!await ask("Restart the Teensy now? GPS stops for a few seconds."))return;
  try{await getJ("/api/reboot",{method:"POST"});}catch(e){}$("roleMsg").textContent="Restarting…";});
-$("defaults").addEventListener("click",async()=>{if(await ask("Restore the defaults of this page?"))postSettings("defaults=1");});
+$("defaults").addEventListener("click",async()=>{if(await ask(document.body.classList.contains("impl")?"Restore the defaults of this page? The steering settings, not shown on an implement's GPS, go back to their defaults too.":"Restore the defaults of this page?"))postSettings("defaults=1");});
 
 // ---- UM982
 for(const b of document.querySelectorAll("[data-c]"))b.addEventListener("click",()=>{$("umCmd").value=b.dataset.c;$("umCmd").focus();});
