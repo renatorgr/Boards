@@ -15,7 +15,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | A wiring drawing with a 1N4007 diode across each valve, valves on NO so a module with no power closes them, the diodes in the parts list, a numbered photo of a built box ([Wiring](#wiring), [The box](#the-box)). |
+| 27 Nov 2026 | A wiring drawing with a 1N4007 diode across each valve, valves on NO (*Invert relay* off) so a module with no power closes them, the diodes in the parts list, a numbered photo of a built box ([Wiring](#wiring), [The box](#the-box)). |
 | 24 Nov 2026 | **0.10.22**: an install checks the password before the file is sent ([The Firmware tab](#the-firmware-tab)). **0.10.23**: flow through the meter with every section closed is not counted as applied ([The litres applied](#the-litres-applied)). |
 | 23 Nov 2026 | **0.10.18-20**: after a restart nobody asked for, the module says which watchdog, what it was doing, the last relay change, the crash record ([Why the module started](#why-the-module-started)). **0.10.21**: [dot at the top](#the-dot-at-the-top) orange when the program is silent. |
 | 22 Nov 2026 | **0.10.15**, **0.10.17**: works on the AiO's XIAO WiFi with no router, subnet kept ([No router on the tractor](#no-router-on-the-tractor)). **0.10.16**: litres applied kept through a restart or a power cut; why it started is said ([How it works](#how-it-works)). |
@@ -302,10 +302,10 @@ divider (to-GND ÷ total) in the page's calibration.
 - All grounds (battery, board, valves) joined together.
 - On the tractor, solder the sensor wires or use a latching connector: Dupont jumpers
   come loose with the vibration.
-- **The valves go on NO**, with *relay active high* unticked in AgOpenWeb ([Setup](#setup), step 5).
+- **The valves go on NO**, with *Invert relay* off in AgOpenWeb (*Machine → Module*; [Setup](#setup), step 5).
   - Relay off, multimeter on beep: COM beeps with NC, not with NO.
   - Then a module with no power, starting or restarting closes every valve.
-  - Valves on NC with *relay active high* ticked switch the same way with the sections, but every valve opens when the module has no power or restarts.
+  - Valves on NC with *Invert relay* on switch the same way with the sections, but every valve opens when the module has no power or restarts.
   - Check: every section off, every valve shut. Then pull the board's 1 A fuse with the master switch on: no valve may open.
 - One **1N4007 diode across each valve**, the band (stripe) on the + side, the wire from NO.
   - Fit it at the valve, or in the box from each NO terminal to GND.
@@ -361,7 +361,7 @@ A box as built on the sprayer (photo of 25 Nov 2026). The diodes are not in this
    - In AgOpenWeb set the module subnet to the same three numbers.
    - AgOpenWeb can also send its subnet to the module (PGN 201) once it sees it.
 4. **Open AgOpenWeb.** The machine module shows up at `<subnet>.123`, and the page's dot turns green (*program talking*).
-5. **Relay polarity.** In AgOpenWeb's machine settings, leave **"relay active high" unticked** for this board. The page shows *Output polarity: normal*. If it says *inverted*, untick it.
+5. **Relay polarity.** In AgOpenWeb, *Machine → Module*, leave **Invert relay** off for this board (not *Invert relays* in the AutoSteer settings: that is the steering relay). The page's *Module* tab, *AgOpenWeb* card, shows *Output polarity: normal*. If it says *inverted*, switch *Invert relay* off.
 6. **Sections.**
    - On the module, relays 1–8 are sections 1–8 by default, so the board is ready for an 8-section boom.
    - But AgOpenWeb sends its own pin config to the module at start and on profile load. Its default is pins 1–6 = sections 1–6, pins 7–8 = none.
@@ -546,7 +546,7 @@ Wiring the relay module:
 - A relay that is not a section can be the hydraulic lift or the tramline.
 - The AgOpenWeb sprayer strip shows the first 8 sections. The module reports all 16 (PGN 160 byte 15, PGN 161 DDI 161).
 
-If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or tick "relay active high" in the program. The page's *Output polarity* line says which pin level the module is using.
+If a relay module closes on HIGH instead of LOW, either set `RELAY_ON_HIGH 1` or switch on *Invert relay* in the program (AgOpenWeb: *Machine → Module*). The page's *Output polarity* line says which pin level the module is using.
 
 ## Notes
 
