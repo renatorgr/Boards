@@ -38,7 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | The TM171's quality (QoS, 0 to 5) on the IMU card and tab ([IMU](#imu-tm171-or-bno085)). [Implement mode](#implement-mode): a spare module as a seed drill's GPS, positions to UDP 9990, never steers; role kept through a power cut. Not compiled here. |
+| 27 Nov 2026 | The TM171's quality (QoS, 0 to 5) on the IMU card and tab ([IMU](#imu-tm171-or-bno085)). [Implement mode](#implement-mode): a spare module as a seed drill's GPS, to UDP 9990, never steers; role kept through a power cut; no steering cards on its page. Not compiled here. |
 | 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
@@ -1033,7 +1033,11 @@ As an implement's GPS the module:
 - **never steers**, whatever the program asks (no outputs, the STEER LED off);
 - still takes the program's subnet (PGN 201);
 - is at **x.x.x.130**, its page at `http://aio-implement.local/`. The page header ends in **· implement** and a note at the
-  top of the Status tab says where the positions go.
+  top of the Status tab says where the positions go;
+- shows on its page only what an implement's GPS uses. Not shown: the **Steering** card on Status, and on Settings the
+  **Operating mode** and **Steering** cards and the WAS check (the *Autosteer safety* card is then called **Watchdog**,
+  the one setting of it that still works). No warning about the WAS, the ADS1115 or the Simulator setting. What is not
+  shown keeps the value it had: a Save there changes none of it, and back in the Tractor role it is all as before.
 
 The role has its own place in the EEPROM (two records at 240 and 248, written in turn): **Restore defaults** does not
 change it, and an empty or damaged place reads as Tractor (a new board is always a tractor's module). A save cut short by

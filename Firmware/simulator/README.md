@@ -97,7 +97,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | The pretend TM171 sends its quality (QoS): 3 for the first 20 s, then 4 ([what the page shows](../v4.5_AiO_WEB/README.md#imu-tm171-or-bno085)). Settings > Module role: Implement, after a restart a pretend implement's GPS ([implement mode](../v4.5_AiO_WEB/README.md#implement-mode)). |
+| 27 Nov 2026 | The pretend TM171 sends its quality (QoS): 3 for 20 s, then 4 ([the page](../v4.5_AiO_WEB/README.md#imu-tm171-or-bno085)). Settings > Module role: Implement, after a restart a pretend implement's GPS, its page without the steering cards ([implement mode](../v4.5_AiO_WEB/README.md#implement-mode)); the check looks. |
 | 26 Nov 2026 | The check looks for the green dot on the Firmware button of the Teensy and XIAO pages: there with a newer build on GitHub (on the XIAO page also for the module's), gone with nothing newer. |
 | 24 Nov 2026 | The pretend XIAO sends `memLow` (never short of memory), for the XIAO page's lowest point of free memory. The pretend XIAO, sprayer and seed drill answer `/api/update-check`; the check tries an install with a wrong password on each. |
 | 22 Nov 2026 | The XIAO page's WiFi bridge: its switch (refused with the XIAO's starting password), its rows on both pages; the pretend program is on the network cable, so a bridge switched on stands by. Module pages: the own network's address. |

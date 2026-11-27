@@ -488,10 +488,11 @@ function Module(key) {
   const yaw = wrap360(tr.hdg - IMU_OFF + wob(t, 0.3, 0.2)), outH = aligned ? wrap360(tr.hdg + wob(t, 0.2, 0.25)) : yaw;
   const engaged = autosteerOn(t), sp = engaged ? tractor(t + 0.25, parked).steer : 0, was = tr.steer + wob(t, 0.08, 2.1);
   const sc = steerCfg(), host = t >= 6 ? hostName : "";
-  const classic = cfg.outputMode === 1 || (cfg.outputMode === 2 && host === "AgOpenGPS"), gga = f.gga;
+  // an implement's GPS sends its one classic sentence per fix whatever the operating mode says (zStatus.ino outClassicNow)
+  const classic = implNow() || cfg.outputMode === 1 || (cfg.outputMode === 2 && host === "AgOpenGPS"), gga = f.gga;
   const hdgStr = d.ok ? wrap360(tr.hdg + wob(t, 0.15, 0.6)).toFixed(4).padStart(9, "0") : "";
-  const sim = !!cfg.simMode;
-  const held = sim ? Math.floor(st.heldBase + (t - st.simSince) * 10) : Math.floor(st.heldBase);
+  const sim = !!cfg.simMode, hold = sim && !implNow();   // ...and whatever the simulator mode says (zHandlers.ino)
+  const held = hold ? Math.floor(st.heldBase + (t - st.simSince) * 10) : Math.floor(st.heldBase);
   const epochs = gga ? Math.max(0, Math.floor((t - 4) * 10) - held) : 0;
   const rtcm = t >= 7.5 && t > 0, rtcmT = Math.max(0, t - 7.5);
   const wasRaw = Math.round(6805 + was * sc.counts / 2), wasV = wasRaw / 2668;
@@ -567,8 +568,8 @@ function Module(key) {
   const dualNow = dualRx();
   j.out = {mode: classic ? "classic" : "standard", auto: cfg.outputMode === 2, kind: !gga ? 0 : classic ? (dualNow ? 2 : 3) : 1,
    aogSrc: !classic ? "" : dualNow ? "Dual" : "Fix", classicSrc: classic && dualNow ? (d.ok ? 1 : imuOk ? 2 : 4) : 0,
-   epochs: epochs, sim: sim, simHeld: sim, held: held};
-  if (full) j.out.lines = gga && !sim ? sentences(t, f, tr, d, hdgStr, lat, lon, alt, roll, pitch, outH, imuOk, classic, dualNow) : [];
+   epochs: epochs, sim: sim, simHeld: hold, held: held};
+  if (full) j.out.lines = gga && !hold ? sentences(t, f, tr, d, hdgStr, lat, lon, alt, roll, pitch, outH, imuOk, classic, dualNow) : [];
   const xHere = h.xiao && cfg.xiaoOff !== 1 && t > 5.2, xt = Math.max(0, t - 5.2);
   j.xiao = {on: cfg.xiaoOff !== 1 && !f9pOn(), port: cfg.xiaoOff === 1 ? 1 : f9pOn() ? 2 : 0, det: xHere, helloAgo: xHere ? up % 2 : -1, hellos: xHere ? Math.floor(xt / 2) + 1 : 0,
    to: xHere ? Math.floor(xt * 13) : 0, from: xHere ? Math.floor(xt / 5) + 3 : 0, lastPgn: xHere ? 143 : -1, crcErr: 0, cut: 0, drop: 0,
