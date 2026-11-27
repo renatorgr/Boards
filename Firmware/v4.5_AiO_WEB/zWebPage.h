@@ -584,9 +584,10 @@ function render(s){
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
  {const tt=t.temp!==undefined;for(const id of ["tmTempT","tmTemp"])$(id).classList.toggle("hidden",!tt);if(tt)set("tmTemp",Number(t.temp).toFixed(1)+" °C");}   /* the TM171 sends it; the BNO085 has none */
- {const q=t.qos,qq=q!==undefined,qt=qq?q+" of 5":"–",qc=!qq?"":q>=4?"ok":q<=2?"warn":"";   /* the TM171's quality, from the same Status Output as its temperature */
+ {const q=t.qos,qq=q!==undefined,qt=!qq?"–":q>5?q+" (not a known value)":q+" of 5",qc=!qq||q>5?"":q>=4?"ok":q<=2?"warn":"";   /* the TM171's quality, from the same Status Output as its temperature (0..5; 6 and 7 are not used) */
   for(const id of ["tmQosT","tmQos"])$(id).classList.toggle("hidden",!qq);set("tmQos",qt,qc);
-  set("tmQos2",qq?qt:t.type==="TM171"&&t.ok?"not sent (Status output off in the TM171 settings?)":"–",qq?qc:t.type==="TM171"&&t.ok?"warn":"");}
+  const off=t.set&&t.set.age>=0&&t.set.status===false,miss=!qq&&t.type==="TM171"&&t.ok;   /* no Status Output: switched off in the settings read, or just not arriving */
+  set("tmQos2",qq?qt:miss?(off?"not sent: Status output is off in the TM171 settings":"not received from the TM171"):"–",qq?qc:miss?"warn":"");}
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
   $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");
