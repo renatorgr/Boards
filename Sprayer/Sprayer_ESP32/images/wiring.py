@@ -118,8 +118,8 @@ line([(750, 495), (810, 495)], GREY, 3, "6 6")
 # valves on NO, polarity normal: a module with no power closes every valve
 rect(500, 582, 290, 222, fill="#fef2f2", stroke=RED, sw=3, r=8)
 text(516, 612, "Valves on NO", 20, RED, True)
-for k, s in enumerate(("Leave 'relay active high'",
-                       "unticked in AgOpenWeb.",
+for k, s in enumerate(("AgOpenWeb > Machine >",
+                       "Module: Invert relay off.",
                        "Relay off, meter on beep:",
                        "COM + NC beeps,",
                        "COM + NO is silent.",
