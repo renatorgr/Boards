@@ -576,11 +576,16 @@ template <size_t S> class NMEAParser {
           NMEAParserStringify stfy(this, endPos);
           // strtol, not atoi: an empty field, a field that is not a whole number or one out of the int
           // range is refused (false, arg unchanged) instead of read as 0 or an undefined value.
+          // Spaces around the number are allowed, as atoi did; the number must reach the field's real end
+          // (a NUL byte inside the field, which the parser takes, does not count as its end).
           const char *s = &mBuffer[startPos];
+          const char *fieldEnd = &mBuffer[endPos];
           char *end = NULL;
           errno = 0;
           const long v = strtol(s, &end, 10);
-          if (end == s || *end != '\0' || errno == ERANGE) return false;
+          if (end == s || errno == ERANGE) return false;
+          while (end < fieldEnd && isspace((unsigned char)*end)) end++;
+          if (end != fieldEnd) return false;
 #if LONG_MAX > INT_MAX
           if (v < INT_MIN || v > INT_MAX) return false;
 #endif

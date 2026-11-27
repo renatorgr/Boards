@@ -38,7 +38,6 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | The NMEA parser's whole-number reader checks the field (`strtol` instead of `atoi`, a code-scanner finding). The firmware does not call it, so nothing changes on the tractor ([Credits and licence](#credits-and-licence)). Not compiled here. |
 | 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
