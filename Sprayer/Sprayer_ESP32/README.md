@@ -320,7 +320,7 @@ A box as built on the sprayer (photo of 25 Nov 2026). The diodes are not in this
 
 1. ESP32_Relay_X8 board, screwed to the box's mounting plate.
 2. Power terminal: 12 V in (red) and GND (blue).
-3. Brown wire loops bridge the COM terminals, so every relay gets the 12 V for the valves.
+3. Brown wire loops carry the 12 V for the valves from relay to relay.
 4. Valve wires, with ferrules.
 5. The sensor dividers on a small perfboard, with screw terminals for the sensor cable.
 6. WAGO 221 lever connectors join the common wires.
