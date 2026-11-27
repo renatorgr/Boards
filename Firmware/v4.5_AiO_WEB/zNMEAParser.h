@@ -3,7 +3,7 @@
    NMEA parser library by Glinnes Hulden (CC0, original header kept below), as used in the AgOpenGPS
    AiO firmware.
    Changes 2026 by Claude (Anthropic) for renatorgr: error() to read the error inside the error handler; one strncpy
-   replaced by memcpy (same copy, no compiler warning).
+   replaced by memcpy (same copy, no compiler warning); getArg(int) reads with strtol and refuses a bad field.
    Licence: the original is CC0 (public domain); this firmware as a whole: GNU GPL v3 or later (COPYING).
 */
 /*
@@ -42,6 +42,9 @@
 #define __NMEAParser_h__
 
 #include <Arduino.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
 
 namespace NMEA {
 /*
@@ -571,7 +574,22 @@ template <size_t S> class NMEAParser {
         uint8_t endPos = endArgPos(num);
         {
           NMEAParserStringify stfy(this, endPos);
-          arg = atoi(&mBuffer[startPos]);
+          // strtol, not atoi: an empty field, a field that is not a whole number or one out of the int
+          // range is refused (false, arg unchanged) instead of read as 0 or an undefined value.
+          // Spaces around the number are allowed, as atoi did; the number must reach the field's real end
+          // (a NUL byte inside the field, which the parser takes, does not count as its end).
+          const char *s = &mBuffer[startPos];
+          const char *fieldEnd = &mBuffer[endPos];
+          char *end = NULL;
+          errno = 0;
+          const long v = strtol(s, &end, 10);
+          if (end == s || errno == ERANGE) return false;
+          while (end < fieldEnd && isspace((unsigned char)*end)) end++;
+          if (end != fieldEnd) return false;
+#if LONG_MAX > INT_MAX
+          if (v < INT_MIN || v > INT_MAX) return false;
+#endif
+          arg = (int)v;
         }
         return true;
       }
