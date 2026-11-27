@@ -78,6 +78,8 @@ text(40, 94, "ESP32_Relay_X8 board, 8 section valves, pressure sensor and flow m
      "connections, not of the box.", 21, "#374151")
 
 # ---- battery and the two feeds
+BX1, BY1, BX2, BY2 = 470, 175, 1010, 870
+BY1_TOP = BY1
 rect(40, 600, 130, 100, fill="#e5e7eb")
 text(105, 642, "12 V", 24, BLK, True, "middle")
 text(105, 672, "battery", 20, BLK, False, "middle")
@@ -96,11 +98,10 @@ dot(330, 150, BLK, 6)
 line([(330, 150), (384, 126)], BLK, 4)
 dot(390, 150, BLK, 6)
 text(360, 190, "master switch", 18, BLK, True, "middle")
-line([(390, 150), (890, 150), (890, 320 + 70 * 7)], RED)
+line([(390, 150), (890, 150), (890, BY1_TOP)], RED)
 text(640, 138, "+12 V for the valves", 18, RED, True, "middle")
 
 # ---- the board
-BX1, BY1, BX2, BY2 = 470, 175, 1010, 870
 rect(BX1, BY1, BX2 - BX1, BY2 - BY1, fill="#dbeafe", stroke=BOARD, sw=4, r=10)
 text(500, 212, "ESP32_Relay_X8 board", 24, BOARD, True)
 # P1 power terminal
@@ -128,6 +129,7 @@ for k, s in enumerate(("Some boards print NO and NC",
 
 # relays: COM bus at x=890, COM at 910, NC at (990, y-22), NO at (990, y)
 ROWS = [320 + 70 * i for i in range(8)]
+line([(890, BY1), (890, ROWS[-1])], RED)          # the COM bridge, drawn over the board
 for i, y in enumerate(ROWS):
     rect(810, y - 20, 50, 40, fill="#3b82f6", stroke=BLK, sw=2, r=4)
     text(835, y + 8, str(i + 1), 21, "white", True, "middle")
@@ -231,10 +233,11 @@ svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBo
        + "\n".join(out) + "</svg>\n")
 here = os.path.dirname(os.path.abspath(__file__))
 png = os.path.join(here, "wiring.png")
-with tempfile.TemporaryDirectory() as tmp:
-    src = os.path.join(tmp, "wiring.svg")
+with tempfile.TemporaryDirectory(dir=here) as tmp:     # wiring.png is only replaced once the new one is whole
+    src, raw, small = (os.path.join(tmp, n) for n in ("wiring.svg", "raw.png", "small.png"))
     with open(src, "w", encoding="utf-8") as f:
         f.write(svg)
-    subprocess.run(["rsvg-convert", "-o", png, src], check=True)
-Image.open(png).convert("RGB").quantize(colors=128).save(png, optimize=True)   # flat colours: a small file
+    subprocess.run(["rsvg-convert", "-o", raw, src], check=True)
+    Image.open(raw).convert("RGB").quantize(colors=128).save(small, optimize=True)   # flat colours: a small file
+    os.replace(small, png)
 print("wrote", png)
