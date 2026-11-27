@@ -140,6 +140,7 @@ void settingsLoad()
     }
     settingsApply(true);
     noteLoad();                       // the installation note, its own place in the EEPROM
+    roleLoad();                       // tractor or implement, its own place too (zSettings.h)
 }
 
 void settingsSave()
@@ -185,4 +186,26 @@ bool noteSave(const char* text, size_t n)
     memcpy(cfgNote, text, n);
     cfgNote[n] = '\0';
     return true;
+}
+
+// ---------------------------------------------------------------- the module's role (zSettings.h, README "Implement mode")
+uint8_t roleNow   = ROLE_TRACTOR;
+uint8_t roleSaved = ROLE_TRACTOR;
+
+// A blank or damaged block, or one another firmware wrote there, is a tractor's module, as every build before this one.
+FLASHMEM void roleLoad()
+{
+    uint8_t b[4];
+    for (uint8_t i = 0; i < 4; i++) b[i] = EEPROM.read(ROLE_EEPROM_ADDR + i);
+    const uint16_t magic = (uint16_t)(b[0] | (b[1] << 8));
+    const bool ok = magic == ROLE_MAGIC && b[2] <= ROLE_IMPLEMENT && b[3] == (uint8_t)(b[2] ^ 0xA5);
+    roleNow = roleSaved = ok ? b[2] : ROLE_TRACTOR;
+}
+
+FLASHMEM void roleSave(uint8_t role)
+{
+    if (role > ROLE_IMPLEMENT) return;
+    const uint8_t b[4] = { (uint8_t)(ROLE_MAGIC & 0xFF), (uint8_t)(ROLE_MAGIC >> 8), role, (uint8_t)(role ^ 0xA5) };
+    for (uint8_t i = 0; i < 4; i++) EEPROM.update(ROLE_EEPROM_ADDR + i, b[i]);
+    roleSaved = role;
 }

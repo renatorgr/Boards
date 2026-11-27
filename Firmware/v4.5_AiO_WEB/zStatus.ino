@@ -126,6 +126,7 @@ uint8_t hostProgram() { return hostNow; }
 
 bool outClassicNow()
 {
+    if (implementMode())                return true;     // one sentence per fix for the implement's logger (zImplement.ino)
     if (cfg.outputMode == OUT_CLASSIC)  return true;
     if (cfg.outputMode == OUT_STANDARD) return false;
     return hostNow != HOST_AGOPENWEB;            // automatic
@@ -168,7 +169,10 @@ void statusNoteHello(const uint8_t* d, uint16_t len, IPAddress ip)
     char ipText[20];
     snprintf(ipText, sizeof(ipText), "%u.%u.%u.%u", (unsigned)ip[0], (unsigned)ip[1], (unsigned)ip[2], (unsigned)ip[3]);
     const char* how = k == HOST_AGOPENGPS ? "AgIO hello" : k == HOST_AGOPENWEB ? "hello" : "hello not from AgIO nor AgOpenWeb";
-    if (cfg.outputMode == OUT_AUTO)
+    if (implementMode())
+        StatusLog.line("[status] Program: %s (%s from %s), not answered: this module is an implement's GPS (its positions to UDP %u)",
+                       hostName(k), how, ipText, IMPLEMENT_PORT);
+    else if (cfg.outputMode == OUT_AUTO)
         StatusLog.line("[status] Program: %s (%s from %s). Automatic mode: %s%s", hostName(k), how, ipText,
                        outClassicNow() ? "classic sentences ($PAOGI with the UM982, $PANDA with F9P / X20P)"
                                        : "standard sentences ($GNGGA $GNVTG $GNTHS $INHPR)",

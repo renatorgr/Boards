@@ -32,6 +32,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
+| 27 Nov 2026 | Implement mode: `careful-implement-gps` (a module as the seed drill's GPS: never steers, nothing to UDP 9999, its sentences to UDP 9990, back to Tractor) and `implement-on-tractor-module` ([The users](#the-users)). 66 scenarios, about 1153 checks. |
 | 26 Nov 2026 | `was-unplugged-reengage`: after a WAS jump, the next engage starts with a short test push (paused below the minimum speed), off again with the plug out, steering on once it is back ([The users](#the-users)). 64 scenarios, about 1072 checks. |
 | 22 Nov 2026 | The five firmware bugs fixed, `known-bugs.txt` empty ([What it found](#what-it-found)). A pretend XIAO and a tablet on its WiFi: 9 scenarios for the WiFi bridge, this page through it, the Machine tab ([The users](#the-users)). Now 63 scenarios, 133 runs, about 1005 checks. |
 | 21 Nov 2026 | First version: 53 scenarios for five users on four kits (115 runs, about 740 checks), a report, and the "Teensy harness" check on GitHub ([How it works](#how-it-works), [The users](#the-users), [What it found](#what-it-found)). |
@@ -110,6 +111,8 @@ Each scenario runs in its own process: a crash, or a memory error the sanitizer 
 
 **The Keya.** Its heartbeat every 20 ms on CAN, the enable / speed commands, its own 0.5 s stop when the commands stop (assumed), faults.
 
+**A logger on the tablet.** What the module sends to UDP 9990 (implement mode), with the address it went to.
+
 **AgOpenWeb.**
 
 - A hello every second, PGN 254 ten times a second with the angle from a pure-pursuit guidance to the line.
@@ -154,6 +157,10 @@ Each scenario runs in its own process: a crash, or a memory error the sanitizer 
   - It gets the module 3 s after the cable's goes silent.
 - `careful-page-through-xiao`: the page through the XIAO while the tablet steers.
 - `careful-machine-on-xiao-wifi`: a sprayer on the XIAO's WiFi in the Machine tab, PGN 152.
+- `careful-implement-gps`: a spare module set as the seed drill's GPS (Module role: Implement) and restarted.
+  - AgOpenWeb asks it to steer: it never does, and sends nothing to UDP 9999 (no GPS, no hello reply, no scan reply).
+  - Its sentences go to UDP 9990, 10 a second, to the tablet; to x.x.x.255 while the tablet is off. IP .130, `aio-implement`.
+  - Restore defaults keeps the role; back to Tractor, it steers again.
 
 **Never set up**
 
@@ -168,6 +175,7 @@ Each scenario runs in its own process: a crash, or a memory error the sanitizer 
 - `counts-zero`, `min-above-max-pwm`, `current-sensor-not-fitted`, `switch-mode-no-switch`.
 - `subnet-while-steering`, `subnet-invalid`, `page-settings-range`, `output-mode-for-agopengps`.
 - `wifi-bridge-subnet`: a subnet and a scan sent over the XIAO's WiFi; not done, said in Messages.
+- `implement-on-tractor-module`: Implement chosen on the tractor's own module: it never steers, AgOpenWeb gets no GPS; put back, it steers.
 - `page-through-xiao-firmware`: update and going back refused there, a restart.
 
 **Wrong wiring**

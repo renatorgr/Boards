@@ -38,7 +38,7 @@ One row per day, in short; the details are in the sections of this file (the lin
 
 | Date | What changed |
 |---|---|
-| 27 Nov 2026 | The TM171's quality figure (QoS, 0 to 5) on the IMU card and the IMU tab, next to its temperature ([IMU](#imu-tm171-or-bno085)). Not compiled here. |
+| 27 Nov 2026 | The TM171's quality (QoS, 0 to 5) on the IMU card and tab ([IMU](#imu-tm171-or-bno085)). [Implement mode](#implement-mode): a spare module as a seed drill's GPS, its positions to UDP 9990, never steers, nothing to the program. Not compiled here. |
 | 26 Nov 2026 | After a WAS jump, a gentle [test push](#test-push-after-a-jump): autosteer steers on only if the wheel angle follows it. A green dot on the Firmware button when [a newer firmware is on GitHub](#new-versions-from-github). Not compiled here. |
 | 24 Nov 2026 | When the program asks to steer and two things block, its screen shows the fault still there (a silent Keya), not the one that is over (`WAS in range again`) ([Bench and messages](#bench-and-messages)). Not compiled here. |
 | 23 Nov 2026 | The [dot at the top](#the-dot-at-the-top) has three colours, as on the XIAO, sprayer and seed drill pages: green = module and program talking, orange = no program, red = no answer. Not compiled here. |
@@ -226,6 +226,7 @@ Saved in the Teensy's EEPROM (address 200, away from the AgOpenGPS steer setting
 | Soft start (Steering) | off | 0.2-1 s; see [below](#soft-start) |
 | Kickout delay (Steering) | 0.5 s | 0 (at once), 0.25, 0.5 or 1 s; see [below](#kickout-delay) |
 | Steering loop (Steering) | 40 Hz | 40 or 100 Hz; see [below](#steering-loop) |
+| Module role | Tractor | Tractor or Implement (a GPS on an implement); its own place in the EEPROM (240), not changed by Restore defaults, taken at the next start; see [Implement mode](#implement-mode) |
 
 #### Operating mode and simulator
 
@@ -1011,6 +1012,40 @@ AgOpenWeb and AgIO both send a hello (PGN 200) once a second. They differ in the
 - The other program needs 3 hellos in a row to take over.
 - If a future AgIO computes that checksum, choose AgOpenGPS by hand.
 
+## Implement mode
+
+A spare AiO board on an implement (a trailed seed drill), on the tractor's network, to measure where the implement really
+goes while the program steers with the tractor's module. On the Settings tab choose **Module role: Implement**, Save, then
+restart the module (the page asks first and shows **Restart now**).
+
+As an implement's GPS the module:
+
+- sends its positions to **UDP 9990**, one sentence per fix, 10 a second: `$PANDA` with an F9P / X20P, `$PAOGI` with a
+  UM982 or a dual F9P (heading and roll in it);
+- sends them to the computer the program runs on (the address its hello or its corrections come from, heard in the last
+  5 s), or to everyone on the subnet (x.x.x.255) while no program is heard;
+- sends **nothing** to the program's UDP 9999: no GPS, no hello reply, no scan reply, no PGN 253. The program sees only the
+  tractor's module;
+- **never steers**, whatever the program asks (no outputs, the STEER LED off);
+- still takes the program's subnet (PGN 201);
+- is at **x.x.x.130**, its page at `http://aio-implement.local/`. The page header ends in **· implement** and a note at the
+  top of the Status tab says where the positions go.
+
+The role has its own place in the EEPROM (address 240): **Restore defaults** does not change it, and an empty or damaged
+place reads as Tractor (a new board is always a tractor's module).
+
+**Corrections.** AgOpenWeb sends the RTK corrections (UDP 2233) to the address its GPS comes from. For the implement's
+receiver to get them too, switch on **Network IO > Broadcast corrections** in AgOpenWeb (to the subnet's .255).
+
+**A dual F9P on the implement.** The two antennas across the implement, at the same height, about 3 m apart. Looking
+forward, the first F9P's antenna (GPS port, the position) on the **right**, the second F9P's (GPS2 port) on the **left**:
+swapped, the heading reads 180° off ([Dual F9P](#dual-f9p-second-f9p-on-the-gps2-port)).
+
+> **Never run the implement's module as Tractor on the tractor's network.** Its positions would go to the program's
+> UDP 9999 and the program would get two GPS. Set the role to Implement on the bench, before its cable goes into the
+> tractor's network. A firmware from before 27 Nov 2026 does not know the role and runs as Tractor: do not go back to one
+> (Firmware tab, previous firmware) while the module is on the implement.
+
 ## Setting up
 
 **F9P / X20P (single antenna)**
@@ -1097,6 +1132,7 @@ The three two-colour LEDs on the board follow the AiO 26 firmware's LED guide, a
 | `zWeb.ino`, `zWebPage.h`, `zWebJson.h` | web server and page |
 | `zOTA.ino`, `FlashTxx.*` | firmware update |
 | `zXiao.ino` / `.h` | XIAO link |
+| `zImplement.ino` | [implement mode](#implement-mode): the positions to UDP 9990 |
 | `Autosteer.ino`, `AutosteerPID.ino`, `zUdpNtrip.ino`, `zADS1115.*`, `zNMEAParser.h` | from the AgOpenGPS / Gunics firmware, changed (each file says how) |
 | `v4.5_AiO_WEB.ino.hex` | compiled firmware (Teensyduino 1.58) |
 | `v4.5_XIAO_ESP32/`, `v4.5_XIAO_ESP32_bin/` | the XIAO program, and compiled for the C3 and S3 |

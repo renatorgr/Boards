@@ -585,6 +585,7 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.num("brRtcmKB", xiao.rtcmIn / 1024.0, 1);
     j.close();
 
+    implementJson(j, now);                                    // tractor or implement, where the positions go (zImplement.ino)
     if (full) machineJson(j, now);                            // the machine module (Machine tab, zMachine.ino)
 
     j.raw("}");
@@ -637,7 +638,9 @@ FLASHMEM static void settingsJson(Json& j)
     j.i("softStartX10ms", cfg.softStartX10ms);
     j.i("currentKickX10ms", cfg.currentKickX10ms);
     j.i("steerLoop100", cfg.steerLoop100);
+    j.i("role", roleSaved);                   // 0 tractor, 1 implement: saved in its own place, taken at the next start (zSettings.h)
     j.close();
+    j.i("roleNow", roleNow);                  // ...and the one running now
     j.bo("saved", cfgFromEeprom);
     j.bo("wdt", wdtRunning);
 }
@@ -656,6 +659,14 @@ static void apiSettingsPost(Client& c, const char* body)
 {
     WebSettings s = cfg;
     char v[24];
+    // the module's role (zSettings.h): not in the settings block and not reset by "defaults"; taken at the next start
+    int role = roleSaved;
+    if (formValue(body, "role", v, sizeof(v)))
+    {
+        long n;
+        if (!parseIntStrict(v, n) || n < ROLE_TRACTOR || n > ROLE_IMPLEMENT) { webSendError(c, 400, "invalid value for role"); return; }
+        role = (int)n;
+    }
     if (formValue(body, "defaults", v, sizeof(v)) && !strcmp(v, "1")) settingsDefaults(s);
     else
     {
@@ -704,6 +715,16 @@ static void apiSettingsPost(Client& c, const char* body)
     cfg = s;
     settingsSave();
     settingsApply(yawChanged);
+    if (role != roleSaved)
+    {
+        roleSave((uint8_t)role);
+        if (role == roleNow)
+            StatusLog.line("[web] Module role: back to %s, as running now", role == ROLE_IMPLEMENT ? "implement" : "tractor");
+        else if (role == ROLE_IMPLEMENT)
+            StatusLog.line("[web] Module role: implement from the next start (GPS only: positions to UDP %u, nothing to the program, no steering, IP .130). Restart the module.", IMPLEMENT_PORT);
+        else
+            StatusLog.line("[web] Module role: tractor from the next start (steer module, positions to the program's UDP 9999, IP .126, or .120 without an ADS1115). Restart the module.");
+    }
     if (loopChanged) steerLoopApply();   // Autosteer.ino: the loop time, the ADS1115 rate, the kickout filters
     if (xiaoChanged) { gps2Begin(); xiaoSettingsChanged(); }   // AiO_WEB: Serial2 at the new speed (zDualF9P.ino)
     // zSafety.ino

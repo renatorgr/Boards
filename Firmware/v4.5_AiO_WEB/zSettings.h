@@ -83,6 +83,25 @@ extern bool        cfgFromEeprom; // true: cfg came from the EEPROM (else defaul
 extern bool        settingsAutoSetNow; // this start switched older settings to the automatic mode
 void settingsSave();             // zSettings.ino
 
+// The module's role (README "Implement mode"), in an EEPROM block of its own: a steer module on the tractor (ROLE_TRACTOR,
+// the default) or a GPS on an implement (ROLE_IMPLEMENT: its positions to UDP 9990 for a logger, nothing to the program, no
+// steering, IP .130; zImplement.ino). Kept apart from the settings block, which has no room left: a version 3 block would
+// be lost by a firmware that goes back to version 2 (the page's "Go back"), and this way "Restore defaults" or a damaged
+// settings block never turns an implement's module into a second tractor GPS. [magic, 2 bytes][role][role ^ 0xA5].
+// Read once at start-up (settingsLoad): a change takes effect at the next start.
+#define ROLE_EEPROM_ADDR  240
+#define ROLE_MAGIC        0x524C      // "RL"
+#define ROLE_TRACTOR      0
+#define ROLE_IMPLEMENT    1
+#define IMPLEMENT_PORT    9990        // where an implement's positions go (AgOpenWeb uses 9999, 8888, 2233, 5174, 15555)
+extern uint8_t roleNow;               // the role this start runs (zSettings.ino, roleLoad)
+extern uint8_t roleSaved;             // the role saved: the page's choice, taken at the next start
+inline bool implementMode() { return roleNow == ROLE_IMPLEMENT; }
+void roleLoad();                      // from settingsLoad()
+void roleSave(uint8_t role);          // the page (zWeb.ino): saved now, taken at the next start
+void implementSend(const char* line, size_t n);                // zImplement.ino: one sentence to UDP 9990
+void implementNoteProgram(const uint8_t* ip, const char* what); // ...the program's computer heard (its hello, corrections)
+
 // AiO_WEB, 3 Nov 2026: a free-text note about this installation (wiring, calibration values, what was changed and when),
 // typed on the web page (Settings tab) and kept in the EEPROM away from the settings block:
 // [magic, 2 bytes][length, 2 bytes][the text]. Shown on the page and in the diagnostic report (/api/note, zWeb.ino).

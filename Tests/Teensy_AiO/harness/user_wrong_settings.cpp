@@ -296,3 +296,37 @@ SCENARIO(User::WrongSettings, "page-through-xiao-firmware", "On the module's pag
     must("serves-after", after.code == 200, "The page answers through the XIAO after the restart", fmt("HTTP %d", after.code));
     reportRules(w);
 }
+
+SCENARIO(User::WrongSettings, "implement-on-tractor-module", "Chooses Implement (Settings > Module role) on the tractor's own module and restarts it, then tries to steer", { Kit::PumaCytron })
+{
+    World w(kit);
+    w.startUp();
+    Http h = w.http("POST", "/api/settings", "role=7");
+    must("refused-7", h.code == 400, "Refuses a role that does not exist", fmt("HTTP %d %s", h.code, h.body.substr(0, 80).c_str()));
+    h = w.http("POST", "/api/settings", "role=1");
+    w.http("POST", "/api/reboot", "");
+    w.runUntil([&] { return w.aio.boots == 2; }, 6000);
+    const uint64_t e0 = w.engagedMs;
+    const uint32_t gga = w.aow.nmeaGga;
+    w.run(8000);
+    steerFor(w, 8, 10000);
+    must("no-steer", w.engagedMs == e0, "Never steers: the mistake fails safe", fmt("%llu ms of outputs", (unsigned long long)(w.engagedMs - e0)));
+    must("no-gps", w.aow.nmeaGga == gga, "AgOpenWeb gets no GPS from it (it shows no position: the driver sees something is wrong)",
+         fmt("%u GGA", w.aow.nmeaGga - gga));
+    const Json st = w.status();
+    tell("page-says", st["impl"]["on"].num() == 1 && w.aio.logHas("[boot] Implement mode"),
+         "Its page (now at .130 / aio-implement.local) and Messages say it is an implement's GPS", w.aio.logLine("Implement"));
+    // put right: Tractor, restart, steers
+    engage(w, false);
+    w.http("POST", "/api/settings", "role=0");
+    w.http("POST", "/api/reboot", "");
+    w.runUntil([&] { return w.aio.boots == 3; }, 6000);
+    w.run(8000);
+    w.aow.sendSettings();
+    w.run(1000);
+    const uint64_t e1 = w.engagedMs;
+    steerFor(w, 8, 8000);
+    must("fixed", w.engagedMs - e1 > 5000 && w.aio.dev.ip == IPAddress(192, 168, 5, 126), "Back to Tractor and restarted, it steers again at .126",
+         fmt("%llu ms, IP %s", (unsigned long long)(w.engagedMs - e1), w.aio.dev.ip.str().c_str()));
+    reportRules(w);
+}

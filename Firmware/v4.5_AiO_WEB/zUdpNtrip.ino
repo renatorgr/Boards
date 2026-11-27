@@ -21,6 +21,12 @@ void udpNtrip()
 
   if (packetLength > 0)
   {
+    if (implementMode())                        // an implement's GPS sends its positions to that computer (zImplement.ino)
+    {
+      const IPAddress from = Eth_udpNtrip.remoteIP();
+      const uint8_t ip[4] = { from[0], from[1], from[2], from[3] };
+      implementNoteProgram(ip, "corrections");
+    }
     // Read the datagram in pieces of at most the buffer size, so a datagram larger than
     // Eth_NTRIP_packetBuffer (512) is forwarded whole and never written past the buffer.
     // (AgOpenWeb sends 256-byte datagrams; other senders may send more.)
