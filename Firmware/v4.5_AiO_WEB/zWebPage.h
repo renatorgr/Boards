@@ -194,6 +194,7 @@ p.chk{text-align:right;margin:4px 0 0}
   <dl style="margin-top:6px"><dt>Status</dt><dd id="tmState">–</dd><dt>Type</dt><dd id="imuType">–</dd><dt>Roll</dt><dd id="roll">–</dd><dt>Pitch</dt><dd id="pitch">–</dd>
    <dt>Raw yaw</dt><dd id="yaw">–</dd><dt>Alignment</dt><dd id="align">–</dd><dt>Yaw direction</dt><dd id="sign">–</dd>
    <dt id="tmTempT" class="hidden">Temperature</dt><dd id="tmTemp" class="hidden">–</dd>
+   <dt id="tmQosT" class="hidden">Quality (QoS)</dt><dd id="tmQos" class="hidden">–</dd>
    <dt id="tmCalT" class="hidden">Gyro calibration</dt><dd id="tmCal" class="hidden">–</dd>
    <dt id="tmSetupT" class="hidden">Setup</dt><dd id="tmSetup" class="hidden">–</dd></dl>
   <p class="note hidden" id="tmGo">Calibration and settings: <a href="#" data-go="imu">IMU tab</a></p></div>
@@ -391,7 +392,8 @@ p.chk{text-align:right;margin:4px 0 0}
   <p class="note hidden" id="imuNone">–</p>
   <p class="note hidden" id="imuWire">Everything on this tab sends commands to the TM171, so it needs one wire from Teensy pin 20 (TX5) to the TM171 RX pin. The board only wires the other direction.</p></div>
  <div class="card hidden" id="tmCalCard"><h2>TM171 calibration</h2>
-  <dl><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
+  <dl><dt>Quality (QoS)</dt><dd id="tmQos2">–</dd><dt>Gyro calibration</dt><dd id="tmCal2">–</dd></dl>
+  <p class="note">Quality (QoS) is the TM171's own figure, 0 to 5, higher is better. If it stays at 3 or lower with the tractor parked for a few minutes, run Calibrate gyro and see if it rises.</p>
   <div class="row hidden" id="tmCalRow"><button class="sec" type="button" id="tmCalBtn" data-lock="m">Calibrate gyro</button><span class="note">Takes 20 s. Park the tractor and switch autosteer off; the engine can stay running. The result is kept until the TM171 is powered off.</span></div>
   <div class="row hidden" id="tmInstRow"><button class="sec" type="button" id="tmInstBtn" data-lock="m">New install calibration</button><span class="note">Stored in the TM171's flash. Run it once after installing the TM171, or after a large temperature change: about 20 s, tractor parked, autosteer off, power on throughout. Then switch the whole module off and on (the TM171 has no switch of its own).</span></div>
  </div>
@@ -582,6 +584,9 @@ function render(s){
  set("roll",t.ok?fmt(t.roll,2,"°"):"–");set("pitch",t.ok?fmt(t.pitch,2,"°"):"–");set("yaw",t.ok?fmt(t.yaw,2,"°"):"–");
  set("align",t.aligned?"with the antennas"+" ("+fmt(t.offset,1,"°")+")":"not aligned");
  {const tt=t.temp!==undefined;for(const id of ["tmTempT","tmTemp"])$(id).classList.toggle("hidden",!tt);if(tt)set("tmTemp",Number(t.temp).toFixed(1)+" °C");}   /* the TM171 sends it; the BNO085 has none */
+ {const q=t.qos,qq=q!==undefined,qt=qq?q+" of 5":"–",qc=!qq?"":q>=4?"ok":q<=2?"warn":"";   /* the TM171's quality, from the same Status Output as its temperature */
+  for(const id of ["tmQosT","tmQos"])$(id).classList.toggle("hidden",!qq);set("tmQos",qt,qc);
+  set("tmQos2",qq?qt:t.type==="TM171"&&t.ok?"not sent (Status output off in the TM171 settings?)":"–",qq?qc:t.type==="TM171"&&t.ok?"warn":"");}
  {const tm=t.type==="TM171",busy=["starting","running","finishing"].includes(t.calib),inst=t.calibKind==="install";
   for(const id of ["tmCalT","tmCal","tmSetupT","tmSetup","tmGo","tmCalRow","tmInstRow","tmCalCard","tmSetCard","imuWire"])$(id).classList.toggle("hidden",!tm);
   $("imuNone").classList.toggle("hidden",tm);set("imuNone",t.type?t.type+": nothing to set up here.":"No IMU found.");

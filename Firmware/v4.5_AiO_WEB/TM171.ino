@@ -49,7 +49,7 @@ Onion PitchV;
 
 Onion TemperatureV;
 uint32_t tm171TempMs = 0;      // AiO_WEB 4 Nov 2026: when the last Status Output (function 22, with the temperature) came
-uint8_t qos;
+uint8_t qos;                   // AiO_WEB: its quality figure (QoS, bits 0-2 of the Status Output's system status, 0..5), shown on the web page
 
 bool TM171DataSeen = false;
 uint32_t TM171crcErrors = 0;   // packets dropped for a bad CRC (shown by FUSION_DEBUG)

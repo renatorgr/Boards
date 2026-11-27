@@ -537,7 +537,10 @@ function Module(key) {
   Object.assign(j.tm, {calib: tm.calib, calibKind: tm.kind, calibLeft: tm.calib === "running" ? Math.max(0, Math.ceil(tm.end - t)) : -1,
    calibAgo: tm.doneAt >= 0 && !busy ? Math.floor(t - tm.doneAt) : -1, calibN: tm.n});
   if (isTm) j.tm.set = tmSetJson(t);
-  if (isTm && imuOk) j.tm.temp = r2(37.5 + wob(t, 0.6, 0.02), 1);   // the TM171's Status Output carries its temperature
+  if (isTm && imuOk) {   // the TM171's Status Output carries its temperature and its quality figure (QoS, 0..5)
+   j.tm.temp = r2(37.5 + wob(t, 0.6, 0.02), 1);
+   j.tm.qos = t < 20 ? 3 : 4;   // pretend: it climbs a little after start-up
+  }
   j.steer = {was: r2(was, 2), set: r2(sp, 2), pwm: engaged ? Math.round(clamp((sp - was) * sc.kp * 3 + Math.sign(sp - was) * sc.minPwm, -sc.hiPwm, sc.hiPwm)) : 0,
    switchOn: engaged, active: engaged, moving: !parked && tr.moving && !sim, motor: h.motor, aogKmh: t >= 6 ? r2(tr.kmh, 1) : 0, guidance: engaged ? 1 : 0,
    line: engaged ? 127 + Math.round(Math.sin(t / 2) * 5) : 255,   // the lightbar byte: 127 on the line, 2 cm per step, 255 no line

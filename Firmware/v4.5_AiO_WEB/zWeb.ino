@@ -434,7 +434,11 @@ FLASHMEM void statusJson(Json& j, uint32_t now, bool full)
     j.u("crcErr", imuErrors());
     j.bo("frozen", imuFrozen);                      // AiO_WEB: roll and heading unchanged while driving (zImu.ino imuFreezeCheck)
     j.u("frozenN", imuFrozenCount);
-    if (imuType == IMU_TM171 && tm171TempMs && now - tm171TempMs < 10000) j.num("temp", TemperatureV.fValue, 1);   // AiO_WEB 4 Nov 2026: from its Status Output (TM171.ino)
+    if (imuType == IMU_TM171 && tm171TempMs && now - tm171TempMs < 10000)    // AiO_WEB: both from its Status Output (TM171.ino)
+    {
+        j.num("temp", TemperatureV.fValue, 1);
+        j.u("qos", qos);                            // the TM171's own quality figure, 0..5 (higher is better)
+    }
     // AiO_WEB: the TM171 gyro calibration (TM171.ino)
     j.str("calib", tmCalibName(tmCalibState));
     j.str("calibKind", tmCalibKind == TMC_KIND_INSTALL ? "install" : "gyro");
