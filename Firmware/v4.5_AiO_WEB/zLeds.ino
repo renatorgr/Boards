@@ -98,7 +98,8 @@ void ledsUpdate()
     ledPair(GPSRED_LED, GPSGREEN_LED, ledShown(c, now));
 
     // STEER
-    if (!Autosteer_running || wasOut || wasJumpBlock || wasTestNeed || (isKeya && keyaLost)) c = LED_RED;
+    if (implementMode())                                      c = LED_OFF;   // an implement's GPS: no steering (zImplement.ino)
+    else if (!Autosteer_running || wasOut || wasJumpBlock || wasTestNeed || (isKeya && keyaLost)) c = LED_RED;
     else if (watchdogTimer < WATCHDOG_THRESHOLD)              c = LED_GREEN;
     else                                                      c = LED_ORANGE;
     if (ledSteerFlickMs && now - ledSteerFlickMs < LED_FLICK_MS) c = LED_OFF;

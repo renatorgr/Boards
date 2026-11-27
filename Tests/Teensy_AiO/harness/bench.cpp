@@ -809,6 +809,12 @@ void World::tickNetwork(uint64_t ms)
     for (const auto& p : d.udpOut)
     {
         if (p.dstPort == 9999) netTo9999++;
+        if (p.dstPort == 9990)
+        {
+            netTo9990++;
+            if (to9990.size() > 20000) to9990.erase(to9990.begin(), to9990.begin() + 10000);
+            to9990.push_back({ ms, p.dst, std::string(p.data.begin(), p.data.end()) });
+        }
         if (!cableIn || !tabletOnNet || !a.on || !reaches(p.dst, a.ip) || p.dstPort != 9999) continue;
         programHears(a, p.data, p.srcPort, ms);
     }

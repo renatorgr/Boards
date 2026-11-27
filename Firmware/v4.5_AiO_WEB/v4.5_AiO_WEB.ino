@@ -236,7 +236,9 @@ void setup()
                    cfg.steerMinKmhX10 / 10, cfg.steerMinKmhX10 % 10, cfg.steerMaxKmh,
                    (unsigned)cfg.softStartX10ms * 10, (unsigned)cfg.currentKickX10ms * 10, cfg.steerLoop100 ? 100u : 40u);
     if (cfg.wasCheckOff) StatusLog.line("[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer");
-    if (cfg.simMode)     StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program");
+    if (cfg.simMode && implementMode())
+        StatusLog.line("[boot] Simulator mode is on, but not used: an implement's GPS sends its positions to UDP %u", IMPLEMENT_PORT);
+    else if (cfg.simMode) StatusLog.line("[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program");
 
     SerialGPS->begin(baudGPS);          // the GNSS receiver
     SerialGPS->addMemoryForRead(GPSrxbuffer,  sizeof(GPSrxbuffer));

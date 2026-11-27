@@ -157,6 +157,7 @@ p.chk{text-align:right;margin:4px 0 0}
 <section id="t-status">
 <div id="alert" class="alert hidden"></div>
 <div id="ghNote" class="info hidden"></div>
+<div id="implNote" class="info hidden"></div>
 <div id="stale" class="info hidden">This page is older than the firmware running now. Reload it: Ctrl+F5 on a computer; on a phone or in a web card, close the page and open it again.</div>
 <div class="grid">
  <div class="card"><h2>GNSS</h2>
@@ -247,6 +248,10 @@ p.chk{text-align:right;margin:4px 0 0}
 
 <section id="t-settings" class="hidden">
 <form id="fs">
+<div class="card"><h2>Module role</h2>
+ <div class="opt"><span style="flex:1">This module is on<small>Tractor: the steer module and the tractor's GPS, as always. Implement: a GPS on an implement (a trailed seed drill) to measure where it really goes: its positions go to UDP 9990 for a logger, never to AgOpenWeb; it answers no hello and never steers; IP .130, http://aio-implement.local/. Takes effect after a restart. Never choose Implement on the tractor's own module.</small></span><select name="role"><option value="0">Tractor</option><option value="1">Implement</option></select></div>
+ <div class="row hidden" id="roleRow"><span class="note warn" id="roleMsg"></span><button class="sec" type="button" id="roleRestart">Restart now</button></div>
+</div>
 <div class="card"><h2>Operating mode</h2>
  <label class="opt"><input type="radio" name="outputMode" value="2"><span>Automatic<small>Finds out which program is connected, from the «hello» it sends every second, and sends that program's sentences. Until then, the AgOpenGPS ones, which AgOpenWeb reads too.</small></span></label>
  <label class="opt"><input type="radio" name="outputMode" value="0"><span>AgOpenWeb<small>$GNGGA, $GNVTG, $GNTHS (antenna heading) and $INHPR (IMU) every epoch.</small></span></label>
@@ -539,6 +544,13 @@ function ckAlerts(c,who,al){
 function render(s){
  lastS=s;lastUp=s.up;
  $("hdr").textContent=(s.fw.lastIndexOf(" ")>0?s.fw.slice(0,s.fw.lastIndexOf(" ")):s.fw)+" · "+s.ip;
+ /* implement mode (README "Implement mode"): a GPS on an implement, never a steer module */
+ {const im=s.impl||{},n=$("implNote");let t="";
+  if(im.on){$("hdr").textContent+=" · implement";
+   t="Implement mode: this module is a GPS on an implement. Its positions go to UDP "+im.port+(im.to?" at "+im.to:"")+", "+im.rate+" a second ("+im.sent+" so far), never to AgOpenWeb; it answers no hello and never steers.";
+   if(!im.next)t+=" Tractor saved: it takes effect when the module restarts.";}
+  else if(im.next)t="Implement mode saved: it takes effect when the module restarts. Until then this is the tractor's steer module.";
+  n.textContent=t;n.classList.toggle("hidden",!t);}
  const g=s.gnss,fixCls=g.gga&&g.fix>0?"ok":"bad";   // green with a position (the name says how good), red without one
  set("fixName",g.gga?(g.fixName):"no data from the receiver",fixCls);
  set("sats",g.sats||"–");set("hdop",g.hdop||"–");set("age",g.age?g.age+" s":"–");
@@ -622,6 +634,7 @@ function render(s){
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top
  const sc=s.steerCfg,b=s.boot;
  if(st.wasless)set("wasV","no WAS: angle from the Keya position");
+ else if(s.impl&&s.impl.on)set("wasV","implement mode: no steering");
  else if(!st.adc)set("wasV","no ADS1115","bad");
  else{const neg=st.wasOut&&sc&&!sc.singleWas&&st.wasV<-0.5;   // differential input, WAS_H under WAS_L: nothing on pin 3
   set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(neg?" · negative on the differential input: nothing on pin 3? Choose Single in the program":st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":"")+(st.wasJump?" · "+"jumped "+fmt(st.wasJumpDeg,0,"°"):st.wasTest?" · "+"test push at the next engage":"")+(st.wasStep>=0.1?" · "+"fastest change "+fmt(st.wasStep,1,"°")+" in 0.15 s":""),st.wasOut||st.wasJump?"bad":st.wasTest||!st.wasCheck?"warn":"");}
@@ -654,7 +667,7 @@ function render(s){
   set("scMinKmh",sc.aowMinKmhX10?fmt(sc.aowMinKmhX10/10,1," km/h"):"off");
  }
  const al=[];
- if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
+ if(!st.adc&&!(s.impl&&s.impl.on))al.push("ADS1115 not found: no WAS reading, autosteer is off.");
  else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
  if(st.adc&&!st.wasBlock&&st.wasJump)al.push("Autosteer blocked: the WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+", faster than wheels turn. A plug coming out or a broken wire reads a voltage that looks normal. Check the WAS plug and wire. The block ends 3 s after the last jump (with a steer switch, once it is off); then the next engage starts with a short test push, and autosteer steers on only if the wheel angle follows it. The steering wheel works as usual.");
  if(st.adc&&!st.wasBlock&&!st.wasJump&&st.wasTest)al.push("The WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+" and has not been checked since: the next engage starts with a short, gentle test push, and autosteer steers on only if the wheel angle follows it (else it goes off again, and the next engage tests again). Check the WAS plug first.");
@@ -1194,13 +1207,16 @@ function fillSettings(s){
  if(f.epochWaitMs.value!==String(s.epochWaitMs)){const o=document.createElement("option");o.textContent=s.epochWaitMs;f.epochWaitMs.appendChild(o);f.epochWaitMs.value=String(s.epochWaitMs);}
  f.tm171YawSign.value=String(s.tm171YawSign);f.xiaoOff.value=String(s.xiaoOff);
  f.wasCheckOn.checked=s.wasCheckOff!=1;f.wdtOn.checked=s.wdtOff!=1;f.simMode.checked=s.simMode==1;
- selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);selVal(f.steerLoop100,s.steerLoop100);lastSet=s;
+ selVal(f.steerMinKmhX10,s.steerMinKmhX10);selVal(f.steerMaxKmh,s.steerMaxKmh);selVal(f.softStartX10ms,s.softStartX10ms);selVal(f.currentKickX10ms,s.currentKickX10ms);selVal(f.steerLoop100,s.steerLoop100);selVal(f.role,s.role===undefined?0:s.role);lastSet=s;
 }
-async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
+/* the role saved and the one running (zSettings.h): a change takes effect at the next start */
+function roleShow(j){const d=j.roleNow!==undefined&&j.settings.role!=j.roleNow;$("roleRow").classList.toggle("hidden",!d);
+ if(d)$("roleMsg").textContent=(j.settings.role==1?"Implement":"Tractor")+" saved: it takes effect when the module restarts.";}
+async function loadSettings(){try{const j=await getJ("/api/settings");if(j.ok){fillSettings(j.settings);roleShow(j);const m=$("setMsg");m.className="note";m.textContent=j.saved?"":"(defaults: nothing saved yet)";}}catch(e){}}
 async function postSettings(body){
  const m=$("setMsg");
  try{const j=await getJ("/api/settings",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
-  if(j.ok){fillSettings(j.settings);m.textContent="Saved.";m.className="note ok";}else{m.textContent="Error"+": "+ptErr(j.error);m.className="note bad";}
+  if(j.ok){fillSettings(j.settings);roleShow(j);m.textContent="Saved.";m.className="note ok";}else{m.textContent="Error"+": "+ptErr(j.error);m.className="note bad";}
  }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
 }
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
@@ -1212,9 +1228,16 @@ $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
  p.set("simMode",f.simMode.checked?"1":"0");
+ // the role only when chosen here (against what the page last read): a page open since before another changed it keeps theirs
+ if(lastSet&&lastSet.role!==undefined&&f.role.value!==String(lastSet.role)){
+  if(f.role.value==="1"&&!await ask("Make this module an implement's GPS? After the restart it never steers and sends nothing to AgOpenWeb. Never on the tractor's own module."))return;
+  if(f.role.value==="0"&&!await ask("Make this module a tractor's steer module again? After the restart its positions go to AgOpenWeb: never while it is on an implement on the tractor's network, or AgOpenWeb gets two GPS."))return;
+  p.set("role",f.role.value);}
  p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
  p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
  postSettings(p.toString());});
+$("roleRestart").addEventListener("click",async()=>{if(!await ask("Restart the Teensy now? GPS stops for a few seconds."))return;
+ try{await getJ("/api/reboot",{method:"POST"});}catch(e){}$("roleMsg").textContent="Restarting…";});
 $("defaults").addEventListener("click",async()=>{if(await ask("Restore the defaults of this page?"))postSettings("defaults=1");});
 
 // ---- UM982

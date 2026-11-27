@@ -289,7 +289,7 @@ static void xiaoSendFrame(const uint8_t* d, uint16_t n)
         xFirstFrame = false;
         StatusLog.line("[xiao] first PGN from the XIAO: %u (source %u, %u data bytes) -> UDP %u", d[3], d[2], d[4], portDestination);
     }
-    if (!Ethernet_running) return;
+    if (!Ethernet_running || implementMode()) return;     // an implement's GPS sends nothing to the program (zImplement.ino)
     Eth_udpAutoSteer.beginPacket(Eth_ipDestination, portDestination);
     Eth_udpAutoSteer.write(d, n);
     Eth_udpAutoSteer.endPacket();

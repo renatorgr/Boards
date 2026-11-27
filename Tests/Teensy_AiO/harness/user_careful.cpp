@@ -326,3 +326,115 @@ SCENARIO(User::Careful, "careful-machine-on-xiao-wifi", "A sprayer module on the
     must("says-so", w.aio.logHas("192.168.5.123 heard on the XIAO's WiFi"), "Says in the messages that the module is heard on the XIAO's WiFi", w.aio.logLine("[machine]"));
     must("not-sent-on", w.xiao.pgns[152] == 0, "Nothing of it is sent back to the XIAO or out to the program", "");
 }
+
+// An NMEA sentence with a right checksum (the bytes between '$' and '*', XOR)
+static bool nmeaSumOk(const std::string& s)
+{
+    const size_t star = s.find('*');
+    if (s.size() < 6 || s[0] != '$' || star == std::string::npos || star + 3 > s.size()) return false;
+    uint8_t x = 0;
+    for (size_t i = 1; i < star; i++) x ^= (uint8_t)s[i];
+    return strtoul(s.substr(star + 1, 2).c_str(), nullptr, 16) == x;
+}
+
+// What reached UDP 9990 since a time: how many, how many of the expected sentence with a right checksum, the last address
+struct ImplSeen { size_t n = 0, good = 0; IPAddress lastDst; std::string first; };
+static ImplSeen implSince(World& w, uint64_t sinceMs, const char* head)
+{
+    ImplSeen r;
+    for (const auto& p : w.to9990)
+    {
+        if (p.ms < sinceMs) continue;
+        if (r.n++ == 0) r.first = p.line.substr(0, 60);
+        if (p.line.compare(0, strlen(head), head) == 0 && nmeaSumOk(p.line.substr(0, p.line.find('\r')))) r.good++;
+        r.lastDst = p.dst;
+    }
+    return r;
+}
+
+SCENARIO(User::Careful, "careful-implement-gps", "Sets a spare module as the seed drill's GPS (Settings > Module role: Implement), restarts it while AgOpenWeb asks to steer, then back to Tractor",
+         { Kit::F9pDanfoss, Kit::PumaCytron, Kit::Um982Keya })
+{
+    World w(kit);
+    w.startUp();
+    const char* head = w.ki.gnss == Gnss::UM982 ? "$PAOGI," : "$PANDA,";   // a UM982 dual: heading and roll in $PAOGI
+    // saved now, taken at the next start: until then it is still a steer module
+    Http h = w.http("POST", "/api/settings", "role=1");
+    must("saved", h.code == 200 && h.json["settings"]["role"].num() == 1 && h.json["roleNow"].num() == 0,
+         "The page saves Implement, still running as the tractor's module", fmt("HTTP %d %s", h.code, h.body.substr(0, 160).c_str()));
+    w.run(3000);
+    must("until-restart", !w.aow.heardPgn(126, w.now() - 2000).empty() && w.netTo9990 == 0,
+         "Until it restarts it is the tractor's module as before (answers the hello, nothing to UDP 9990)", fmt("%u to 9990", w.netTo9990));
+    tell("says-restart", w.aio.logHas("implement from the next start"), "Says the choice takes effect when the module restarts", w.aio.logLine("Module role"));
+
+    // restarted from the page
+    w.http("POST", "/api/reboot", "");
+    w.runUntil([&] { return w.aio.boots == 2; }, 6000);
+    const uint32_t to9999 = w.netTo9999, gga = w.aow.nmeaGga;
+    const uint64_t t0 = w.now(), engaged0 = w.engagedMs;
+    w.run(8000);
+    steerFor(w, 8, 10000);                     // AgOpenWeb's AutoSteer on, driving
+    w.aow.scan();
+    w.run(1000);
+    const Json st = w.status();
+    must("restarted", w.aio.boots == 2, "Restarts once", fmt("%u starts", w.aio.boots));
+    must("implement", st["impl"]["on"].num() == 1, "Runs as an implement's GPS after the restart (the page says so)");
+    must("ip-130", w.aio.dev.ip == IPAddress(192, 168, 5, 130) && st["ip"].str() == "192.168.5.130", "IP .130, never the tractor's .126 / .120", st["ip"].str());
+    must("mdns", w.aio.dev.mdnsHost == "aio-implement", "Its page at aio-implement.local (the tractor's module stays aio.local)", w.aio.dev.mdnsHost);
+    must("no-steer", w.engagedMs == engaged0, "Never steers, while AgOpenWeb asks to", fmt("%llu ms of outputs", (unsigned long long)(w.engagedMs - engaged0)));
+    must("nothing-to-9999", w.netTo9999 == to9999 && w.aow.nmeaGga == gga,
+         "Sends nothing to AgOpenWeb's UDP 9999: no GPS, no hello reply, no PGN 253, no scan reply",
+         fmt("%u datagrams, %u GGA", w.netTo9999 - to9999, w.aow.nmeaGga - gga));
+    must("no-hello-reply", w.aow.heardPgn(126, t0).empty() && w.aow.heardPgn(121, t0).empty() && w.aow.heardPgn(203, t0).empty(),
+         "AgOpenWeb shows no second steer module or IMU (no PGN 126, 121, 203)");
+    const ImplSeen s = implSince(w, w.now() - 5000, head);
+    note("implement", fmt("%zu sentences to UDP 9990 in 5 s, the last to %s; first: %s", s.n, s.lastDst.str().c_str(), s.first.c_str()));
+    must("positions-9990", s.n >= 45 && s.n <= 55 && s.good == s.n, std::string("Its positions to UDP 9990, one ") + std::string(head + 1, 5) + " a fix, 10 a second",
+         fmt("%zu in 5 s, %zu right; first: %s", s.n, s.good, s.first.c_str()));
+    must("to-the-tablet", s.lastDst == w.aow.ip, "... to the computer AgOpenWeb runs on (the address of its hello)", s.lastDst.str());
+    must("page-counts", st["impl"]["rate"].num() >= 8 && st["impl"]["to"].str() == "192.168.5.10", "The page shows them going (rate, address)",
+         fmt("rate %g, to %s", st["impl"]["rate"].num(), st["impl"]["to"].str().c_str()));
+    tell("says-implement", w.aio.logHas("[boot] Implement mode"), "Its Messages say it runs as an implement's GPS", w.aio.logLine("Implement"));
+
+    // the tablet off: the positions go to everyone on the subnet, and back to the tablet when it is on again
+    w.aow.on = false;
+    w.run(8000);
+    const ImplSeen off = implSince(w, w.now() - 2000, head);
+    must("no-program-subnet", off.n >= 15 && off.lastDst == IPAddress(192, 168, 5, 255), "With no program heard for 5 s, to everyone on the subnet (x.x.x.255)",
+         fmt("%zu in 2 s, last to %s", off.n, off.lastDst.str().c_str()));
+    w.aow.on = true;
+    w.run(4000);
+    must("program-back", implSince(w, w.now() - 1000, head).lastDst == w.aow.ip, "With the program back, to its computer again",
+         implSince(w, w.now() - 1000, head).lastDst.str());
+
+    // the simulator mode left on (it holds a tractor's GPS back from the program): an implement's positions still go out
+    h = w.http("POST", "/api/settings", "simMode=1");
+    w.run(3000);
+    const ImplSeen sim = implSince(w, w.now() - 2000, head);
+    must("sim-mode-not-used", h.code == 200 && sim.n >= 15, "With the simulator mode on, its positions still go to UDP 9990",
+         fmt("HTTP %d, %zu in 2 s", h.code, sim.n));
+    w.http("POST", "/api/settings", "simMode=0");
+
+    // "Restore defaults" on the page keeps the role
+    h = w.http("POST", "/api/settings", "defaults=1");
+    must("defaults-keep-role", h.code == 200 && h.json["settings"]["role"].num() == 1, "Restore defaults keeps Implement (the role is not a page setting)",
+         h.body.substr(0, 160));
+
+    // back to Tractor
+    engage(w, false);
+    w.run(1000);
+    h = w.http("POST", "/api/settings", "role=0");
+    must("saved-tractor", h.code == 200 && h.json["settings"]["role"].num() == 0, "The page saves Tractor", h.body.substr(0, 120));
+    w.http("POST", "/api/reboot", "");
+    w.runUntil([&] { return w.aio.boots == 3; }, 6000);
+    const uint32_t to9990 = w.netTo9990;
+    w.run(8000);
+    w.aow.sendSettings();
+    w.run(1000);
+    const uint64_t e1 = w.engagedMs;
+    steerFor(w, 8, 8000);
+    must("tractor-again", w.aio.dev.ip == IPAddress(192, 168, 5, 126) && !w.aow.heardPgn(126, w.now() - 3000).empty() && w.netTo9990 == to9990,
+         "As Tractor again: IP .126, answers AgOpenWeb, nothing to UDP 9990", fmt("IP %s, %u to 9990", w.aio.dev.ip.str().c_str(), w.netTo9990 - to9990));
+    must("steers-again", w.engagedMs - e1 > 5000, "Steers when asked", fmt("%llu ms", (unsigned long long)(w.engagedMs - e1)));
+    reportRules(w);
+}

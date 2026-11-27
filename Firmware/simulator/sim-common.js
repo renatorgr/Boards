@@ -245,7 +245,7 @@ function Module(key) {
   gps2: 0, xiao: opt.xiao === "1", mach: opt.mach !== "0", nano: opt.mach === "nano" || opt.mach === "two"};
  const rx = RX[h.rx], parked = opt.park === "1";
  const fresh = () => ({
-  t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5",
+  t0: Date.now() - RUNNING * 1000, boot: "power", bootN: 1, net: "192.168.5", role: 0, roleNow: 0,
   cfg: {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: h.gps2,
    wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50, steerLoop100: 0},
   wdt: true, saved: true, fwOver: null, prev: null, fwSize: 688128,
@@ -275,7 +275,9 @@ function Module(key) {
  const gps2Name = () => cfg.xiaoOff === 1 ? "off" : f9pOn() ? "auto: F9P" : h.xiao ? "auto: XIAO" : "auto";
  const dualRx = () => rx.dual === "um982" ? !cfg.umSingle : f9pOn();
  const hostName = h.host;
- const ip = () => st.net + ".126";
+ // the module's role (zSettings.h): an implement's GPS (README "Implement mode") is at .130 and never steers
+ const implNow = () => st.roleNow === 1;
+ const ip = () => st.net + (implNow() ? ".130" : ".126");
  const fwName = () => st.fwOver ? st.fwOver.fw : FW_NAME;
  const fwVer = () => fwName().replace(/^v/, "").replace(/_AiO_WEB$/, "");
  const built = () => st.fwOver ? st.fwOver.built : BUILT;
@@ -293,7 +295,7 @@ function Module(key) {
   return {gga: true, q: t < 22 || (w > 600 && w < 609) ? 5 : 4, sats: String(26 + Math.round(wob(t, 2, 0.05))),
    hdop: (0.6 + Math.abs(wob(t, 0.12, 0.03))).toFixed(1), age: (0.6 + Math.floor(t * 10 % 10) / 10).toFixed(1)};
  }
- const autosteerOn = t => !parked && t > START + 3;
+ const autosteerOn = t => !parked && !implNow() && t > START + 3;
  const imuOn = t => hasImu && t > 1.6;
  // the dual heading: UM982 HPR (QF 4 fixed, 5 float) from 12 s; second F9P RELPOSNED fixed only
  function dualAt(t, f) {
@@ -314,7 +316,8 @@ function Module(key) {
   L.push([0.4, "[boot] Steering: minimum " + (cfg.steerMinKmhX10 / 10).toFixed(1) + " km/h, maximum " + cfg.steerMaxKmh + " km/h, soft start " + cfg.softStartX10ms * 10 + " ms (0 = off), current kickout delay " + cfg.currentKickX10ms * 10 + " ms, loop " + (cfg.steerLoop100 ? 100 : 40) + " Hz"]);
   if (cfg.wasCheckOff) L.push([0.4, "[boot] WAS check OFF (bench setting): a broken WAS wire does not stop autosteer"]);
   if (cfg.simMode) L.push([0.4, "[boot] Simulator mode ON (for the program's simulator only): GPS data is not sent to the program"]);
-  L.push([0.9, "[boot] Autosteer: ADS1115 (WAS) found, waiting for the program"]);
+  L.push([0.9, implNow() ? "[boot] Implement mode: no steering, nothing sent to the program; positions to UDP 9990, module IP " + st.net + ".130 (README \"Implement mode\")"
+   : "[boot] Autosteer: ADS1115 (WAS) found, waiting for the program"]);
   L.push([1.1, "[boot] Ethernet: UDP ports 5120 GNSS out, 2233 NTRIP in, 8888 steering in / out, 9999 machine module in"]);
   L.push([1.6, {tm171: "[boot] IMU: TM171 on Serial5", bno: "[boot] IMU: BNO085 on I2C 0x4A (pins 18 / 19)", rvc: "[boot] IMU: BNO085 on Serial5 (RVC mode)",
    none: "[boot] IMU NOT detected: no TM171 or BNO085 on Serial5, no BNO085 on I2C 0x4A / 0x4B - no roll, no IMU heading (still listening on Serial5)"}[opt.imu]]);
@@ -574,8 +577,15 @@ function Module(key) {
    bridge: t >= 6 ? 1 : 0, brIn: 0, brOut: 0, brDrop: 0, brIgn: 0, brRtcmKB: 0};
   if (full) j.xiao.info = xHere ? JSON.stringify(xiaoInfo(up)) : "";
   j.xiao.infoAgo = xHere ? up % 5 : -1;
+  j.impl = implJson(t);
   if (full && h.mach && t > 5.5) j.mach = machine(t, tr, engaged);
   return j;
+ }
+ // implement mode (zImplement.ino implementJson): its positions to UDP 9990, at the program's computer once its hello is heard
+ function implJson(t) {
+  const on = implNow(), going = on && t > 5, prog = on && t >= 6;
+  return {on: on, next: st.role === 1, port: 9990, sent: going ? Math.floor((t - 5) * 10) : 0, rate: going ? 10 : 0,
+   to: going ? st.net + (prog ? ".10" : ".255") : "", by: prog ? "hello" : ""};
  }
  function xiaoInfo(up) {
   return {v: VERSION, c: opt.chip === "s3" ? "ESP32-S3" : "ESP32-C3", ap: "XIAO-3F2A", apIp: "192.168.4.1", cl: 1, sta: "Farm WiFi", st: "ok", ip: "192.168.1.57", rssi: -61, t: 44.3, br: 0, up: up};
@@ -766,7 +776,7 @@ function Module(key) {
   ["steerMinKmhX10", 1, 30], ["steerMaxKmh", 5, 40], ["softStartX10ms", 0, 100], ["currentKickX10ms", 0, 200], ["steerLoop100", 0, 1]];
  const DEFAULTS = {outputMode: 2, classicNoDual: 0, hprAcceptFloat: 1, epochWaitMs: 60, tm171SwapRollPitch: 0, tm171YawSign: 0, xiaoOff: 0,
   wasCheckOff: 0, wdtOff: 0, umSingle: 0, simMode: 0, steerMinKmhX10: 2, steerMaxKmh: 25, softStartX10ms: 0, currentKickX10ms: 50, steerLoop100: 0};
- const settingsJson = () => ({ok: true, settings: Object.assign({}, cfg), saved: st.saved, wdt: st.wdt});
+ const settingsJson = () => ({ok: true, settings: Object.assign({}, cfg, {role: st.role || 0}), roleNow: st.roleNow || 0, saved: st.saved, wdt: st.wdt});
  function settingsPost(b) {
   const s = b.defaults === "1" ? Object.assign({}, DEFAULTS) : Object.assign({}, cfg);
   if (b.defaults !== "1") for (const [n, lo, hi] of FIELDS) {
@@ -775,7 +785,19 @@ function Module(key) {
    if (!(v >= lo && v <= hi)) return err(400, "invalid value for " + n);
    s[n] = v;
   }
+  // the role: its own place in the EEPROM, not reset by "defaults", taken at the next start (zWeb.ino apiSettingsPost)
+  let role = st.role || 0;
+  if (b.role !== undefined) {
+   if (!/^[01]$/.test(b.role)) return err(400, "invalid value for role");
+   role = parseInt(b.role, 10);
+  }
   const t = T(), was = Object.assign({}, cfg);
+  if (role !== (st.role || 0)) {
+   st.role = role;
+   line(role === (st.roleNow || 0) ? "[web] Module role: back to " + (role ? "implement" : "tractor") + ", as running now"
+    : role ? "[web] Module role: implement from the next start (GPS only: positions to UDP 9990, nothing to the program, no steering, IP .130). Restart the module."
+    : "[web] Module role: tractor from the next start (steer module, positions to the program's UDP 9999, IP .126, or .120 without an ADS1115). Restart the module.");
+  }
   if (s.simMode !== was.simMode) {
    if (s.simMode) st.simSince = t; else st.heldBase += (t - st.simSince) * 10;
   }
@@ -869,7 +891,7 @@ function Module(key) {
  // the Teensy restarts: offMs without an answer, then up again from 0 with a new log
  function restart(offMs) {
   setTimeout(() => {
-   st.t0 = Date.now() + offMs; st.boot = "restart"; st.bootN++; st.wdt = !cfg.wdtOff;
+   st.t0 = Date.now() + offMs; st.boot = "restart"; st.bootN++; st.wdt = !cfg.wdtOff; st.roleNow = st.role || 0;
    st.log = []; st.logNext = 1; st.tlAt = -1; st.simSince = cfg.simMode ? 0 : -1; st.heldBase = 0;
    st.id = {st: "done", at: 4.5}; st.ubx.op = st.um.op = st.ck.op = ""; st.ubx.at = rx.kind === "ublox" ? 5 : -1; st.um.at = rx.kind === "um982" ? 5 : -1;
    st.tm.calib = ""; st.tm.doneAt = -1; st.tm.readAt = 4.6; st.tm.ackAt = -1; st.tm.pend = null; st.umLines = []; st.umNext = 1;

@@ -330,6 +330,11 @@ public:
     Xiao     xiao;                      // on the GPS2 port (not fitted unless a scenario says so)
     Program  tab;                       // AgOpenWeb on a tablet with no network cable, on the XIAO's own WiFi (off unless...)
     uint32_t netTo9999 = 0;             // datagrams the module put on the network cable for the program's port
+    // a module set as an implement's GPS (firmware README "Implement mode"): what it put on the cable for UDP 9990, as a
+    // logger on the tablet would hear it (one NMEA sentence each)
+    struct ImplHeard { uint64_t ms; IPAddress dst; std::string line; };
+    std::vector<ImplHeard> to9990;
+    uint32_t netTo9990 = 0;
     bool     cableIn = true;            // the module's network cable
     bool     tabletOnNet = true;
 

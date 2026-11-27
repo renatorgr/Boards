@@ -38,7 +38,11 @@ void EthernetStart()
   Eth_myip[0] = networkAddress.ipOne;
   Eth_myip[1] = networkAddress.ipTwo;
   Eth_myip[2] = networkAddress.ipThree;
-  if (Autosteer_running) 
+  if (implementMode())
+  {
+    Eth_myip[3] = 130;  // AiO_WEB: an implement's GPS (zImplement.ino), never taken for the tractor's .126 / .120
+  }
+  else if (Autosteer_running)
   {
     Eth_myip[3] = 126;  //126 is steer module, with or without GPS
   }
@@ -50,7 +54,7 @@ void EthernetStart()
   Ethernet.setLocalIP(Eth_myip);  // Change IP address to IP set by user
 
   Ethernet_running = true;
-  mdnsStart();                    // http://aio.local/ (after the IP: the name is announced with it)
+  mdnsStart();                    // http://aio.local/, aio-implement.local (after the IP: the name is announced with it)
 
   Eth_ipDestination[0] = Eth_myip[0];
   Eth_ipDestination[1] = Eth_myip[1];
@@ -81,6 +85,7 @@ void EthernetStart()
 // the network is settled by FNET (it adds a number to the name). The name is written like the XIAO's ("XIAO-3F2A") and the
 // sprayer's ("Sprayer-5F28"): a hyphen, no space.
 #define MDNS_HOST "aio"
+#define MDNS_HOST_IMPLEMENT "aio-implement"     // an implement's GPS (zImplement.ino): both modules on one network, each its name
 char mdnsName[12] = "";                         // "AiO-3F2A": the instance name of both services (the Connections card, zWeb.ino)
 
 #ifdef ARDUINO_TEENSY41
@@ -95,11 +100,12 @@ static void mdnsStart()
 {
 #ifdef ARDUINO_TEENSY41
   snprintf(mdnsName, sizeof(mdnsName), "AiO-%04X", (unsigned)(HW_OCOTP_MAC0 & 0xFFFF));
-  MDNS.begin(MDNS_HOST, 2);                     // the host name and room for two services
+  const char* host = implementMode() ? MDNS_HOST_IMPLEMENT : MDNS_HOST;
+  MDNS.begin(host, 2);                          // the host name and room for two services
   MDNS.setServiceName(mdnsName);                // NativeEthernet: one instance name for every service
   MDNS.addService("_http._tcp", 80);            // the web page, for the fork's "Search the network"
   MDNS.addService("_aowcard._tcp", 80, aowcardTxt);   // the official add-on card announcement
-  StatusLog.line("[boot] mDNS: the page is also http://%s.local/, announced as \"%s\" (_http._tcp and _aowcard._tcp: AgOpenWeb's web cards find it by name)", MDNS_HOST, mdnsName);
+  StatusLog.line("[boot] mDNS: the page is also http://%s.local/, announced as \"%s\" (_http._tcp and _aowcard._tcp: AgOpenWeb's web cards find it by name)", host, mdnsName);
 #endif
 }
 
@@ -152,7 +158,7 @@ const char* netSetSubnet(uint8_t a, uint8_t b, uint8_t c, const char* who)
   if (watchdogTimer < WATCHDOG_THRESHOLD)           return "not while autosteer is engaged";
   if (a == networkAddress.ipOne && b == networkAddress.ipTwo && c == networkAddress.ipThree)
                                                     return "the module is on that subnet already";
-  const uint8_t last = Eth_myip[3] ? Eth_myip[3] : (Autosteer_running ? 126 : 120);
+  const uint8_t last = Eth_myip[3] ? Eth_myip[3] : implementMode() ? 130 : (Autosteer_running ? 126 : 120);
   StatusLog.line("[status] subnet %u.%u.%u -> %u.%u.%u from %s: saved, restarting as %u.%u.%u.%u",
                  networkAddress.ipOne, networkAddress.ipTwo, networkAddress.ipThree, a, b, c, who, a, b, c, last);
   networkAddress.ipOne = a;

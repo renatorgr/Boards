@@ -364,7 +364,10 @@ EEPROMClass EEPROM;
 void EEPROMClass::write(int a, uint8_t v)
 {
     if (a < 0 || a >= length()) return;
-    if (cur->eeprom[a] != v) cur->eepromWrites++;
+    if (cur->eeprom[a] == v) return;
+    if (cur->eepromWritesLeft == 0) return;            // the power is gone (a scenario's cut)
+    if (cur->eepromWritesLeft > 0) cur->eepromWritesLeft--;
+    cur->eepromWrites++;
     cur->eeprom[a] = v;
 }
 

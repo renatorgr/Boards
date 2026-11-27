@@ -729,7 +729,9 @@ static void sendLine(const char* line, uint8_t slot)
         memcpy(lastSent[slot], line, n);
         lastSent[slot][n] = '\0';
     }
-    if (xiaoBridgeWifi())                                  // the program is on the XIAO's WiFi: to it only (zXiao.ino)
+    if (implementMode())                                   // an implement's GPS: to UDP 9990 only, never the program's 9999
+        implementSend(line, strlen(line));                 //   (zImplement.ino)
+    else if (xiaoBridgeWifi())                             // the program is on the XIAO's WiFi: to it only (zXiao.ino)
         xiaoNetOut((const uint8_t*)line, (uint16_t)strlen(line));
     else if (Ethernet_running)
     {
@@ -1114,7 +1116,7 @@ void gnssProcess()
     // ---- out to AgOpenWeb / AgOpenGPS
     // Simulator mode (setting, for the program's simulator only): the GPS does not go out. AgOpenWeb
     // switches its simulator off (its button greyed out) while it gets GPS sentences, with or without a fix.
-    const bool hold = cfg.simMode != 0;
+    const bool hold = cfg.simMode != 0 && !implementMode();   // an implement's positions go to UDP 9990 whatever this says
     simHeld = hold;                                    // (its message: the [boot] line, or the [web] line when switched on)
     if (hold) epochsHeld++;
     else

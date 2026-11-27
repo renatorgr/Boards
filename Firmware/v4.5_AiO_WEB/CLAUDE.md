@@ -130,7 +130,8 @@ The files are flat, but they group into modules like the AiO 26 `lib/aio_*` fold
 | `zOTA.ino`, `FlashTxx.c` / `.h` | Firmware update from the web page and from the XIAO link (FlasherX, `otaBegin` / `otaFeed` / `otaFinish` / `otaInstall`); the previous firmware kept at 2-4 MB (`otaPrevSave` inside `otaInstall`, `otaRevertInstall`, `otaSetup` validates the copy at boot) |
 | `zStatus.ino`, `zStatusLog.h` | `[status]` messages, which program talks to the module (PGN 200 hello) |
 | `zLeds.ino` | The three two-colour LEDs on the board, with the AiO 26 meanings (link / program, fix quality + RTCM flick, steering state + button flick) |
-| `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200); the installation note (address 1024, `cfgNote`, `noteLoad` / `noteSave`) |
+| `zSettings.ino` / `.h` | Web page settings block in the EEPROM (address 200); the installation note (address 1024, `cfgNote`, `noteLoad` / `noteSave`); the module's role (address 240, `roleNow` / `roleSaved`, `implementMode()`) |
+| `zImplement.ino` | Implement mode (README "Implement mode"): the module as a GPS on an implement, its sentences to UDP 9990 (`implementSend`, from `sendLine`), the program's computer heard (`implementNoteProgram`), the page's `impl` object |
 
 ### Companion modules
 | File | Purpose |
@@ -194,9 +195,10 @@ There is no scheduler (AiO 26 has `SimpleScheduler`): every part runs each loop 
 | 9999 | in | Machine module PGNs (`Eth_udpModules`, zMachine.ino) |
 | 2233 | in | NTRIP RTCM from the program |
 | 5120 | out | source port of the GNSS output (`Eth_udpPAOGI`) |
+| 9990 | out | implement mode only: the GNSS sentences, to the program's computer or x.x.x.255 (`IMPLEMENT_PORT`, zImplement.ino); then nothing goes to 9999 |
 | 80 | TCP | web page |
 
-IP: `<networkAddress>.126` (`.120` when there is no ADS1115: GPS only, no autosteer); the first three numbers
+IP: `<networkAddress>.126` (`.120` when there is no ADS1115: GPS only, no autosteer; `.130` in implement mode); the first three numbers
 are in EEPROM 60, default 192.168.5 (PGN 201 changes them and restarts).
 
 ## PGN Reference
@@ -290,6 +292,7 @@ there; the Action only checks that the pages open without errors. Its README say
 | 40 | `steerConfig` | PGN 251 |
 | 60 | `networkAddress` (first three IP numbers) | PGN 201 |
 | 200 | `WebSettings cfg` (magic 0x5A17, version 2, checksum) | web page |
+| 240 | the module's role: magic 0x524C ("RL"), role (0 tractor, 1 implement), role ^ 0xA5; anything else reads as tractor (`roleLoad`, zSettings.ino). Not reset by the page's defaults; read once at start-up | web page (`role` in `/api/settings`) |
 | 1024 | the installation note: magic 0x4E54, length (2 bytes), up to 1200 bytes of text (`cfgNote`, zSettings.ino) | web page (`/api/note`) |
 
 The addresses must not move: settings must survive a firmware update.
@@ -396,6 +399,9 @@ The addresses must not move: settings must survive a firmware update.
     never both. A new sender that calls `SendUdp` / `beginPacket` to `Eth_ipDestination` itself would be missing for
     a tablet on the WiFi. What a program sends arrives in `programPacket()` from either way; `viaXiao` marks the
     WiFi, where PGN 201 and 202 are not done. The cable always wins (`xiaoBridgeNoteCable`, 3 s).
+    In implement mode (`implementMode()`, README "Implement mode") `progSend`, `SendUdp` to 9999 and the XIAO's frames send
+    nothing, `sendLine` sends to UDP 9990 only, `programPacket` takes PGN 201 only (a hello is noted, not answered) and
+    `Autosteer_running` is false: a new sender to the program must keep that, or the program gets a second GPS.
 
 ## Version and Publishing
 

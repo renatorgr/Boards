@@ -331,6 +331,8 @@ void autosteerSetup()
 
 	// Check ADC 
 	if (!adc.testConnection()) Autosteer_running = false;   // no ADS1115: no WAS reading (the [boot] line below)
+	const bool adsFound = Autosteer_running;
+	if (implementMode()) Autosteer_running = false;          // an implement's GPS never steers (zImplement.ino)
 
 	//50Khz I2C
 	//TWBR = 144;   //Is this needed?
@@ -360,6 +362,12 @@ void autosteerSetup()
 	if (Autosteer_running)
 	{
 		StatusLog.line("[boot] Autosteer: ADS1115 (WAS) found, waiting for the program");
+	}
+	else if (implementMode())
+	{
+		StatusLog.line("[boot] Implement mode: no steering%s, nothing sent to the program; positions to UDP %u, module IP %u.%u.%u.130 (README \"Implement mode\")",
+		               adsFound ? "" : " (and no ADS1115)", IMPLEMENT_PORT, networkAddress.ipOne, networkAddress.ipTwo, networkAddress.ipThree);
+		return;
 	}
 	else
 	{
@@ -873,6 +881,26 @@ void programPacket(uint8_t* udpPacket, int got, IPAddress from, bool viaXiao)
 
 		if (autoSteerUdpData[0] == 0x80 && autoSteerUdpData[1] == 0x81 && autoSteerUdpData[2] == 0x7F) //Data
 		{
+			// An implement's GPS (zImplement.ino) takes only the hello, to know where the program's computer is (its
+			// positions go there) and to show the program on the page, never answered; and the subnet (PGN 201), to stay
+			// on the program's network. No steering, no steer settings, no scan reply: the program must not see it.
+			if (implementMode())
+			{
+				const uint8_t pgnNo = autoSteerUdpData[3];
+				if (pgnNo == 200)
+				{
+					// the program the module follows only (a second program's hellos don't move the positions), and on
+					// the cable only: the positions go out on the cable (zImplement.ino)
+					if (statusNoteHello(udpPacket, (uint16_t)got, from) && !viaXiao)
+					{
+						const uint8_t ip[4] = { from[0], from[1], from[2], from[3] };
+						implementNoteProgram(ip, true);
+					}
+					return;
+				}
+				if (pgnNo != 201) return;
+			}
+
 			// AiO_WEB: steering data, steer settings and steer config (PGN 254, 252, 251) are read from bytes 5 to 12:
 			// one shorter than that, or than its own length byte says, is dropped. Its missing bytes came from the
 			// packet before (a short 252 saved counts per degree 1 instead of 120; Teensy harness, short-settings-packet).
@@ -1173,6 +1201,7 @@ void programPacket(uint8_t* udpPacket, int got, IPAddress from, bool viaXiao)
 #ifdef ARDUINO_TEENSY41
 void SendUdp(uint8_t* data, uint8_t datalen, IPAddress dip, uint16_t dport)
 {
+	if (implementMode() && dport == portDestination) return;   // an implement's GPS sends nothing to the program's 9999 (zImplement.ino)
 	Eth_udpAutoSteer.beginPacket(dip, dport);
 	Eth_udpAutoSteer.write(data, datalen);
 	Eth_udpAutoSteer.endPacket();
@@ -1182,6 +1211,7 @@ void SendUdp(uint8_t* data, uint8_t datalen, IPAddress dip, uint16_t dport)
 // XIAO's WiFi, through the XIAO to that program only (22 Nov 2026, zXiao.ino "the WiFi bridge").
 void progSend(uint8_t* data, uint8_t datalen)
 {
+	if (implementMode()) return;                    // an implement's GPS: nothing for the program (zImplement.ino)
 	if (xiaoBridgeWifi()) { xiaoNetOut(data, datalen); return; }
 	if (Ethernet_running) SendUdp(data, datalen, Eth_ipDestination, portDestination);
 }

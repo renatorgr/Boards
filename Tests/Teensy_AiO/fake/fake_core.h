@@ -516,6 +516,7 @@ struct Device
     // EEPROM (4284 bytes, the Teensy 4.1's emulation) and the 8 MB flash, kept across restarts
     std::vector<uint8_t> eeprom = std::vector<uint8_t>(4284, 0xFF);
     uint32_t eepromWrites = 0;          // bytes that changed (flash wear)
+    int32_t  eepromWritesLeft = -1;     // a power cut while writing: the bytes still written before it (-1 = no cut)
     std::vector<uint8_t> flash = std::vector<uint8_t>(0x800000 + 4096, 0xFF);   // 8 MB from a 4 KB boundary inside (fake_teensy_flash)
     uint8_t  ram2[256] = {};            // 0x2027FF00..0x2027FFFF: the core's crash record
     uint32_t imageLen = 0;              // the running firmware's size in the flash (the repository's .hex, loaded by the harness)
