@@ -902,6 +902,62 @@ async function teensy(browser, port, q, name) {
   }
   await pg.close();
  }
+ // the Teensy page of a module in the Implement role (README "Implement mode"): after the restart it shows no steering card, no
+ // operating mode and no steering warning; the watchdog stays; a module in the Tractor role shows them all
+ {
+  const what = "Teensy page, Implement role";
+  const pg = await page(browser, "http://127.0.0.1:" + port + "/Boards/teensy/?park=1&gps=dualf9p", what);
+  await answerAsk(pg);
+  await pg.waitForTimeout(2500);
+  const shown = () => pg.evaluate(() => [...document.querySelectorAll("section:not(.hidden) .card")].filter(c => c.offsetParent !== null)
+   .map(c => (c.querySelector("h2").innerText || "").trim().toLowerCase()));
+  const has = (l, n) => l.some(x => x === n);
+  let c = await shown();
+  if (!has(c, "steering")) fail.push(what + ": a tractor's module shows no Steering card on Status (" + c.join(", ") + ")");
+  await pg.click('nav button[data-t="settings"]'); await pg.waitForTimeout(700);
+  c = await shown();
+  for (const n of ["operating mode", "autosteer safety", "steering"]) if (!has(c, n)) fail.push(what + ": a tractor's module shows no «" + n + "» card in Settings");
+  await pg.selectOption("select[name=role]", "1");
+  await pg.click("#fs button[type=submit]");
+  await expectSoon(pg, what, "#roleMsg", /^Implement saved: it takes effect when the module restarts\.$/);
+  await pg.click("#roleRestart");
+  try { await pg.waitForFunction(() => document.body.classList.contains("impl"), null, {timeout: 15000}); }
+  catch (e) { fail.push(what + ": the page does not know it is an implement's GPS after the restart"); }
+  await expect(pg, what, "#hdr", /192\.168\.5\.130 · implement$/);
+  c = await shown();
+  for (const n of ["operating mode", "autosteer safety", "steering"]) if (has(c, n)) fail.push(what + ": the «" + n + "» card still shows in Settings");
+  if (!has(c, "watchdog") || !(await pg.locator("input[name=wdtOn]").isVisible())) fail.push(what + ": the watchdog is not in Settings");
+  if (await pg.locator("input[name=wasCheckOn]").isVisible()) fail.push(what + ": the WAS check still shows in Settings");
+  await shot(pg, "teensy-implement-settings");
+  // a save there leaves what is not shown as it was: it is not sent, even when the page holds another value for it
+  // (a page open since before another one changed it)
+  await pg.evaluate(() => { const f = document.getElementById("fs"); f.steerMaxKmh.value = "10"; f.wasCheckOn.checked = false; f.simMode.checked = true;
+   f.querySelector("input[name=outputMode][value='1']").checked = true; });
+  await asked(pg);
+  await pg.click("#fs button[type=submit]");
+  await expectSoon(pg, what, "#setMsg", /^Saved\.$/);
+  if ((await asked(pg)).some(a => /WAS check|simulator mode/i.test(a))) fail.push(what + ": a save asked about a setting that is not shown");
+  const kept = await pg.evaluate(() => { const f = document.getElementById("fs");
+   return [f.steerMaxKmh.value, f.wasCheckOn.checked, f.simMode.checked, f.querySelector("input[name=outputMode]:checked").value].join(" "); });
+  if (kept !== "25 true false 2") fail.push(what + ": a save changed settings that are not shown (maximum speed, WAS check, simulator, operating mode: " + kept + ")");
+  // Restore defaults resets those too, and says so
+  await pg.click("#defaults");
+  await expectSoon(pg, what, "#setMsg", /^Saved\.$/);
+  await askedSays(pg, what, /steering settings, not shown on an implement's GPS, go back to their defaults too/);
+  await pg.click('nav button[data-t="status"]'); await pg.waitForTimeout(1500);
+  c = await shown();
+  if (has(c, "steering")) fail.push(what + ": the Steering card still shows on Status");
+  for (const n of ["gnss", "dual-antenna heading", "imu", "connections", "rtcm corrections"]) if (!has(c, n)) fail.push(what + ": the «" + n + "» card is gone from Status");
+  await expect(pg, what, "#mode", /^\$PAOGI, one per fix$/);
+  if (await pg.locator("#modeSel").isVisible()) fail.push(what + ": the sentence choice still shows in Connections");
+  if (!(await pg.locator("#alert.hidden").count())) fail.push(what + ": a warning shows: «" + (await pg.locator("#alert").innerText()) + "»");
+  await shot(pg, "teensy-implement-status");
+  // the Messages say what an implement's GPS does with the program's hello, not which of the program's sentences it sends
+  await expectSoon(pg, what, "#log", /Program: AgOpenWeb \(hello from 192\.168\.5\.10\), not answered: this module is an implement's GPS/, 12000);
+  if (/Automatic mode: standard sentences|sent as \$GNTHS/.test((await pg.locator("#log").textContent()).split("Implement mode: no steering").pop()))
+   fail.push(what + ": the Messages speak of the program's standard sentences");
+  await pg.close();
+ }
  // the seed drill's module with the network cable unplugged: sections closed, the program's request still outlined
  {
   const what = "Seed drill page, network lost";

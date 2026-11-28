@@ -112,6 +112,9 @@ input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);bor
 details.card summary{cursor:pointer;color:var(--mute);font-size:13.5px}
 progress{width:100%;height:14px}
 .hidden{display:none!important}
+/* implement mode (README "Implement mode"): the cards and options of steering and of the program's sentences are not shown */
+.impl .noImpl{display:none!important}
+.onlyImpl{display:none}.impl .onlyImpl{display:inline}
 .alert{background:color-mix(in srgb,var(--bad) 18%,transparent);border:1px solid var(--bad);border-radius:12px;padding:9px 12px;margin:0 0 12px;white-space:pre-line;font-weight:600}
 .info{background:color-mix(in srgb,var(--acc) 16%,transparent);border:1px solid var(--acc);border-radius:12px;padding:9px 12px;margin:0 0 12px;font-weight:600}
 a{color:var(--acc)}
@@ -169,7 +172,7 @@ p.chk{text-align:right;margin:4px 0 0}
    <dt id="g1SetT" class="hidden">Setup</dt><dd id="g1Set" class="hidden">–</dd>
   </dl>
   <p class="note hidden" id="g1Go">Receiver check and settings: <a href="#" data-go="gps">GPS tab</a></p></div>
- <div class="card"><h2>Steering</h2>
+ <div class="card noImpl"><h2>Steering</h2>
   <div class="big" id="was">–</div>
   <dl style="margin-top:6px"><dt>Requested angle</dt><dd id="setp">–</dd><dt>Distance to the line</dt><dd id="lineDist">–</dd><dt>PWM</dt><dd id="pwm">–</dd><dt>Loop</dt><dd id="loopHz">–</dd><dt>Autosteer</dt><dd id="active">–</dd>
    <dt>Switch</dt><dd id="sw">–</dd><dt>Speed (program)</dt><dd id="aogKmh">–</dd>
@@ -202,8 +205,8 @@ p.chk{text-align:right;margin:4px 0 0}
  <div class="card"><h2>Connections</h2>
   <dl><dt>Ethernet cable</dt><dd id="link" class="nw">–</dd><dt>Program</dt><dd id="aog" class="nw">–</dd><dt>Program IP</dt><dd id="aogIp" class="nw">–</dd><dt>Name on the network</dt><dd id="mdns" class="nw">–</dd>
    <dt>Up for</dt><dd id="up">–</dd>
-   <dt>Sentences</dt><dd id="mode" class="nw">–</dd><dt>Choice</dt><dd id="modeSel">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt>In AgOpenGPS</dt><dd id="aogSrc">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
-  <p class="note">Sent to the program:</p><div class="box mono" id="sent">–</div>
+   <dt>Sentences</dt><dd id="mode" class="nw">–</dd><dt class="noImpl">Choice</dt><dd id="modeSel" class="noImpl">–</dd><dt>Heading sent</dt><dd id="cSrc">–</dd><dt class="noImpl">In AgOpenGPS</dt><dd id="aogSrc" class="noImpl">–</dd><dt>Epochs sent</dt><dd id="epochs">–</dd></dl>
+  <p class="note"><span class="noImpl">Sent to the program:</span><span class="onlyImpl">Sent to UDP 9990:</span></p><div class="box mono" id="sent">–</div>
   <p class="note">The receiver sends (last 5 s):</p><div class="box mono" id="rx">–</div></div>
  <div class="card"><h2>RTCM corrections</h2>
   <dl><dt>NTRIP (program)</dt><dd id="rtcm" class="nw">–</dd><dt>Received</dt><dd id="rtcmKB" class="nw">–</dd><dt>RTCM messages</dt><dd id="rtcmMsg">–</dd><dt>Types</dt><dd id="rtcmTypes">–</dd>
@@ -252,7 +255,7 @@ p.chk{text-align:right;margin:4px 0 0}
  <div class="opt"><span style="flex:1">This module is on<small>Tractor: the steer module and the tractor's GPS, as always. Implement: a GPS on an implement (a trailed seed drill) to measure where it really goes: its positions go to UDP 9990 for a logger, never to AgOpenWeb; it answers no hello and never steers; IP .130, http://aio-implement.local/. Takes effect after a restart. Never choose Implement on the tractor's own module.</small></span><select name="role"><option value="0">Tractor</option><option value="1">Implement</option></select></div>
  <div class="row hidden" id="roleRow"><span class="note warn" id="roleMsg"></span><button class="sec" type="button" id="roleRestart">Restart now</button></div>
 </div>
-<div class="card"><h2>Operating mode</h2>
+<div class="card noImpl"><h2>Operating mode</h2>
  <label class="opt"><input type="radio" name="outputMode" value="2"><span>Automatic<small>Finds out which program is connected, from the «hello» it sends every second, and sends that program's sentences. Until then, the AgOpenGPS ones, which AgOpenWeb reads too.</small></span></label>
  <label class="opt"><input type="radio" name="outputMode" value="0"><span>AgOpenWeb<small>$GNGGA, $GNVTG, $GNTHS (antenna heading) and $INHPR (IMU) every epoch.</small></span></label>
  <label class="opt"><input type="radio" name="outputMode" value="1"><span>AgOpenGPS<small>$PAOGI (UM982 or dual F9P) or $PANDA (X20P / F9P) every epoch.</small></span></label>
@@ -270,18 +273,18 @@ p.chk{text-align:right;margin:4px 0 0}
  <div class="opt"><span style="flex:1">On the GPS2 port: <b id="gps2Now">–</b><small>Automatic finds a XIAO or a second F9P by itself. Off ignores the port.</small></span><select name="xiaoOff"><option value="0">automatic</option><option value="1">off</option></select></div>
 </div>
 </div>
-<div class="card"><h2>Autosteer safety</h2>
- <label class="opt"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short, loose plug) autosteer switches off until the reading is normal again; the wheel always steers by hand. Off only on a bench without a WAS: the page and the program warn, and the angle goes to the program as 0°. On Differential a reading below −0.5 V is a fault too (nothing on AmpSeal pin 3).</small></span></label>
- <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s; half a second before, it switches the autosteer outputs (valve or motor) off. Switching it off takes effect after the Teensy restarts.</small></span></label>
+<div class="card"><h2><span class="noImpl">Autosteer safety</span><span class="onlyImpl">Watchdog</span></h2>
+ <label class="opt noImpl"><input type="checkbox" name="wasCheckOn" value="1"><span>Check the WAS sensor<small>If the WAS voltage leaves 0.2–4.8 V (broken wire, short, loose plug) autosteer switches off until the reading is normal again; the wheel always steers by hand. Off only on a bench without a WAS: the page and the program warn, and the angle goes to the program as 0°. On Differential a reading below −0.5 V is a fault too (nothing on AmpSeal pin 3).</small></span></label>
+ <label class="opt"><input type="checkbox" name="wdtOn" value="1"><span>Watchdog<small>Restarts the Teensy if the firmware stops for 2 s<span class="noImpl">; half a second before, it switches the autosteer outputs (valve or motor) off</span>. Switching it off takes effect after the Teensy restarts.</small></span></label>
 </div>
-<div class="card"><h2>Steering</h2>
+<div class="card noImpl"><h2>Steering</h2>
  <div class="opt"><span style="flex:1">Minimum speed<small>Below it (the program's speed) the wheels are not turned. Default 0.2 km/h.</small></span><select name="steerMinKmhX10"><option value="1">0.1 km/h</option><option value="2">0.2 km/h</option><option value="3">0.3 km/h</option><option value="5">0.5 km/h</option><option value="10">1.0 km/h</option><option value="15">1.5 km/h</option><option value="20">2.0 km/h</option><option value="30">3.0 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Maximum speed<small>Above it autosteer switches off. Default 25 km/h.</small></span><select name="steerMaxKmh"><option value="10">10 km/h</option><option value="15">15 km/h</option><option value="20">20 km/h</option><option value="25">25 km/h</option><option value="30">30 km/h</option><option value="35">35 km/h</option><option value="40">40 km/h</option></select></div>
  <div class="opt"><span style="flex:1">Soft start<small>When autosteer engages, the valve or motor output rises over this time instead of jumping; on a big step or a change of direction, over half of it. Off: as before (default). Try 0.5 s in the field.</small></span><select name="softStartX10ms"><option value="0">off</option><option value="20">0.2 s</option><option value="30">0.3 s</option><option value="50">0.5 s</option><option value="75">0.75 s</option><option value="100">1 s</option></select></div>
  <div class="opt"><span style="flex:1">Kickout delay<small>Pressure or current sensor, a Keya's own current too (not its slip): autosteer switches off only when the reading stays above the limit this long, so a short peak does not stop it. Default 0.5 s; 0: at once.</small></span><select name="currentKickX10ms"><option value="0">0 (at once)</option><option value="25">0.25 s</option><option value="50">0.5 s</option><option value="100">1 s</option></select></div>
  <div class="opt"><span style="flex:1">Steering loop<small>How often the wheel angle is read and the valve or motor output updated. 100 Hz: as the AiO 26 firmware and AgOpenWeb's steering packets (the WAS read 250 times a second instead of 128); the gains stay the same. Try it once the tractor steers well at 40 Hz.</small></span><select name="steerLoop100"><option value="0">40 Hz</option><option value="1">100 Hz</option></select></div>
 </div><div class="row"><button class="act" type="submit">Save</button><button class="sec" type="button" id="defaults">Restore defaults</button><span id="setMsg" class="note"></span></div>
-<p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart. The steering settings still come from AgOpenWeb / AgOpenGPS.</p>
+<p class="note">Saved in the Teensy (EEPROM) and applied at once, without a restart.<span class="noImpl"> The steering settings still come from AgOpenWeb / AgOpenGPS.</span></p>
 </form>
 <div class="card"><h2>Notes about this installation</h2>
  <p class="note">Wiring, calibration values, what was changed and when: whatever the next person at this module should know. Kept in the Teensy (EEPROM) through firmware updates, and put in the diagnostic report.</p>
@@ -546,6 +549,7 @@ function render(s){
  $("hdr").textContent=(s.fw.lastIndexOf(" ")>0?s.fw.slice(0,s.fw.lastIndexOf(" ")):s.fw)+" · "+s.ip;
  /* implement mode (README "Implement mode"): a GPS on an implement, never a steer module */
  {const im=s.impl||{},n=$("implNote");let t="";
+  document.body.classList.toggle("impl",!!im.on);   /* .noImpl: no steering cards, no program sentences */
   if(im.on){$("hdr").textContent+=" · implement";
    t="Implement mode: this module is a GPS on an implement. Its positions go to UDP "+im.port+(im.to?" at "+im.to:"")+", "+im.rate+" a second ("+im.sent+" so far), never to AgOpenWeb; it answers no hello and never steers.";
    if(!im.next)t+=" Tractor saved: it takes effect when the module restarts.";}
@@ -634,7 +638,6 @@ function render(s){
  // WAS check, kickout sensor, why it went off, the steering settings, warnings at the top
  const sc=s.steerCfg,b=s.boot;
  if(st.wasless)set("wasV","no WAS: angle from the Keya position");
- else if(s.impl&&s.impl.on)set("wasV","implement mode: no steering");
  else if(!st.adc)set("wasV","no ADS1115","bad");
  else{const neg=st.wasOut&&sc&&!sc.singleWas&&st.wasV<-0.5;   // differential input, WAS_H under WAS_L: nothing on pin 3
   set("wasV",fmt(st.wasV,2," V")+" · "+st.wasRaw+(neg?" · negative on the differential input: nothing on pin 3? Choose Single in the program":st.wasOut?" · "+"out of range":"")+(!st.wasCheck?" · "+"check off":"")+(st.wasZero?" · "+"angle sent: 0°":"")+(st.wasJump?" · "+"jumped "+fmt(st.wasJumpDeg,0,"°"):st.wasTest?" · "+"test push at the next engage":"")+(st.wasStep>=0.1?" · "+"fastest change "+fmt(st.wasStep,1,"°")+" in 0.15 s":""),st.wasOut||st.wasJump?"bad":st.wasTest||!st.wasCheck?"warn":"");}
@@ -666,16 +669,17 @@ function render(s){
   set("scMaxDeg",sc.aowMaxDeg?sc.aowMaxDeg+"°":"not sent");
   set("scMinKmh",sc.aowMinKmhX10?fmt(sc.aowMinKmhX10/10,1," km/h"):"off");
  }
- const al=[];
- if(!st.adc&&!(s.impl&&s.impl.on))al.push("ADS1115 not found: no WAS reading, autosteer is off.");
+ const al=[],impl=!!(s.impl&&s.impl.on);   /* an implement's GPS: no warnings about steering or the program's simulator */
+ if(impl){}
+ else if(!st.adc)al.push("ADS1115 not found: no WAS reading, autosteer is off.");
  else if(st.wasBlock)al.push(sc&&!sc.singleWas&&st.wasV<-0.5?"Autosteer blocked: WAS "+fmt(st.wasV,2," V")+" on the differential input. A negative reading means nothing is wired to WAS_L (AmpSeal pin 3): a 3-wire sensor needs the program's A/D converter set to Single (AutoSteer, Hardware), or its ground wired to pin 3 too. The steering wheel works as usual.":("Autosteer blocked: WAS fault ("+fmt(st.wasV,2," V")+"). The steering wheel works as usual. Check the sensor, its wire and its plug."));
- if(st.adc&&!st.wasBlock&&st.wasJump)al.push("Autosteer blocked: the WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+", faster than wheels turn. A plug coming out or a broken wire reads a voltage that looks normal. Check the WAS plug and wire. The block ends 3 s after the last jump (with a steer switch, once it is off); then the next engage starts with a short test push, and autosteer steers on only if the wheel angle follows it. The steering wheel works as usual.");
- if(st.adc&&!st.wasBlock&&!st.wasJump&&st.wasTest)al.push("The WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+" and has not been checked since: the next engage starts with a short, gentle test push, and autosteer steers on only if the wheel angle follows it (else it goes off again, and the next engage tests again). Check the WAS plug first.");
- if(st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
+ if(!impl&&st.adc&&!st.wasBlock&&st.wasJump)al.push("Autosteer blocked: the WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+", faster than wheels turn. A plug coming out or a broken wire reads a voltage that looks normal. Check the WAS plug and wire. The block ends 3 s after the last jump (with a steer switch, once it is off); then the next engage starts with a short test push, and autosteer steers on only if the wheel angle follows it. The steering wheel works as usual.");
+ if(!impl&&st.adc&&!st.wasBlock&&!st.wasJump&&st.wasTest)al.push("The WAS angle jumped "+fmt(st.wasJumpDeg,0,"°")+" and has not been checked since: the next engage starts with a short, gentle test push, and autosteer steers on only if the wheel angle follows it (else it goes off again, and the next engage tests again). Check the WAS plug first.");
+ if(!impl&&st.keyaBlock)al.push(st.keyaLost?"Autosteer blocked: the Keya motor does not answer on the CAN bus. Check the CAN cable, its plug and the motor's power.":"Keya answers again: turn the steer switch off and on to engage autosteer.");
  if(s.tm&&s.tm.frozen)al.push("IMU frozen: its roll and heading have not changed for 3 s while driving. Check the IMU (power, cable; restart the module). The roll sent to the program is stale."+(s.tm.frozenN>1?" ("+s.tm.frozenN+"× since start-up)":""));
  if(s.cpuHot)al.push("The Teensy is at "+Math.round(s.cpuTemp)+" °C: hot. Check the module's box (sun, no air). The chip restarts itself at about 95 °C.");
- if(!st.wasCheck)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
- if(s.out.sim)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
+ if(!st.wasCheck&&!impl)al.push("WAS check off (bench): a broken WAS wire does not switch autosteer off.");
+ if(s.out.sim&&!impl)al.push("Simulator mode on (for tests only): the GPS is not sent to the program. Switch it off in Settings before going to the field.");
  if(b&&/watchdog|crash/.test(b.why))al.push("The Teensy restarted after a firmware fault (see Firmware and Messages).");
  if(g.ckH==="junk")al.push("The GPS receiver is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Receiver check.");
  if(g.ck2H==="junk")al.push("The second F9P is at the wrong baud rate (nothing valid at 460800 baud). See GPS, Second F9P check.");
@@ -701,11 +705,11 @@ function render(s){
  set("up",dur(s.up));
  $("rx").textContent=g.rx?g.rx.split(", ").join("\n"):"–";
  const cl=s.out.mode==="classic";
- set("mode",cl?(s.out.kind===3?"AgOpenGPS ($PANDA)":"AgOpenGPS ($PAOGI)"):"AgOpenWeb");
+ set("mode",cl?(impl?(s.out.kind===3?"$PANDA":"$PAOGI")+", one per fix":s.out.kind===3?"AgOpenGPS ($PANDA)":"AgOpenGPS ($PAOGI)"):"AgOpenWeb");
  set("modeSel",(s.out.auto?(n.host?"automatic":"automatic, waiting for the hello"):!cl&&n.host==="AgOpenGPS"?"manual: AgOpenGPS does not read these sentences":"manual"),!s.out.auto&&!cl&&n.host==="AgOpenGPS"?"warn":"");
  set("cSrc",s.out.mode!=="classic"?"–":(s.out.kind===3?"IMU (AgOpenGPS does the fusion)":(["–","antennas","IMU (no antennas)","GPS course (no antennas, no IMU)","held (stopped / IMU not aligned yet)"][s.out.classicSrc]||"–")),s.out.classicSrc>=2?"warn":"");
  set("aogSrc",s.out.aogSrc?"heading source"+": "+s.out.aogSrc:"–");
- set("epochs",String(s.out.epochs)+(s.out.sim?" · "+s.out.held+" "+"held back (simulator mode)":""),s.out.simHeld?"warn":"");
+ set("epochs",String(s.out.epochs)+(s.out.sim&&!impl?" · "+s.out.held+" "+"held back (simulator mode)":""),s.out.simHeld?"warn":"");
  $("sent").textContent=s.out.lines.length?s.out.lines.join("\n"):"–";
  const x=s.xiao;
  if(x){
@@ -1220,25 +1224,29 @@ async function postSettings(body){
  }catch(e){m.textContent="No connection to the module.";m.className="note bad";}
 }
 $("fs").addEventListener("submit",async e=>{e.preventDefault();const f=$("fs");
- const p=new URLSearchParams();p.set("outputMode",f.querySelector("input[name=outputMode]:checked").value);
+ // an implement's GPS: what its page does not show (.noImpl) is not sent, so a Save there cannot change it (the module keeps what is not sent)
+ const impl=document.body.classList.contains("impl"),sent=el=>!(impl&&el.closest(".noImpl"));
+ const p=new URLSearchParams(),om=f.querySelector("input[name=outputMode]:checked");if(sent(om))p.set("outputMode",om.value);
  p.set("hprAcceptFloat",f.hprAcceptFloat.checked?"1":"0");p.set("epochWaitMs",f.epochWaitMs.value);
  p.set("tm171SwapRollPitch",f.tm171SwapRollPitch.checked?"1":"0");p.set("tm171YawSign",f.tm171YawSign.value);
  p.set("xiaoOff",f.xiaoOff.value);
- if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!await ask("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
- p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");p.set("wdtOff",f.wdtOn.checked?"0":"1");
- if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
- p.set("simMode",f.simMode.checked?"1":"0");
+ if(sent(f.wasCheckOn)){
+  if(!f.wasCheckOn.checked&&(!lastSet||lastSet.wasCheckOff!=1)&&!await ask("Switch the WAS check off? Do it only on a bench with no WAS connected."))return;
+  p.set("wasCheckOff",f.wasCheckOn.checked?"0":"1");}
+ p.set("wdtOff",f.wdtOn.checked?"0":"1");
+ if(sent(f.simMode)){
+  if(f.simMode.checked&&(!lastSet||lastSet.simMode!=1)&&!await ask("Switch the simulator mode on? Only for tests with the program's simulator: the GPS is no longer sent to the program."))return;
+  p.set("simMode",f.simMode.checked?"1":"0");}
  // the role only when chosen here (against what the page last read): a page open since before another changed it keeps theirs
  if(lastSet&&lastSet.role!==undefined&&f.role.value!==String(lastSet.role)){
   if(f.role.value==="1"&&!await ask("Make this module an implement's GPS? After the restart it never steers and sends nothing to AgOpenWeb. Never on the tractor's own module."))return;
   if(f.role.value==="0"&&!await ask("Make this module a tractor's steer module again? After the restart its positions go to AgOpenWeb: never while it is on an implement on the tractor's network, or AgOpenWeb gets two GPS."))return;
   p.set("role",f.role.value);}
- p.set("steerMinKmhX10",f.steerMinKmhX10.value);p.set("steerMaxKmh",f.steerMaxKmh.value);
- p.set("softStartX10ms",f.softStartX10ms.value);p.set("currentKickX10ms",f.currentKickX10ms.value);p.set("steerLoop100",f.steerLoop100.value);
+ for(const n of ["steerMinKmhX10","steerMaxKmh","softStartX10ms","currentKickX10ms","steerLoop100"])if(sent(f[n]))p.set(n,f[n].value);
  postSettings(p.toString());});
 $("roleRestart").addEventListener("click",async()=>{if(!await ask("Restart the Teensy now? GPS stops for a few seconds."))return;
  try{await getJ("/api/reboot",{method:"POST"});}catch(e){}$("roleMsg").textContent="Restarting…";});
-$("defaults").addEventListener("click",async()=>{if(await ask("Restore the defaults of this page?"))postSettings("defaults=1");});
+$("defaults").addEventListener("click",async()=>{if(await ask(document.body.classList.contains("impl")?"Restore the defaults of this page? The steering settings, not shown on an implement's GPS, go back to their defaults too.":"Restore the defaults of this page?"))postSettings("defaults=1");});
 
 // ---- UM982
 for(const b of document.querySelectorAll("[data-c]"))b.addEventListener("click",()=>{$("umCmd").value=b.dataset.c;$("umCmd").focus();});
